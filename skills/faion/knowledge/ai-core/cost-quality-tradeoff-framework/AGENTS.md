@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/cost-quality-tradeoff-framework.json` | JSON schema for the output contract |
-| `templates/cost-quality-tradeoff-framework.md` | Markdown skeleton with required fields |
+| `templates/cost-quality-tradeoff-framework.md.j2` | Markdown skeleton with required fields |
+| `templates/cost-quality-tradeoff-framework.md` | Markdown skeleton with required fields Generated from `templates/cost-quality-tradeoff-framework.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

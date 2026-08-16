@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-advanced-guidelines.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spec-advanced-guidelines.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spec-advanced-guidelines.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/spec-advanced-guidelines.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

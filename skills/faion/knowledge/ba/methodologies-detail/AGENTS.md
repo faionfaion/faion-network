@@ -68,16 +68,26 @@
 | File | Purpose |
 |------|---------|
 | `templates/ba-route.sh` | Shell helper to print framework list for KA + context. |
-| `templates/change-impact.md` | Change impact analysis template. |
-| `templates/change-strategy.md` | Change strategy planning template. |
-| `templates/communication-plan.md` | Communication plan template. |
-| `templates/current-state.md` | Current state analysis template. |
-| `templates/future-state.md` | Future state definition template. |
-| `templates/governance-framework.md` | Governance framework template. |
-| `templates/requirements-architecture.md` | Requirements architecture template. |
-| `templates/risk-register.md` | Risk register template. |
-| `templates/solution-limitations.md` | Solution limitation assessment template. |
-| `templates/solution-options.md` | Solution options analysis template. |
+| `templates/change-impact.md.j2` | Change impact analysis template. |
+| `templates/change-impact.md` | Change impact analysis template. Generated from `templates/change-impact.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/change-strategy.md.j2` | Change strategy planning template. |
+| `templates/change-strategy.md` | Change strategy planning template. Generated from `templates/change-strategy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/communication-plan.md.j2` | Communication plan template. |
+| `templates/communication-plan.md` | Communication plan template. Generated from `templates/communication-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/current-state.md.j2` | Current state analysis template. |
+| `templates/current-state.md` | Current state analysis template. Generated from `templates/current-state.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/future-state.md.j2` | Future state definition template. |
+| `templates/future-state.md` | Future state definition template. Generated from `templates/future-state.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/governance-framework.md.j2` | Governance framework template. |
+| `templates/governance-framework.md` | Governance framework template. Generated from `templates/governance-framework.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/requirements-architecture.md.j2` | Requirements architecture template. |
+| `templates/requirements-architecture.md` | Requirements architecture template. Generated from `templates/requirements-architecture.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/risk-register.md.j2` | Risk register template. |
+| `templates/risk-register.md` | Risk register template. Generated from `templates/risk-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/solution-limitations.md.j2` | Solution limitation assessment template. |
+| `templates/solution-limitations.md` | Solution limitation assessment template. Generated from `templates/solution-limitations.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/solution-options.md.j2` | Solution options analysis template. |
+| `templates/solution-options.md` | Solution options analysis template. Generated from `templates/solution-options.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in decision record + one deliverable. |
 | `templates/_smoke-test.md` | Minimum filled-in decision record + one deliverable. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

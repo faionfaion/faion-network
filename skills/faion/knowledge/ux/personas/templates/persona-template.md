@@ -11,8 +11,8 @@
 - Frustrations: <bulleted, 3-5>
 - Behaviours: <bulleted, >=2>
 - Context: when / where / devices
-- Scenario: <usage story>
+- Scenario: <usage_story>
 - JTBD: '<name> hires <product> to <job>'
-- Verbatim quote: '<exact text>' — <participant_id>, <interview #/date>
+- Verbatim quote: '<exact_text>' — <participant_id>, <interview_date>
 - Date-stamped: <iso>
 - Status: DRAFT | VALIDATED (≥10 users)

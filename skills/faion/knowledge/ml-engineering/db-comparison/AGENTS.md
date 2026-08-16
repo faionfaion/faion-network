@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision.md` | Markdown decision record skeleton. |
+| `templates/decision.md.j2` | Markdown decision record skeleton. |
+| `templates/decision.md` | Markdown decision record skeleton. Generated from `templates/decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/decision-schema.json` | JSON Schema for `decision.json`. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

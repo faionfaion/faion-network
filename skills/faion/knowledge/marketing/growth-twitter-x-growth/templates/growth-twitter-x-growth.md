@@ -15,8 +15,8 @@ token-budget-impact: ~250 tokens.
 - **daily_reply_target** (integer): <20-30 to accounts >5x size>
 - **reply_target_list** (array): <≥20 accounts with handle + size_multiple>
 - **kpi_set** (object): <{impressions, replies_from_strangers, link_clicks, qualified_follows}>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

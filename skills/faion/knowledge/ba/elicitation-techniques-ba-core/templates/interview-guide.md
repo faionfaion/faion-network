@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Interview Guide — <Topic>
+# Interview Guide — <topic>
 
 **Duration:** 60 min  |  **Participants:** <≤3>
 
@@ -13,7 +13,7 @@ Introductions; consent for note-taking.
 
 ## Core (45 min)
 - Open: <question>
-- Probe: <follow-up>
+- Probe: <follow_up>
 - Anti-leading variant: <reformulation>
 
 ## Close (10 min)

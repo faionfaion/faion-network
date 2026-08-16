@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pr-review-report.md` | Six-section PR review report with ship/block verdict. |
+| `templates/pr-review-report.md.j2` | Six-section PR review report with ship/block verdict. |
+| `templates/pr-review-report.md` | Six-section PR review report with ship/block verdict. Generated from `templates/pr-review-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

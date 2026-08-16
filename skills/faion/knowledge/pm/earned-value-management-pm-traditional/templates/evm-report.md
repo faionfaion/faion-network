@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# EVM Report: [Project Name] — [Period End]
+# EVM Report: <project_name> — <period_end>
 
 ## Key Measurements
 
@@ -38,9 +38,9 @@
 | CPI x SPI (both persist) | $[X] | $[X] | $[X] |
 | Bottom-up ETC | $[X] | $[X] | $[X] |
 
-**Team-endorsed scenario:** [CPI-only / CPI x SPI / Bottom-up] — [one-line rationale]
+**Team-endorsed scenario:** <team_endorsed_scenario> — [one-line rationale]
 
-## Overall RAG: [GREEN / YELLOW / RED]
+## Overall RAG: <green_yellow_red>
 
 **Drivers:** [Top 1-3 WBS areas causing variance]
 
@@ -48,4 +48,4 @@
 
 **Actions required:** [Owner — action — due date]
 
-**Sponsor override note (if softening RED):** [Explicit rationale required]
+**Sponsor override note (if softening RED):** <explicit_rationale_required>

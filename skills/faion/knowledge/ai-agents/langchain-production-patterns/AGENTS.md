@@ -63,7 +63,8 @@
 | File | Purpose |
 |---|---|
 | `templates/reliability-profile.yaml` | Input contract. |
-| `templates/hardening-plan.md` | Output skeleton — what gets wired, in what order. |
+| `templates/hardening-plan.md.j2` | Output skeleton — what gets wired, in what order. |
+| `templates/hardening-plan.md` | Output skeleton — what gets wired, in what order. Generated from `templates/hardening-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/chain-hardening-patch.py` | Working `with_fallbacks` + `with_retry` patch. |
 | `templates/_smoke-test.yaml` | Minimum viable profile. |
 

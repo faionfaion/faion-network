@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/security-config.schema.yaml` | Schema |
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
-| `templates/threat-model.md` | Threat model markdown skeleton |
+| `templates/threat-model.md.j2` | Threat model markdown skeleton |
+| `templates/threat-model.md` | Threat model markdown skeleton Generated from `templates/threat-model.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

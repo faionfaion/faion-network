@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/support-tool-pm-triage-spec.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/support-tool-pm-triage-spec.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/support-tool-pm-triage-spec.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/support-tool-pm-triage-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

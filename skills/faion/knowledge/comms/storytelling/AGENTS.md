@@ -65,12 +65,16 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/case-study.md` | Pixar case-study skeleton |
-| `templates/executive-summary.md` | Pyramid executive memo skeleton |
-| `templates/presentation-outline.md` | SCQA presentation outline skeleton |
+| `templates/case-study.md.j2` | Pixar case-study skeleton |
+| `templates/case-study.md` | Pixar case-study skeleton Generated from `templates/case-study.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/executive-summary.md.j2` | Pyramid executive memo skeleton |
+| `templates/executive-summary.md` | Pyramid executive memo skeleton Generated from `templates/executive-summary.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/presentation-outline.md.j2` | SCQA presentation outline skeleton |
+| `templates/presentation-outline.md` | SCQA presentation outline skeleton Generated from `templates/presentation-outline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-case-study.txt` | Prompt to generate a Pixar case study |
 | `templates/prompt-pyramid.txt` | Prompt to generate a Pyramid executive memo |
-| `templates/scqa.md` | SCQA worksheet |
+| `templates/scqa.md.j2` | SCQA worksheet |
+| `templates/scqa.md` | SCQA worksheet Generated from `templates/scqa.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

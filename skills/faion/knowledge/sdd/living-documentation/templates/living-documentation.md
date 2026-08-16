@@ -14,9 +14,9 @@ token-budget-impact: ~250 tokens.
 - **hand_authored_sections** (array): <list of {file, owner}>
 - **ci_checks** (object): <link-validation + spec-diff + build-success flags>
 - **changelog_source** (string): <commits | manual (only commits allowed)>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

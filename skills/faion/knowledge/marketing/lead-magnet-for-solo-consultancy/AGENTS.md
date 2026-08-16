@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec.md` | Markdown spec skeleton |
+| `templates/spec.md.j2` | Markdown spec skeleton |
+| `templates/spec.md` | Markdown spec skeleton Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/output.json` | JSON spec sidecar with __faion_header__ |
 | `templates/_smoke-test.md.j2` | Minimum viable filled spec |
 | `templates/_smoke-test.md` | Minimum viable filled spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

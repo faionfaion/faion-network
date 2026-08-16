@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-handover-master-checklist.json` | JSON Schema (draft-07) for the Client Handover Master Checklist output contract |
-| `templates/client-handover-master-checklist.md` | Markdown skeleton with the required fields for the Client Handover Master Checklist artefact |
+| `templates/client-handover-master-checklist.md.j2` | Markdown skeleton with the required fields for the Client Handover Master Checklist artefact |
+| `templates/client-handover-master-checklist.md` | Markdown skeleton with the required fields for the Client Handover Master Checklist artefact Generated from `templates/client-handover-master-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/client-handover-master-checklist.example.json` | Worked filled-in example of a valid Client Handover Master Checklist artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

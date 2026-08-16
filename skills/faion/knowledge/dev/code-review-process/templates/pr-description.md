@@ -10,8 +10,8 @@ Brief description of what this PR does and why.
 
 ## Related Issues
 
-Closes #[issue-number]
-Related to #[issue-number]
+Closes #<issue_number>
+Related to #<issue_number>
 
 ## Type of Change
 

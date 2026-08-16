@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/audience-to-paid-conversion-loop.json` | LoopRunArtefact JSON skeleton. |
-| `templates/audience-to-paid-conversion-loop.md` | Loop log + decision rationale. |
+| `templates/audience-to-paid-conversion-loop.md.j2` | Loop log + decision rationale. |
+| `templates/audience-to-paid-conversion-loop.md` | Loop log + decision rationale. Generated from `templates/audience-to-paid-conversion-loop.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -59,8 +59,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/caching-http-headers.json` | JSON Schema for the HTTP Caching Headers (Cache-Control, ETag, Vary, CDN) output contract |
-| `templates/caching-http-headers.md` | Markdown skeleton with the required fields |
-| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-http-headers record |
+| `templates/caching-http-headers.md.j2` | Markdown skeleton with the required fields |
+| `templates/caching-http-headers.md` | Markdown skeleton with the required fields Generated from `templates/caching-http-headers.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a caching-http-headers record |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-http-headers record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

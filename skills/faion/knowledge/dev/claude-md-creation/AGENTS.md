@@ -62,11 +62,15 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
+| `templates/skeleton.md.j2` | Markdown skeleton of the artefact with all required sections. |
+| `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
-| `templates/claude-md-minimal.md` | Minimal CLAUDE.md skeleton for single-language repos. |
-| `templates/claude-md-standard.md` | Standard CLAUDE.md skeleton for product repos. |
-| `templates/claude-md-monorepo.md` | Monorepo CLAUDE.md skeleton — root brief + per-app addenda. |
+| `templates/claude-md-minimal.md.j2` | Minimal CLAUDE.md skeleton for single-language repos. |
+| `templates/claude-md-minimal.md` | Minimal CLAUDE.md skeleton for single-language repos. Generated from `templates/claude-md-minimal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/claude-md-standard.md.j2` | Standard CLAUDE.md skeleton for product repos. |
+| `templates/claude-md-standard.md` | Standard CLAUDE.md skeleton for product repos. Generated from `templates/claude-md-standard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/claude-md-monorepo.md.j2` | Monorepo CLAUDE.md skeleton — root brief + per-app addenda. |
+| `templates/claude-md-monorepo.md` | Monorepo CLAUDE.md skeleton — root brief + per-app addenda. Generated from `templates/claude-md-monorepo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/extract-commands.sh` | Shell helper dumping repo commands into CLAUDE.md-ready format. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

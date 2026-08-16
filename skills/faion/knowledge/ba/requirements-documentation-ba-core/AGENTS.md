@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/brd-template.md` | Business Requirements Document skeleton. |
+| `templates/brd-template.md.j2` | Business Requirements Document skeleton. |
+| `templates/brd-template.md` | Business Requirements Document skeleton. Generated from `templates/brd-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/srs-template.md.j2` | IEEE 830-aligned SRS skeleton. |
 | `templates/srs-template.md` | IEEE 830-aligned SRS skeleton. Generated from `templates/srs-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/user-story-template.md.j2` | INVEST-compliant user story template with AC slot. |

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/report.md` | Diagnostic report skeleton |
+| `templates/report.md.j2` | Diagnostic report skeleton |
+| `templates/report.md` | Diagnostic report skeleton Generated from `templates/report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/security-testing.md` | Markdown skeleton with required fields. |
+| `templates/security-testing.md.j2` | Markdown skeleton with required fields. |
+| `templates/security-testing.md` | Markdown skeleton with required fields. Generated from `templates/security-testing.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

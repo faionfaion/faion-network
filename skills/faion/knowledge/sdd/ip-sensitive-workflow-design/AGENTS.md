@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ip-workflow-plan.md` | Plan skeleton: 4 separation layers + per-commit attribution log columns. |
+| `templates/ip-workflow-plan.md.j2` | Plan skeleton: 4 separation layers + per-commit attribution log columns. |
+| `templates/ip-workflow-plan.md` | Plan skeleton: 4 separation layers + per-commit attribution log columns. Generated from `templates/ip-workflow-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -12,12 +12,12 @@ token-budget-impact: ~250 tokens.
 - **severity** (string): <low | medium | high | critical>
 - **what_happened** (string): <≤500 chars>
 - **five_whys** (array): <≥3 levels>
-- **prevention** (string): <concrete action>
+- **prevention** (string): <concrete_action>
 - **ci_rule_created** (boolean): <true on second occurrence>
 - **occurrence_count** (integer): <≥1>
-- **owner** (string): <named author>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_author>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

@@ -70,9 +70,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/change-request.md` | Change request template with impact analysis. |
-| `templates/requirements-status-log.md` | Per-requirement status log. |
-| `templates/version-history.md` | Immutable version history block. |
+| `templates/change-request.md.j2` | Change request template with impact analysis. |
+| `templates/change-request.md` | Change request template with impact analysis. Generated from `templates/change-request.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/requirements-status-log.md.j2` | Per-requirement status log. |
+| `templates/requirements-status-log.md` | Per-requirement status log. Generated from `templates/requirements-status-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/version-history.md.j2` | Immutable version history block. |
+| `templates/version-history.md` | Immutable version history block. Generated from `templates/version-history.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in lifecycle record. |
 | `templates/_smoke-test.md` | Minimum filled-in lifecycle record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

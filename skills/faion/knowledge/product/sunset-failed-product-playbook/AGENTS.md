@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sunset-failed-product-playbook.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/sunset-failed-product-playbook.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/sunset-failed-product-playbook.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/sunset-failed-product-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

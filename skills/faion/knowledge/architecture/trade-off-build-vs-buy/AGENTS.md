@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/build-vs-buy-adr.md` | ADR skeleton scoring build / buy / hybrid. |
+| `templates/build-vs-buy-adr.md.j2` | ADR skeleton scoring build / buy / hybrid. |
+| `templates/build-vs-buy-adr.md` | ADR skeleton scoring build / buy / hybrid. Generated from `templates/build-vs-buy-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/tco-model.json` | TCO model inputs and computation shape. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

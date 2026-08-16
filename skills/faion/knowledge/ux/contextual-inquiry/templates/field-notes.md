@@ -4,9 +4,9 @@
 <!-- depends-on: interview-guide.md -->
 <!-- token-budget-impact: ~600 per session -->
 
-# Field Notes — <participant_id> — <iso date>
+# Field Notes — <participant_id> — <iso_date>
 
-Location: <ward|office|home|other>
+Location: <location>
 Duration: <min>
 
 ## Verbatim quotes
@@ -18,7 +18,7 @@ Duration: <min>
 |------|------------|------------|
 
 ## Artefacts noted
-<photo refs + descriptions>
+<photo_refs_descriptions>
 
 ## Researcher impulses (bracketed)
 <suggestions you wanted to give but didn't>

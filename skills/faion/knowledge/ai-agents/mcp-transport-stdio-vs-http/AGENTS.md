@@ -60,7 +60,8 @@
 | File | Purpose |
 |---|---|
 | `templates/deployment-profile.yaml` | Input. |
-| `templates/transport-spec.md` | Output. |
+| `templates/transport-spec.md.j2` | Output. |
+| `templates/transport-spec.md` | Output. Generated from `templates/transport-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/server_http.py` | Working Streamable HTTP scaffold. |
 | `templates/server_stdio.py` | Working stdio scaffold. |
 | `templates/_smoke-test.yaml` | Minimum. |

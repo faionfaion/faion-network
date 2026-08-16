@@ -54,7 +54,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/otel-instrumentation.py.tmpl` | Python OTel instrumentation skeleton for LLM/tool/retrieval calls. |
-| `templates/_smoke-test.md` | Filled blueprint for a 2-model agent on Langfuse self-host. |
+| `templates/_smoke-test.md.j2` | Filled blueprint for a 2-model agent on Langfuse self-host. |
+| `templates/_smoke-test.md` | Filled blueprint for a 2-model agent on Langfuse self-host. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

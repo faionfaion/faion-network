@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Pre-brief skeleton: blocker list + anomaly highlights + 'speak only if your name is here' section. |
+| `templates/skeleton.md.j2` | Pre-brief skeleton: blocker list + anomaly highlights + 'speak only if your name is here' section. |
+| `templates/skeleton.md` | Pre-brief skeleton: blocker list + anomaly highlights + 'speak only if your name is here' section. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

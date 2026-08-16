@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ruby-rspec-testing.json` | JSON Schema for the RSpec Testing for Rails Applications output contract |
-| `templates/ruby-rspec-testing.md` | Markdown skeleton with the required fields |
+| `templates/ruby-rspec-testing.md.j2` | Markdown skeleton with the required fields |
+| `templates/ruby-rspec-testing.md` | Markdown skeleton with the required fields Generated from `templates/ruby-rspec-testing.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a ruby-rspec-testing record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a ruby-rspec-testing record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/model-spec.rb` | Model spec skeleton: validations, scopes, shoulda-matchers one-liners |

@@ -66,9 +66,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/closure-checklist.md` | Complete closure checklist grouped by category |
-| `templates/deliverable-acceptance.md` | Acceptance form with criteria table and signature block |
-| `templates/handover.md` | Operations handover: system overview, docs, support contacts, known issues |
+| `templates/closure-checklist.md.j2` | Complete closure checklist grouped by category |
+| `templates/closure-checklist.md` | Complete closure checklist grouped by category Generated from `templates/closure-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/deliverable-acceptance.md.j2` | Acceptance form with criteria table and signature block |
+| `templates/deliverable-acceptance.md` | Acceptance form with criteria table and signature block Generated from `templates/deliverable-acceptance.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/handover.md.j2` | Operations handover: system overview, docs, support contacts, known issues |
+| `templates/handover.md` | Operations handover: system overview, docs, support contacts, known issues Generated from `templates/handover.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

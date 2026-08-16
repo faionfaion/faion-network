@@ -15,7 +15,7 @@
 - Error budget: <%> per 30d
 
 ## Baseline
-- Current p95: <ms> at <RPS>
+- Current p95: <ms> at <rps>
 - Headroom: <%>
 
 ## Cache Topology

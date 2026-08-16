@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Training Data Sourcing Policy — <artefact_id>
 
-- **artefact_id**: tdsp-<kebab-case-slug>
+- **artefact_id**: tdsp-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

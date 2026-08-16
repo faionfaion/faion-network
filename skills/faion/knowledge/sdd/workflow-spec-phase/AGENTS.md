@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec.md` | Canonical spec.md skeleton with FR/NFR, scope, success criteria, glossary sections. |
+| `templates/spec.md.j2` | Canonical spec.md skeleton with FR/NFR, scope, success criteria, glossary sections. |
+| `templates/spec.md` | Canonical spec.md skeleton with FR/NFR, scope, success criteria, glossary sections. Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

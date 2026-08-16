@@ -16,8 +16,8 @@ token-budget-impact: ~250 tokens.
 - **final_thanks_email** (object): <subject + body + send_date (T+1)>
 - **real_reason_sentence** (string): <one honest sentence on cause>
 - **refund_or_migration** (object): <{type: refund|migrate, terms: string}>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

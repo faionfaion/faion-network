@@ -62,9 +62,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/retro.md` | Retro template with stage-aware prompts (Forming → Performing) |
-| `templates/skills-matrix.md` | Skills × people matrix template with primary/secondary marks |
-| `templates/team-charter.md` | Team charter template: purpose, working agreements, decision rights |
+| `templates/retro.md.j2` | Retro template with stage-aware prompts (Forming → Performing) |
+| `templates/retro.md` | Retro template with stage-aware prompts (Forming → Performing) Generated from `templates/retro.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/skills-matrix.md.j2` | Skills × people matrix template with primary/secondary marks |
+| `templates/skills-matrix.md` | Skills × people matrix template with primary/secondary marks Generated from `templates/skills-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/team-charter.md.j2` | Team charter template: purpose, working agreements, decision rights |
+| `templates/team-charter.md` | Team charter template: purpose, working agreements, decision rights Generated from `templates/team-charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

@@ -4,21 +4,21 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Retrospective — Sprint [N]
+# Retrospective — Sprint <retrospective_sprint>
 
 **Date:** [Date]
 **Facilitator:** [Name]
-**Attendees:** [Names]
+**Attendees:** <names>
 
 ## What Went Well
 
 - [Specific success — cite the PR, feature, or interaction]
-- [Another win]
+- <another_win>
 
 ## What Didn't Go Well
 
 - [Specific problem — cite the retro signal, ticket, or incident]
-- [Another issue]
+- <another_issue>
 
 ## Ideas for Improvement
 
@@ -29,7 +29,7 @@
 | Action | Owner | Due | Verify at |
 |--------|-------|-----|-----------|
 | [Specific, measurable action] | [Name] | [Date] | Sprint [N+1] retro |
-| [Another action] | [Name] | [Date] | Sprint [N+1] retro |
+| <another_action> | [Name] | [Date] | Sprint [N+1] retro |
 
 ---
 

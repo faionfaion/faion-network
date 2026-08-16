@@ -1,39 +1,20 @@
 <!--
+
 purpose: Template fixture for stakeholder-analysis: stakeholder-register.md
 consumes: content/01-core-rules.xml
 produces: Markdown artefact
 depends-on: content/02-output-contract.xml
 token-budget-impact: small
-variables:
-  - name: initiative_name
-    type: string
-    required: true
-    description: The initiative as the stakeholders themselves would name it - the wording on the funding request, not the internal epic key. People have to recognise their own project in the title.
-  - name: ba_name
-    type: string
-    required: true
-    description: The analyst who owns this register. Every attitude claim below needs somebody willing to defend it in front of the person it describes.
-  - name: register_version
-    type: string
-    required: true
-    default: "1.0"
-    description: Version of this register. Bump it whenever a stakeholder is added or a quadrant changes - the engagement plan downstream is built against a specific version.
-  - name: date
-    type: string
-    required: true
-    description: The date this register was last checked against reality, ISO. A register older than the last reorganisation is fiction that people still act on.
-  - name: next_review
-    type: string
-    required: true
-    description: The date the next refresh is due, ISO. Pick one now - stakeholder maps decay silently and nothing else in the process will remind you.
 -->
-# Stakeholder Register: {{initiative_name}}
 
-**Version:** {{register_version}}
-**Date:** {{date}}
-**BA:** {{ba_name}}
-**Last Refreshed:** {{date}}
-**Next Review:** {{next_review}}
+
+# Stakeholder Register: <initiative_name>
+
+**Version:** <register_version>
+**Date:** <date>
+**BA:** <ba_name>
+**Last Refreshed:** <date>
+**Next Review:** <next_review>
 
 ## Stakeholder Table
 
@@ -70,4 +51,4 @@ All attitude assertions require an evidence entry. No evidence → attitude must
 
 | Date | Change | Rationale | Approved By |
 |------|--------|-----------|-------------|
-| [Date] | Added S-03 | Discovered in stakeholder interview with S-01 | {{ba_name}} |
+| [Date] | Added S-03 | Discovered in stakeholder interview with S-01 | <ba_name> |

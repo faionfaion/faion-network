@@ -10,13 +10,13 @@
 |-------------|-------|--------|----------|----------------------------------|------------|
 | Market Size  |       |  25%   |          | [SAM estimate + segment logic]   | [URL]      |
 | Competition  |       |  20%   |          | [Number of direct competitors]   | [URL]      |
-| Barriers     |       |  20%   |          | [Main barrier type]              | [URL]      |
+| Barriers     |       |  20%   |          | <main_barrier_type>              | [URL]      |
 | Profitability|       |  20%   |          | [Margin benchmark for this model]| [URL]      |
-| Your Fit     |       |  15%   |          | [Relevant skills + audience]     | own        |
+| Your Fit     |       |  15%   |          | <relevant_skills_audience>     | own        |
 | **Total**    |       |        |          |                                  |            |
 
-**Decision:** [STRONG / PROCEED WITH CAUTION / SIGNIFICANT RISKS / PASS]
-**Weakest criterion:** [name] — mitigation: [specific action]
+**Decision:** <decision>
+**Weakest criterion:** [name] — mitigation: <specific_action>
 
 ### Risk Mitigation
 - [Criterion at highest risk]: [specific mitigation with owner and trigger]

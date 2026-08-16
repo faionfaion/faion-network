@@ -9,25 +9,25 @@ token-budget-impact: small (template is loaded only when an artefact is being au
 
 ## Lint / formatter
 
-- Tool: <eslint | ruff | prettier | gofmt>
+- Tool: <tool>
 - Config: <path>
 - Rules of note: <list>
 
 ## Naming conventions
 
-- Files: <snake_case | kebab-case>
-- Classes: <PascalCase>
-- Functions: <camelCase | snake_case>
+- Files: <files>
+- Classes: <pascal_case>
+- Functions: <functions>
 
 ## Branching + commit
 
-- Branch model: <trunk | gitflow | github-flow>
+- Branch model: <branch_model>
 - Commit format: <conventional | sentence-case | type:scope:subject>
 
 ## Dependency policy
 
-- Updates: <renovate | dependabot | manual>
-- Allowed sources: <npm public | internal mirror>
+- Updates: <renovate_dependabot_manual>
+- Allowed sources: <allowed_sources>
 
 ## Layering rules
 
@@ -35,5 +35,5 @@ token-budget-impact: small (template is loaded only when an artefact is being au
 
 ## Test placement
 
-- Unit: <colocated | tests/>
-- Integration: <tests/>
+- Unit: <colocated_tests>
+- Integration: <tests>

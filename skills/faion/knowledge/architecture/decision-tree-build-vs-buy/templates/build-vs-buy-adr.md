@@ -5,7 +5,7 @@
 # token-budget-impact: ~400-1500 tokens once filled
 ---
 artefact_id: build-vs-buy-<capability>-2026-05-23
-owner: <Full Name> <email>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 adr_id: NNN
@@ -28,8 +28,8 @@ reversibility: <partial_two_way|one_way_door_costly|one_way_door_irrevocable>
 
 ## Decision
 **<choice>** — because:
-1. <reason 1>
-2. <reason 2>
+1. <reason_1>
+2. <reason_2>
 
 ## Alternatives Rejected
 | Option | Reason rejected |

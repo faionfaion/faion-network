@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec.md` | Markdown spec skeleton — sections + acceptance criteria slots |
+| `templates/spec.md.j2` | Markdown spec skeleton — sections + acceptance criteria slots |
+| `templates/spec.md` | Markdown spec skeleton — sections + acceptance criteria slots Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/spec-instance.json` | Instance of a filled spec (machine-readable mirror) |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

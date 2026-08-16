@@ -9,7 +9,7 @@ token-budget-impact: ~250 tokens.
 # Solo X Analytics Review — <artefact_id>
 
 - **operator** (string): <named X account owner>
-- **week_iso** (string): <ISO week tag>
+- **week_iso** (string): <iso_week_tag>
 - **metrics** (object): <{impressions, profile_visits, net_followers, replies_from_strangers, link_clicks}>
 - **trailing_4w_median** (object): <median per metric>
 - **outliers** (array): <posts where impressions ≥3x median>
@@ -18,8 +18,8 @@ token-budget-impact: ~250 tokens.
 - **qualified_follower_pct** (number): <0..1>
 - **next_week_experiment** (object): <{hypothesis, variable, success_metric}>
 - **time_spent_min** (integer): <≤20>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

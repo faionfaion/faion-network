@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/contractor-brief-template-self-contained.json` | JSON skeleton for the brief. |
-| `templates/contractor-brief-template-self-contained.md` | Markdown skeleton with required fields. |
+| `templates/contractor-brief-template-self-contained.md.j2` | Markdown skeleton with required fields. |
+| `templates/contractor-brief-template-self-contained.md` | Markdown skeleton with required fields. Generated from `templates/contractor-brief-template-self-contained.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable brief. |
 | `templates/_smoke-test.md` | Minimum viable brief. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

@@ -59,8 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agentic-readiness-checklist.md` | Per-axis readiness checklist with scoring guidance |
-| `templates/_smoke-test.md` | Minimum-viable filled report |
+| `templates/agentic-readiness-checklist.md.j2` | Per-axis readiness checklist with scoring guidance |
+| `templates/agentic-readiness-checklist.md` | Per-axis readiness checklist with scoring guidance Generated from `templates/agentic-readiness-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled report |
+| `templates/_smoke-test.md` | Minimum-viable filled report Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

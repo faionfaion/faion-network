@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # AI Transcript to Traceable Requirement — <artefact_id>
 
-- **artefact_id**: att-<kebab-case-slug>
+- **artefact_id**: att-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

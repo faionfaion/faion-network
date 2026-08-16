@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/report.md` | Markdown report skeleton — finding rows with severity + evidence + owner |
+| `templates/report.md.j2` | Markdown report skeleton — finding rows with severity + evidence + owner |
+| `templates/report.md` | Markdown report skeleton — finding rows with severity + evidence + owner Generated from `templates/report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/report-instance.json` | JSON instance of a filled report (machine-readable mirror) |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

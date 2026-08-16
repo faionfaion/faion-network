@@ -6,7 +6,7 @@ depends-on: content/02-output-contract.xml schema
 token-budget-impact: ~400 tokens when filled
 -->
 
-# Recruitment Funnel Report: [Month/Quarter]
+# Recruitment Funnel Report: <month_quarter>
 
 ## Overall Metrics
 

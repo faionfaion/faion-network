@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/change-request-impact-rubric.json` | JSON skeleton for the CR impact record. |
-| `templates/change-request-impact-rubric.md` | Markdown skeleton with required fields. |
+| `templates/change-request-impact-rubric.md.j2` | Markdown skeleton with required fields. |
+| `templates/change-request-impact-rubric.md` | Markdown skeleton with required fields. Generated from `templates/change-request-impact-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable rubric record. |
 | `templates/_smoke-test.md` | Minimum viable rubric record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

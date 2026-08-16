@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/arch-health-weekly.md` | Weekly report skeleton with hot-spots, debt-delta, risk-register, decision-needed |
-| `templates/_smoke-test.md` | Filled-in report for a 12-engineer team mid-quarter |
+| `templates/arch-health-weekly.md.j2` | Weekly report skeleton with hot-spots, debt-delta, risk-register, decision-needed |
+| `templates/arch-health-weekly.md` | Weekly report skeleton with hot-spots, debt-delta, risk-register, decision-needed Generated from `templates/arch-health-weekly.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in report for a 12-engineer team mid-quarter |
+| `templates/_smoke-test.md` | Filled-in report for a 12-engineer team mid-quarter Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

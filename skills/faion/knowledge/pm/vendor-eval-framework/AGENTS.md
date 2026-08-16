@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/rubric.yaml` | 4-6 axis scoring rubric scaffold. |
-| `templates/trial-protocol.md` | 30-day trial plan with workload migration checklist. |
+| `templates/trial-protocol.md.j2` | 30-day trial plan with workload migration checklist. |
+| `templates/trial-protocol.md` | 30-day trial plan with workload migration checklist. Generated from `templates/trial-protocol.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rollback-gate.yaml` | Rollback criteria + responsible-owner block. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

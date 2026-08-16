@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/qa-test-pyramid-vs-trophy-decision.md` | Markdown skeleton with required fields. |
+| `templates/qa-test-pyramid-vs-trophy-decision.md.j2` | Markdown skeleton with required fields. |
+| `templates/qa-test-pyramid-vs-trophy-decision.md` | Markdown skeleton with required fields. Generated from `templates/qa-test-pyramid-vs-trophy-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

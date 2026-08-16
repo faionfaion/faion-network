@@ -17,7 +17,7 @@
 
 - [Signal 1 — e.g. "Asks for a discount before seeing pricing page"]
 - [Signal 2 — e.g. "Company size > 200 employees"]
-- [Signal 3]
+- <signal_3>
 
 ## What to Do
 

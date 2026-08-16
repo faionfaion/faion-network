@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/nginx-reverse-proxy.json` | Per-vhost DeploymentPlan JSON skeleton (domain, backend, runtime, headers). |
-| `templates/nginx-reverse-proxy.md` | Human-readable audit trail for the vhost change. |
+| `templates/nginx-reverse-proxy.md.j2` | Human-readable audit trail for the vhost change. |
+| `templates/nginx-reverse-proxy.md` | Human-readable audit trail for the vhost change. Generated from `templates/nginx-reverse-proxy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/site-fullstack.conf` | Reference vhost — API prefix-strip, WebSocket, SPA, ratelimit. |
 | `templates/proxy-params.conf` | Forwarded headers snippet — Host, X-Real-IP, X-Forwarded-Proto. |
 | `templates/websocket.conf` | Upgrade headers snippet — requires `$connection_upgrade` map. |

@@ -59,8 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/technical-seo-for-ai.md` | Spec skeleton with all six axes |
-| `templates/_smoke-test.md` | Minimum-viable filled spec |
+| `templates/technical-seo-for-ai.md.j2` | Spec skeleton with all six axes |
+| `templates/technical-seo-for-ai.md` | Spec skeleton with all six axes Generated from `templates/technical-seo-for-ai.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled spec |
+| `templates/_smoke-test.md` | Minimum-viable filled spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -69,8 +69,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/feedback-log.md` | Monthly feedback-log skeleton with theme rows + citations. |
-| `templates/response-templates.md` | Close-loop email templates per disposition. |
+| `templates/feedback-log.md.j2` | Monthly feedback-log skeleton with theme rows + citations. |
+| `templates/feedback-log.md` | Monthly feedback-log skeleton with theme rows + citations. Generated from `templates/feedback-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/response-templates.md.j2` | Close-loop email templates per disposition. |
+| `templates/response-templates.md` | Close-loop email templates per disposition. Generated from `templates/response-templates.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

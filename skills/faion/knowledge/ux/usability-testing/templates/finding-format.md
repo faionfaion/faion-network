@@ -11,11 +11,11 @@ token-budget-impact: ~100-300 tokens per finding
 
 | # | Finding | Severity | Frequency | Task |
 |---|---------|----------|-----------|------|
-| 1 | [Title] | Critical/High/Medium/Low | [N]/[Total] | [Task name] |
+| 1 | <title> | Critical/High/Medium/Low | [N]/<total> | <task_name> |
 
 ---
 
-## Finding: [Title]
+## Finding: <title>
 
 **Severity:** Critical / High / Medium / Low
 **Task:** [Which task triggered this finding]
@@ -27,7 +27,7 @@ token-budget-impact: ~100-300 tokens per finding
 
 ### Evidence
 
-- "[Verbatim quote]" (P[N])
+- "<verbatim_quote>" (P[N])
 - [Observed action: e.g., "P3 clicked Help three times before finding Settings"]
 
 ### Impact

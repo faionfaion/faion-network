@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pr-template.md` | PR description template embedding Workspace metadata + snapshot link. |
+| `templates/pr-template.md.j2` | PR description template embedding Workspace metadata + snapshot link. |
+| `templates/pr-template.md` | PR description template embedding Workspace metadata + snapshot link. Generated from `templates/pr-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

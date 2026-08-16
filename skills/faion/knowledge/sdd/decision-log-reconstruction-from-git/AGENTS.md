@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/adr-skeleton.md` | Per-ADR skeleton: context / options considered / decision / consequences / commit links / signoff. |
+| `templates/adr-skeleton.md.j2` | Per-ADR skeleton: context / options considered / decision / consequences / commit links / signoff. |
+| `templates/adr-skeleton.md` | Per-ADR skeleton: context / options considered / decision / consequences / commit links / signoff. Generated from `templates/adr-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

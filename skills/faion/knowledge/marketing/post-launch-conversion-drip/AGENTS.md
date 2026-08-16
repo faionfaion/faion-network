@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/drip-spec.md` | Markdown drip spec: 4 emails (T+0/+2/+7/+14) with job, single-CTA, KPI block, suppression rule. |
+| `templates/drip-spec.md.j2` | Markdown drip spec: 4 emails (T+0/+2/+7/+14) with job, single-CTA, KPI block, suppression rule. |
+| `templates/drip-spec.md` | Markdown drip spec: 4 emails (T+0/+2/+7/+14) with job, single-CTA, KPI block, suppression rule. Generated from `templates/drip-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-pattern-rationale-template.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/anti-pattern-rationale-template.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/anti-pattern-rationale-template.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/anti-pattern-rationale-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

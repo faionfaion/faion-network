@@ -7,15 +7,15 @@
 # <Entity> — ADA Title II Conformance Report
 
 - Population bucket: <>=50k|<50k>
-- Deadline: <2026-04-24|2027-04-26>
+- Deadline: <deadline>
 - WCAG target: 2.1 AA
 
 ## Scope
-<scope_urls[]>
+<scope_urls>
 
 ## Audit Evidence
 - Date: <iso>
-- Findings: <N>
+- Findings: <findings>
 - Methodology: accessibility-evaluation v1.1.0
 
 ## Gaps
@@ -23,7 +23,7 @@
 |----|----|----------|-------------|-----|
 
 ## Third-Party Surfaces
-<vendor contract status>
+<vendor_contract_status>
 
 ## Sign-off
-<CIO + Legal>
+<cio_legal>

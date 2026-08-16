@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>schema-3-pass</title>
+<style>:root{color-scheme:light dark}
+body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+color:#1b1b1b;background:#fff}
+h1,h2,h3,h4,h5,h6{line-height:1.25;margin:2rem 0 .6rem}
+h1{font-size:1.9rem} h2{font-size:1.45rem} h3{font-size:1.15rem}
+p,ul,ol,blockquote,table,pre{margin:0 0 1rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+background:#f2f2f2;padding:.1em .3em;border-radius:3px}
+pre{background:#f6f6f6;padding:.9rem 1rem;border-radius:5px;overflow-x:auto}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #d0d0d0;margin-left:0;padding-left:1rem;
+color:#4a4a4a}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:left}
+th{background:#f6f6f6}
+hr{border:0;border-top:1px solid #ddd;margin:2rem 0}
+a{color:#0b57d0}
+@media(prefers-color-scheme:dark){
+body{color:#e6e6e6;background:#151515}
+code{background:#242424} pre{background:#1d1d1d}
+th{background:#1d1d1d} th,td{border-color:#333}
+blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
+<body>
+<hr/>
+<p>artefact_id: schema-{{ system }}-2026-05-23 owner: {{ owner_full_name }} {{ owner_email }} version: 1.0.0 last_reviewed: 2026-05-23 engine: &lt;postgres 16 | mongo 7 | dynamodb | ...&gt;</p>
+<hr/>
+<h2>Pass 1 — Conceptual</h2>
+<p>Entities and relationships in business language. No attributes.</p>
+<pre><code>Order *--* LineItem
+Order &gt;--1 Customer
+LineItem &gt;--1 Item</code></pre>
+<h2>Pass 2 — Logical</h2>
+<p>Attributes, keys, cardinality, 3NF, tech-agnostic.</p>
+<table><thead><tr><th>Entity</th><th>Attributes</th><th>Keys</th></tr></thead><tbody><tr><td>Order</td><td>id, customer_id, status, total, created_at</td><td>PK(id), FK(customer_id)</td></tr><tr><td>LineItem</td><td>order_id, item_id, qty, unit_price</td><td>PK(order_id, item_id), FK(order_id), FK(item_id)</td></tr></tbody></table>
+<h2>Pass 3 — Physical</h2>
+<p>Engine-specific types, indexes, partitions.</p>
+<pre><code class="language-sql">CREATE TABLE orders (
+  id          uuid PRIMARY KEY,
+  customer_id uuid NOT NULL REFERENCES customers(id),
+  status      order_status NOT NULL,
+  total       numeric(12,2) NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX orders_customer_id_created_at ON orders (customer_id, created_at DESC);</code></pre>
+<h2>Migration plan</h2>
+<ul><li>DDL: <code>migrations/2026-05-23-orders.sql</code></li><li>Backfill: {{ strategy }}</li><li>Rollback: drop + restore from <code>_old</code> shadow table.</li></ul>
+</body></html>

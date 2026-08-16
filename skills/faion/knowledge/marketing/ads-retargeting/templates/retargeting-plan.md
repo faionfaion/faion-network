@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-# Retargeting Plan: [campaign]
+# Retargeting Plan: <campaign>
 
 ## Spend share
 [20-30]% of total ad spend

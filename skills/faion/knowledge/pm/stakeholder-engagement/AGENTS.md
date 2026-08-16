@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/register.yaml` | Stakeholder register schema: id, power, interest, attitude, quadrant, cadence, last_engaged |
-| `templates/engagement-plan.md` | Engagement plan with quadrant strategies and per-stakeholder cadence |
+| `templates/engagement-plan.md.j2` | Engagement plan with quadrant strategies and per-stakeholder cadence |
+| `templates/engagement-plan.md` | Engagement plan with quadrant strategies and per-stakeholder cadence Generated from `templates/engagement-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

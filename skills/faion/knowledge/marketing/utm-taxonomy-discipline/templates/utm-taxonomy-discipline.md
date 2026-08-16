@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # UTM Taxonomy Discipline — <artefact_id>
 
-- **operator** (string): <named taxonomy owner>
+- **operator** (string): <named_taxonomy_owner>
 - **source_vocabulary** (array): <≤12 kebab-case values>
 - **medium_vocabulary** (array): <≤6 kebab-case values>
 - **campaign_id_pattern** (string): <regex (yyyymmdd-asset-slug shape)>
-- **validation_regex** (string): <full URL regex>
-- **link_builder_url** (string): <tool URL>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **validation_regex** (string): <full_url_regex>
+- **link_builder_url** (string): <tool_url>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

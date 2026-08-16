@@ -65,7 +65,8 @@
 | `templates/structured-output-service.py` | StructuredOutputService class with metrics + retry + failover |
 | `templates/agent-task-schema.py` | Example Pydantic schema with versioning convention |
 | `templates/partial-stream-parse.py` | Incremental JSON parsing for streaming endpoints |
-| `templates/metrics-dashboard.md` | Suggested per-schema metric panels |
+| `templates/metrics-dashboard.md.j2` | Suggested per-schema metric panels |
+| `templates/metrics-dashboard.md` | Suggested per-schema metric panels Generated from `templates/metrics-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

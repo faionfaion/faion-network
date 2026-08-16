@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Streaming Response UX — <artefact_id>
 
-- **artefact_id**: srux-<kebab-case-slug>
+- **artefact_id**: srux-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

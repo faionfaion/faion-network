@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/week-one-pack-skeleton.md` | Folder skeleton with empty README, stakeholders.md, glossary.md, processes.md, risks.md |
+| `templates/week-one-pack-skeleton.md.j2` | Folder skeleton with empty README, stakeholders.md, glossary.md, processes.md, risks.md |
+| `templates/week-one-pack-skeleton.md` | Folder skeleton with empty README, stakeholders.md, glossary.md, processes.md, risks.md Generated from `templates/week-one-pack-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/kickoff-interview-script.md.j2` | 12 standard kickoff questions + recording-consent prompt |
 | `templates/kickoff-interview-script.md` | 12 standard kickoff questions + recording-consent prompt Generated from `templates/kickoff-interview-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable pack manifest |

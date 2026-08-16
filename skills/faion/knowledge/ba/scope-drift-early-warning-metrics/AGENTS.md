@@ -70,8 +70,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scope-drift-dashboard.md` | Daily dashboard layout with 5 metric blocks + trigger log table. |
-| `templates/metric-definitions.md` | Precise formulas, inputs, thresholds, exceptions per metric. |
+| `templates/scope-drift-dashboard.md.j2` | Daily dashboard layout with 5 metric blocks + trigger log table. |
+| `templates/scope-drift-dashboard.md` | Daily dashboard layout with 5 metric blocks + trigger log table. Generated from `templates/scope-drift-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/metric-definitions.md.j2` | Precise formulas, inputs, thresholds, exceptions per metric. |
+| `templates/metric-definitions.md` | Precise formulas, inputs, thresholds, exceptions per metric. Generated from `templates/metric-definitions.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/trigger-log.schema.json` | JSON Schema for the trigger event log. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in dashboard. |
 | `templates/_smoke-test.md` | Minimum viable filled-in dashboard. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

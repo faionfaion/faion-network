@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/codemod-recipe.md` | Markdown skeleton for one recipe with before/after. |
+| `templates/codemod-recipe.md.j2` | Markdown skeleton for one recipe with before/after. |
+| `templates/codemod-recipe.md` | Markdown skeleton for one recipe with before/after. Generated from `templates/codemod-recipe.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/codemod-recipes-index.json` | JSON skeleton matching the output contract. |
 | `templates/smoke-test.sh` | Shell smoke test driver for every recipe. |
 

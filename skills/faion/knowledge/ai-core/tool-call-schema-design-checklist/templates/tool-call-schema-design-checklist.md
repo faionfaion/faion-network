@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Tool-Call Schema Design Checklist — <artefact_id>
 
-- **artefact_id**: tcsd-<kebab-case-slug>
+- **artefact_id**: tcsd-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

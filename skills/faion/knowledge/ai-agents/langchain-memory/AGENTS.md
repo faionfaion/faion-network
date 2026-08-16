@@ -63,7 +63,8 @@
 | File | Purpose |
 |---|---|
 | `templates/conversation-profile.yaml` | Input contract — 8 fields the methodology consumes. |
-| `templates/decision-record.md` | Output skeleton: chosen memory type + rejected alternatives + wiring snippet. |
+| `templates/decision-record.md.j2` | Output skeleton: chosen memory type + rejected alternatives + wiring snippet. |
+| `templates/decision-record.md` | Output skeleton: chosen memory type + rejected alternatives + wiring snippet. Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/wiring-snippet.py` | Working `RunnableWithMessageHistory` wiring for Redis-backed buffer memory. |
 | `templates/_smoke-test.yaml` | Minimum viable profile that drives the methodology end-to-end. |
 

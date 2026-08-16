@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-to-dev-handoff.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-to-dev-handoff.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-to-dev-handoff.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/design-to-dev-handoff.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/verdict-card.md` | Markdown skeleton with the 7-field verdict card |
+| `templates/verdict-card.md.j2` | Markdown skeleton with the 7-field verdict card |
+| `templates/verdict-card.md` | Markdown skeleton with the 7-field verdict card Generated from `templates/verdict-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/verdict-card.json` | JSON example matching the output contract |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

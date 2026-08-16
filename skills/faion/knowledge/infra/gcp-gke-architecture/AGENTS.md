@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec.md` | Spec skeleton with scope / components / decisions / risks sections |
+| `templates/spec.md.j2` | Spec skeleton with scope / components / decisions / risks sections |
+| `templates/spec.md` | Spec skeleton with scope / components / decisions / risks sections Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in version of the template used by `--self-test` |
 | `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

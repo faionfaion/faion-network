@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/crash-pipeline-as-code.json` | JSON Schema for the configuration output contract |
-| `templates/crash-pipeline-as-code.md` | Markdown skeleton with the required fields |
+| `templates/crash-pipeline-as-code.md.j2` | Markdown skeleton with the required fields |
+| `templates/crash-pipeline-as-code.md` | Markdown skeleton with the required fields Generated from `templates/crash-pipeline-as-code.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

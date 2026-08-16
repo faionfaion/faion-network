@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~150-400 tokens when loaded as context -->
 
-# Interview Synthesis — <research question>
+# Interview Synthesis — <research_question>
 
-- Cohort: <N> interviews, segment <X>.
+- Cohort: <cohort> interviews, segment <X>.
 - Verified by: <researcher@example.com>
 
 ## Themes

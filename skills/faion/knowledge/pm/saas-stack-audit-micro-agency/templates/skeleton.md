@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml#r1-full-stack-inventory -->
 <!-- token-budget-impact: ~150 tokens -->
 
-# SaaS Audit — [quarter]
+# SaaS Audit — <quarter>
 
-**Owner:** [founder role] / [person]
-**Version:** [semver]
+**Owner:** <founder_role> / <owner_full_name>
+**Version:** <document_version>
 **Last reviewed:** YYYY-MM-DD
 
 ## Inventory
@@ -20,7 +20,7 @@
 ## Kill list
 
 - items: [tool_id, ...]
-- signed_by: [founder handle]
+- signed_by: <founder_handle>
 - signed_at: YYYY-MM-DD
 
 ## Spend

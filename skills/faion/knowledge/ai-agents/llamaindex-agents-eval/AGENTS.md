@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/agent-profile.yaml` | Input. |
-| `templates/agent-eval-spec.md` | Output. |
+| `templates/agent-eval-spec.md.j2` | Output. |
+| `templates/agent-eval-spec.md` | Output. Generated from `templates/agent-eval-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/agent.py` | Working LlamaIndex agent wiring. |
 | `templates/_smoke-test.yaml` | Minimum profile. |
 

@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/playbook-step.md` | Markdown playbook skeleton — named steps with owner + input + exit criterion + output location |
+| `templates/playbook-step.md.j2` | Markdown playbook skeleton — named steps with owner + input + exit criterion + output location |
+| `templates/playbook-step.md` | Markdown playbook skeleton — named steps with owner + input + exit criterion + output location Generated from `templates/playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/step-checklist.md.j2` | Per-step go/no-go checklist for operator runtime |
 | `templates/step-checklist.md` | Per-step go/no-go checklist for operator runtime Generated from `templates/step-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

@@ -6,7 +6,7 @@ depends-on: rag-feature-acceptance-contract methodology
 token-budget-impact: ~150t per intent when bundled into 05-examples context
 -->
 
-# Intent Rubric Card: <intent-name>
+# Intent Rubric Card: <intent_name>
 
 ## PM outcome
 <one sentence: what user outcome does success mean here?>
@@ -18,18 +18,18 @@ token-budget-impact: ~150t per intent when bundled into 05-examples context
 
 ### Pass example
 - Query: "<real query from logs>"
-- Expected answer pattern: <pattern + criterion>
-- Why pass: <SME reason>
+- Expected answer pattern: <pattern_criterion>
+- Why pass: <sme_reason>
 
 ### Borderline example
-- Query: "<real query>"
+- Query: "<real_query>"
 - Borderline answer: <what makes it borderline, not fail>
-- Why not fail: <SME reason>
+- Why not fail: <sme_reason>
 
 ### Fail example
-- Query: "<real query>"
+- Query: "<real_query>"
 - Failing answer: <what makes it fail>
-- Why fail: <SME reason>
+- Why fail: <sme_reason>
 
 ## Offline metrics (with baselines)
 

@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) — <artefact_id>
 
-- **artefact_id**: gocp-<kebab-case-slug>
+- **artefact_id**: gocp-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

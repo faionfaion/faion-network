@@ -16,7 +16,7 @@ token-budget-impact: ~250 tokens.
 - **lede_rewrite** (string): <40-60 word direct answer, first paragraph>
 - **original_data_points** (array): <≥3 stats with value+year+source>
 - **kpi_set** (object): <impressions, branded_queries, ai_citation_rate, on_serp_actions>
-- **version** (string): <semver>
+- **version** (string): <document_version>
 - **last_reviewed** (date): <ISO-8601 date>
 
 ## Notes

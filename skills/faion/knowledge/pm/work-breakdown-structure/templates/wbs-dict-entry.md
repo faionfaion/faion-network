@@ -6,18 +6,18 @@
 
 # WBS Dictionary Entry
 
-## WBS [X.X.X] — [Work Package Name]
+## WBS [X.X.X] — <work_package_name>
 
 | Field               | Value |
 |---------------------|-------|
 | Parent              | [Parent WBS ID and Name] |
 | Description Included | [What IS in scope] |
 | Description Excluded | [What is NOT in scope — explicit] |
-| Deliverable         | [Tangible output produced] |
+| Deliverable         | <tangible_output_produced> |
 | Acceptance Criteria | [Observable, testable conditions — not "looks good"] |
 | Owner               | [Role or named team — exactly one; UNRESOLVED if not in stakeholder register] |
 | Effort Estimate     | [Hours — strictly 8-80] |
-| Dependencies        | [Predecessor WBS IDs] |
+| Dependencies        | <predecessor_wbs_ids> |
 | Notes               | [Risks, assumptions, constraints] |
 
 <!--

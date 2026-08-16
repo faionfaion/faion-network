@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/gap-analysis-report.md` | Markdown skeleton with gaps[] section. |
+| `templates/gap-analysis-report.md.j2` | Markdown skeleton with gaps[] section. |
+| `templates/gap-analysis-report.md` | Markdown skeleton with gaps[] section. Generated from `templates/gap-analysis-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/gap-row.csv` | Header for gap rows (type, severity, owner, source). |
 | `templates/_smoke-test.md.j2` | Minimum viable gap-analysis report. |
 | `templates/_smoke-test.md` | Minimum viable gap-analysis report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

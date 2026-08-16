@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/choreography-vs-orchestration-decision.json` | JSON skeleton matching the output contract. |
-| `templates/choreography-vs-orchestration-decision.md` | Markdown skeleton with both options + trade-offs. |
+| `templates/choreography-vs-orchestration-decision.md.j2` | Markdown skeleton with both options + trade-offs. |
+| `templates/choreography-vs-orchestration-decision.md` | Markdown skeleton with both options + trade-offs. Generated from `templates/choreography-vs-orchestration-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -60,7 +60,8 @@
 | File | Purpose |
 |---|---|
 | `templates/single-interview-fast-loop-template.json` | JSON Schema for the output contract (machine-validatable). |
-| `templates/single-interview-fast-loop-template.md` | Markdown skeleton with the required fields. |
+| `templates/single-interview-fast-loop-template.md.j2` | Markdown skeleton with the required fields. |
+| `templates/single-interview-fast-loop-template.md` | Markdown skeleton with the required fields. Generated from `templates/single-interview-fast-loop-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

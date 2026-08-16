@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/mode_examples.py` | Four side-by-side minimal calls — one per mode — using openai / anthropic / outlines bindings. |
-| `templates/decision-record.md` | Markdown skeleton for the SO-mode decision record (chosen, alternatives, rationale, eval delta). |
+| `templates/decision-record.md.j2` | Markdown skeleton for the SO-mode decision record (chosen, alternatives, rationale, eval delta). |
+| `templates/decision-record.md` | Markdown skeleton for the SO-mode decision record (chosen, alternatives, rationale, eval delta). Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

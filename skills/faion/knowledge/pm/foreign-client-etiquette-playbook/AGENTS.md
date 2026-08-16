@@ -63,9 +63,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/foreign-client-etiquette-playbook.md` | playbook-step skeleton with required fields + 5-line header |
+| `templates/foreign-client-etiquette-playbook.md.j2` | playbook-step skeleton with required fields + 5-line header |
+| `templates/foreign-client-etiquette-playbook.md` | playbook-step skeleton with required fields + 5-line header Generated from `templates/foreign-client-etiquette-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/foreign-client-etiquette-playbook.schema.json` | JSON Schema for the output contract |
-| `templates/_smoke-test.md` | minimum viable filled-in example |
+| `templates/_smoke-test.md.j2` | minimum viable filled-in example |
+| `templates/_smoke-test.md` | minimum viable filled-in example Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

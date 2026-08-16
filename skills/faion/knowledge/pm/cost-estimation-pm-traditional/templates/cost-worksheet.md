@@ -4,20 +4,20 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Cost Estimate — [Project Name]
+# Cost Estimate — <project_name>
 
-**Date:** [Date]
+**Date:** <date>
 **Currency:** [USD/EUR/UAH — declare per line if mixed]
-**Estimator:** [Name]
-**WBS version:** [ID]
+**Estimator:** <name>
+**WBS version:** <id>
 
 ## Direct Costs
 
 | Category | Item | Qty | Unit | Rate | Source | Total |
 |----------|------|-----|------|------|--------|-------|
-| Labor | [Role] | [hours] | h | [$X/h] | [contract/survey] | [$X] |
-| Software | [Tool] | [months] | mo | [$X/mo] | [vendor quote] | [$X] |
-| Cloud/Infra | [Service] | [months] | mo | [$X/mo] | [infracost/pricing API] | [$X] |
+| Labor | <role> | <hours> | h | <x_h> | <contract_survey> | [$X] |
+| Software | <tool> | [months] | mo | [$X/mo] | <vendor_quote> | [$X] |
+| Cloud/Infra | <service> | [months] | mo | [$X/mo] | <infracost_pricing_api> | [$X] |
 | **Subtotal Direct** | | | | | | **[$X]** |
 
 ## Indirect Costs
@@ -52,5 +52,5 @@
 - P95: [$X]
 
 ## Assumptions
-- [Explicit assumption 1]
-- [Explicit assumption 2]
+- <explicit_assumption_1>
+- <explicit_assumption_2>

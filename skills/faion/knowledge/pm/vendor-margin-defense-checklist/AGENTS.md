@@ -69,8 +69,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/bleed-report.json` | `MarginBleedReport` skeleton |
-| `templates/change-request.md` | CR template the vendor sends when scope shifts |
-| `templates/margin-alert-message.md` | Diplomatic client message for bleed > 5% |
+| `templates/change-request.md.j2` | CR template the vendor sends when scope shifts |
+| `templates/change-request.md` | CR template the vendor sends when scope shifts Generated from `templates/change-request.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/margin-alert-message.md.j2` | Diplomatic client message for bleed > 5% |
+| `templates/margin-alert-message.md` | Diplomatic client message for bleed > 5% Generated from `templates/margin-alert-message.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled `MarginBleedReport` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

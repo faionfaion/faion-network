@@ -69,8 +69,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/glossary-entry.json` | JSON Schema for one term entry. |
-| `templates/glossary-page.md` | Markdown page template for the maintained glossary surface. |
-| `templates/conflict-resolution-record.md` | Record of a resolution: parties, dispute, decision, date. |
+| `templates/glossary-page.md.j2` | Markdown page template for the maintained glossary surface. |
+| `templates/glossary-page.md` | Markdown page template for the maintained glossary surface. Generated from `templates/glossary-page.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/conflict-resolution-record.md.j2` | Record of a resolution: parties, dispute, decision, date. |
+| `templates/conflict-resolution-record.md` | Record of a resolution: parties, dispute, decision, date. Generated from `templates/conflict-resolution-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in entry. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

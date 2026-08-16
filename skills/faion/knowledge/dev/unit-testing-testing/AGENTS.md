@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/aaa-skeleton.py.tmpl` | AAA template in Python. |
-| `templates/_smoke-test.md` | Minimal filled rubric. |
+| `templates/_smoke-test.md.j2` | Minimal filled rubric. |
+| `templates/_smoke-test.md` | Minimal filled rubric. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

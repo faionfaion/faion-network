@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Stance Review: <Engagement>
+# Stance Review: <engagement>
 
 **positioning:** thinking_partner | trusted_advisor | execution_partner | requirements_gatherer
 
@@ -12,11 +12,11 @@
 - <concrete right with scope>
 
 ## Escalation Path
-<BA → sponsor → executive>
+<ba_sponsor_executive>
 
 ## Value Contract
 <≥30 chars: what BA contributes beyond requirements artefacts>
 
 ## Signed By
-- <ba@org>
-- <sponsor@org>
+- <ba_org>
+- <sponsor_org>

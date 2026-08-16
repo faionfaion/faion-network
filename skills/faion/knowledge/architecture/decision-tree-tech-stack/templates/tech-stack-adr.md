@@ -21,9 +21,9 @@ Workload: <fill>. Team expertise: <fill>. Hiring market: <fill>.
 - Long-term maintenance
 
 ## Considered Options
-1. <language + framework + datastore>
-2. <language + framework + datastore>
-3. <language + framework + datastore>
+1. <language_framework_datastore>
+2. <language_framework_datastore>
+3. <language_framework_datastore>
 
 ## Decision
 Chosen stack: <fill>. Rejected: <fill with reason>.

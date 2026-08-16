@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agency-discovery-call-scorecard.rubric.md` | Markdown rubric scorecard skeleton |
+| `templates/agency-discovery-call-scorecard.rubric.md.j2` | Markdown rubric scorecard skeleton |
+| `templates/agency-discovery-call-scorecard.rubric.md` | Markdown rubric scorecard skeleton Generated from `templates/agency-discovery-call-scorecard.rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/agency-discovery-call-scorecard.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~500 tokens when filled -->
 
-# Creative Brief — <CAMPAIGN_NAME>
+# Creative Brief — <campaign_name>
 
 - **brief_id:** `cb-<slug>`
 - **owner:** `@<handle>`
@@ -13,14 +13,14 @@
 
 ## Campaign
 
-- **Name:** <NAME>
+- **Name:** <name>
 - **Type:** lead-gen | conversion | retargeting | brand
 - **Channel:** meta | google | linkedin | tiktok | x | other
 - **Starts at:** <YYYY-MM-DD>
 
 ## Audience
 
-- **Definition:** <segment description>
+- **Definition:** <segment_description>
 - **Source:** `<path or URL>`
 
 ## Angle
@@ -30,20 +30,20 @@
 
 ## Hook
 
-- **Text:** <opening line>
+- **Text:** <opening_line>
 - **Source:** `<path or URL>`
 
 ## Proof
 
 | Claim | Source |
 |-------|--------|
-| <claim 1> | `<path>` |
-| <claim 2> | `<path>` |
+| <claim_1> | `<path>` |
+| <claim_2> | `<path>` |
 
 ## CTA
 
-- **Primary:** <action verb + noun>
-- **Secondary:** <soft CTA>
+- **Primary:** <action_verb_noun>
+- **Secondary:** <soft_cta>
 
 ## Format
 

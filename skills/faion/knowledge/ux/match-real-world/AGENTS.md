@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/language-audit.md` | Language audit report skeleton. |
+| `templates/language-audit.md.j2` | Language audit report skeleton. |
+| `templates/language-audit.md` | Language audit report skeleton. Generated from `templates/language-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/extract-strings.py` | Stub to extract UI strings from a code tree. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

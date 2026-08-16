@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tracking-plan.md` | Tracking-plan skeleton with event table + version field. |
+| `templates/tracking-plan.md.j2` | Tracking-plan skeleton with event table + version field. |
+| `templates/tracking-plan.md` | Tracking-plan skeleton with event table + version field. Generated from `templates/tracking-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/tracking-plan-lint.sh` | Lint script for naming + ownership compliance. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/architecture-style-adr.md` | Architecture style decision ADR template. |
+| `templates/architecture-style-adr.md.j2` | Architecture style decision ADR template. |
+| `templates/architecture-style-adr.md` | Architecture style decision ADR template. Generated from `templates/architecture-style-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

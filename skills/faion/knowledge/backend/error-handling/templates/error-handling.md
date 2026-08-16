@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Error Handling (RFC 7807 Problem Details) — <artefact_id>
 
-- **artefact_id**: eh-<kebab-case-slug>
+- **artefact_id**: eh-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

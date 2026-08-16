@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ka-overview-handout.md` | 1-page sponsor handout of the six KAs. |
-| `templates/onboarding-intro.md` | Junior BA onboarding intro to BABOK structure. |
+| `templates/ka-overview-handout.md.j2` | 1-page sponsor handout of the six KAs. |
+| `templates/ka-overview-handout.md` | 1-page sponsor handout of the six KAs. Generated from `templates/ka-overview-handout.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/onboarding-intro.md.j2` | Junior BA onboarding intro to BABOK structure. |
+| `templates/onboarding-intro.md` | Junior BA onboarding intro to BABOK structure. Generated from `templates/onboarding-intro.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in routing record. |
 | `templates/_smoke-test.md` | Minimum filled-in routing record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agency-contractor-jd-template.md` | Working spec skeleton with 5-line header |
+| `templates/agency-contractor-jd-template.md.j2` | Working spec skeleton with 5-line header |
+| `templates/agency-contractor-jd-template.md` | Working spec skeleton with 5-line header Generated from `templates/agency-contractor-jd-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in version for smoke testing |
 | `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

@@ -60,9 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/test-task-rubric.md` | Per-dimension rubric skeleton with 5-level anchors and evidence slots |
-| `templates/payment-tracker.md` | Per-candidate payment tracker tied to completion |
-| `templates/_smoke-test.md` | Filled-in rubric for a frontend take-home |
+| `templates/test-task-rubric.md.j2` | Per-dimension rubric skeleton with 5-level anchors and evidence slots |
+| `templates/test-task-rubric.md` | Per-dimension rubric skeleton with 5-level anchors and evidence slots Generated from `templates/test-task-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/payment-tracker.md.j2` | Per-candidate payment tracker tied to completion |
+| `templates/payment-tracker.md` | Per-candidate payment tracker tied to completion Generated from `templates/payment-tracker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in rubric for a frontend take-home |
+| `templates/_smoke-test.md` | Filled-in rubric for a frontend take-home Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

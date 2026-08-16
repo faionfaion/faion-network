@@ -9,7 +9,7 @@
 
 ## Identity & Access
 - IAM provider: <fill>
-- AuthN: <OIDC/OAuth/passwordless>
+- AuthN: <oidc_oauth_passwordless>
 - MFA scope: <fill>
 
 ## Authorisation
@@ -17,7 +17,7 @@
 - Matrix: see authz-matrix.json
 
 ## Secrets
-- Provider: <Vault / SSM / KMS>
+- Provider: <vault_ssm_kms>
 - Rotation: <cadence>
 - Scope: per-service
 

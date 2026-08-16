@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cost-modeling-at-design-time.json` | JSON Schema for the report output contract |
-| `templates/cost-modeling-at-design-time.md` | Markdown skeleton with the required fields |
+| `templates/cost-modeling-at-design-time.md.j2` | Markdown skeleton with the required fields |
+| `templates/cost-modeling-at-design-time.md` | Markdown skeleton with the required fields Generated from `templates/cost-modeling-at-design-time.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

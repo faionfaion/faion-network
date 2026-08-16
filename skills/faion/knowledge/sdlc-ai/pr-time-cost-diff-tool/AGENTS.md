@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cost-report.md` | PR-comment report skeleton (latency delta, $/req delta, eval pass-rate delta). |
+| `templates/cost-report.md.j2` | PR-comment report skeleton (latency delta, $/req delta, eval pass-rate delta). |
+| `templates/cost-report.md` | PR-comment report skeleton (latency delta, $/req delta, eval pass-rate delta). Generated from `templates/cost-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/cost-table.yaml` | Per-model cost table format with input/output rates. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # Metric Deviation Hypothesis Framework — <artefact_id>
 
-- **metric_name** (string): <named metric>
-- **baseline** (object): <baseline value + window>
+- **metric_name** (string): <named_metric>
+- **baseline** (object): <baseline_value_window>
 - **deviation_magnitude** (string): <σ or % vs baseline>
-- **time_window** (object): <ISO start/end>
+- **time_window** (object): <iso_start_end>
 - **hypotheses** (array): <≥3 ranked causal hypotheses with detector + probability>
 - **next_checks** (array): <ranked check list with P(falsify) and cost>
-- **owner** (string): <named human owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_human_owner>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

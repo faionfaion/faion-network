@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Cost model markdown skeleton with 5 categories |
+| `templates/skeleton.md.j2` | Cost model markdown skeleton with 5 categories |
+| `templates/skeleton.md` | Cost model markdown skeleton with 5 categories Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | JSON schema for the cost model artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

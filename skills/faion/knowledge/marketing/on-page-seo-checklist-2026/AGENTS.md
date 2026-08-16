@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/on-page-seo-checklist.md` | Markdown checklist with required-pass items grouped by section (meta / structure / schema / AEO / internal-links). |
+| `templates/on-page-seo-checklist.md.j2` | Markdown checklist with required-pass items grouped by section (meta / structure / schema / AEO / internal-links). |
+| `templates/on-page-seo-checklist.md` | Markdown checklist with required-pass items grouped by section (meta / structure / schema / AEO / internal-links). Generated from `templates/on-page-seo-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

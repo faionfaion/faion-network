@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-status-digest-pipeline.md` | Markdown digest skeleton with RYG sections |
+| `templates/ai-status-digest-pipeline.md.j2` | Markdown digest skeleton with RYG sections |
+| `templates/ai-status-digest-pipeline.md` | Markdown digest skeleton with RYG sections Generated from `templates/ai-status-digest-pipeline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/AGENTS-handover.md` | Four-section skeleton: context / rituals / gotchas / no-go zones. |
+| `templates/AGENTS-handover.md.j2` | Four-section skeleton: context / rituals / gotchas / no-go zones. |
+| `templates/AGENTS-handover.md` | Four-section skeleton: context / rituals / gotchas / no-go zones. Generated from `templates/AGENTS-handover.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

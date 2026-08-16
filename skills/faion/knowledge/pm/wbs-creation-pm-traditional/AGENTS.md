@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/wbs-outline.md` | Hierarchical WBS outline. |
-| `templates/wbs-dictionary-entry.md` | Per-leaf dictionary template. |
+| `templates/wbs-outline.md.j2` | Hierarchical WBS outline. |
+| `templates/wbs-outline.md` | Hierarchical WBS outline. Generated from `templates/wbs-outline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/wbs-dictionary-entry.md.j2` | Per-leaf dictionary template. |
+| `templates/wbs-dictionary-entry.md` | Per-leaf dictionary template. Generated from `templates/wbs-dictionary-entry.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

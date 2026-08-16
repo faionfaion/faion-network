@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Decision-record skeleton with platform-scoring table + rationale + risks |
+| `templates/decision-record.md.j2` | Decision-record skeleton with platform-scoring table + rationale + risks |
+| `templates/decision-record.md` | Decision-record skeleton with platform-scoring table + rationale + risks Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/platform-comparison-matrix.csv` | 2026 platform snapshot CSV for scoring |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

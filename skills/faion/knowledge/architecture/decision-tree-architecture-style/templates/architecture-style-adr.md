@@ -5,7 +5,7 @@
 # token-budget-impact: ~400-1500 tokens once filled
 ---
 artefact_id: architecture-style-<system>-2026-05-23
-owner: <Full Name> <email>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 adr_id: NNN
@@ -14,11 +14,11 @@ reversibility: <one_way_door_costly|partial_two_way>
 ---
 
 ## Context
-- Team size: <N> (12mo: <M>)
-- Deploy frequency target: <K/day or week>
+- Team size: <team_size> (12mo: <m>)
+- Deploy frequency target: <deploy_frequency_target>
 - DevOps maturity (DORA): <elite|high|medium|low>
-- Domain coupling: <tight|loose>
-- Regulatory regime: <none|GDPR|HIPAA|PCI-DSS|SOC2>
+- Domain coupling: <tight_loose>
+- Regulatory regime: <regulatory_regime>
 
 ## Decision
 **<choice>** — because:
@@ -32,4 +32,4 @@ reversibility: <one_way_door_costly|partial_two_way>
 
 ## Reversibility
 - Tier: <as tagged above>
-- Rollback path: <eng weeks + dollars>
+- Rollback path: <eng_weeks_dollars>

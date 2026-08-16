@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Minimum-viable filled spec |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled spec |
+| `templates/_smoke-test.md` | Minimum-viable filled spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

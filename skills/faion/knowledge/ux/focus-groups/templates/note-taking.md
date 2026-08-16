@@ -4,10 +4,10 @@
 <!-- depends-on: discussion-guide.md -->
 <!-- token-budget-impact: ~400 per group -->
 
-# Group Notes — <segment> — <group #> — <iso date>
+# Group Notes — <segment> — <group> — <iso_date>
 
 Participants: n=<count>, gender mix, role mix.
-Moderator: <name>.
+Moderator: <session_facilitator>.
 
 ## Per-topic notes
 ### Topic 1

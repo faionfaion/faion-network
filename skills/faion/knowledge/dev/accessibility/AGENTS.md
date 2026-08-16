@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft-07) for the a11y-report artefact |
-| `templates/a11y-report.md` | Markdown skeleton with the 5 sections + verdict header |
+| `templates/a11y-report.md.j2` | Markdown skeleton with the 5 sections + verdict header |
+| `templates/a11y-report.md` | Markdown skeleton with the 5 sections + verdict header Generated from `templates/a11y-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/contrast-pairs.json` | Example contrast-pair table for one screen |
 | `templates/_smoke-test.json` | Minimum viable filled-in a11y-report for validator round-trip |
 

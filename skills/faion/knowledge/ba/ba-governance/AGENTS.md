@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed |
+| `templates/decision-record.md.j2` | Markdown decision record — context + options + decision + owner + last_reviewed |
+| `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/decision-instance.json` | JSON instance of a filled decision record |
 | `templates/governance.md.j2` | Full governance skeleton — decision-authority + change-control + comms-plan + owners |
 | `templates/governance.md` | Full governance skeleton — decision-authority + change-control + comms-plan + owners Generated from `templates/governance.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

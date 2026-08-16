@@ -5,16 +5,16 @@
 <!-- token-budget-impact: ~800 per screen -->
 
 
-# Handoff — <screen name>
+# Handoff — <screen_name>
 
 For each interactive component, paste the resolved annotation block.
 
-## <component name>
+## <component_name>
 - archetype: <one of 8>
-- role: <ARIA role>
-- name: <user-facing label>
-- states: <comma-separated>
-- keyboard: <key → action map>
+- role: <aria_role>
+- name: <user_facing_label>
+- states: <comma_separated>
+- keyboard: <key_action_map>
 - focus_behaviour: <description>
 - WCAG SC: <2.4.3 | 4.1.2 | ...>
 

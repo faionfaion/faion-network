@@ -9,15 +9,15 @@ token-budget-impact: ~250 tokens.
 # Use Case Mapping — <artefact_id>
 
 - **use_case_id** (string): <stable id (UC-001..)>
-- **primary_actor** (string): <named role>
-- **goal** (string): <active-verb statement>
+- **primary_actor** (string): <named_role>
+- **goal** (string): <active_verb_statement>
 - **preconditions** (array): <system + actor state before flow starts>
-- **main_flow** (array): <numbered steps>
+- **main_flow** (array): <numbered_steps>
 - **alternative_flows** (array): <≥1 branching scenarios>
-- **postcondition** (string): <observable end state>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **postcondition** (string): <observable_end_state>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dm-personalisation-template.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/dm-personalisation-template.md.j2` | Markdown skeleton: artefact body + per-section table. |
+| `templates/dm-personalisation-template.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/dm-personalisation-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/dm-personalisation-template.json` | dm-personalisation JSON skeleton validating against scripts/. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

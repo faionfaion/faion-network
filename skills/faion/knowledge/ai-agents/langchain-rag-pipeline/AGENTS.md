@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/corpus-profile.yaml` | Input contract. |
-| `templates/pipeline-spec.md` | Output skeleton. |
+| `templates/pipeline-spec.md.j2` | Output skeleton. |
+| `templates/pipeline-spec.md` | Output skeleton. Generated from `templates/pipeline-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rag-chain.py` | Working LCEL pipeline. |
 | `templates/_smoke-test.yaml` | Minimum viable profile. |
 

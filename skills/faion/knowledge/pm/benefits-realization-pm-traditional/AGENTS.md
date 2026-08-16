@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/benefits-register.md` | Benefits-register template with owner, baseline, target, metric source per row |
-| `templates/realization-report.md` | Periodic realisation report template with RAG status per benefit |
+| `templates/benefits-register.md.j2` | Benefits-register template with owner, baseline, target, metric source per row |
+| `templates/benefits-register.md` | Benefits-register template with owner, baseline, target, metric source per row Generated from `templates/benefits-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/realization-report.md.j2` | Periodic realisation report template with RAG status per benefit |
+| `templates/realization-report.md` | Periodic realisation report template with RAG status per benefit Generated from `templates/realization-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

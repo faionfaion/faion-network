@@ -8,16 +8,16 @@ token-budget-impact: ~250 tokens.
 
 # Single Interview Fast Loop Template — <artefact_id>
 
-- **loop_id** (string): <stable id>
+- **loop_id** (string): <stable_id>
 - **decision_under_test** (string): <the one decision the loop informs>
 - **must_asks** (array): <3–5 past-tense questions>
-- **interview_at** (datetime): <ISO datetime>
+- **interview_at** (datetime): <iso_datetime>
 - **synthesis_due_at** (datetime): <interview_at + ≤36h>
 - **synthesis_outcome** (string): <decide-yes | decide-no | park | re-interview>
 - **citation_path** (string): <path to transcript in research repo>
-- **owner** (string): <named researcher>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_researcher>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

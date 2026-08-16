@@ -31,7 +31,7 @@ flowchart LR
 
 | source | trust_level | max_size_kb | content_type |
 |--------|-------------|-------------|--------------|
-| {source_name} | untrusted | {N} | {mime} |
+| {source_name} | untrusted | <untrusted> | {mime} |
 
 ## Taint rules
 

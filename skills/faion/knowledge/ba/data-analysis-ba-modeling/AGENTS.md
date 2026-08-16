@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/data-dictionary.md` | Markdown skeleton with field/source/type/owner/DQ columns |
+| `templates/data-dictionary.md.j2` | Markdown skeleton with field/source/type/owner/DQ columns |
+| `templates/data-dictionary.md` | Markdown skeleton with field/source/type/owner/DQ columns Generated from `templates/data-dictionary.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable data-dictionary fixture |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

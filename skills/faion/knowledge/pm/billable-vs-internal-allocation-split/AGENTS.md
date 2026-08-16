@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/billable-vs-internal-allocation-split.json` | JSON Schema (draft-07) for the Billable vs Internal Allocation Split output contract |
-| `templates/billable-vs-internal-allocation-split.md` | Markdown skeleton with the required fields for the Billable vs Internal Allocation Split artefact |
+| `templates/billable-vs-internal-allocation-split.md.j2` | Markdown skeleton with the required fields for the Billable vs Internal Allocation Split artefact |
+| `templates/billable-vs-internal-allocation-split.md` | Markdown skeleton with the required fields for the Billable vs Internal Allocation Split artefact Generated from `templates/billable-vs-internal-allocation-split.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/billable-vs-internal-allocation-split.example.json` | Worked filled-in example of a valid Billable vs Internal Allocation Split artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

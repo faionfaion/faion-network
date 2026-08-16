@@ -71,8 +71,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/interview-guide.md` | Non-leading 60-minute interview structure with consent + PII block. |
-| `templates/workshop-agenda.md` | Structured workshop agenda with breakouts + ground rules. |
+| `templates/interview-guide.md.j2` | Non-leading 60-minute interview structure with consent + PII block. |
+| `templates/interview-guide.md` | Non-leading 60-minute interview structure with consent + PII block. Generated from `templates/interview-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/workshop-agenda.md.j2` | Structured workshop agenda with breakouts + ground rules. |
+| `templates/workshop-agenda.md` | Structured workshop agenda with breakouts + ground rules. Generated from `templates/workshop-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/session-check.py` | Validate session artifact: consent flag, redaction tags, technique attestation. |
 | `templates/_smoke-test.md.j2` | Minimum viable session artifact + REQ stub. |
 | `templates/_smoke-test.md` | Minimum viable session artifact + REQ stub. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

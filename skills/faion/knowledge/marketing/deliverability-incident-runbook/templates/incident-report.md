@@ -27,12 +27,12 @@ Segment: `<SEGMENT>`
 | SPF | <pass/fail> | <DNS lookup URL> |
 | DKIM | <pass/fail> | <DNS lookup URL> |
 | DMARC | <pass/fail> | <DNS lookup URL> |
-| ESP reputation | <score> | <dashboard URL> |
-| Complaint sample | <summary> | <ESP query URL> |
+| ESP reputation | <score> | <dashboard_url> |
+| Complaint sample | <summary> | <esp_query_url> |
 
 ## Containment
 
-- Action: <throttle | pause-segment | suppress-list | escalate>
+- Action: <action>
 - Auto-resume at: `<YYYY-MM-DDTHH:MM:SSZ>`
 - Warm-up curve: `10/30/100 over 3 sends`
 

@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~150 tokens when loaded -->
 
-Subject: Summary — [Meeting Topic] — please confirm
+Subject: Summary — <meeting_topic> — please confirm
 
-Hi [Name],
+Hi <name>,
 
 Thank you for the session. Here is what I captured:
 

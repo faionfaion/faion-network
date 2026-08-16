@@ -71,7 +71,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/solution-assessment-report.md` | Markdown skeleton with all assessment-report sections. |
+| `templates/solution-assessment-report.md.j2` | Markdown skeleton with all assessment-report sections. |
+| `templates/solution-assessment-report.md` | Markdown skeleton with all assessment-report sections. Generated from `templates/solution-assessment-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/requirement-compliance-table.csv` | Header row for per-requirement compliance table. |
 | `templates/business-value-rows.csv` | Header row for business-value metric rows. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in assessment. |

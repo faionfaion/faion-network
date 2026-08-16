@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/solo-deploy-checklist.json` | DeployChecklist JSON skeleton (pre/during/post). |
-| `templates/solo-deploy-checklist.md` | Markdown checklist to tick through during the deploy. |
+| `templates/solo-deploy-checklist.md.j2` | Markdown checklist to tick through during the deploy. |
+| `templates/solo-deploy-checklist.md` | Markdown checklist to tick through during the deploy. Generated from `templates/solo-deploy-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

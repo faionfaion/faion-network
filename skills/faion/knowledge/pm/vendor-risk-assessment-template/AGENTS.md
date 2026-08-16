@@ -60,7 +60,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/vendor-risk-assessment-template.json` | JSON schema for the vendor risk assessment output contract. |
-| `templates/vendor-risk-assessment-template.md` | Markdown skeleton with the required fields. |
+| `templates/vendor-risk-assessment-template.md.j2` | Markdown skeleton with the required fields. |
+| `templates/vendor-risk-assessment-template.md` | Markdown skeleton with the required fields. Generated from `templates/vendor-risk-assessment-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

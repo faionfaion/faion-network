@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/plan.md` | Branch-by-Abstraction five-step playbook skeleton |
+| `templates/plan.md.j2` | Branch-by-Abstraction five-step playbook skeleton |
+| `templates/plan.md` | Branch-by-Abstraction five-step playbook skeleton Generated from `templates/plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/abstraction.py` | Python Protocol skeleton for BbA |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 

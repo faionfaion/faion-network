@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/risk-register.md` | Risk register table: ID, category, P, I, score, response, owner, trigger, status |
-| `templates/risk-response-plan.md` | Individual risk response plan with prevention steps and fallback actions |
+| `templates/risk-register.md.j2` | Risk register table: ID, category, P, I, score, response, owner, trigger, status |
+| `templates/risk-register.md` | Risk register table: ID, category, P, I, score, response, owner, trigger, status Generated from `templates/risk-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/risk-response-plan.md.j2` | Individual risk response plan with prevention steps and fallback actions |
+| `templates/risk-response-plan.md` | Individual risk response plan with prevention steps and fallback actions Generated from `templates/risk-response-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

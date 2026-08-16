@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ice-scorer.py` | Dataclass for ICE-scoring tactic backlog; bucket() returns test_now / this_quarter / if_capacity / backlog |
-| `templates/tactic-backlog.md` | Ranked report skeleton with one row per tactic + columns for hypothesis, ICE, instrumentation |
+| `templates/tactic-backlog.md.j2` | Ranked report skeleton with one row per tactic + columns for hypothesis, ICE, instrumentation |
+| `templates/tactic-backlog.md` | Ranked report skeleton with one row per tactic + columns for hypothesis, ICE, instrumentation Generated from `templates/tactic-backlog.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

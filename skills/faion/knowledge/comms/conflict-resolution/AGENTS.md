@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/nvc-message.md` | NVC 4-line message skeleton with field-level cues |
+| `templates/nvc-message.md.j2` | NVC 4-line message skeleton with field-level cues |
+| `templates/nvc-message.md` | NVC 4-line message skeleton with field-level cues Generated from `templates/nvc-message.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-mode-selection.txt` | Prompt to apply TK matrix to a conflict description |
 | `templates/prompt-nvc-rewrite.txt` | Prompt to rewrite an evaluative draft into observation/feeling/need/request |
 

@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-feature-prd.md` | AI-feature PRD skeleton with eval + guardrail sections baked in |
+| `templates/ai-feature-prd.md.j2` | AI-feature PRD skeleton with eval + guardrail sections baked in |
+| `templates/ai-feature-prd.md` | AI-feature PRD skeleton with eval + guardrail sections baked in Generated from `templates/ai-feature-prd.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/guardrail-review-checklist.yaml` | Reviewable guardrail checklist with sign-off slots |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

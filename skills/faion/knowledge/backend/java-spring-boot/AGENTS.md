@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Minimum viable layered-service skeleton reference. |
+| `templates/_smoke-test.md.j2` | Minimum viable layered-service skeleton reference. |
+| `templates/_smoke-test.md` | Minimum viable layered-service skeleton reference. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/OrderController.java` | REST controller skeleton with `@Valid` + `ResponseEntity` and no `@Transactional`. |
 | `templates/OrderService.java` | Service with `@Transactional` placement and entity ↔ DTO mapping. |
 | `templates/OrderRepository.java` | Spring Data JPA interface with `@EntityGraph` for the association the DTO needs. |

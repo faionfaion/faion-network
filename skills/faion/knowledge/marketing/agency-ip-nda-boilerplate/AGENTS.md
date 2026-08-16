@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agency-ip-nda-boilerplate.spec.md` | Markdown spec skeleton with 5-line header |
+| `templates/agency-ip-nda-boilerplate.spec.md.j2` | Markdown spec skeleton with 5-line header |
+| `templates/agency-ip-nda-boilerplate.spec.md` | Markdown spec skeleton with 5-line header Generated from `templates/agency-ip-nda-boilerplate.spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/agency-ip-nda-boilerplate.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

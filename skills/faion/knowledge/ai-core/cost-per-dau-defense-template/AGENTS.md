@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/cost-per-dau-defense-template.json` | JSON schema for the defense report contract |
-| `templates/cost-per-dau-defense-template.md` | 1-page Markdown skeleton with required fields |
+| `templates/cost-per-dau-defense-template.md.j2` | 1-page Markdown skeleton with required fields |
+| `templates/cost-per-dau-defense-template.md` | 1-page Markdown skeleton with required fields Generated from `templates/cost-per-dau-defense-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

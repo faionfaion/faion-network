@@ -8,18 +8,18 @@ token-budget-impact: ~250 tokens.
 
 # Social Proof Harvest — <artefact_id>
 
-- **quote_id** (string): <stable record id>
+- **quote_id** (string): <stable_record_id>
 - **source_url** (string): <URL of original public mention>
-- **author_handle** (string): <platform handle>
+- **author_handle** (string): <platform_handle>
 - **author_display_name** (string): <name shown on the wall>
 - **verbatim_quote** (string): <exact text — no paraphrase>
-- **captured_at** (date-time): <ISO timestamp>
+- **captured_at** (date-time): <iso_timestamp>
 - **channel** (enum): <twitter|linkedin|reddit|hn|discord|product-hunt|other>
 - **consent** (object): <{requested_at, granted_at, granted_via}>
 - **status** (enum): <captured|requested|approved|published|expired>
 - **publish_surfaces** (array): <wall|landing-hero|sales-deck|email-signature>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

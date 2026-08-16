@@ -6,9 +6,9 @@
 
 # Change Request Form
 
-**CR ID:** CR-[YYYY]-[NNN]
-**Date:** [Date]
-**Requester:** [Name] ([Role])
+**CR ID:** CR-<yyyy>-<cr_id>
+**Date:** <date>
+**Requester:** <name> (<role>)
 **Priority:** Critical / High / Medium / Low
 
 ## Description
@@ -21,20 +21,20 @@
 
 | Area | Impact | Detail |
 |------|--------|--------|
-| Scope | [WBS IDs affected] | [Description] |
-| Schedule | +[X] days | [Which milestones move] |
-| Cost | +$[X] | [Which budget lines] |
-| Quality | [None / Low / Medium / High] | [Description] |
-| Test impact | +[X] days | [Regression/integration scope] |
-| Risk | [New risks introduced] | [Description] |
-| Resources | [Who, how long] | [Opportunity cost] |
+| Scope | <wbs_ids_affected> | [Description] |
+| Schedule | +[X] days | <which_milestones_move> |
+| Cost | +$[X] | <which_budget_lines> |
+| Quality | <quality> | [Description] |
+| Test impact | +[X] days | <regression_integration_scope> |
+| Risk | <new_risks_introduced> | [Description] |
+| Resources | [Who, how long] | <opportunity_cost> |
 
 ## Options
 
 | Option | Days | Cost | Notes |
 |--------|------|------|-------|
-| A: [Recommended] | [X] | $[X] | [Description] |
-| B: [Alternative] | [X] | $[X] | [Description] |
+| A: <recommended> | [X] | $[X] | [Description] |
+| B: <alternative> | [X] | $[X] | [Description] |
 | C: Do nothing | 0 | $0 | [Cost of inaction] |
 
 **Recommendation:** Option [A/B/C] — [one-line rationale]

@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/backlog-grooming-roadmapping.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/backlog-grooming-roadmapping.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/backlog-grooming-roadmapping.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/backlog-grooming-roadmapping.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/backlog-grooming-roadmapping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

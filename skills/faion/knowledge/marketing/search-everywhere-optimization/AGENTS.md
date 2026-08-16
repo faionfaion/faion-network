@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/search-everywhere-optimization.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/search-everywhere-optimization.md.j2` | Markdown skeleton: artefact body + per-section table. |
+| `templates/search-everywhere-optimization.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/search-everywhere-optimization.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/search-everywhere-optimization.json` | search-everywhere-plan JSON skeleton validating against scripts/. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

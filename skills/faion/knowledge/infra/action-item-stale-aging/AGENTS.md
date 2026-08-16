@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Aging report skeleton with escalation matrix |
+| `templates/skeleton.md.j2` | Aging report skeleton with escalation matrix |
+| `templates/skeleton.md` | Aging report skeleton with escalation matrix Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | JSON schema for the aging artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

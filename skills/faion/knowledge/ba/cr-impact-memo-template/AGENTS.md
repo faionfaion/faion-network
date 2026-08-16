@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cr-impact-memo-template.json` | JSON skeleton for the memo. |
-| `templates/cr-impact-memo-template.md` | Markdown skeleton with required fields. |
+| `templates/cr-impact-memo-template.md.j2` | Markdown skeleton with required fields. |
+| `templates/cr-impact-memo-template.md` | Markdown skeleton with required fields. Generated from `templates/cr-impact-memo-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable memo. |
 | `templates/_smoke-test.md` | Minimum viable memo. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

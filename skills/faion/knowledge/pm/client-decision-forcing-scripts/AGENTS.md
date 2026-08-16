@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-decision-forcing-scripts.json` | JSON Schema (draft-07) for the Client Decision Forcing Scripts output contract |
-| `templates/client-decision-forcing-scripts.md` | Markdown skeleton with the required fields for the Client Decision Forcing Scripts artefact |
+| `templates/client-decision-forcing-scripts.md.j2` | Markdown skeleton with the required fields for the Client Decision Forcing Scripts artefact |
+| `templates/client-decision-forcing-scripts.md` | Markdown skeleton with the required fields for the Client Decision Forcing Scripts artefact Generated from `templates/client-decision-forcing-scripts.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/client-decision-forcing-scripts.example.json` | Worked filled-in example of a valid Client Decision Forcing Scripts artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

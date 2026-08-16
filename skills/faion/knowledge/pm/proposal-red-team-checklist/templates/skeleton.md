@@ -4,16 +4,16 @@
 <!-- depends-on: content/01-core-rules.xml#r1-read-do-discipline -->
 <!-- token-budget-impact: ~150 tokens -->
 
-# Proposal Red Team Checklist — [Proposal ID]
+# Proposal Red Team Checklist — <proposal_id>
 
-**Owner:** [role] / [person]
+**Owner:** <owner_role> / <owner_full_name>
 **Mode:** READ-DO | DO-CONFIRM
-**Version:** [semver]
-**Last reviewed:** [YYYY-MM-DD]
+**Version:** <document_version>
+**Last reviewed:** <last_reviewed>
 
 ## Pause-point: Scope & Assumptions (mode: DO-CONFIRM)
 
-- [ ] S1 [item text]  — executor: [role], artefact: [link], anchor: [incident_id / postmortem / policy]
+- [ ] S1 <item_text>  — executor: <role>, artefact: <link>, anchor: [incident_id / postmortem / policy]
 - [ ] S2 ...
 - [ ] S3 ...
 - [ ] S4 ...

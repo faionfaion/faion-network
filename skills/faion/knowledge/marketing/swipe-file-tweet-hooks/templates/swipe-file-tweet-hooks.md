@@ -8,13 +8,13 @@ token-budget-impact: ~250 tokens.
 
 # Swipe File Tweet Hooks — <artefact_id>
 
-- **operator** (string): <named curator>
+- **operator** (string): <named_curator>
 - **entries** (array): <≥20 hooks with shape + source + author + baseline>
 - **hook_shapes** (array): <≥5 shape labels>
 - **attribution_policy** (string): <always-cite OR adapt-credit-on-similarity>
 - **storage_path** (string): <file path / repo URL>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

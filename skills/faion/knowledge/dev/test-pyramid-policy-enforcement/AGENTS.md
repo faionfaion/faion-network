@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/test-pyramid-policy-enforcement.md` | Markdown skeleton with required fields. |
+| `templates/test-pyramid-policy-enforcement.md.j2` | Markdown skeleton with required fields. |
+| `templates/test-pyramid-policy-enforcement.md` | Markdown skeleton with required fields. Generated from `templates/test-pyramid-policy-enforcement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

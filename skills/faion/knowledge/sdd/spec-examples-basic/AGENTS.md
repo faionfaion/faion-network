@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-examples-basic.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spec-examples-basic.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spec-examples-basic.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/spec-examples-basic.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

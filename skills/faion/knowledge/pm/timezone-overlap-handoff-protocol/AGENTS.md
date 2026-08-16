@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/timezone-overlap-handoff-protocol.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/timezone-overlap-handoff-protocol.md.j2` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/timezone-overlap-handoff-protocol.md` | Filled artefact skeleton conforming to 02-output-contract.xml Generated from `templates/timezone-overlap-handoff-protocol.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/timezone-overlap-handoff-protocol.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
 | `templates/_smoke-test.md.j2` | Minimum-viable filled-in version exercised by scripts/validate-timezone-overlap-handoff-protocol.py --self-test |
 | `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-timezone-overlap-handoff-protocol.py --self-test Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

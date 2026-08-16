@@ -10,12 +10,12 @@ token-budget-impact: ~300 tokens when filled.
 
 ## Duration
 
-- Start: <ISO date>
-- End: <ISO date>  (≥30 days from start)
+- Start: <iso_date>
+- End: <iso_date>  (≥30 days from start)
 
 ## Real workload migrated
 
-- Source: <current vendor / in-house system>
+- Source: <source>
 - Workload: <named real workload, not a synthetic dataset>
 - Acceptance criteria: <specific, measurable>
 

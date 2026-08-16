@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/systemd-user-services.json` | UnitPlan JSON skeleton. |
-| `templates/systemd-user-services.md` | Human-readable audit trail. |
+| `templates/systemd-user-services.md.j2` | Human-readable audit trail. |
+| `templates/systemd-user-services.md` | Human-readable audit trail. Generated from `templates/systemd-user-services.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/fastapi.service` | Reference unit for a FastAPI app. |
 | `templates/celery-worker.service` | Reference unit for a Celery worker. |
 | `templates/telegram-bot.service` | Reference unit for a Telegram bot. |

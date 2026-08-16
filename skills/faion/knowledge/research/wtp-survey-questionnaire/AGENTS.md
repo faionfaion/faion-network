@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/wtp-questionnaire.md` | Four Van Westendorp questions + five-point Gabor-Granger ladder + segment screener. |
-| `templates/wtp-scoring.md` | Scoring sheet: acceptable range / indifference point / OPP / CI columns. |
+| `templates/wtp-questionnaire.md.j2` | Four Van Westendorp questions + five-point Gabor-Granger ladder + segment screener. |
+| `templates/wtp-questionnaire.md` | Four Van Westendorp questions + five-point Gabor-Granger ladder + segment screener. Generated from `templates/wtp-questionnaire.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/wtp-scoring.md.j2` | Scoring sheet: acceptable range / indifference point / OPP / CI columns. |
+| `templates/wtp-scoring.md` | Scoring sheet: acceptable range / indifference point / OPP / CI columns. Generated from `templates/wtp-scoring.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

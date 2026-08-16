@@ -6,8 +6,8 @@
 
 # Step <n>: <action>
 
-- Q1 right effect: <yes/no + note>
-- Q2 notice action: <yes/no + note>
-- Q3 associate action↔effect: <yes/no + note>
-- Q4 progress feedback: <yes/no + note>
-- Finding (if any): <severity + description + recommendation>
+- Q1 right effect: <yes_no_note>
+- Q2 notice action: <yes_no_note>
+- Q3 associate action↔effect: <yes_no_note>
+- Q4 progress feedback: <yes_no_note>
+- Finding (if any): <severity_description_recommendation>

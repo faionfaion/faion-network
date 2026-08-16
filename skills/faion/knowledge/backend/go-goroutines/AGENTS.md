@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/go-goroutines.json` | JSON Schema for the Go Goroutines and Worker Patterns output contract |
-| `templates/go-goroutines.md` | Markdown skeleton with the required fields |
+| `templates/go-goroutines.md.j2` | Markdown skeleton with the required fields |
+| `templates/go-goroutines.md` | Markdown skeleton with the required fields Generated from `templates/go-goroutines.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a go-goroutines record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-goroutines record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

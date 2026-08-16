@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/threads-basics.md` | Markdown skeleton (5-line header) for the daily content pack artefact. |
+| `templates/threads-basics.md.j2` | Markdown skeleton (5-line header) for the daily content pack artefact. |
+| `templates/threads-basics.md` | Markdown skeleton (5-line header) for the daily content pack artefact. Generated from `templates/threads-basics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/threads-basics.json` | JSON Schema (draft-07) for the output contract. |
 | `templates/bio-templates.txt` | Founder, expert, and creator bio formulas. |
 | `templates/daily-posts.txt` | Morning/afternoon/evening post templates and multi-post thread format. |

@@ -6,7 +6,7 @@
 
 ---
 artefact_id: scope-creep-prevention-on-hourly-<YYYY-MM-DD>-<NN>
-owner: <named-human>
+owner: <owner_full_name>
 version: 1.0.0
 last_reviewed: <YYYY-MM-DD>
 ---
@@ -23,11 +23,11 @@ last_reviewed: <YYYY-MM-DD>
 
 ## Inputs used
 
-- <input-name-1> (<source path or URL>)
-- <input-name-2> (<source path or URL>)
+- <input_name_1> (<source path or URL>)
+- <input_name_2> (<source path or URL>)
 
 ## Actions
 
-- <YYYY-MM-DD> — <owner> — <next-action>
+- <YYYY-MM-DD> — <next_action_owner> — <next_action>
 
 <!-- Sections that do not apply: replace body with `not_applicable: <reason>`. -->

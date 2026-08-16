@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/engagement-plan.md` | Per-stakeholder plan with strategy + indicators. |
-| `templates/meeting-prep.md` | Per-meeting prep template with asks + signals. |
+| `templates/engagement-plan.md.j2` | Per-stakeholder plan with strategy + indicators. |
+| `templates/engagement-plan.md` | Per-stakeholder plan with strategy + indicators. Generated from `templates/engagement-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/meeting-prep.md.j2` | Per-meeting prep template with asks + signals. |
+| `templates/meeting-prep.md` | Per-meeting prep template with asks + signals. Generated from `templates/meeting-prep.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

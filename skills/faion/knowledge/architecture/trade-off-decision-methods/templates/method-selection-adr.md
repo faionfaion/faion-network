@@ -11,7 +11,7 @@
 Proposed
 
 ## Context
-Decision: <fill>. Uncertainty: <low/med/high>. Reversibility: <one-way/two-way>. Stakeholder breadth: <single-team/cross-team/cross-org>.
+Decision: <fill>. Uncertainty: <low_med_high>. Reversibility: <one-way/two-way>. Stakeholder breadth: <single-team/cross-team/cross-org>.
 
 ## Considered Methods
 1. Weighted Decision Matrix

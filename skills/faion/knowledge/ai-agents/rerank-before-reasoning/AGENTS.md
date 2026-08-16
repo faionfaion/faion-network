@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/rerank-before-reasoning-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/rerank-before-reasoning-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/rerank-before-reasoning-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/rerank-before-reasoning-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

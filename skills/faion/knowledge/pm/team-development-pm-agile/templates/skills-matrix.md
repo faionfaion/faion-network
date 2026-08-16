@@ -4,16 +4,16 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Skills Matrix — [Team Name]
+# Skills Matrix — <team_name>
 
 Scale: 1 = Beginner | 2 = Basic | 3 = Intermediate | 4 = Expert
 
 | Skill | [Name] | [Name] | [Name] | Gap Action |
 |-------|--------|--------|--------|------------|
-| [Skill A] | 2 | 4 | 2 | Training for [name] by [quarter] |
-| [Skill B] | 4 | 3 | 2 | [Name] pairs with [name] on next task |
-| [Skill C] | 4 | 2 | 3 | [Name] — enroll in [course] |
-| [DevOps] | 4 | 1 | 2 | Hire or contractor needed; no internal path |
+| [Skill A] | 2 | 4 | 2 | Training for [name] by <quarter> |
+| <skill_b> | 4 | 3 | 2 | [Name] pairs with [name] on next task |
+| <skill_c> | 4 | 2 | 3 | [Name] — enroll in <course> |
+| <dev_ops> | 4 | 1 | 2 | Hire or contractor needed; no internal path |
 
 ## Rules
 
@@ -24,4 +24,4 @@ Scale: 1 = Beginner | 2 = Basic | 3 = Intermediate | 4 = Expert
 
 ## Last Updated
 
-[Date] — by [name], evidence window: last [N] months of PR + incident data.
+<date> — by [name], evidence window: last [N] months of PR + incident data.

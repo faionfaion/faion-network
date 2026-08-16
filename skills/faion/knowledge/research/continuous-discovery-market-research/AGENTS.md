@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ost-update.md.j2` | Sub-artefact skeleton consumed by the main output |
 | `templates/ost-update.md` | Sub-artefact skeleton consumed by the main output Generated from `templates/ost-update.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/signal.jsonl` | Sub-artefact skeleton consumed by the main output |

@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/go-http-handlers.json` | JSON Schema for the Go HTTP Handlers (Gin / Echo / Chi / stdlib) output contract |
-| `templates/go-http-handlers.md` | Markdown skeleton with the required fields |
+| `templates/go-http-handlers.md.j2` | Markdown skeleton with the required fields |
+| `templates/go-http-handlers.md` | Markdown skeleton with the required fields Generated from `templates/go-http-handlers.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a go-http-handlers record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-http-handlers record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/gin_router.go` | Gin router with the documented middleware order and route groups |

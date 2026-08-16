@@ -10,13 +10,13 @@ token-budget-impact: ~250 tokens.
 
 - **doc_format** (string): <RFC | ERD | 6-Pager | ADR | Custom>
 - **scope** (string): <small | team | cross-org>
-- **audience** (array): <named roles>
+- **audience** (array): <named_roles>
 - **page_budget** (integer): <1..10>
-- **review_deadline** (date): <ISO date>
+- **review_deadline** (date): <iso_date>
 - **alternatives** (array): <≥2 including 'do nothing'>
-- **owner** (string): <named author>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_author>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

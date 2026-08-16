@@ -64,9 +64,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/founder-time-audit-tool.md` | report skeleton with required fields + 5-line header |
+| `templates/founder-time-audit-tool.md.j2` | report skeleton with required fields + 5-line header |
+| `templates/founder-time-audit-tool.md` | report skeleton with required fields + 5-line header Generated from `templates/founder-time-audit-tool.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/founder-time-audit-tool.schema.json` | JSON Schema for the output contract |
-| `templates/_smoke-test.md` | minimum viable filled-in example |
+| `templates/_smoke-test.md.j2` | minimum viable filled-in example |
+| `templates/_smoke-test.md` | minimum viable filled-in example Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

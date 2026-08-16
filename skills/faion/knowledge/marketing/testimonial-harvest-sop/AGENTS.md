@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/testimonial-harvest-sop.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/testimonial-harvest-sop.md.j2` | Markdown skeleton: artefact body + per-section table. |
+| `templates/testimonial-harvest-sop.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/testimonial-harvest-sop.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/testimonial-harvest-sop.json` | testimonial-harvest JSON skeleton validating against scripts/. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

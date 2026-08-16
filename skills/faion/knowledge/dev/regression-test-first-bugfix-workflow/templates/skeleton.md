@@ -7,7 +7,7 @@ token-budget-impact: ~400 tokens to fill end-to-end.
 -->
 ---
 version: 0.1.0
-owner: swe:<person>
+owner: swe:<owner_full_name>
 last_reviewed: YYYY-MM-DD
 alert_url: https://sentry.io/...
 fix_pr_url: https://github.com/.../pull/...
@@ -16,26 +16,26 @@ fix_pr_url: https://github.com/.../pull/...
 # Alert
 
 - kind: sentry | datadog | customer-ticket | log-aggregator
-- url: <alert URL>
-- reproducing input: <json | snippet>
+- url: <alert_url>
+- reproducing input: <json_snippet>
 
 # Red Test (committed FIRST)
 
 - path: tests/regression/test_<slug>.py
-- commit: <short hash>
+- commit: <short_hash>
 - asserts:
-  - <assertion 1>
-  - <assertion 2>
+  - <assertion_1>
+  - <assertion_2>
 
 # Fix
 
-- pr_url: <PR URL>
+- pr_url: <pr_url>
 - diff_lines: <int>
 - approach: <one paragraph — why this is the smallest correct change>
 
 # Verification
 
-- ci_run_url: <CI run URL>
+- ci_run_url: <ci_run_url>
 - passed: true|false
 
 # Review

@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # MVP Scoping — <artefact_id>
 
-- **product_name** (string): <named product>
-- **aha_moment** (string): <single moment statement>
-- **must_have_journey** (array): <ordered step list>
+- **product_name** (string): <named_product>
+- **aha_moment** (string): <single_moment_statement>
+- **must_have_journey** (array): <ordered_step_list>
 - **build_window** (object): <ISO start/end ≤4 weeks>
 - **cut_list** (array): <≥3 items each with rationale>
 - **readiness_checklist** (object): <instrumentation + billing + support + docs booleans>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

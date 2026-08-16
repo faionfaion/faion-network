@@ -70,7 +70,8 @@
 |------|---------|
 | `templates/channels.yaml` | Channel catalog with fit signals and tooling notes |
 | `templates/channel-fit-scorer.py` | Score each channel on fit + cost + speed + measurability |
-| `templates/channel-report.md` | Channel-evaluation report skeleton: shortlist + tests + tripwires |
+| `templates/channel-report.md.j2` | Channel-evaluation report skeleton: shortlist + tests + tripwires |
+| `templates/channel-report.md` | Channel-evaluation report skeleton: shortlist + tests + tripwires Generated from `templates/channel-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

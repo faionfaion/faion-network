@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~500 tokens when loaded as context -->
 
-# Spatial Platform Decision — <PRODUCT>
+# Spatial Platform Decision — <product>
 
-- Date: <YYYY-MM-DD>
-- Owner: <PM / founder>
+- Date: <date>
+- Owner: <pm_founder>
 - Use case: productivity | entertainment | training | industrial | social
 - Audience: consumer | prosumer | enterprise
 - Content types: <list>
@@ -23,15 +23,15 @@
 ## Recommendation
 
 - Primary: <platform>
-- Fallback: <platform list>
+- Fallback: <platform_list>
 - Rationale: <≥40 chars>
 
 ## Risks
 
-- <risk 1>
-- <risk 2>
+- <risk_1>
+- <risk_2>
 
 ## Sign-off
 
-- Author: <name + date>
-- Reviewer: <name + date>
+- Author: <name_date>
+- Reviewer: <name_date>

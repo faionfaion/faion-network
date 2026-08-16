@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Cache Invalidation (TTL, Event-Based, Tag-Based, Version-Based) — <artefact_id>
 
-- **artefact_id**: cinv-<kebab-case-slug>
+- **artefact_id**: cinv-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/trunk-based-dev-principles.json` | JSON Schema for the readiness checklist artefact. |
-| `templates/branch-policy.md` | Markdown snippet for `BRANCHING.md`: max branch age, naming, merge rules. |
+| `templates/branch-policy.md.j2` | Markdown snippet for `BRANCHING.md`: max branch age, naming, merge rules. |
+| `templates/branch-policy.md` | Markdown snippet for `BRANCHING.md`: max branch age, naming, merge rules. Generated from `templates/branch-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

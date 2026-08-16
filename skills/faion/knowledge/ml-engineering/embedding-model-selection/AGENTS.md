@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Filled-in decision-record skeleton for an embedding model choice |
+| `templates/decision-record.md.j2` | Filled-in decision-record skeleton for an embedding model choice |
+| `templates/decision-record.md` | Filled-in decision-record skeleton for an embedding model choice Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/decision-record.json` | Machine-readable decision-record matching 02-output-contract schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

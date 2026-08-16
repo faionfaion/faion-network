@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/requirements-doc.md` | Requirements document (business, stakeholder, functional, non-functional) |
-| `templates/scope-statement.md` | Scope statement with deliverables, boundaries, constraints, assumptions |
+| `templates/requirements-doc.md.j2` | Requirements document (business, stakeholder, functional, non-functional) |
+| `templates/requirements-doc.md` | Requirements document (business, stakeholder, functional, non-functional) Generated from `templates/requirements-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scope-statement.md.j2` | Scope statement with deliverables, boundaries, constraints, assumptions |
+| `templates/scope-statement.md` | Scope statement with deliverables, boundaries, constraints, assumptions Generated from `templates/scope-statement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rtm.yaml` | Requirements Traceability Matrix YAML schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

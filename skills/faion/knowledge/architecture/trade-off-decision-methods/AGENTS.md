@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/method-selection-adr.md` | ADR skeleton for trade-off method selection. |
+| `templates/method-selection-adr.md.j2` | ADR skeleton for trade-off method selection. |
+| `templates/method-selection-adr.md` | ADR skeleton for trade-off method selection. Generated from `templates/method-selection-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/method-fit-matrix.md.j2` | Lookup: context → method. |
 | `templates/method-fit-matrix.md` | Lookup: context → method. Generated from `templates/method-fit-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |

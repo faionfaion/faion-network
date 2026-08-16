@@ -60,12 +60,15 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/star-playbook-step.md` | Per-question STAR probing playbook with probe prompts + note-slots |
-| `templates/star-scorecard.md` | Per-question scorecard with STAR evidence rows + competency rating |
+| `templates/star-playbook-step.md.j2` | Per-question STAR probing playbook with probe prompts + note-slots |
+| `templates/star-playbook-step.md` | Per-question STAR probing playbook with probe prompts + note-slots Generated from `templates/star-playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/star-scorecard.md.j2` | Per-question scorecard with STAR evidence rows + competency rating |
+| `templates/star-scorecard.md` | Per-question scorecard with STAR evidence rows + competency rating Generated from `templates/star-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/hiring-manager-guide.md.j2` | Hiring-manager-facing summary of the STAR method |
 | `templates/hiring-manager-guide.md` | Hiring-manager-facing summary of the STAR method Generated from `templates/hiring-manager-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/star-completeness.py` | Helper to score STAR completeness from a transcript |
-| `templates/_smoke-test.md` | Filled-in playbook for a single competency × question |
+| `templates/_smoke-test.md.j2` | Filled-in playbook for a single competency × question |
+| `templates/_smoke-test.md` | Filled-in playbook for a single competency × question Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

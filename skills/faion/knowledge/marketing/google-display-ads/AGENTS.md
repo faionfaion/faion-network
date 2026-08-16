@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/display-spec.md` | Display campaign spec Markdown skeleton. |
+| `templates/display-spec.md.j2` | Display campaign spec Markdown skeleton. |
+| `templates/display-spec.md` | Display campaign spec Markdown skeleton. Generated from `templates/display-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/placement-exclusions.csv` | Standard placement exclusion list seed. |
 | `templates/display-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 

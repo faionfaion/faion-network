@@ -70,7 +70,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/provider-deprecation-runbook.json` | JSON skeleton matching 02-output-contract. |
-| `templates/provider-deprecation-runbook.md` | Narrative runbook template. |
+| `templates/provider-deprecation-runbook.md.j2` | Narrative runbook template. |
+| `templates/provider-deprecation-runbook.md` | Narrative runbook template. Generated from `templates/provider-deprecation-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

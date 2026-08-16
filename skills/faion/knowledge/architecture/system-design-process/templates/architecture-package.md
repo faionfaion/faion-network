@@ -16,7 +16,7 @@
 - Users / DAU: <value>
 - Reads/sec: <value>
 - Writes/sec: <value>
-- Storage growth: <GB/month>
+- Storage growth: <gb_month>
 - p95 latency: <ms>
 - Availability: <%>
 

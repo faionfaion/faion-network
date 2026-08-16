@@ -64,7 +64,8 @@
 | File | Purpose |
 |---|---|
 | `templates/over-mock-lint.py` | Script detecting over-mocked Python test files. |
-| `templates/mocking-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/mocking-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/mocking-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/mocking-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum dependency graph (one HTTP client, one time call). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

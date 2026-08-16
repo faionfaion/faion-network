@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# User Story: [Title]
+# User Story: <title>
 
-**As a** [persona/role],  
-**I want** [capability or action],  
+**As a** <persona_role>,  
+**I want** <i_want>,  
 **So that** [benefit or outcome].
 
 ## Acceptance Criteria
@@ -37,7 +37,7 @@ Then [expected result]
 ## Dependencies
 
 - Depends on: #[work item ID or external dependency]
-- Blocks: #[work item ID]
+- Blocks: #<work_item_id>
 
 ## Out of Scope
 

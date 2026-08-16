@@ -60,9 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/aio-snippets.md` | Real examples of each section type with attribution |
-| `templates/retrofit-log.md` | Per-piece retrofit log: sections added, citation added, date |
-| `templates/_smoke-test.md` | Minimum-viable filled section |
+| `templates/aio-snippets.md.j2` | Real examples of each section type with attribution |
+| `templates/aio-snippets.md` | Real examples of each section type with attribution Generated from `templates/aio-snippets.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retrofit-log.md.j2` | Per-piece retrofit log: sections added, citation added, date |
+| `templates/retrofit-log.md` | Per-piece retrofit log: sections added, citation added, date Generated from `templates/retrofit-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled section |
+| `templates/_smoke-test.md` | Minimum-viable filled section Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

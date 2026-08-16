@@ -13,9 +13,9 @@ token-budget-impact: ~250 tokens.
 - **filename_grammar** (string): <regex for valid filenames>
 - **manifest_schema** (object): <JSON Schema for manifest.json>
 - **anonymisation_policy** (string): <Pnnn rule + scrub regex>
-- **owner** (string): <named researcher>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_researcher>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cost-report.md` | Report skeleton: per-function before/after + actions + savings. |
+| `templates/cost-report.md.j2` | Report skeleton: per-function before/after + actions + savings. |
+| `templates/cost-report.md` | Report skeleton: per-function before/after + actions + savings. Generated from `templates/cost-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/memory-tuning.json` | AWS Lambda Power Tuning input/output sample. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

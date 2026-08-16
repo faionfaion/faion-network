@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/customer-journey-bottleneck-attack.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/customer-journey-bottleneck-attack.md.j2` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/customer-journey-bottleneck-attack.md` | Filled artefact skeleton conforming to 02-output-contract.xml Generated from `templates/customer-journey-bottleneck-attack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/customer-journey-bottleneck-attack.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
 | `templates/_smoke-test.md.j2` | Minimum-viable filled-in version exercised by scripts/validate-customer-journey-bottleneck-attack.py --self-test |
 | `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-customer-journey-bottleneck-attack.py --self-test Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

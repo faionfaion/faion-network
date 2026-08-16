@@ -55,7 +55,8 @@
 | File | Purpose |
 |---|---|
 | `templates/corpus-profile.yaml` | Input. |
-| `templates/index-spec.md` | Output. |
+| `templates/index-spec.md.j2` | Output. |
+| `templates/index-spec.md` | Output. Generated from `templates/index-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/build_index.py` | Working VectorStoreIndex builder. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/use-case.md` | Markdown skeleton with all required sections. |
+| `templates/use-case.md.j2` | Markdown skeleton with all required sections. |
+| `templates/use-case.md` | Markdown skeleton with all required sections. Generated from `templates/use-case.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/exception-flows.csv` | Header for exception-flow rows. |
 | `templates/_smoke-test.md.j2` | Minimum viable use case. |
 | `templates/_smoke-test.md` | Minimum viable use case. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

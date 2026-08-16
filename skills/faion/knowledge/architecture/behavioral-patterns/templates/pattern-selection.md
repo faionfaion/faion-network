@@ -5,7 +5,7 @@
 # token-budget-impact: ~400-1500 tokens once filled
 ---
 artefact_id: behavioral-pattern-selection-<system>-2026-05-23
-owner: <Full Name> <email>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 ---
@@ -23,7 +23,7 @@ last_reviewed: 2026-05-23
 
 - new abstract: `<Type>`
 - concrete implementations: `<Type1>`, `<Type2>`, `<Type3>`
-- selection: <factory / DI container / config>
+- selection: <selection>
 
 ## Anti-misuse note
 

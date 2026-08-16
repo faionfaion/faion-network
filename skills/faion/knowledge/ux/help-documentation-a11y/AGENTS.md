@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/help-documentation.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/help-documentation.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/help-documentation.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/help-documentation.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/help-documentation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

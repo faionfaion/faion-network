@@ -63,10 +63,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/licence-bundle.md` | Per-customer licence bundle skeleton with all 5 sections |
-| `templates/audit-attestation.md` | Quarterly self-attestation form |
-| `templates/renewal-memo.md` | Renewal go/no-go memo |
-| `templates/attribution-snippet.md` | Suggested attribution placements + screenshots |
+| `templates/licence-bundle.md.j2` | Per-customer licence bundle skeleton with all 5 sections |
+| `templates/licence-bundle.md` | Per-customer licence bundle skeleton with all 5 sections Generated from `templates/licence-bundle.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/audit-attestation.md.j2` | Quarterly self-attestation form |
+| `templates/audit-attestation.md` | Quarterly self-attestation form Generated from `templates/audit-attestation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/renewal-memo.md.j2` | Renewal go/no-go memo |
+| `templates/renewal-memo.md` | Renewal go/no-go memo Generated from `templates/renewal-memo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/attribution-snippet.md.j2` | Suggested attribution placements + screenshots |
+| `templates/attribution-snippet.md` | Suggested attribution placements + screenshots Generated from `templates/attribution-snippet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

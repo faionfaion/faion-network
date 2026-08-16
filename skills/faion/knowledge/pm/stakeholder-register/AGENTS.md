@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stakeholder-profile.md` | Individual stakeholder profile with interests, concerns, and engagement history |
+| `templates/stakeholder-profile.md.j2` | Individual stakeholder profile with interests, concerns, and engagement history |
+| `templates/stakeholder-profile.md` | Individual stakeholder profile with interests, concerns, and engagement history Generated from `templates/stakeholder-profile.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/register.yaml` | Register schema: id, role, dept, influence, impact, attitude, quadrant, comms.cadence, last_touch |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

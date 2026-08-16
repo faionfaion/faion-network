@@ -65,7 +65,8 @@
 | File | Purpose |
 |---|---|
 | `templates/catalog.yaml` | Input catalog skeleton. |
-| `templates/payment-links-spec.md` | Markdown spec template — sections per SKU + webhook policy. |
+| `templates/payment-links-spec.md.j2` | Markdown spec template — sections per SKU + webhook policy. |
+| `templates/payment-links-spec.md` | Markdown spec template — sections per SKU + webhook policy. Generated from `templates/payment-links-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/zapier-blueprint.json` | Zapier-importable trigger+action JSON. |
 | `templates/webhook-handler.py` | Reference signature-verification snippet (Stripe SDK, optional). |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in catalog (1 SKU, 1 channel). |

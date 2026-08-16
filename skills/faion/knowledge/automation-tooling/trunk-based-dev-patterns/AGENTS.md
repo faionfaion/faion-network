@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/flag-naming.md` | Positive flag naming reference |
+| `templates/flag-naming.md.j2` | Positive flag naming reference |
+| `templates/flag-naming.md` | Positive flag naming reference Generated from `templates/flag-naming.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/dark-launch-ramp.yaml` | Dark-launch ramp schedule template |
 | `templates/feature-flags-inventory.md.j2` | Inventory entry template under .aidocs/feature-flags.md |
 | `templates/feature-flags-inventory.md` | Inventory entry template under .aidocs/feature-flags.md Generated from `templates/feature-flags-inventory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

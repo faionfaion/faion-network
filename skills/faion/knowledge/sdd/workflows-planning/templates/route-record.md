@@ -7,16 +7,16 @@ token-budget-impact: ~200-500 tokens once filled
 -->
 ---
 artefact_id: route-<feature>-<YYYY-MM-DD>
-owner: <Full Name> <email>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 feature_dir: .aidocs/features/<status>/<feature>/
 active_phase: <spec|design|plan|execution|done|blocked>
-next_methodology: solo/sdd/sdd-planning/<phase-methodology>
+next_methodology: solo/sdd/sdd-planning/<phase_methodology>
 phase_statuses:
-  spec: <missing|Draft|Accepted>
-  design: <missing|Draft|Accepted>
-  plan: <missing|Draft|Accepted>
+  spec: <missing_draft_accepted>
+  design: <missing_draft_accepted>
+  plan: <missing_draft_accepted>
 blocker: <null|specific-blocker-name>
 ---
 

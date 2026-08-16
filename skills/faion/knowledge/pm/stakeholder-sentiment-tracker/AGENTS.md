@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, consent_root, rubric_path. |
-| `templates/skeleton.md` | Weekly sentiment-run report skeleton with per-stakeholder block + alarm block. |
+| `templates/skeleton.md.j2` | Weekly sentiment-run report skeleton with per-stakeholder block + alarm block. |
+| `templates/skeleton.md` | Weekly sentiment-run report skeleton with per-stakeholder block + alarm block. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/adr-stub.md` | ADR template (Status, Context, Decision, Alternatives, Consequences). |
+| `templates/adr-stub.md.j2` | ADR template (Status, Context, Decision, Alternatives, Consequences). |
+| `templates/adr-stub.md` | ADR template (Status, Context, Decision, Alternatives, Consequences). Generated from `templates/adr-stub.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

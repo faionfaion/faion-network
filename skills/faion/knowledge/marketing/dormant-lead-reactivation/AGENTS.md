@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/reactivation-spec.json` | JSON example of one reactivation sequence spec matching the output contract |
-| `templates/sequence-touches.md` | Markdown skeleton for the 3-touch sequence per segment |
+| `templates/sequence-touches.md.j2` | Markdown skeleton for the 3-touch sequence per segment |
+| `templates/sequence-touches.md` | Markdown skeleton for the 3-touch sequence per segment Generated from `templates/sequence-touches.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

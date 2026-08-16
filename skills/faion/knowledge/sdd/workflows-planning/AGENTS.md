@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/route-record.md` | Canonical phase-route record with current phase, next methodology, and blockers. |
+| `templates/route-record.md.j2` | Canonical phase-route record with current phase, next methodology, and blockers. |
+| `templates/route-record.md` | Canonical phase-route record with current phase, next methodology, and blockers. Generated from `templates/route-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

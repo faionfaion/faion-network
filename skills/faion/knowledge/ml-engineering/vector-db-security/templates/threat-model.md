@@ -6,7 +6,7 @@ depends-on: security-config.yaml
 token-budget-impact: 0
 -->
 
-# Threat Model: <vector DB instance>
+# Threat Model: <vector_db_instance>
 
 ## Assets
 - Embeddings (vector data)

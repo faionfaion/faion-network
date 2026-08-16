@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-matrix.md` | Matrix skeleton with criteria × options + weighted totals. |
+| `templates/decision-matrix.md.j2` | Matrix skeleton with criteria × options + weighted totals. |
+| `templates/decision-matrix.md` | Matrix skeleton with criteria × options + weighted totals. Generated from `templates/decision-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/matrix.json` | Matrix data payload for scripted computation. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

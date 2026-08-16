@@ -6,7 +6,7 @@
 
 # Decision Record
 
-- domain: <web|data|ml|automation|embedded>
+- domain: <domain>
 - framework: <one primary>
 - python_version: <pinned>
 - downstream_methodologies:

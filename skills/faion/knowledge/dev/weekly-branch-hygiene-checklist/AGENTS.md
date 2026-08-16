@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-branch-hygiene-checklist.md` | Markdown skeleton with required fields. |
+| `templates/weekly-branch-hygiene-checklist.md.j2` | Markdown skeleton with required fields. |
+| `templates/weekly-branch-hygiene-checklist.md` | Markdown skeleton with required fields. Generated from `templates/weekly-branch-hygiene-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

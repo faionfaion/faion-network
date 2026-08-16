@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/xp-extreme-programming.json` | JSON Schema for the readiness checklist. |
-| `templates/done-definition.md` | Done rule snippet for PR template. |
+| `templates/done-definition.md.j2` | Done rule snippet for PR template. |
+| `templates/done-definition.md` | Done rule snippet for PR template. Generated from `templates/done-definition.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

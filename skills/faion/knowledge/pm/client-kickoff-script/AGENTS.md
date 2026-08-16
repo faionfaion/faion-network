@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-kickoff-script.json` | JSON Schema (draft-07) for the Client Kickoff Script output contract |
-| `templates/client-kickoff-script.md` | Markdown skeleton with the required fields for the Client Kickoff Script artefact |
+| `templates/client-kickoff-script.md.j2` | Markdown skeleton with the required fields for the Client Kickoff Script artefact |
+| `templates/client-kickoff-script.md` | Markdown skeleton with the required fields for the Client Kickoff Script artefact Generated from `templates/client-kickoff-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/client-kickoff-script.example.json` | Worked filled-in example of a valid Client Kickoff Script artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

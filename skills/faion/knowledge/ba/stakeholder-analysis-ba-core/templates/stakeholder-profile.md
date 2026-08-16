@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Stakeholder Profile — <Name>
+# Stakeholder Profile — <name>
 
 **Role:** <title>  |  **Category:** sponsor|user|implementer|regulator|support
 

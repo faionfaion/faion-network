@@ -12,9 +12,9 @@ token-budget-impact: ~250 tokens.
 - **value_map** (object): <products + pain_relievers + gain_creators arrays>
 - **alignment_gaps** (array): <pain/gain ids with no matching reliever/creator>
 - **value_prop_statement** (string): <≤140 chars; cites a named job>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

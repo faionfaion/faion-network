@@ -7,7 +7,7 @@
 Stakeholder: [Name, Role]
 Interest: [What they care about in this project]
 Concerns: [Potential objections or sensitivities]
-Power/Interest quadrant: [Manage Closely / Keep Satisfied / Keep Informed / Monitor]
+Power/Interest quadrant: <power_interest_quadrant>
 Dialogue mode: [Interview / Brainstorm / Clarification / Validation / Socratic]
 
 Key questions:

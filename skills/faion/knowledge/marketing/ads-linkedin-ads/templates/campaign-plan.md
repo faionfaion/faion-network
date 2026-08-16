@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-# LinkedIn Campaign Plan: [campaign name]
+# LinkedIn Campaign Plan: <campaign_name>
 
 ## Objective
 [brand_awareness | engagement | lead_gen | website_visits | conversions]
@@ -29,7 +29,7 @@
 ## Creative brief
 - Hook: [≤8 words]
 - Value prop: [1 sentence]
-- CTA: [verb-led]
+- CTA: <verb_led>
 
 ## KPIs
 - Target cost-per-MQL: $X

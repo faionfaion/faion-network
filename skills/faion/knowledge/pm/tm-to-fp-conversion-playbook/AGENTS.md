@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tm-to-fp-conversion-playbook.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/tm-to-fp-conversion-playbook.md.j2` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/tm-to-fp-conversion-playbook.md` | Filled artefact skeleton conforming to 02-output-contract.xml Generated from `templates/tm-to-fp-conversion-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/tm-to-fp-conversion-playbook.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
 | `templates/_smoke-test.md.j2` | Minimum-viable filled-in version exercised by scripts/validate-tm-to-fp-conversion-playbook.py --self-test |
 | `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-tm-to-fp-conversion-playbook.py --self-test Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

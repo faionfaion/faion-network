@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Verbatim To Eval Row Recipe — <artefact_id>
 
-- **artefact_id**: vter-<kebab-case-slug>
+- **artefact_id**: vter-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

@@ -6,7 +6,7 @@
 # Growth Viral Loops — Spec
 
 ## Owner
-[name]
+<name>
 
 ## Review deadline
 YYYY-MM-DD (within 90 days)
@@ -32,5 +32,5 @@ Named reviewer + signoff date.
 [path / link to deviation log entry]
 
 ## Signoff
-- reviewer: [name]
+- reviewer: <reviewer_name>
 - date: YYYY-MM-DD

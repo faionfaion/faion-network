@@ -5,25 +5,25 @@ produces: a journey-mapping artefact validating against scripts/validate-journey
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600-1500 tokens once filled
 -->
-# Customer Journey Map: [Journey Name]
+# Customer Journey Map: <journey_name>
 
-**Persona:** [Persona name]
+**Persona:** <persona_name>
 **Journey:** [What journey is mapped]
-**Scope:** [Start point] → [End point]
-**Date:** [Date]
-**Last validated:** [Date]
+**Scope:** <start_point> → <end_point>
+**Date:** <date>
+**Last validated:** <date>
 **Type:** Current State / Future State (design proposal — not validated)
 
 ## Journey Overview
 
-| Row | Stage 1: [Name] | Stage 2: [Name] | Stage 3: [Name] | Stage 4: [Name] |
+| Row | Stage 1: <name> | Stage 2: <name> | Stage 3: <name> | Stage 4: <name> |
 |-----|-----------------|-----------------|-----------------|-----------------|
 | **Actions** | [What they do] | [What they do] | [What they do] | [What they do] |
-| **Touchpoints** | [Channel/location] | [Channel/location] | [Channel/location] | [Channel/location] |
-| **Thoughts** | "[Quote or paraphrase]" | "[Quote]" | "[Quote]" | "[Quote]" |
-| **Emotions** | [Feeling] [1-5] | [Feeling] [1-5] | [Feeling] [1-5] | [Feeling] [1-5] |
-| **Pain Points** | [Friction] | [Friction] | [Friction] | [Friction] |
-| **Opportunities** | [Improvement idea] | [Improvement idea] | [Improvement idea] | [Improvement idea] |
+| **Touchpoints** | <channel_location> | <channel_location> | <channel_location> | <channel_location> |
+| **Thoughts** | "<thoughts>" | "<quote>" | "<quote>" | "<quote>" |
+| **Emotions** | <feeling> [1-5] | <feeling> [1-5] | <feeling> [1-5] | <feeling> [1-5] |
+| **Pain Points** | <friction> | <friction> | <friction> | <friction> |
+| **Opportunities** | <improvement_idea> | <improvement_idea> | <improvement_idea> | <improvement_idea> |
 
 (Write "no data" in any cell where no research evidence exists — do not invent.)
 
@@ -31,10 +31,10 @@ token-budget-impact: ~600-1500 tokens once filled
 
 | Stage | Pain Point | Emotional Impact | Evidence Source |
 |-------|------------|------------------|-----------------|
-| [Stage] | [Specific friction] | H/M/L | [Interview ID / ticket ID / analytics event] |
+| [Stage] | <specific_friction> | H/M/L | <h_m_l> |
 
 ## Prioritized Opportunities
 
 | Priority | Stage | Opportunity | Potential Impact | Linked Backlog Item |
 |----------|-------|-------------|------------------|---------------------|
-| 1 | [Stage] | [Specific improvement] | [Impact description] | [Ticket/issue ID] |
+| 1 | [Stage] | <specific_improvement> | <impact_description> | <ticket_issue_id> |

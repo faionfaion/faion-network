@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/business-need-spec.md` | Markdown skeleton with problem/evidence/metric/baseline/sponsor. |
+| `templates/business-need-spec.md.j2` | Markdown skeleton with problem/evidence/metric/baseline/sponsor. |
+| `templates/business-need-spec.md` | Markdown skeleton with problem/evidence/metric/baseline/sponsor. Generated from `templates/business-need-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/evidence-log.csv` | Header for evidence sources with type + retrieved_at. |
 | `templates/_smoke-test.md.j2` | Minimum viable business-need spec. |
 | `templates/_smoke-test.md` | Minimum viable business-need spec. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

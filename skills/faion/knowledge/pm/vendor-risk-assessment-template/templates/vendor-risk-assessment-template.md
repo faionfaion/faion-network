@@ -7,21 +7,21 @@ token-budget-impact: ~600 tokens when filled.
 -->
 
 ---
-artefact_id: "<vendor-slug>-risk-assessment"
+artefact_id: "<vendor_slug>-risk-assessment"
 vendor_name: "<Vendor Inc.>"
-owner: "compliance-lead:<person>"
+owner: "compliance-lead:<owner_full_name>"
 version: "1.0.0"
 last_reviewed: "2026-05-22"
 risk_rating: "medium"
 status: "active"
 inputs_used:
   - name: "DPA"
-    source: "<vendor-dpa-url>"
+    source: "<vendor_dpa_url>"
   - name: "Subprocessor list"
-    source: "<vendor-subprocessor-url>"
+    source: "<vendor_subprocessor_url>"
 ---
 
-# Vendor Risk Assessment — <Vendor>
+# Vendor Risk Assessment — <vendor>
 
 ## Data scope
 
@@ -30,7 +30,7 @@ inputs_used:
 ## DPA reference
 
 - URL: <link>
-- Last reviewed: <ISO date>
+- Last reviewed: <iso_date>
 
 ## Subprocessors
 
@@ -58,5 +58,5 @@ inputs_used:
 
 ## Decisions / Actions / Next review
 
-- <decision 1>
+- <decision_1>
 - Next review: <ISO date, ≤90 days>

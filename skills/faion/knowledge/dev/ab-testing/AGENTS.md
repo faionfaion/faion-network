@@ -71,8 +71,10 @@
 | `templates/sample-size.py` | Sample-size calculator (proportions test, two-sided) |
 | `templates/analyzer.py` | Variant analyser with z-test + Wilson CI + SRM check |
 | `templates/_smoke-test.json` | Minimum viable filled-in experiment-run for validator round-trip |
-| `templates/test-plan.md` | Pre-registration plan frozen before launch: hypothesis, split, metrics, guardrails, sample size, timeline, risks |
-| `templates/results-report.md` | Human-readable results report: per-metric table, guardrail verdict, statistical detail, pre-specified segments, sign-off |
+| `templates/test-plan.md.j2` | Pre-registration plan frozen before launch: hypothesis, split, metrics, guardrails, sample size, timeline, risks |
+| `templates/test-plan.md` | Pre-registration plan frozen before launch: hypothesis, split, metrics, guardrails, sample size, timeline, risks Generated from `templates/test-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/results-report.md.j2` | Human-readable results report: per-metric table, guardrail verdict, statistical detail, pre-specified segments, sign-off |
+| `templates/results-report.md` | Human-readable results report: per-metric table, guardrail verdict, statistical detail, pre-specified segments, sign-off Generated from `templates/results-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml#charter-co-authored -->
 <!-- token-budget-impact: ~250 tokens when loaded as context -->
 
-# Team Charter — [Team Name]
+# Team Charter — <team_name>
 
 ## Mission
 [What this team exists to accomplish — one sentence tied to project outcome]
@@ -12,12 +12,12 @@
 ## Members
 | Role | Expertise | Contact |
 |------|-----------|---------|
-| [Role] | [Skills] | [email/slack] |
+| [Role] | <skills> | <email_slack> |
 
 ## Working Agreements
 1. **Communication:** [async channel for updates; synchronous for complex decisions]
-2. **Availability:** Core hours [start]-[end] [timezone]
-3. **Decisions:** [consensus / tech lead breaks ties / RACI-driven]
+2. **Availability:** Core hours <start>-<end> <timezone>
+3. **Decisions:** <decisions>
 4. **Conflict:** Address directly first; escalate to PM if unresolved in 48h
 5. **Code/Deliverables:** [review SLA, approval count required]
 
@@ -37,4 +37,4 @@
 ## Co-authoring evidence
 - workshop_date: YYYY-MM-DD
 - facilitator_role: [role]
-- attendees_count: [n]
+- attendees_count: <attendees_count>

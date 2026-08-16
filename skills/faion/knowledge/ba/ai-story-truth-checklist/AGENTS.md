@@ -60,7 +60,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ai-story-truth-checklist.json` | JSON Schema for the AI Story Truth Checklist output contract |
-| `templates/ai-story-truth-checklist.md` | Markdown skeleton with the required fields |
+| `templates/ai-story-truth-checklist.md.j2` | Markdown skeleton with the required fields |
+| `templates/ai-story-truth-checklist.md` | Markdown skeleton with the required fields Generated from `templates/ai-story-truth-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

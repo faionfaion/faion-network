@@ -60,7 +60,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ai-ac-hallucination-checklist.json` | JSON Schema for the AI Acceptance Criteria Hallucination Checklist output contract |
-| `templates/ai-ac-hallucination-checklist.md` | Markdown skeleton with the required fields |
+| `templates/ai-ac-hallucination-checklist.md.j2` | Markdown skeleton with the required fields |
+| `templates/ai-ac-hallucination-checklist.md` | Markdown skeleton with the required fields Generated from `templates/ai-ac-hallucination-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -7,23 +7,23 @@
 # Discovery Week of YYYY-MM-DD
 
 ## Outcome
-<metric-name>: <current-value> → <target-value> (<change> vs baseline)
+<metric_name>: <current_value> → <target_value> (<change> vs baseline)
 
 ## Touchpoints
-- Interviews this week: <N> (<participant-hash>, <segment>, <tenure>)
-- Diversity vs last 4: <segment-check> | <recency-check> | <tenure-check>
-- Feedback queue processed: <N> items (tickets: N, NPS: N, sales-calls: N)
+- Interviews this week: <N> (<participant_hash>, <segment>, <tenure>)
+- Diversity vs last 4: <segment_check> | <recency_check> | <tenure_check>
+- Feedback queue processed: <feedback_queue_processed> items (tickets: N, NPS: N, sales-calls: N)
 
 ## OST Changes (diff)
 
 <!-- Agent emits diffs; PM reviews and applies with scripts/ost-apply.py -->
 + opportunity opp_<slug> (<N> quotes, segment: <segment>)
-~ opportunity opp_<slug> <change description>
+~ opportunity opp_<slug> <change_description>
 - opportunity opp_<slug> parked (no evidence in 60d)
 
 ## Assumption Tests Run / Planned
-- sol_<slug>: <test-type> test <status> — <owner> due <date>
-- sol_<slug>: <test-type> spike — <owner> estimate due <date>
+- sol_<slug>: <test_type> test <status> — <owner> due <date>
+- sol_<slug>: <test_type> spike — <owner> estimate due <date>
 
 ## Roadmap Input
 
@@ -33,5 +33,5 @@
 - Later: re-evaluate sol_<slug> pending <condition>
 
 ## Open Questions for Trio
-1. <question 1>
-2. <question 2>
+1. <question_1>
+2. <question_2>

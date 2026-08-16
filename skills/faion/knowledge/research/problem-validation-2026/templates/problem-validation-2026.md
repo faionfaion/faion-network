@@ -13,9 +13,9 @@ token-budget-impact: ~250 tokens.
 - **cold_respondent_count** (integer): <count of non-network respondents (≥3 tier-1/2 required for validated)>
 - **verdict** (string): <one of: validated | hypothesis | invalidated>
 - **next_revalidation_due** (date): <ISO date 90 days from last_reviewed>
-- **owner** (string): <named researcher>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_researcher>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

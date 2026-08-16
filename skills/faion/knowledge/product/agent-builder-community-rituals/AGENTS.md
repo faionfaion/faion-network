@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ritual-calendar.yaml` | Cadence + slot + ritual-id matrix. |
-| `templates/ritual-artefact.md` | Per-session log skeleton (date, host, attendees, artefact link, retention update). |
+| `templates/ritual-artefact.md.j2` | Per-session log skeleton (date, host, attendees, artefact link, retention update). |
+| `templates/ritual-artefact.md` | Per-session log skeleton (date, host, attendees, artefact link, retention update). Generated from `templates/ritual-artefact.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

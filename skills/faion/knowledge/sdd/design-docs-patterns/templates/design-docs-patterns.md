@@ -8,17 +8,17 @@ token-budget-impact: ~250 tokens.
 
 # Design Docs Patterns — <artefact_id>
 
-- **doc_id** (string): <stable id>
-- **title** (string): <doc title>
+- **doc_id** (string): <stable_id>
+- **title** (string): <doc_title>
 - **scope** (string): <small | team | cross-org>
 - **format** (string): <Google-lite | Amazon-6-pager | Uber-RFC | Stripe-ERD>
-- **sections** (object): <required sections populated>
+- **sections** (object): <required_sections_populated>
 - **non_goals** (array): <≥1 non-goal>
 - **alternatives** (array): <≥2 genuine>
-- **review_deadline** (date): <ISO date>
-- **owner** (string): <named author>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **review_deadline** (date): <iso_date>
+- **owner** (string): <named_author>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

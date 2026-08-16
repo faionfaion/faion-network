@@ -60,8 +60,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/arch-proposal.md` | Proposal skeleton with problem/constraints/options/decision/consequences/rollback |
-| `templates/_smoke-test.md` | Filled-in proposal for a queue-vs-pubsub decision |
+| `templates/arch-proposal.md.j2` | Proposal skeleton with problem/constraints/options/decision/consequences/rollback |
+| `templates/arch-proposal.md` | Proposal skeleton with problem/constraints/options/decision/consequences/rollback Generated from `templates/arch-proposal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in proposal for a queue-vs-pubsub decision |
+| `templates/_smoke-test.md` | Filled-in proposal for a queue-vs-pubsub decision Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -7,7 +7,7 @@
 <!-- .github/pull_request_template.md -->
 <!-- CI fails if either Closes-N line or Workspace snapshot URL is missing. -->
 
-Closes #<issue-number>
+Closes #<issue_number>
 
 ## Summary
 
@@ -15,7 +15,7 @@ Closes #<issue-number>
 
 ## Workspace snapshot
 
-Workspace snapshot: https://github.com/copilot/spaces/<snapshot-id>
+Workspace snapshot: https://github.com/copilot/spaces/<snapshot_id>
 
 ## Spec
 

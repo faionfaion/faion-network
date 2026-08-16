@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/continuous-discovery.json` | JSON Schema for the output contract (machine-validatable). |
-| `templates/continuous-discovery.md` | Markdown skeleton with the required fields. |
+| `templates/continuous-discovery.md.j2` | Markdown skeleton with the required fields. |
+| `templates/continuous-discovery.md` | Markdown skeleton with the required fields. Generated from `templates/continuous-discovery.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cold-start-spec.md` | Spec capturing baseline + chosen mitigation + post-fix numbers. |
+| `templates/cold-start-spec.md.j2` | Spec capturing baseline + chosen mitigation + post-fix numbers. |
+| `templates/cold-start-spec.md` | Spec capturing baseline + chosen mitigation + post-fix numbers. Generated from `templates/cold-start-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/lambda-config.yaml` | Sample Lambda config with provisioned concurrency + SnapStart settings. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

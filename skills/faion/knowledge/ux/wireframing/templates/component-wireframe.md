@@ -5,7 +5,7 @@ produces: per-component wireframe entry inside the wireframing artefact
 depends-on: templates/wireframe-doc.md
 token-budget-impact: ~200-500 tokens per component
 -->
-# Component: [Name]
+# Component: <name>
 
 ## Purpose
 
@@ -13,29 +13,29 @@ token-budget-impact: ~200-500 tokens per component
 
 ## Variants
 
-### Variant 1: [Name]
+### Variant 1: <name>
 
 ```
 [ASCII sketch of variant]
 ```
 
-When to use: [Specific context]
+When to use: <specific_context>
 
-### Variant 2: [Name]
+### Variant 2: <name>
 
 ```
 [ASCII sketch]
 ```
 
-When to use: [Specific context]
+When to use: <specific_context>
 
 ## States
 
 | State | Description |
 |-------|-------------|
-| Default | [Normal appearance] |
+| Default | <normal_appearance> |
 | Hover | [Change on hover] |
-| Active / Pressed | [Change when active] |
+| Active / Pressed | <change_when_active> |
 | Disabled | [Appearance and behavior when not interactive] |
 | Loading | [If applicable: async state] |
 | Empty | [If applicable: no-data state] |
@@ -43,12 +43,12 @@ When to use: [Specific context]
 ## Content Guidelines
 
 - [Maximum character count for text labels if applicable]
-- [Content rule 2]
+- <content_rule_2>
 
 ## Usage Rules
 
 Use when:
-- [Specific trigger/context]
+- <specific_trigger_context>
 
 Do NOT use when:
 - [Anti-case with reason]

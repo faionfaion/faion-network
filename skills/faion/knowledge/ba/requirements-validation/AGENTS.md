@@ -70,9 +70,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/review-checklist.md` | 10-attribute review checklist. |
-| `templates/session-agenda.md` | Segmented review session agenda. |
-| `templates/sign-off-form.md` | Sign-off form with dissent block. |
+| `templates/review-checklist.md.j2` | 10-attribute review checklist. |
+| `templates/review-checklist.md` | 10-attribute review checklist. Generated from `templates/review-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/session-agenda.md.j2` | Segmented review session agenda. |
+| `templates/session-agenda.md` | Segmented review session agenda. Generated from `templates/session-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sign-off-form.md.j2` | Sign-off form with dissent block. |
+| `templates/sign-off-form.md` | Sign-off form with dissent block. Generated from `templates/sign-off-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/req-validate.sh` | Run validation pipeline locally. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in sign-off pack. |
 | `templates/_smoke-test.md` | Minimum filled-in sign-off pack. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

@@ -10,11 +10,11 @@ Owner: `@<handle>` · Evaluated: `<YYYY-MM-DD>`
 
 | Check | yes/no | Evidence |
 |-------|--------|----------|
-| budget | y/n | <quote / number> |
-| authority | y/n | <named contact> |
-| need | y/n | <specific pain> |
-| timeline | y/n | <date or window> |
-| fit | y/n | <ICP match note> |
+| budget | y/n | <quote_number> |
+| authority | y/n | <named_contact> |
+| need | y/n | <specific_pain> |
+| timeline | y/n | <timeline> |
+| fit | y/n | <icp_match_note> |
 
 **No count:** `<N>`
 **Verdict:** `<qualified | disqualified | borderline>`

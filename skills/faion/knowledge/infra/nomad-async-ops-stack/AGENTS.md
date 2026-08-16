@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/nomad-async-ops-stack.md` | Markdown skeleton with required fields. |
+| `templates/nomad-async-ops-stack.md.j2` | Markdown skeleton with required fields. |
+| `templates/nomad-async-ops-stack.md` | Markdown skeleton with required fields. Generated from `templates/nomad-async-ops-stack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

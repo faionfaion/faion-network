@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/evm-report.md` | EVM report template: PV, EV, AC, SPI, CPI, EAC, TCPI per period |
+| `templates/evm-report.md.j2` | EVM report template: PV, EV, AC, SPI, CPI, EAC, TCPI per period |
+| `templates/evm-report.md` | EVM report template: PV, EV, AC, SPI, CPI, EAC, TCPI per period Generated from `templates/evm-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

@@ -4,22 +4,22 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Benefits Register: [Project Name]
+# Benefits Register: <project_name>
 
 **Version:** [X.X]
-**Date:** [Date]
-**PM:** [Name]
+**Date:** <date>
+**PM:** <name>
 
 ## Register
 
 | ID | Description | Category | Owner | Metric | Baseline | Target | Source | Attribution | Status |
 |----|-------------|----------|-------|--------|----------|--------|--------|-------------|--------|
-| B-01 | [Description] | Financial | [Name/Role] | [Metric name] | [Value or null] | [Value] | [BI/CRM/etc.] | before_after | [Pending] |
-| B-02 | [Description] | Efficiency | [Name/Role] | [Metric name] | [Value or null] | [Value] | [System] | cohort | [Pending] |
+| B-01 | [Description] | Financial | [Name/Role] | [Metric name] | <b_01> | [Value] | [BI/CRM/etc.] | before_after | [Pending] |
+| B-02 | [Description] | Efficiency | [Name/Role] | [Metric name] | <b_02> | [Value] | <system> | cohort | [Pending] |
 
 ## Realization Curves
 
-### B-01: [Benefit Name]
+### B-01: <benefit_name>
 
 | Period | Expected % | Actual % | RAG | Evidence |
 |--------|------------|----------|-----|----------|

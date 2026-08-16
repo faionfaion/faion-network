@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/migration-plan.md` | Six-phase migration plan template with gate criteria per phase |
+| `templates/migration-plan.md.j2` | Six-phase migration plan template with gate criteria per phase |
+| `templates/migration-plan.md` | Six-phase migration plan template with gate criteria per phase Generated from `templates/migration-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/load_resume.py` | ETL load + resume script with checkpointing |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

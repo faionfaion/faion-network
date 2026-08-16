@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # Maintain Mode SOPs Solo — <artefact_id>
 
-- **product_name** (string): <named product>
-- **weekly_check** (object): <tasks + duration>
-- **monthly_reconcile** (object): <tasks + duration>
-- **quarterly_upgrade** (object): <tasks + duration>
+- **product_name** (string): <named_product>
+- **weekly_check** (object): <tasks_duration>
+- **monthly_reconcile** (object): <tasks_duration>
+- **quarterly_upgrade** (object): <tasks_duration>
 - **on_call_rule** (object): <trigger + max_response_window_hours>
-- **sunset_trigger** (string): <MRR / churn condition>
-- **owner** (string): <named human owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **sunset_trigger** (string): <mrr_churn_condition>
+- **owner** (string): <named_human_owner>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

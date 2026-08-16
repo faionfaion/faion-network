@@ -6,8 +6,8 @@
 
 # Retro Actions — Sprint S{N}
 
-**Owner:** [team-lead role] / [person]
-**Version:** [semver]
+**Owner:** <team_lead_role> / <owner_full_name>
+**Version:** <document_version>
 **Last reviewed:** YYYY-MM-DD
 
 ## Actions

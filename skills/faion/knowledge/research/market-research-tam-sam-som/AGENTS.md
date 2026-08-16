@@ -69,8 +69,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/market-sizing-report.md` | Full TAM/SAM/SOM report skeleton with triangulation |
-| `templates/quick-market-check.md` | Lightweight check (TAM + SOM only) for early ideation |
+| `templates/market-sizing-report.md.j2` | Full TAM/SAM/SOM report skeleton with triangulation |
+| `templates/market-sizing-report.md` | Full TAM/SAM/SOM report skeleton with triangulation Generated from `templates/market-sizing-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/quick-market-check.md.j2` | Lightweight check (TAM + SOM only) for early ideation |
+| `templates/quick-market-check.md` | Lightweight check (TAM + SOM only) for early ideation Generated from `templates/quick-market-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

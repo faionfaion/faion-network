@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # In-Memory Application Cache (L1 with lru_cache + TTLCache + WarmableCache) — <artefact_id>
 
-- **artefact_id**: l1c-<kebab-case-slug>
+- **artefact_id**: l1c-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

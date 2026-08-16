@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/builder.py.tmpl` | Builder pattern skeleton for Python test data. |
-| `templates/_smoke-test.md` | Minimal filled rubric example. |
+| `templates/_smoke-test.md.j2` | Minimal filled rubric example. |
+| `templates/_smoke-test.md` | Minimal filled rubric example. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

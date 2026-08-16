@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/interview-guide.md.j2` | Contextual inquiry interview guide with master-apprentice prompts |
 | `templates/interview-guide.md` | Contextual inquiry interview guide with master-apprentice prompts Generated from `templates/interview-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/field-notes.md` | Per-session field note template with timestamped verbatim quotes + breakdown log |
+| `templates/field-notes.md.j2` | Per-session field note template with timestamped verbatim quotes + breakdown log |
+| `templates/field-notes.md` | Per-session field note template with timestamped verbatim quotes + breakdown log Generated from `templates/field-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

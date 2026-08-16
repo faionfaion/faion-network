@@ -66,8 +66,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft-07) for the 4-artefact briefing bundle |
-| `templates/briefing-bundle.md` | Markdown skeleton with exec/PM/engineer/ops sections + the shared risk paragraph |
-| `templates/adr-consequences.md` | Drop-in Consequences block for the parent ADR |
+| `templates/briefing-bundle.md.j2` | Markdown skeleton with exec/PM/engineer/ops sections + the shared risk paragraph |
+| `templates/briefing-bundle.md` | Markdown skeleton with exec/PM/engineer/ops sections + the shared risk paragraph Generated from `templates/briefing-bundle.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/adr-consequences.md.j2` | Drop-in Consequences block for the parent ADR |
+| `templates/adr-consequences.md` | Drop-in Consequences block for the parent ADR Generated from `templates/adr-consequences.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in bundle for validator round-trip |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

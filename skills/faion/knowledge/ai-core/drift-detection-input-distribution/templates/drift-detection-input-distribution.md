@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Drift Detection — Input Distribution — <artefact_id>
 
-- **artefact_id**: ddi-<kebab-case-slug>
+- **artefact_id**: ddi-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

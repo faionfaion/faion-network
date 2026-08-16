@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/prototype-plan.md` | Prototype plan skeleton. |
+| `templates/prototype-plan.md.j2` | Prototype plan skeleton. |
+| `templates/prototype-plan.md` | Prototype plan skeleton. Generated from `templates/prototype-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/testing-notes.md.j2` | Session notes template. |
 | `templates/testing-notes.md` | Session notes template. Generated from `templates/testing-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scaffold-prototype.sh` | CLI scaffold for a code prototype repo. |

@@ -61,9 +61,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/interview-design-doc.md` | Structured interview spec skeleton with round map + competency assignment |
-| `templates/scorecard.md` | Per-round scorecard template tied to the design doc competencies |
-| `templates/_smoke-test.md` | Filled-in spec for a Senior Engineer role with 4 rounds |
+| `templates/interview-design-doc.md.j2` | Structured interview spec skeleton with round map + competency assignment |
+| `templates/interview-design-doc.md` | Structured interview spec skeleton with round map + competency assignment Generated from `templates/interview-design-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scorecard.md.j2` | Per-round scorecard template tied to the design doc competencies |
+| `templates/scorecard.md` | Per-round scorecard template tied to the design doc competencies Generated from `templates/scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in spec for a Senior Engineer role with 4 rounds |
+| `templates/_smoke-test.md` | Filled-in spec for a Senior Engineer role with 4 rounds Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

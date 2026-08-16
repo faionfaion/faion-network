@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical ladder skeleton with L1-L5 placeholders, growth-plan section, promo-packet block. |
+| `templates/skeleton.md.j2` | Canonical ladder skeleton with L1-L5 placeholders, growth-plan section, promo-packet block. |
+| `templates/skeleton.md` | Canonical ladder skeleton with L1-L5 placeholders, growth-plan section, promo-packet block. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/single-channel-bet-selector.md` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/single-channel-bet-selector.md.j2` | Markdown skeleton (5-line header) for the artefact body. |
+| `templates/single-channel-bet-selector.md` | Markdown skeleton (5-line header) for the artefact body. Generated from `templates/single-channel-bet-selector.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/single-channel-bet-selector.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -6,7 +6,7 @@
 
 # Two-Stage Retrieval Design
 
-Owner: <name>
+Owner: <owner_full_name>
 Date: YYYY-MM-DD
 
 ## Stage 1 — Recall

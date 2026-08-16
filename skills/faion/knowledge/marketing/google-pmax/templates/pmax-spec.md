@@ -15,8 +15,8 @@ monthly_conversions: [≥30]
 | 1 | ag-saas-tools | saas-tools | customer_match + remarketing | yes |
 
 ## Brand negatives
-- [brand]
-- [brand-variant]
+- <brand>
+- <brand_variant>
 
 ## Value priority
 | Event | Value |

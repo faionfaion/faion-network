@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-process-report.md` | End-to-end report skeleton covering all six phases. |
+| `templates/decision-process-report.md.j2` | End-to-end report skeleton covering all six phases. |
+| `templates/decision-process-report.md` | End-to-end report skeleton covering all six phases. Generated from `templates/decision-process-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/tradeoff-matrix.json` | Weighted matrix payload consumed in Phase 3. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

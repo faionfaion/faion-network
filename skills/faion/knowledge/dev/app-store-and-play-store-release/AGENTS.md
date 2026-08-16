@@ -60,9 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/release-playbook-step.md` | Cross-store release step skeleton with per-store checklists |
-| `templates/rollout-decision-log.md` | Decision log tracking the staged-rollout gate decisions |
-| `templates/_smoke-test.md` | Filled-in playbook for a v2.3.0 release |
+| `templates/release-playbook-step.md.j2` | Cross-store release step skeleton with per-store checklists |
+| `templates/release-playbook-step.md` | Cross-store release step skeleton with per-store checklists Generated from `templates/release-playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rollout-decision-log.md.j2` | Decision log tracking the staged-rollout gate decisions |
+| `templates/rollout-decision-log.md` | Decision log tracking the staged-rollout gate decisions Generated from `templates/rollout-decision-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in playbook for a v2.3.0 release |
+| `templates/_smoke-test.md` | Filled-in playbook for a v2.3.0 release Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

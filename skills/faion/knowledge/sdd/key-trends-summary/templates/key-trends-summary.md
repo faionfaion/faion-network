@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # Key Trends Summary 2025-2026 — <artefact_id>
 
-- **report_id** (string): <stable id>
+- **report_id** (string): <stable_id>
 - **trends** (array): <exactly 6 trends with name + source + implication>
-- **loaded_at** (datetime): <ISO datetime>
+- **loaded_at** (datetime): <iso_datetime>
 - **next_refresh_due** (date): <loaded_at + 90 days>
-- **audience** (array): <named roles>
-- **owner** (string): <named author>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **audience** (array): <named_roles>
+- **owner** (string): <named_author>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

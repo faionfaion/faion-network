@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # SERP Intent Classification Rubric — <artefact_id>
 
-- **query** (string): <verbatim target query>
+- **query** (string): <verbatim_target_query>
 - **primary_intent** (enum): <one of I / C / T / N>
 - **primary_subtype** (string): <e.g., I:how-to, C:vs, T:buy, N:brand>
 - **secondary_intent** (string|null): <null unless ≥30% of top-10 serve a different class>
 - **serp_evidence** (array): <≥2 independent signals with type+value>
 - **recommendation** (enum): <SINGLE_BRIEF | SPLIT | AMBIGUOUS_BLOCK>
-- **classifier** (string): <named human / agent>
-- **classified_at** (date-time): <ISO timestamp>
+- **classifier** (string): <named_human_agent>
+- **classified_at** (date-time): <iso_timestamp>
 
 ## Notes
 

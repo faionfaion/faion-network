@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Go Goroutines and Worker Patterns — <artefact_id>
 
-- **artefact_id**: gogr-<kebab-case-slug>
+- **artefact_id**: gogr-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

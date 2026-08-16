@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/vui-principles-spec.md` | Voice-runtime principle spec listing simplicity + natural conversation + context awareness with concrete knobs |
+| `templates/vui-principles-spec.md.j2` | Voice-runtime principle spec listing simplicity + natural conversation + context awareness with concrete knobs |
+| `templates/vui-principles-spec.md` | Voice-runtime principle spec listing simplicity + natural conversation + context awareness with concrete knobs Generated from `templates/vui-principles-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

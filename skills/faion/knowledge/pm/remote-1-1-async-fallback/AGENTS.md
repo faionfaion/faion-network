@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Async11Note skeleton with 3 named prompts |
+| `templates/skeleton.md.j2` | Async11Note skeleton with 3 named prompts |
+| `templates/skeleton.md` | Async11Note skeleton with 3 named prompts Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `Async11Note` |
 

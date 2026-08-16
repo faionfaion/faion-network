@@ -60,10 +60,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/apology-email.md` | Apology email template (no excuses, specific commitments) |
-| `templates/reset-deck-outline.md` | Reset deck outline (problem, root cause, plan, milestones) |
-| `templates/weekly-recovery-digest.md` | Weekly recovery digest template |
-| `templates/_smoke-test.md` | Minimum-viable filled spec |
+| `templates/apology-email.md.j2` | Apology email template (no excuses, specific commitments) |
+| `templates/apology-email.md` | Apology email template (no excuses, specific commitments) Generated from `templates/apology-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/reset-deck-outline.md.j2` | Reset deck outline (problem, root cause, plan, milestones) |
+| `templates/reset-deck-outline.md` | Reset deck outline (problem, root cause, plan, milestones) Generated from `templates/reset-deck-outline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-recovery-digest.md.j2` | Weekly recovery digest template |
+| `templates/weekly-recovery-digest.md` | Weekly recovery digest template Generated from `templates/weekly-recovery-digest.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled spec |
+| `templates/_smoke-test.md` | Minimum-viable filled spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

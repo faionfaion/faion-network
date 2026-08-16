@@ -8,9 +8,9 @@ token-budget-impact: ~500-900 tokens to fill end-to-end; ~200 to validate
 
 ---
 version: 0.1.0           # bump on every refresh
-owner: <role>:<person>   # never a team
+owner: <owner_role>:<owner_full_name>   # never a team
 last_reviewed: YYYY-MM-DD
-evidence_root: <link>
+evidence_root: <evidence_root>
 ---
 
 # Body
@@ -19,8 +19,8 @@ evidence_root: <link>
 
 # Evidence
 
-- <link 1>
-- <link 2>
+- <link_1>
+- <link_2>
 
 # Decisions
 

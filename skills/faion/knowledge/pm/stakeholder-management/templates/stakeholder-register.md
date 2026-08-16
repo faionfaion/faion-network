@@ -4,7 +4,7 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-# Stakeholder Register: [Project/Product]
+# Stakeholder Register: <project_product>
 
 ## Register Table
 
@@ -23,7 +23,7 @@
 
 | Name | Role | Current Attitude | Last Attitude | Changed | Why It Changed |
 |------|------|-----------------|---------------|---------|----------------|
-| [VP/C-level] | [Title] | Neutral | Supporter | 2026-03-01 | Metrics dipped, no update from PM |
+| <vp_c_level> | [Title] | Neutral | Supporter | 2026-03-01 | Metrics dipped, no update from PM |
 
 ## Resistor Log
 
@@ -31,11 +31,11 @@ For each Resistor, write one sentence: what would change their mind? Revisit mon
 
 | Stakeholder | What Would Change Their Mind | Last Revisited |
 |-------------|------------------------------|----------------|
-| [Name] | [One sentence] | [Date] |
+| [Name] | [One sentence] | <date> |
 
 ## Management Chain (include skip-levels)
 
 | Person | Role | Relationship to PM | Decision Rights |
 |--------|------|--------------------|-----------------|
-| [Manager] | [Title] | Direct manager | Approve (on PM's scope) |
-| [Skip-level] | [Title] | Manager's manager | Approve (strategic) |
+| <manager> | [Title] | Direct manager | Approve (on PM's scope) |
+| <skip_level> | [Title] | Manager's manager | Approve (strategic) |

@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/checklist-60-90.md.j2` | Day-60 and day-90 milestone checklist with artifact slots |
 | `templates/checklist-60-90.md` | Day-60 and day-90 milestone checklist with artifact slots Generated from `templates/checklist-60-90.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/_smoke-test.md` | Minimum viable filled-in checklist for a generic engineering hire |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in checklist for a generic engineering hire |
+| `templates/_smoke-test.md` | Minimum viable filled-in checklist for a generic engineering hire Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

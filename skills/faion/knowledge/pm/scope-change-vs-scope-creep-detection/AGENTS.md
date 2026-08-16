@@ -68,9 +68,12 @@
 | File | Purpose |
 |------|---------|
 | `templates/triage-record.schema.yaml` | Schema for per-ticket triage record |
-| `templates/pushback-message.md` | Empathetic creep-pushback message template |
-| `templates/change-impact-draft.md` | Change-control input template |
-| `templates/weekly-dashboard.md` | Creep-vs-change weekly summary template |
+| `templates/pushback-message.md.j2` | Empathetic creep-pushback message template |
+| `templates/pushback-message.md` | Empathetic creep-pushback message template Generated from `templates/pushback-message.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/change-impact-draft.md.j2` | Change-control input template |
+| `templates/change-impact-draft.md` | Change-control input template Generated from `templates/change-impact-draft.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-dashboard.md.j2` | Creep-vs-change weekly summary template |
+| `templates/weekly-dashboard.md` | Creep-vs-change weekly summary template Generated from `templates/weekly-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

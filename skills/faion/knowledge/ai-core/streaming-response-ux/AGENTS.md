@@ -55,7 +55,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/streaming-response-ux.json` | JSON Schema for the Streaming Response UX output contract |
-| `templates/streaming-response-ux.md` | Markdown skeleton with the required fields |
+| `templates/streaming-response-ux.md.j2` | Markdown skeleton with the required fields |
+| `templates/streaming-response-ux.md` | Markdown skeleton with the required fields Generated from `templates/streaming-response-ux.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a streaming-response-ux record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a streaming-response-ux record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

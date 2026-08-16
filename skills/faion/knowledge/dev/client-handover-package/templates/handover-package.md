@@ -44,5 +44,5 @@ What was delivered, in 3–5 sentences. Reference the engagement contract.
 - After window: hourly rate $XXX/h, billed monthly
 
 ## Sign-off
-- Consultant: <name@email> — <ISO date>
-- Client: <name@email> — <ISO date>
+- Consultant: <name_email> — <iso_date>
+- Client: <name_email> — <iso_date>

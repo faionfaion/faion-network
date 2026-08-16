@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/go-layout-agentic-workflow.json` | JSON Schema for the Go Standard Layout — Agentic Workflow and Prompts output contract |
-| `templates/go-layout-agentic-workflow.md` | Markdown skeleton with the required fields |
+| `templates/go-layout-agentic-workflow.md.j2` | Markdown skeleton with the required fields |
+| `templates/go-layout-agentic-workflow.md` | Markdown skeleton with the required fields Generated from `templates/go-layout-agentic-workflow.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

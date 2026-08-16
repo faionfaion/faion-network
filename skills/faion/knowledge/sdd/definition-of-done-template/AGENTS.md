@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dod-story.md` | Story DoD checklist with binary gates + per-gate signoff. |
-| `templates/dod-spike.md` | Spike DoD checklist (question / evidence / next-action). |
+| `templates/dod-story.md.j2` | Story DoD checklist with binary gates + per-gate signoff. |
+| `templates/dod-story.md` | Story DoD checklist with binary gates + per-gate signoff. Generated from `templates/dod-story.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/dod-spike.md.j2` | Spike DoD checklist (question / evidence / next-action). |
+| `templates/dod-spike.md` | Spike DoD checklist (question / evidence / next-action). Generated from `templates/dod-spike.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

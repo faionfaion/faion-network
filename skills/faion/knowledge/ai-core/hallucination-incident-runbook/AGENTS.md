@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/hallucination-incident-runbook.json` | JSON schema for the output contract |
-| `templates/hallucination-incident-runbook.md` | Markdown skeleton with required fields |
+| `templates/hallucination-incident-runbook.md.j2` | Markdown skeleton with required fields |
+| `templates/hallucination-incident-runbook.md` | Markdown skeleton with required fields Generated from `templates/hallucination-incident-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

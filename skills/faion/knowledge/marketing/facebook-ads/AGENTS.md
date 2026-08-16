@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/fb-launch-plan.md` | Facebook launch plan Markdown skeleton. |
+| `templates/fb-launch-plan.md.j2` | Facebook launch plan Markdown skeleton. |
+| `templates/fb-launch-plan.md` | Facebook launch plan Markdown skeleton. Generated from `templates/fb-launch-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/warmup-schedule.csv` | Warmup schedule CSV (days, % of target budget). |
 | `templates/fb-launch-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 

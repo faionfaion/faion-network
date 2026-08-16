@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/roadmap-design.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/roadmap-design.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/roadmap-design.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/roadmap-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/roadmap-design.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/roadmap-diff.py` | Diffs two roadmap snapshots (moved / added / dropped) for the monthly review beat in r9. |
 

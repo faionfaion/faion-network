@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/charter.md` | Project charter with SMART objectives, success criteria, constraints, approval block |
-| `templates/status-report.md` | Weekly status report with GREEN/YELLOW/RED per knowledge area |
+| `templates/charter.md.j2` | Project charter with SMART objectives, success criteria, constraints, approval block |
+| `templates/charter.md` | Project charter with SMART objectives, success criteria, constraints, approval block Generated from `templates/charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/status-report.md.j2` | Weekly status report with GREEN/YELLOW/RED per knowledge area |
+| `templates/status-report.md` | Weekly status report with GREEN/YELLOW/RED per knowledge area Generated from `templates/status-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/integrated-plan.yaml` | Integrated plan single-source-of-truth referencing all subsidiary plans |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

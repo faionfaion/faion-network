@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-400 tokens per row -->
 
-# 1.1.1 — <work package name>
+# 1.1.1 — <work_package_name>
 
-- Owner: <name>
+- Owner: <owner_full_name>
 - Estimate: <8-80h>
 - Inputs:
 - Outputs (deliverable):

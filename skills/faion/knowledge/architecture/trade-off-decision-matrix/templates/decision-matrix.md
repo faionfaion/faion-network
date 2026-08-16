@@ -10,11 +10,11 @@
 ## Criteria + Weights (sum = 100%)
 | Criterion             | Weight | Stakeholder owning weight |
 |-----------------------|--------|---------------------------|
-| <criterion 1>         |   <%>  | <role>                    |
-| <criterion 2>         |   <%>  | <role>                    |
-| <criterion 3>         |   <%>  | <role>                    |
-| <criterion 4>         |   <%>  | <role>                    |
-| <criterion 5>         |   <%>  | <role>                    |
+| <criterion_1>         |   <%>  | <role>                    |
+| <criterion_2>         |   <%>  | <role>                    |
+| <criterion_3>         |   <%>  | <role>                    |
+| <criterion_4>         |   <%>  | <role>                    |
+| <criterion_5>         |   <%>  | <role>                    |
 | **Total**             | 100%   |                           |
 
 ## Scoring Scale
@@ -31,7 +31,7 @@
 - Option B / <criterion>: <link, benchmark, POC>
 
 ## Identified Conflicts
-- <criterion X> vs <criterion Y>: <resolution>
+- <criterion_x> vs <criterion_y>: <resolution>
 
 ## Recommendation
 <chosen> — weighted total <value>. Rationale: <fill>.

@@ -4,15 +4,15 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~150 tokens when loaded as reference -->
 
-# ADR-NNN — Event Sourcing for <Aggregate>
+# ADR-NNN — Event Sourcing for <aggregate>
 
 ## Context
 
-Aggregate: <Aggregate>
-Date: <YYYY-MM-DD>
+Aggregate: <aggregate>
+Date: <date>
 Decision-maker: <name>
 
-Audit need: <yes/no — why>
+Audit need: <yes_no_why>
 Schema stability: <yes/no — last 6 months data>
 Naming discipline: <yes/no — team trained on past-tense events>
 
@@ -28,7 +28,7 @@ Naming discipline: <yes/no — team trained on past-tense events>
 
 - Event log size estimate: <events/day, retention months>
 - Projections planned: <list>
-- Snapshot policy: <every N events / off>
+- Snapshot policy: <snapshot_policy>
 - Versioning approach: <see event-sourcing-versioning>
 
 ## Status

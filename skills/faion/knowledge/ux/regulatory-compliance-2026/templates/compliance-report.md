@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~600-1200 tokens when loaded as context -->
 
-# Accessibility Compliance Report — <PRODUCT>
+# Accessibility Compliance Report — <product>
 
-- Report date: <YYYY-MM-DD>
-- Owner: <name + email>
-- Cycle: <quarterly | release | annual>
+- Report date: <report_date>
+- Owner: <name_email>
+- Cycle: <quarterly_release_annual>
 
 ## Surface inventory
 
@@ -26,14 +26,14 @@
 
 ## Testing log
 
-- Automated: axe-core / pa11y / Lighthouse runs on <date>; <N> issues open.
-- Manual: keyboard + VoiceOver/NVDA sweep on <date>; <N> issues open.
+- Automated: axe-core / pa11y / Lighthouse runs on <date>; <automated> issues open.
+- Manual: keyboard + VoiceOver/NVDA sweep on <date>; <manual> issues open.
 - AT-user: <name or vendor> session on <date>; <N> issues.
 
 ## Accessibility statement
 
 - URL: https://example.com/accessibility
-- Last updated: <YYYY-MM-DD>
+- Last updated: <last_updated>
 - WCAG version / level (design baseline): 2.2 AA
 - Feedback channels: <email>, <phone>, <form>
 - Methodology checked: automated, manual, AT-user
@@ -46,5 +46,5 @@
 
 ## Sign-off
 
-- A11y lead: <name + date>
-- Legal counsel: <name + date>
+- A11y lead: <name_date>
+- Legal counsel: <name_date>

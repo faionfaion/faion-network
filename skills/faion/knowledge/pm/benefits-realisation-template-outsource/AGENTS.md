@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/benefits-realisation-template-outsource.json` | JSON Schema (draft-07) for the Benefits Realisation Template Outsource output contract |
-| `templates/benefits-realisation-template-outsource.md` | Markdown skeleton with the required fields for the Benefits Realisation Template Outsource artefact |
+| `templates/benefits-realisation-template-outsource.md.j2` | Markdown skeleton with the required fields for the Benefits Realisation Template Outsource artefact |
+| `templates/benefits-realisation-template-outsource.md` | Markdown skeleton with the required fields for the Benefits Realisation Template Outsource artefact Generated from `templates/benefits-realisation-template-outsource.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/benefits-realisation-template-outsource.example.json` | Worked filled-in example of a valid Benefits Realisation Template Outsource artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

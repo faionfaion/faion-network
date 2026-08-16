@@ -4,7 +4,7 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-## Feedback Log: [Product]
+## Feedback Log: <product>
 
 ### Recent Feedback
 
@@ -17,16 +17,16 @@
 
 | Topic | Count | Top Request | Action |
 |-------|-------|-------------|--------|
-| [Topic 1] | [X] | [Request] | [Status] |
-| [Topic 2] | [X] | [Request] | [Status] |
+| <topic_1> | [X] | [Request] | [Status] |
+| <topic_2> | [X] | [Request] | [Status] |
 
 ### Top Requests (weighted by ARR)
 
 | Request | Mentions | ARR Weight | Segment | Priority | Status |
 |---------|----------|-----------|---------|----------|--------|
-| [Request 1] | [X] | [$$] | [Who] | High | Planned Q2 |
-| [Request 2] | [X] | [$$] | [Who] | Medium | Researching |
-| [Request 3] | [X] | [$$] | [Who] | Low | Backlog |
+| <request_1> | [X] | [$$] | [Who] | High | Planned Q2 |
+| <request_2> | [X] | [$$] | [Who] | Medium | Researching |
+| <request_3> | [X] | [$$] | [Who] | Low | Backlog |
 
 ### Trends
 
@@ -36,4 +36,4 @@
 
 | Theme | Decision | Reason | Owner | Target |
 |-------|----------|--------|-------|--------|
-| [Theme] | build/wont-do/need-info/planned | [Honest reason] | [Name] | [Sprint/date] |
+| <theme> | build/wont-do/need-info/planned | <honest_reason> | <name> | <sprint_date> |

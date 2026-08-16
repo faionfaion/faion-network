@@ -14,8 +14,8 @@ token-budget-impact: ~250 tokens.
 - **daily_engagement_quota** (integer): <≥10 strangers-replied-to per day>
 - **dm_trigger** (string): <exact trigger phrase + CTA>
 - **kpi_set** (object): <{profile_visits, qualified_dms, inbound_calls, conversion_rate}>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

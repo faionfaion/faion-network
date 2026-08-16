@@ -20,8 +20,8 @@
 
 ## Evidence
 
-- source: <URL / transcript_id / ticket / dashboard>
-  citation: <verbatim quote>
+- source: <source>
+  citation: <evidence_quote>
 
 ## Status
 
@@ -31,4 +31,4 @@ draft
 
 - label: <action>
   owner: <named>
-  due_cycle: <YYYY-Www>
+  due_cycle: <yyyy_www>

@@ -4,27 +4,27 @@
 <!-- produces: report -->
 <!-- depends-on: content/04-procedure.xml -->
 <!-- token-budget-impact: ~350 tokens when loaded as context -->
-# A/B Test Results: [Test Name]
+# A/B Test Results: <test_name>
 
-**Test Period:** [Start] to [End]
-**Duration:** [X days]
+**Test Period:** <start> to <end>
+**Duration:** <x_days>
 
 ## Summary
 **Winner:** Control / Variant / No clear winner
 **Recommendation:** Ship / Do not ship / Extend test
-**Guardrails:** none regressed / [name] regressed — blocks ship regardless of the primary metric
+**Guardrails:** none regressed / <name> regressed — blocks ship regardless of the primary metric
 **Signed off by:** [named human — PM or analyst]
 
 ## Results
 
 | Metric | Control | Variant | Change | Significant? |
 |--------|---------|---------|--------|--------------|
-| [Primary] | [X%] | [Y%] | [+/-Z%] | Yes/No |
-| [Secondary] | [X] | [Y] | [+/-Z] | Yes/No |
-| [Guardrail] | [X] | [Y] | [+/-Z] | N/A |
+| <primary> | [X%] | [Y%] | [+/-Z%] | Yes/No |
+| <secondary> | [X] | [Y] | [+/-Z] | Yes/No |
+| <guardrail> | [X] | [Y] | [+/-Z] | N/A |
 
 ## Statistical Details
-- Sample size: [N] Control, [N] Variant
+- Sample size: <sample_size> Control, <sample_size> Variant
 - Confidence level: [X%]
 - P-value: [X]
 - Practical significance: [business impact in concrete terms]
@@ -41,7 +41,7 @@ and carries a multiple-comparison caveat.
 | Mobile | [X%] | [Y%] | |
 
 ## Key Learnings
-- [Learning 1]
+- <learning_1>
 
 ## Next Steps
-- [ ] [Action item]
+- [ ] <action_item>

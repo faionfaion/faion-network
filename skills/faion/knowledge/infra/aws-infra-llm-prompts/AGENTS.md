@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-prompt.md` | Parameterized architecture design prompt |
-| `templates/review-prompt.md` | Architecture review prompt template |
+| `templates/design-prompt.md.j2` | Parameterized architecture design prompt |
+| `templates/design-prompt.md` | Parameterized architecture design prompt Generated from `templates/design-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/review-prompt.md.j2` | Architecture review prompt template |
+| `templates/review-prompt.md` | Architecture review prompt template Generated from `templates/review-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | JSON shape for the prompt artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -70,8 +70,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/process-analysis.md` | Per-process analysis narrative with VA/BN/NVA classification + baseline metrics. |
-| `templates/process-documentation.md` | BPMN-linked process documentation skeleton with control-point markers. |
+| `templates/process-analysis.md.j2` | Per-process analysis narrative with VA/BN/NVA classification + baseline metrics. |
+| `templates/process-analysis.md` | Per-process analysis narrative with VA/BN/NVA classification + baseline metrics. Generated from `templates/process-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/process-documentation.md.j2` | BPMN-linked process documentation skeleton with control-point markers. |
+| `templates/process-documentation.md` | BPMN-linked process documentation skeleton with control-point markers. Generated from `templates/process-documentation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rank-portfolio.py` | Score processes by nva_minutes_per_year × strategic_fit and emit the deep-modelling Pareto set. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in process analysis. |
 | `templates/_smoke-test.md` | Minimum viable filled-in process analysis. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

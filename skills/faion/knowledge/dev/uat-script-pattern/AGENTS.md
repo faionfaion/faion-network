@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/uat-script-pattern.md` | Markdown skeleton with required fields. |
+| `templates/uat-script-pattern.md.j2` | Markdown skeleton with required fields. |
+| `templates/uat-script-pattern.md` | Markdown skeleton with required fields. Generated from `templates/uat-script-pattern.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

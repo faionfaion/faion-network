@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | RACI matrix skeleton with not_applicable markers |
+| `templates/skeleton.md.j2` | RACI matrix skeleton with not_applicable markers |
+| `templates/skeleton.md` | RACI matrix skeleton with not_applicable markers Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum-viable filled `RACIMatrix` |
 

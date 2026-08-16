@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stakeholder-conflict-mediation.md` | Working playbook-step skeleton with 5-line header |
+| `templates/stakeholder-conflict-mediation.md.j2` | Working playbook-step skeleton with 5-line header |
+| `templates/stakeholder-conflict-mediation.md` | Working playbook-step skeleton with 5-line header Generated from `templates/stakeholder-conflict-mediation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/go-error-handling-patterns.json` | JSON Schema for the Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) output contract |
-| `templates/go-error-handling-patterns.md` | Markdown skeleton with the required fields |
+| `templates/go-error-handling-patterns.md.j2` | Markdown skeleton with the required fields |
+| `templates/go-error-handling-patterns.md` | Markdown skeleton with the required fields Generated from `templates/go-error-handling-patterns.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a go-error-handling-patterns record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-error-handling-patterns record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/check-errors.sh` | Grep gate for string-equality error checks, `%v` wraps and unhandled returns |

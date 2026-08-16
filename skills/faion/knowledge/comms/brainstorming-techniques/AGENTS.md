@@ -68,7 +68,8 @@
 |------|---------|
 | `templates/prompt-generate.txt` | Prompt to run the generation phase for a chosen technique |
 | `templates/prompt-cluster.txt` | Prompt to dedup + cluster a raw idea list into 3-7 themes |
-| `templates/session-plan.md` | Markdown session plan skeleton with Osborn's 4 rules pre-printed |
+| `templates/session-plan.md.j2` | Markdown session plan skeleton with Osborn's 4 rules pre-printed |
+| `templates/session-plan.md` | Markdown session plan skeleton with Osborn's 4 rules pre-printed Generated from `templates/session-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

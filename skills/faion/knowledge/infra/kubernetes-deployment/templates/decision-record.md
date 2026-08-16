@@ -16,5 +16,5 @@
 <chosen option + one-line justification>
 
 ## Consequences
-- <consequence 1>
-- <consequence 2>
+- <consequence_1>
+- <consequence_2>

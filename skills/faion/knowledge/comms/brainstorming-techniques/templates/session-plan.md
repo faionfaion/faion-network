@@ -4,13 +4,13 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200 tokens when loaded -->
 
-# Brainstorm: [TOPIC]
+# Brainstorm: <topic>
 
-Date: [DATE]
-Facilitator: [NAME]
-Participants: [NAMES]
-Duration: [TIME] minutes
-Technique: [Classic / Brainwriting 6-3-5 / Round Robin / Reverse]
+Date: <date>
+Facilitator: <session_facilitator>
+Participants: <names>
+Duration: <time> minutes
+Technique: <technique>
 
 ## Objective
 [Specific question we are answering — quantified if possible]
@@ -24,7 +24,7 @@ Technique: [Classic / Brainwriting 6-3-5 / Round Robin / Reverse]
 6. Next steps and owners (5 min)
 
 ## Results
-Ideas generated: [COUNT]
+Ideas generated: <count>
 Top 3 ideas after voting:
 1.
 2.

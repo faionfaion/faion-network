@@ -13,9 +13,9 @@ token-budget-impact: ~250 tokens.
 - **baselines** (object): <current value per KPI>
 - **targets** (object): <target value + window per KPI>
 - **vanity_excluded** (array): <vanity metrics explicitly excluded>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

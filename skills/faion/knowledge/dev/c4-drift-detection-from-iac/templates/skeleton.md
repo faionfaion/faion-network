@@ -7,33 +7,33 @@ token-budget-impact: ~500 tokens to fill end-to-end.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
+owner: role:<owner_handle>
 last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+trigger_url: <trigger_url>
 ---
 
 # Trigger
 
-- kind: <event | threshold | schedule>
-- url:  <URL>
+- kind: <trigger_kind>
+- url:  <trigger_url>
 
 # Owner
 
-- role:<handle>
+- role:<owner_handle>
 
 # Inputs
 
-- name: <input-name>
-  value: <typed value>
+- name: <input_name>
+  value: <typed_value>
 
 # Decision
 
-<single declarative sentence>
+<decision_statement>
 
 # Evidence
 
-- <URL 1>
-- <URL 2>
+- <url_1>
+- <url_2>
 
 # Review
 

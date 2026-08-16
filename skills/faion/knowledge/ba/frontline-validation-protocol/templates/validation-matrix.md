@@ -10,8 +10,8 @@
 
 ## Context
 
-- engagement: <name>
-- owner: <name>
+- engagement: <engagement_name>
+- owner: <owner_full_name>
 - date: 2026-05-23
 
 ## Content
@@ -21,5 +21,5 @@
 
 ## Sign-off
 
-- reviewer: <name>
-- approved: <yes / no>
+- reviewer: <reviewer_name>
+- approved: <yes_no>

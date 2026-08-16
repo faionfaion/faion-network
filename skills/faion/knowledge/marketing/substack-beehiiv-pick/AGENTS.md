@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Filled example for indie hacker shipping paid sub newsletter. |
+| `templates/_smoke-test.md.j2` | Filled example for indie hacker shipping paid sub newsletter. |
+| `templates/_smoke-test.md` | Filled example for indie hacker shipping paid sub newsletter. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

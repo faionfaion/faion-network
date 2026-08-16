@@ -21,7 +21,7 @@ token-budget-impact: ~400 tokens when filled
 
 | Name | Format | Source |
 |------|--------|--------|
-| [input-1] | [format] | [source] |
+| <input_1> | <format> | <source> |
 
 ## Body
 

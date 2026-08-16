@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sprint-report.md` | Markdown sprint report skeleton |
-| `templates/weekly-status-report.md` | Weekly leadership status template |
+| `templates/sprint-report.md.j2` | Markdown sprint report skeleton |
+| `templates/sprint-report.md` | Markdown sprint report skeleton Generated from `templates/sprint-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-status-report.md.j2` | Weekly leadership status template |
+| `templates/weekly-status-report.md` | Weekly leadership status template Generated from `templates/weekly-status-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/jira-metrics-fetcher.py` | Read-only Jira fetch reference implementation |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

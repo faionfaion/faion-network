@@ -14,9 +14,9 @@ token-budget-impact: ~250 tokens.
 - **weekly_time_budget_hours** (integer): <≤10 for solo>
 - **engagement_quota** (object): <per-platform replies/day>
 - **kpi_set** (object): <{audience_growth, qualified_engagement, pipeline_added}>
-- **review_cadence_weeks** (integer): <default 12>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **review_cadence_weeks** (integer): <default_12>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

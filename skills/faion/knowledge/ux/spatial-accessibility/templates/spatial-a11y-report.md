@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~500 tokens when loaded as context -->
 
-# Spatial Accessibility Report — <APP>
+# Spatial Accessibility Report — <app>
 
 - Platform: visionos | quest | psvr2 | hololens | webxr
-- Report date: <YYYY-MM-DD>
-- Owner: <a11y lead>
+- Report date: <report_date>
+- Owner: <a11y_lead>
 
 ## Interaction matrix
 

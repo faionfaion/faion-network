@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/maker-dm.md` | Markdown DM spec: hook line, ask line, evidence line, follow-up cadence, anti-spam guardrails. |
+| `templates/maker-dm.md.j2` | Markdown DM spec: hook line, ask line, evidence line, follow-up cadence, anti-spam guardrails. |
+| `templates/maker-dm.md` | Markdown DM spec: hook line, ask line, evidence line, follow-up cadence, anti-spam guardrails. Generated from `templates/maker-dm.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

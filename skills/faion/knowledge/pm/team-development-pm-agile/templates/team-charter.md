@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Team Charter — [Team Name]
+# Team Charter — <team_name>
 
 ## Mission
 
@@ -14,13 +14,13 @@
 
 | Name | Role | Expertise | Contact |
 |------|------|-----------|---------|
-| [Name] | [Role] | [Area] | [email/handle] |
+| <name> | [Role] | <area> | <email_handle> |
 
 ## Working Agreements
 
 1. **Communication:** Slack for async; video calls for decisions requiring discussion
 2. **Availability:** Core overlap hours [X:00am–Y:00pm timezone]
-3. **Decisions:** Consensus preferred; [role] breaks ties on [domain] decisions
+3. **Decisions:** Consensus preferred; [role] breaks ties on <domain> decisions
 4. **Conflict:** Address directly first; escalate to PM if unresolved within 48h
 5. **Code:** PR review within 24 hours; 2 approvals required before merge
 

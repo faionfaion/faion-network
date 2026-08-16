@@ -11,11 +11,11 @@
 
 ## 2. Problem (2-3 slides)
 - Situation: [What is true today]
-- Complication: [What tension or change exists]
+- Complication: <complication>
 - Impact: [What happens if nothing changes — specific numbers]
 
 ## 3. Solution (3-5 slides)
-- Approach: [What we propose]
+- Approach: <what_we_propose>
 - How it works: [Key mechanism, no jargon]
 - Proof: [Evidence, case studies, data with implications]
 

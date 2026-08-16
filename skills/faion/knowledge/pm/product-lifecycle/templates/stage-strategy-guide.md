@@ -4,12 +4,12 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-## Strategy: [Stage] Stage
+## Strategy: <stage> Stage
 
 ### Focus Areas
-1. [Primary focus]
-2. [Secondary focus]
-3. [Tertiary focus]
+1. <primary_focus>
+2. <secondary_focus>
+3. <tertiary_focus>
 
 ### Investment Allocation (% of engineering cost)
 
@@ -24,7 +24,7 @@
 
 | Metric | Current | Target | Timeframe |
 |--------|---------|--------|-----------|
-| [Metric] | [X] | [Y] | [When] |
+| <metric> | [X] | <y> | <when> |
 
 ### Risks to Manage
 - [Stage-specific risk 1]
@@ -39,4 +39,4 @@
 ### Revival vs Sunset Decision (Decline only)
 - Revival case: [What would justify re-platforming instead of sunsetting]
 - Sunset case: [What confirms sunset is the right call]
-- Decision owner: [Who signs off]
+- Decision owner: <who_signs_off>

@@ -13,13 +13,13 @@
 ## Scope
 
 ### In Scope
-- [item]
+- <item>
 
 ### Out of Scope
-- [exclusion]
+- <exclusion>
 
 ## Deliverables
 
 | ID | Deliverable | Format | Due |
 |----|-------------|--------|-----|
-| D1 | [name] | [fmt] | [date] |
+| D1 | <name> | <fmt> | <date> |

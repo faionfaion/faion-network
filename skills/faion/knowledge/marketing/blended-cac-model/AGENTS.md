@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/blended-cac-model.md` | Markdown report skeleton with per-channel table |
+| `templates/blended-cac-model.md.j2` | Markdown report skeleton with per-channel table |
+| `templates/blended-cac-model.md` | Markdown report skeleton with per-channel table Generated from `templates/blended-cac-model.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/create-tasks.sh` | Bash helper that stubs empty TASK_*.md files for a wave. |
-| `templates/implementation-plan.md` | Canonical implementation-plan.md skeleton with WBS, dep graph, waves, critical path, risk, testing, rollout sections. |
+| `templates/implementation-plan.md.j2` | Canonical implementation-plan.md skeleton with WBS, dep graph, waves, critical path, risk, testing, rollout sections. |
+| `templates/implementation-plan.md` | Canonical implementation-plan.md skeleton with WBS, dep graph, waves, critical path, risk, testing, rollout sections. Generated from `templates/implementation-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

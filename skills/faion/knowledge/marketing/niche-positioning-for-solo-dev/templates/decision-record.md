@@ -21,10 +21,10 @@
 
 ## Consequences
 
-- <expected outcome 1>
-- <expected outcome 2>
+- <expected_outcome_1>
+- <expected_outcome_2>
 
 ## Exit criteria
 
-- <numeric threshold + date>
+- <numeric_threshold_date>
 - <fallback decision if exit triggered>

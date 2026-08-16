@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/swap-memory-management.json` | MemoryPlan JSON skeleton. |
-| `templates/swap-memory-management.md` | Human-readable audit trail. |
+| `templates/swap-memory-management.md.j2` | Human-readable audit trail. |
+| `templates/swap-memory-management.md` | Human-readable audit trail. Generated from `templates/swap-memory-management.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/99-memory.conf` | sysctl drop-in: vm.swappiness=10 + vm.overcommit_memory=1. |
 | `templates/swap-create.sh` | Idempotent swapfile creator + fstab entry. |
 | `templates/memory-alert.sh` | Pressure-stall-information based alert script. |

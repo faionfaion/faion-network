@@ -63,12 +63,15 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/acceptance-form.md` | Acceptance form template: deliverable, criteria, evidence, sign-off |
+| `templates/acceptance-form.md.j2` | Acceptance form template: deliverable, criteria, evidence, sign-off |
+| `templates/acceptance-form.md` | Acceptance form template: deliverable, criteria, evidence, sign-off Generated from `templates/acceptance-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/closeout-archive.sh` | Archive walker: copies artefacts to long-term store with manifest |
 | `templates/closure-checklist.md.j2` | Closure checklist template: acceptance, resources, contracts, lessons, archive, handover |
 | `templates/closure-checklist.md` | Closure checklist template: acceptance, resources, contracts, lessons, archive, handover Generated from `templates/closure-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/final-report.md` | Final report template: scope delivered vs baseline, schedule + cost variance, lessons highlights |
-| `templates/handover-doc.md` | Handover doc template: operating procedures, runbooks, support contacts |
+| `templates/final-report.md.j2` | Final report template: scope delivered vs baseline, schedule + cost variance, lessons highlights |
+| `templates/final-report.md` | Final report template: scope delivered vs baseline, schedule + cost variance, lessons highlights Generated from `templates/final-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/handover-doc.md.j2` | Handover doc template: operating procedures, runbooks, support contacts |
+| `templates/handover-doc.md` | Handover doc template: operating procedures, runbooks, support contacts Generated from `templates/handover-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Eval-in-Prod Sampling Policy — <artefact_id>
 
-- **artefact_id**: eips-<kebab-case-slug>
+- **artefact_id**: eips-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

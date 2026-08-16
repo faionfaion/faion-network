@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/audience-spec.md` | Three-tier audience spec Markdown skeleton. |
+| `templates/audience-spec.md.j2` | Three-tier audience spec Markdown skeleton. |
+| `templates/audience-spec.md` | Three-tier audience spec Markdown skeleton. Generated from `templates/audience-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/exclusions-checklist.md.j2` | Exclusion audiences checklist before launch. |
 | `templates/exclusions-checklist.md` | Exclusion audiences checklist before launch. Generated from `templates/exclusions-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audience-spec.json` | Schema-conformant sample artefact used by validator self-test. |

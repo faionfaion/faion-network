@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Pages deploy report listing project + env + domain + preview evidence. |
+| `templates/skeleton.md.j2` | Pages deploy report listing project + env + domain + preview evidence. |
+| `templates/skeleton.md` | Pages deploy report listing project + env + domain + preview evidence. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Pages deploy report. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Pages deploy report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

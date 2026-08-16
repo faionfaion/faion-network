@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tdd-cycle.md` | Step list: spec → RED → GREEN → REFACTOR with commit conventions. |
+| `templates/tdd-cycle.md.j2` | Step list: spec → RED → GREEN → REFACTOR with commit conventions. |
+| `templates/tdd-cycle.md` | Step list: spec → RED → GREEN → REFACTOR with commit conventions. Generated from `templates/tdd-cycle.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

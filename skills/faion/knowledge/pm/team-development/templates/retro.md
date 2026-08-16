@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml#retro-action-owner-deadline -->
 <!-- token-budget-impact: ~150 tokens when loaded as context -->
 
-# Retrospective — Sprint [N]
+# Retrospective — Sprint <retrospective_sprint>
 
-**Date:** [Date]
+**Date:** <date>
 **Facilitator:** [Role — rotate each sprint]
 **Participants:** [Count, no names in shared doc]
 
@@ -17,12 +17,12 @@
 - [Specific problem with evidence — no individual naming]
 
 ## Ideas for Improvement
-- [Concrete suggestion]
+- <concrete_suggestion>
 
 ## Action Items
 | Action | Owner Role | Sprint Deadline |
 |--------|------------|-----------------|
-| [Imperative, measurable action] | [Role, not name] | Sprint [N+1] |
+| [Imperative, measurable action] | [Role, not name] | Sprint <n_1> |
 
 <!-- Rules:
 - Every action item needs a named owner role + sprint deadline (S-prefix).

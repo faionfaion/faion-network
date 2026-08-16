@@ -11,11 +11,11 @@ token-budget-impact: ~250 tokens.
 - **openapi_spec_path** (string): <path to openapi.yaml>
 - **openapi_version** (string): <must start with 3.1>
 - **endpoints** (array): <list of {path, method, op_id}>
-- **mock_server_url** (string): <Prism mock URL>
+- **mock_server_url** (string): <prism_mock_url>
 - **contract_test_config** (string): <path to schemathesis.yaml or equivalent>
 - **version** (string): <semver of the API itself>
-- **owner** (string): <named owner>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

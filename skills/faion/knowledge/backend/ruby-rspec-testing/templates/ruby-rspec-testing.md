@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # RSpec Testing for Rails Applications — <artefact_id>
 
-- **artefact_id**: rspec-<kebab-case-slug>
+- **artefact_id**: rspec-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

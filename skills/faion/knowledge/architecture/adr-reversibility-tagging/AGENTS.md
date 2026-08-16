@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/adr-with-reversibility.md` | ADR template with reversibility frontmatter populated. |
+| `templates/adr-with-reversibility.md.j2` | ADR template with reversibility frontmatter populated. |
+| `templates/adr-with-reversibility.md` | ADR template with reversibility frontmatter populated. Generated from `templates/adr-with-reversibility.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

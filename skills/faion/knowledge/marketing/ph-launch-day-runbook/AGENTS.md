@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/launch-day-log.md` | Markdown launch-day log: timestamped slots PT-anchored, comment-class triage table, signup conversion log. |
+| `templates/launch-day-log.md.j2` | Markdown launch-day log: timestamped slots PT-anchored, comment-class triage table, signup conversion log. |
+| `templates/launch-day-log.md` | Markdown launch-day log: timestamped slots PT-anchored, comment-class triage table, signup conversion log. Generated from `templates/launch-day-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

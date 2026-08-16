@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/program-spec.json` | JSON example of referral program spec |
-| `templates/referrer-terms.md` | Written terms template per referrer |
+| `templates/referrer-terms.md.j2` | Written terms template per referrer |
+| `templates/referrer-terms.md` | Written terms template per referrer Generated from `templates/referrer-terms.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

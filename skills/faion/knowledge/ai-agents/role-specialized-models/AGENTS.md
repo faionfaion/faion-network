@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/role-specialized-models-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/role-specialized-models-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/role-specialized-models-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/role-specialized-models-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

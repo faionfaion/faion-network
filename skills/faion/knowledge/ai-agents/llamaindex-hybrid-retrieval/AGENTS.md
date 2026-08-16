@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/retrieval-profile.yaml` | Input. |
-| `templates/hybrid-retriever-spec.md` | Output. |
+| `templates/hybrid-retriever-spec.md.j2` | Output. |
+| `templates/hybrid-retriever-spec.md` | Output. Generated from `templates/hybrid-retriever-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/hybrid_retriever.py` | Working QueryFusion + rerank wiring. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

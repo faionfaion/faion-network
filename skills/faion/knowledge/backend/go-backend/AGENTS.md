@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/go-backend.json` | JSON Schema for the Go Backend Development Patterns output contract |
-| `templates/go-backend.md` | Markdown skeleton with the required fields |
+| `templates/go-backend.md.j2` | Markdown skeleton with the required fields |
+| `templates/go-backend.md` | Markdown skeleton with the required fields Generated from `templates/go-backend.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a go-backend record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-backend record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/app-error.go` | AppError struct, sentinel errors and constructors the ErrorHandler middleware maps from |

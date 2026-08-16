@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # Daily Ship Rubric — <artefact_id>
 
-- **date** (date): <ISO date>
-- **operator** (string): <named human>
-- **backlog_item** (string): <task id>
+- **date** (date): <iso_date>
+- **operator** (string): <named_human>
+- **backlog_item** (string): <task_id>
 - **gates** (object): <5 binary gates: spec/code/tests/deploy/customer_visible>
-- **verdict** (string): <ship | no-ship>
+- **verdict** (string): <ship_no_ship>
 - **note** (string): <≤200 char free-text>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

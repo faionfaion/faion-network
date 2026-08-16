@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Cost anomaly runbook artefact skeleton |
+| `templates/skeleton.md.j2` | Cost anomaly runbook artefact skeleton |
+| `templates/skeleton.md` | Cost anomaly runbook artefact skeleton Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | JSON schema for the anomaly record |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

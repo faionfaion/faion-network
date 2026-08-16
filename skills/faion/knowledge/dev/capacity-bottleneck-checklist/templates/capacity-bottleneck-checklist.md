@@ -7,7 +7,7 @@ token-budget-impact: small (template is loaded only when an artefact is being au
 -->
 # Capacity Bottleneck Checklist — <artefact_id>
 
-**Owner:** <@handle>
+**Owner:** <owner_handle>
 **Version:** 1.0.0
 **Last reviewed:** 2026-05-23
 **Headroom:** <pct>%

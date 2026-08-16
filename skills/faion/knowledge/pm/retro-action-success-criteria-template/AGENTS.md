@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | RetroActionItem skeleton |
+| `templates/skeleton.md.j2` | RetroActionItem skeleton |
+| `templates/skeleton.md` | RetroActionItem skeleton Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `RetroActionItem` |
 

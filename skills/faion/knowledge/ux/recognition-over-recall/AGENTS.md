@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/recognition-audit.md` | Recognition audit report skeleton. |
+| `templates/recognition-audit.md.j2` | Recognition audit report skeleton. |
+| `templates/recognition-audit.md` | Recognition audit report skeleton. Generated from `templates/recognition-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-audit.txt` | Agent prompt skeleton for the audit run. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

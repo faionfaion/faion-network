@@ -13,9 +13,9 @@
 
 ## Items
 
-- [ ] c1 — <observable check> — verdict: pass | fail | n/a
-- [ ] c2 — <observable check> — verdict: pass | fail | n/a
-- [ ] c3 — <observable check> — verdict: pass | fail | n/a
+- [ ] c1 — <observable_check> — verdict: pass | fail | n/a
+- [ ] c2 — <observable_check> — verdict: pass | fail | n/a
+- [ ] c3 — <observable_check> — verdict: pass | fail | n/a
 
 ## Overall verdict
 

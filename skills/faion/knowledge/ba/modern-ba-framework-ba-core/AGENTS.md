@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/framework-decision-record.md` | ADR-style framework selection record. |
+| `templates/framework-decision-record.md.j2` | ADR-style framework selection record. |
+| `templates/framework-decision-record.md` | ADR-style framework selection record. Generated from `templates/framework-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ba-framework-select.sh` | Shell helper running the scoring matrix. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

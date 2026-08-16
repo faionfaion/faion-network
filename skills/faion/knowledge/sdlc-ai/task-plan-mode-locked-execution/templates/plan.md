@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml + content/04-procedure.xml -->
 <!-- token-budget-impact: ~200-1200 tokens when loaded as context -->
 
-# Plan: <change-title>
+# Plan: <change_title>
 
 > Generated in Plan Mode (read-only). Approval required before execution.
 > Branch: <feat/...>
-> Scope estimate: <N files>, <approx runtime>
+> Scope estimate: <n_files>, <approx_runtime>
 
 ## Steps
 
@@ -28,9 +28,9 @@
 
 ## Out of scope
 
-- <explicit exclusion 1>
-- <explicit exclusion 2>
-- <explicit exclusion 3>
+- <explicit_exclusion_1>
+- <explicit_exclusion_2>
+- <explicit_exclusion_3>
 
 ## Rollback
 

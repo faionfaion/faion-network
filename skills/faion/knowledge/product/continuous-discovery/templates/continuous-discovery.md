@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # Continuous Discovery — <artefact_id>
 
-- **outcome** (string): <named outcome / KPI>
+- **outcome** (string): <named_outcome_kpi>
 - **touchpoints** (array): <≥1/week, each with date, customer_id, summary>
-- **opportunity_tree** (object): <outcome → opportunities → solutions>
+- **opportunity_tree** (object): <outcome_opportunities_solutions>
 - **assumption_tests** (array): <≥1 per opportunity, each falsifiable>
 - **decision_log** (array): <≥1/week, each with rationale + cited touchpoint ids>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

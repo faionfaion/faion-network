@@ -3,7 +3,7 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Channel Research: [Product]
+# Channel Research: <product>
 
 ## Customer Discovery Research
 
@@ -15,8 +15,8 @@
 
 | Channel | % of customers | Source type |
 |---------|---------------|-------------|
-| [Channel 1] | X% | [Interview / Analytics / Attribution survey] |
-| [Channel 2] | X% | [Interview / Analytics / Attribution survey] |
+| <channel_1> | X% | [Interview / Analytics / Attribution survey] |
+| <channel_2> | X% | [Interview / Analytics / Attribution survey] |
 
 ## Channel Evaluation
 
@@ -33,29 +33,29 @@ _Scored via channel-fit-scorer.py with channels.yaml. Source for audience/compet
 |---------|-------------|---------|------------|--------|
 | [Ch 1]  | $X          | X:1     | Phase 2 if >3:1 | [URL, date] |
 
-_LTV = $X (from business-model.md v1). All numbers [UNVERIFIED] until Phase-1 test data arrives._
+_LTV = $X (from business-model.md v1). All numbers <unverified> until Phase-1 test data arrives._
 
 ## Competitor Channel Analysis
 
 | Competitor | Primary Channel | Secondary | Evidence date |
 |------------|-----------------|-----------|--------------|
-| [Comp 1]   | [Channel]       | [Channel] | YYYY-MM-DD   |
+| <comp_1>   | <channel>       | <channel> | YYYY-MM-DD   |
 
-_Sources: SimilarWeb, Meta Ad Library, LinkedIn Ad Library. Competitor inference only — flag [UNVERIFIED]._
+_Sources: SimilarWeb, Meta Ad Library, LinkedIn Ad Library. Competitor inference only — flag <unverified>._
 
 ## Recommended Channel Strategy
 
 **Phase 1** (milestone: first 100 sign-ups):
-- Primary: [Channel] — budget $X, kill criterion: CAC > $X after $500 spend
-- Backup: [Channel 2] — if primary kill criterion fires
+- Primary: <channel> — budget $X, kill criterion: CAC > $X after $500 spend
+- Backup: <channel_2> — if primary kill criterion fires
 
 **Phase 2** (milestone: $10K MRR):
-- Add: [Channel 2] if Phase 1 economics confirmed
-- Scale: [Channel 1] with 80% of budget
+- Add: <channel_2> if Phase 1 economics confirmed
+- Scale: <channel_1> with 80% of budget
 
 ## Testing Plan
 
 | Channel | Budget | Milestone gate | Success criteria | Kill criterion |
 |---------|--------|---------------|-----------------|----------------|
-| [Ch 1]  | $X     | 100 sign-ups  | CAC < $X      | CAC > $X after $500 |
+| [Ch 1]  | $X     | 100 sign-ups  | CAC <x_cac> $X after $500 |
 | [Ch 2]  | $X     | 100 sign-ups  | X conversions   | 0 conversions after $300 |

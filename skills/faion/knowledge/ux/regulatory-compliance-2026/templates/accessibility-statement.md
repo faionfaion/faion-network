@@ -6,17 +6,17 @@
 
 # Accessibility Statement
 
-Last updated: <YYYY-MM-DD>
+Last updated: <last_updated>
 
 ## Our commitment
 
-<COMPANY> is committed to digital accessibility for users with disabilities. We design and build our products to meet recognized standards under WCAG <VERSION> level <LEVEL>.
+<company> is committed to digital accessibility for users with disabilities. We design and build our products to meet recognized standards under WCAG <version> level <level>.
 
 ## Conformance
 
 We measure against:
 
-- WCAG <VERSION> level <LEVEL> (design baseline).
+- WCAG <version> level <level> (design baseline).
 - ADA Title II (United States, public-accommodation surfaces) — effective April 2026.
 - European Accessibility Act / EN 301 549 (European Union) — effective June 2025.
 - AODA (Ontario, Canada) — current.
@@ -24,7 +24,7 @@ We measure against:
 
 ## Testing methodology
 
-- Automated scans: <axe-core | pa11y | Lighthouse> on every release.
+- Automated scans: <automated_scans> on every release.
 - Manual review: keyboard + screen-reader sweep on critical journeys per release.
 - Assistive-technology user sessions: at least once per major release.
 

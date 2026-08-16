@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # Sunset Customer Comms Template — <artefact_id>
 
-- **artefact_id** (string): <kebab-case slug>
-- **owner** (string): <named human>
+- **artefact_id** (string): <kebab_case_slug>
+- **owner** (string): <owner_full_name>
 - **cause_sentence** (string): <one honest line>
 - **timeline** (object): <{announce_date, migration_window_days, v1_off_date}>
 - **migration_path** (object): <{primary: v2|competitor|refund, terms}>
 - **communication_channels** (array): <email + in-app + status-page>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

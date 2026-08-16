@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/plan.md` | Markdown skeleton for the locked plan (numbered steps, verify cmds, out-of-scope, risks). |
+| `templates/plan.md.j2` | Markdown skeleton for the locked plan (numbered steps, verify cmds, out-of-scope, risks). |
+| `templates/plan.md` | Markdown skeleton for the locked plan (numbered steps, verify cmds, out-of-scope, risks). Generated from `templates/plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -27,12 +27,12 @@ _Last reviewed: 2026-05-23_
 
 | ID | Criterion | Metric threshold |
 |----|-----------|------------------|
-| ac-1 | <criterion> | <metric op value> |
+| ac-1 | <criterion> | <metric_op_value> |
 
 ## AI boundary (per AC)
 
-- ai_scope: <what AI does>
-- deterministic_fallback: <what runs deterministically>
+- ai_scope: <what_ai_does>
+- deterministic_fallback: <what_runs_deterministically>
 - handoff_signal: <confidence threshold OR refusal OR timeout>
 
 ## Fallback behavior
@@ -53,4 +53,4 @@ _Last reviewed: 2026-05-23_
 
 | Input | Expected | Anti-output |
 |-------|----------|-------------|
-| <input> | <expected> | <plausible-wrong> |
+| <input> | <expected> | <plausible_wrong> |

@@ -70,10 +70,12 @@
 |------|---------|
 | `templates/synthesis-doc.md.j2` | Final 2-3 page synthesis structure |
 | `templates/synthesis-doc.md` | Final 2-3 page synthesis structure Generated from `templates/synthesis-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/themed-appendix.md` | Long-form appendix with theme deep-dives |
+| `templates/themed-appendix.md.j2` | Long-form appendix with theme deep-dives |
+| `templates/themed-appendix.md` | Long-form appendix with theme deep-dives Generated from `templates/themed-appendix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/action-item-table.md.j2` | Action items with owners + deadlines |
 | `templates/action-item-table.md` | Action items with owners + deadlines Generated from `templates/action-item-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/source-citation-format.md` | Verbatim quote → retro source schema |
+| `templates/source-citation-format.md.j2` | Verbatim quote → retro source schema |
+| `templates/source-citation-format.md` | Verbatim quote → retro source schema Generated from `templates/source-citation-format.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

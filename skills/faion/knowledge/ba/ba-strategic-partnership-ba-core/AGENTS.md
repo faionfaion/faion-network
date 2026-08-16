@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stance-review.md` | Stance review skeleton: what BA-as-partner means here, decision rights, escalation. |
-| `templates/partnership-charter.md` | One-page partnership charter signed by BA + sponsor. |
+| `templates/stance-review.md.j2` | Stance review skeleton: what BA-as-partner means here, decision rights, escalation. |
+| `templates/stance-review.md` | Stance review skeleton: what BA-as-partner means here, decision rights, escalation. Generated from `templates/stance-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/partnership-charter.md.j2` | One-page partnership charter signed by BA + sponsor. |
+| `templates/partnership-charter.md` | One-page partnership charter signed by BA + sponsor. Generated from `templates/partnership-charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/stance-review-schema.json` | JSON Schema draft-07 for the ba-stance-reviewer agent output (axes, auto_block, kill_criterion). |
 | `templates/ba-frame.sh` | Helper that frames a stakeholder ask into 3 questions + strawman outcome JSON. |
 

@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Go Standard Layout — Directory Structure — <artefact_id>
 
-- **artefact_id**: gold-<kebab-case-slug>
+- **artefact_id**: gold-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

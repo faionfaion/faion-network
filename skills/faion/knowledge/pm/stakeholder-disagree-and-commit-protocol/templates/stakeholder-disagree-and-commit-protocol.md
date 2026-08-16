@@ -8,7 +8,7 @@
 
 ## artefact_id
 
-<kebab-case slug>
+<artefact_slug>
 
 ## owner
 
@@ -21,12 +21,12 @@
 ## options considered
 
 1. <option-A>
-2. <option-B>
+2. <option_b>
 
 ## inputs used
 
-- <input — source>
-- <input — source>
+- <input_source>
+- <input_source>
 
 ## revisit trigger
 

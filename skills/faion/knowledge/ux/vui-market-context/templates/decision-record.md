@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml cite-2025-2026-data rule -->
 <!-- token-budget-impact: ~400 tokens when loaded as context -->
 
-# Voice Platform Decision — <PRODUCT>
+# Voice Platform Decision — <product>
 
-- Date: <YYYY-MM-DD>
+- Date: <date>
 - Use case: smart-home | app-embedded | ivr | kiosk
 
 ## Scoring matrix
@@ -23,5 +23,5 @@
 
 ## Lock-in risk notes
 
-- <risk 1>
-- <risk 2>
+- <risk_1>
+- <risk_2>

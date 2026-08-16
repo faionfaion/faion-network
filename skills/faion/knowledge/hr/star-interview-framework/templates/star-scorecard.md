@@ -8,10 +8,10 @@ token-budget-impact: ~400 tokens when filled
 
 # STAR Interview Scorecard
 
-**Candidate:** [Name]
-**Role:** [Title]
+**Candidate:** <name>
+**Role:** <title>
 **Interviewer:** [Your Name]
-**Date:** [Date]
+**Date:** <date>
 
 ---
 

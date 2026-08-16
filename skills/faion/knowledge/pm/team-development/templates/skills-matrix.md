@@ -4,20 +4,20 @@
 <!-- depends-on: content/01-core-rules.xml#training-before-hire -->
 <!-- token-budget-impact: ~200 tokens when loaded as context -->
 
-# Skills Matrix — [Team Name]
+# Skills Matrix — <team_name>
 
 Scale: 1=Beginner | 2=Basic | 3=Intermediate | 4=Expert | ?=Unknown (never guess)
 
-| Skill | [Role 1] | [Role 2] | [Role 3] | Gap Action |
+| Skill | <role_1> | <role_2> | <role_3> | Gap Action |
 |-------|-----------|-----------|-----------|------------|
-| [Skill A] | ? | 3 | 2 | [Training / Pair / Hire] |
-| [Skill B] | 4 | 1 | ? | [Pair: Role 1 leads workshop] |
-| [Skill C] | 2 | 2 | 4 | [Cross-train: Role 3 leads] |
+| [Skill A] | ? | 3 | 2 | <training_pair_hire> |
+| <skill_b> | 4 | 1 | ? | [Pair: Role 1 leads workshop] |
+| <skill_c> | 2 | 2 | 4 | [Cross-train: Role 3 leads] |
 
 ## Gap Summary
 | Gap | Severity | Options Evaluated | Chosen | Owner Role | Deadline Sprint |
 |-----|----------|-------------------|--------|------------|-----------------|
-| [Skill B — Role 2] | High | training/pairing/contracting/hiring | pairing | [PM] | S14 |
+| [Skill B — Role 2] | High | training/pairing/contracting/hiring | pairing | <pm> | S14 |
 
 <!-- Rules:
 - ALWAYS evaluate all four options (training, pairing, contracting, hiring) before choosing.

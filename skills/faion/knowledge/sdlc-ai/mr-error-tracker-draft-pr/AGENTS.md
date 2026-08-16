@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/draft-pr-body.md` | Draft PR body with alert link + patch rationale. |
+| `templates/draft-pr-body.md.j2` | Draft PR body with alert link + patch rationale. |
+| `templates/draft-pr-body.md` | Draft PR body with alert link + patch rationale. Generated from `templates/draft-pr-body.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/threshold-policy.yaml` | Event-count + fixability threshold config. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

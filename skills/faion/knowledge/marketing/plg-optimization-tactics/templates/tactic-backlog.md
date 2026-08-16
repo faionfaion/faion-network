@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~600 tokens when filled -->
 
-# PLG Tactic Backlog — <FUNNEL_STAGE>
+# PLG Tactic Backlog — <funnel_stage>
 
 **Baseline:** `<METRIC>` = `<VALUE>` as of `<AS_OF>`
 **Generated:** `<GENERATED_AT>`
@@ -13,23 +13,23 @@
 
 | # | Tactic | Source | Impact | Confidence | Ease | ICE | Bucket |
 |---|--------|--------|--------|------------|------|-----|--------|
-| 1 | <NAME> | <SECTION> | <I> | <C> | <E> | <SUM> | <BUCKET> |
+| 1 | <name> | <SECTION> | <I> | <c> | <e> | <sum> | <bucket> |
 | 2 | ... |  |  |  |  |  |  |
 
 ## Per-tactic details
 
-### 1. <NAME>
+### 1. <name>
 
 - **Hypothesis:** <HYPOTHESIS>
 - **Source section:** <SECTION>
 - **Instrumentation:** <INSTRUMENTATION>
-- **CTA variant (if applicable):** <CTA_TEXT>
+- **CTA variant (if applicable):** <cta_text>
 
 ## Sign-off queue
 
 Tactics requiring finance + retention review (free-tier limit changes):
 
-- [ ] <NAME> — owner: <OWNER>
+- [ ] <name> — owner: <owner>
 
 ## Notes
 

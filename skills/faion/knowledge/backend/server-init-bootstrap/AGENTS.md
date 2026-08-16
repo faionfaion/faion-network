@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/server-init-bootstrap.json` | BootstrapPlan JSON skeleton (phases + verifications). |
-| `templates/server-init-bootstrap.md` | Human-readable audit trail. |
+| `templates/server-init-bootstrap.md.j2` | Human-readable audit trail. |
+| `templates/server-init-bootstrap.md` | Human-readable audit trail. Generated from `templates/server-init-bootstrap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/bootstrap.sh` | Idempotent bootstrap script — phases 1-5 in order. |
 | `templates/cloud-init.yml` | user-data for cloud-init provisioning. |
 | `templates/verify-bootstrap.sh` | Post-bootstrap audit script — every gate evaluated. |

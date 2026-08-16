@@ -4,8 +4,8 @@
 # depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 # token-budget-impact: ~400-1500 tokens once filled
 ---
-artefact_id: api-gateway-patterns-<client>-2026-05-23
-owner: <Full Name> <email>
+artefact_id: api-gateway-patterns-<client_slug>-2026-05-23
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 adr_id: NNN
@@ -29,8 +29,8 @@ Use the **<pattern>** pattern with **<product>** as the gateway.
 
 ## Consequences
 
-- <trade-off accepted>
-- <operational cost>
+- <trade_off_accepted>
+- <operational_cost>
 
 ## Rollback path
 

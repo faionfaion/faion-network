@@ -56,7 +56,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/billing-rollout-coordination-checklist.json` | JSON Schema (draft-07) for the Billing Rollout Coordination Checklist output contract |
-| `templates/billing-rollout-coordination-checklist.md` | Markdown skeleton with the required fields for the Billing Rollout Coordination Checklist artefact |
+| `templates/billing-rollout-coordination-checklist.md.j2` | Markdown skeleton with the required fields for the Billing Rollout Coordination Checklist artefact |
+| `templates/billing-rollout-coordination-checklist.md` | Markdown skeleton with the required fields for the Billing Rollout Coordination Checklist artefact Generated from `templates/billing-rollout-coordination-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/billing-rollout-coordination-checklist.example.json` | Worked filled-in example of a valid Billing Rollout Coordination Checklist artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

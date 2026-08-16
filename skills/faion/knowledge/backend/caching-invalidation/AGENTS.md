@@ -59,8 +59,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/caching-invalidation.json` | JSON Schema for the Cache Invalidation (TTL, Event-Based, Tag-Based, Version-Based) output contract |
-| `templates/caching-invalidation.md` | Markdown skeleton with the required fields |
-| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-invalidation record |
+| `templates/caching-invalidation.md.j2` | Markdown skeleton with the required fields |
+| `templates/caching-invalidation.md` | Markdown skeleton with the required fields Generated from `templates/caching-invalidation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a caching-invalidation record |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-invalidation record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

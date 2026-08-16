@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml#r1-named-inputs -->
 <!-- token-budget-impact: ~120 tokens -->
 
-# Retainer Decision — [client_id]
+# Retainer Decision — <client_id>
 
 **Quarter:** YYYY-Qn
-**Owner:** [role] / [person]
-**Version:** [semver]
+**Owner:** <owner_role> / <owner_full_name>
+**Version:** <document_version>
 **Last reviewed:** YYYY-MM-DD
 
 ## Inputs

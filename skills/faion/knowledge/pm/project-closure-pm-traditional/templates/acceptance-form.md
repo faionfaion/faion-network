@@ -6,26 +6,26 @@
 
 # Deliverable Acceptance Form
 
-**Project:** [Name]
-**Deliverable:** [Name]
+**Project:** <name>
+**Deliverable:** <name>
 **Version:** [X.X]
-**Date:** [Date]
+**Date:** <date>
 
 ## Description
-[What was delivered]
+<what_was_delivered>
 
 ## Acceptance Criteria
 
 | Criterion | Status | Notes |
 |-----------|--------|-------|
-| [Criterion 1] | Pass/Fail | [Notes] |
-| [Criterion 2] | Pass/Fail | [Notes] |
+| <criterion_1> | Pass/Fail | [Notes] |
+| <criterion_2> | Pass/Fail | [Notes] |
 
 ## Outstanding Items
 
 | Item | Severity | Resolution Plan |
 |------|----------|-----------------|
-| [Item] | H/M/L | [Plan] |
+| <item> | H/M/L | <plan> |
 
 ## Acceptance Decision
 

@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/fixed-price-risk-loading-model.json` | JSON Schema for the Fixed-Price Risk Loading Model output contract |
-| `templates/fixed-price-risk-loading-model.md` | Markdown skeleton with the required fields |
+| `templates/fixed-price-risk-loading-model.md.j2` | Markdown skeleton with the required fields |
+| `templates/fixed-price-risk-loading-model.md` | Markdown skeleton with the required fields Generated from `templates/fixed-price-risk-loading-model.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a fixed-price-risk-loading-model record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a fixed-price-risk-loading-model record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

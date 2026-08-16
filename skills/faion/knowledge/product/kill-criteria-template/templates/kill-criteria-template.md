@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # Kill Criteria Template — <artefact_id>
 
-- **bet_name** (string): <named bet / product>
+- **bet_name** (string): <named_bet_product>
 - **launch_date** (date): <ISO date of launch event>
 - **primary_metric** (string): <single metric (MRR | MAU | signups | joy_score)>
 - **primary_metric_threshold** (number): <numeric floor — below this triggers kill>
 - **baseline_snapshot** (object): <current value of primary metric at write time>
 - **review_dates** (array): <calendared review dates (≥1)>
-- **owner** (string): <named human owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_human_owner>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

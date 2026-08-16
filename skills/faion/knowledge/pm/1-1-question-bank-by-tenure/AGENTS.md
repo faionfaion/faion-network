@@ -59,7 +59,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/1-1-question-bank-by-tenure.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/1-1-question-bank-by-tenure.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/1-1-question-bank-by-tenure.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/1-1-question-bank-by-tenure.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/1-1-question-bank-by-tenure.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

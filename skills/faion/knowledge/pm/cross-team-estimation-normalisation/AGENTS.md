@@ -59,8 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cross-team-estimation-normalisation.md` | Markdown program report skeleton |
-| `templates/non-comparability-caveat.md` | Reusable explainer for the steering committee |
+| `templates/cross-team-estimation-normalisation.md.j2` | Markdown program report skeleton |
+| `templates/cross-team-estimation-normalisation.md` | Markdown program report skeleton Generated from `templates/cross-team-estimation-normalisation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/non-comparability-caveat.md.j2` | Reusable explainer for the steering committee |
+| `templates/non-comparability-caveat.md` | Reusable explainer for the steering committee Generated from `templates/non-comparability-caveat.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

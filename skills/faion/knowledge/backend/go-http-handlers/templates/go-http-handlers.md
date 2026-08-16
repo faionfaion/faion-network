@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Go HTTP Handlers (Gin / Echo / Chi / stdlib) — <artefact_id>
 
-- **artefact_id**: gohh-<kebab-case-slug>
+- **artefact_id**: gohh-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

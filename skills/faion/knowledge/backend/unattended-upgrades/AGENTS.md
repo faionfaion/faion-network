@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/unattended-upgrades.json` | UpgradePlan JSON skeleton. |
-| `templates/unattended-upgrades.md` | Human-readable audit trail. |
+| `templates/unattended-upgrades.md.j2` | Human-readable audit trail. |
+| `templates/unattended-upgrades.md` | Human-readable audit trail. Generated from `templates/unattended-upgrades.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/50unattended-upgrades.conf` | Reference /etc/apt/apt.conf.d/50unattended-upgrades. |
 | `templates/20auto-upgrades.conf` | Reference /etc/apt/apt.conf.d/20auto-upgrades (enables timer). |
 | `templates/apt-daily-timer-override.conf` | Override apt-daily.timer window. |

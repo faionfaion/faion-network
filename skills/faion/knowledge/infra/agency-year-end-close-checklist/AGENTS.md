@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/checklist.md` | Year-end close checklist skeleton with anchored items |
+| `templates/checklist.md.j2` | Year-end close checklist skeleton with anchored items |
+| `templates/checklist.md` | Year-end close checklist skeleton with anchored items Generated from `templates/checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/checklist.json` | JSON schema for the year-end close artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

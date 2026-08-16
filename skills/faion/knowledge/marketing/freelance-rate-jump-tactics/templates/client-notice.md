@@ -8,7 +8,7 @@ Subject: Rate update for `<CLIENT>` starting `<EXISTING_CLIENTS_AT>`
 
 Hi `<NAME>`,
 
-A quick heads-up. From `<EXISTING_CLIENTS_AT>` my rate for new work under our agreement moves from `$<CURRENT>` to `$<TARGET>` per `<unit>`. The change reflects three case studies in the `<NICHE>` niche, including <case study references>.
+A quick heads-up. From `<EXISTING_CLIENTS_AT>` my rate for new work under our agreement moves from `$<CURRENT>` to `$<TARGET>` per `<unit>`. The change reflects three case studies in the `<NICHE>` niche, including <case_study_references>.
 
 Any work currently in progress will be billed at the existing rate until completion — no retroactive change. New requests after `<EXISTING_CLIENTS_AT>` will use the updated rate.
 

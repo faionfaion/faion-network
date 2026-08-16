@@ -3,22 +3,22 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Quick Market Check: [Idea]
+# Quick Market Check: <idea>
 
 ## TAM (Rough, ~5 min)
 Industry: [X]
-Google search: "[industry] market size [year]"
-Result: $X (Source: [URL], accessed [date])
+Google search: "<industry> market size <year>"
+Result: $X (Source: <url>, accessed <date>)
 
 ## SAM (Segment, ~5 min)
 My segment: [X — describe geography + industry + company size]
 Estimate: X% of TAM = $X
-Assumption: [why X%]
+Assumption: <why_x>
 
 ## SOM (Reality check, ~5 min)
 Year 1 target: X customers x $X/year = $X ARR
 Year 3 target: X customers x $X/year = $X ARR
-Customer count source: [LinkedIn search / Census data / estimate]
+Customer count source: <customer_count_source>
 
 ## Verdict
 - [ ] Big enough (SOM year 3 > $1M ARR) → proceed to full sizing
@@ -26,6 +26,6 @@ Customer count source: [LinkedIn search / Census data / estimate]
 - [ ] Need more research → specific unknown: [what is missing]
 
 ## Confidence
-- TAM source age: [X months] — [OK / STALE]
-- Bottom-up customer count: [sourced / estimated]
+- TAM source age: <x_months> — <ok_stale>
+- Bottom-up customer count: <sourced_estimated>
 - Overall: High / Medium / Low

@@ -39,10 +39,10 @@ cost_ceiling: "$<2x-daily-prod>"
 
 ## Judge calibration
 
-- Last recalibration: <ISO date>
+- Last recalibration: <iso_date>
 - Agreement vs human labels: <%>
 
 ## Decisions / Actions / Next review
 
-- <decision 1>
-- Next review: <ISO date>
+- <decision_1>
+- Next review: <next_review_date>

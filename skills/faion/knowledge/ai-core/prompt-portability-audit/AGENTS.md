@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/portability-audit-report.md` | Narrative review draft. |
+| `templates/portability-audit-report.md.j2` | Narrative review draft. |
+| `templates/portability-audit-report.md` | Narrative review draft. Generated from `templates/portability-audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

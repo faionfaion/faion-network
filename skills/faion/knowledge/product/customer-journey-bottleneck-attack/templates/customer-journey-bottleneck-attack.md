@@ -8,8 +8,8 @@
 
 | Field | Value |
 |---|---|
-| artefact_id | <kebab-case slug> |
-| owner | <name @handle> |
+| artefact_id | <artefact_slug> |
+| owner | <name_handle> |
 | version | 1.0.0 |
 | last_reviewed | 2026-05-23 |
 
@@ -28,4 +28,4 @@
 
 ## Open questions
 
-- <question pending review>
+- <question_pending_review>

@@ -61,9 +61,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/curriculum-spec.md` | 6-month curriculum skeleton with month-by-month milestones |
-| `templates/mentor-pairing-doc.md` | Per-mentor pairing doc with focus area + cadence |
-| `templates/_smoke-test.md` | Filled-in curriculum for a Staff → Architect candidate |
+| `templates/curriculum-spec.md.j2` | 6-month curriculum skeleton with month-by-month milestones |
+| `templates/curriculum-spec.md` | 6-month curriculum skeleton with month-by-month milestones Generated from `templates/curriculum-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/mentor-pairing-doc.md.j2` | Per-mentor pairing doc with focus area + cadence |
+| `templates/mentor-pairing-doc.md` | Per-mentor pairing doc with focus area + cadence Generated from `templates/mentor-pairing-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in curriculum for a Staff → Architect candidate |
+| `templates/_smoke-test.md` | Filled-in curriculum for a Staff → Architect candidate Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

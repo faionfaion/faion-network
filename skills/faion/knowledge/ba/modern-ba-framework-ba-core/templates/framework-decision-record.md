@@ -12,4 +12,4 @@
 rigour=<1-10>, speed=<1-10>, regulation=<1-10>
 
 ## Rationale (≥80 chars)
-<context + reason>
+<context_reason>

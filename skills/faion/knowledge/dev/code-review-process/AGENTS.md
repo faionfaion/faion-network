@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/pr-checks.yml` | GitHub Actions workflow that enforces PR checks |
-| `templates/pr-description.md` | PR description template |
+| `templates/pr-description.md.j2` | PR description template |
+| `templates/pr-description.md` | PR description template Generated from `templates/pr-description.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pr-size-guard.sh` | Shell guard that fails CI on oversize PRs |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

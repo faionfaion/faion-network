@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dor-checklist.md` | Seven-item DoR checklist + sprint-level ready-set snapshot. |
+| `templates/dor-checklist.md.j2` | Seven-item DoR checklist + sprint-level ready-set snapshot. |
+| `templates/dor-checklist.md` | Seven-item DoR checklist + sprint-level ready-set snapshot. Generated from `templates/dor-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/secrets-management.json` | SecretsPlan JSON skeleton (inventory + consumers + rotation). |
-| `templates/secrets-management.md` | Human-readable audit trail. |
+| `templates/secrets-management.md.j2` | Human-readable audit trail. |
+| `templates/secrets-management.md` | Human-readable audit trail. Generated from `templates/secrets-management.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/env.tpl` | Reference .env template with op:// references. |
 | `templates/env.example` | Committed example file with placeholders only. |
 | `templates/gitignore-secrets` | Drop-in .gitignore block for env + secrets files. |

@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-sprint-planning-agent.md` | Markdown skeleton for the plan review |
+| `templates/ai-sprint-planning-agent.md.j2` | Markdown skeleton for the plan review |
+| `templates/ai-sprint-planning-agent.md` | Markdown skeleton for the plan review Generated from `templates/ai-sprint-planning-agent.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

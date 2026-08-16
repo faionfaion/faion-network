@@ -63,10 +63,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/onboarding-checklist.md` | 12-step master checklist filled per model |
-| `templates/phase-gate-memo.md` | Per-phase go/no-go decision memo template |
-| `templates/cost-comparison.md` | Per-task cost + accuracy delta vs incumbent |
-| `templates/rollback-plan.md` | Per-model rollback procedure with named approver |
+| `templates/onboarding-checklist.md.j2` | 12-step master checklist filled per model |
+| `templates/onboarding-checklist.md` | 12-step master checklist filled per model Generated from `templates/onboarding-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/phase-gate-memo.md.j2` | Per-phase go/no-go decision memo template |
+| `templates/phase-gate-memo.md` | Per-phase go/no-go decision memo template Generated from `templates/phase-gate-memo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/cost-comparison.md.j2` | Per-task cost + accuracy delta vs incumbent |
+| `templates/cost-comparison.md` | Per-task cost + accuracy delta vs incumbent Generated from `templates/cost-comparison.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rollback-plan.md.j2` | Per-model rollback procedure with named approver |
+| `templates/rollback-plan.md` | Per-model rollback procedure with named approver Generated from `templates/rollback-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

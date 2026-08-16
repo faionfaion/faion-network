@@ -61,10 +61,13 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/api-spec.md` | Audit-grade API spec skeleton with contract + auth + pagination + error sections |
+| `templates/api-spec.md.j2` | Audit-grade API spec skeleton with contract + auth + pagination + error sections |
+| `templates/api-spec.md` | Audit-grade API spec skeleton with contract + auth + pagination + error sections Generated from `templates/api-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/openapi.yaml` | OpenAPI 3 skeleton matching the spec |
-| `templates/deprecation-policy.md` | Deprecation policy template |
-| `templates/_smoke-test.md` | Filled-in spec for a payments-create endpoint |
+| `templates/deprecation-policy.md.j2` | Deprecation policy template |
+| `templates/deprecation-policy.md` | Deprecation policy template Generated from `templates/deprecation-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in spec for a payments-create endpoint |
+| `templates/_smoke-test.md` | Filled-in spec for a payments-create endpoint Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

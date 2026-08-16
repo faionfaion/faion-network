@@ -69,8 +69,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/data-driven-req.md` | BR/SR record with business question + baseline + target + instrumentation + post-launch window. |
-| `templates/instrumentation-plan.md` | Event + property + dashboard plan tied to the success target. |
+| `templates/data-driven-req.md.j2` | BR/SR record with business question + baseline + target + instrumentation + post-launch window. |
+| `templates/data-driven-req.md` | BR/SR record with business question + baseline + target + instrumentation + post-launch window. Generated from `templates/data-driven-req.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/instrumentation-plan.md.j2` | Event + property + dashboard plan tied to the success target. |
+| `templates/instrumentation-plan.md` | Event + property + dashboard plan tied to the success target. Generated from `templates/instrumentation-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in record. |
 | `templates/_smoke-test.md` | Minimum viable filled-in record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

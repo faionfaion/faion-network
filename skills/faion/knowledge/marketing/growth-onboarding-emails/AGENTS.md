@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-onboarding-emails.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-onboarding-emails.md.j2` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-onboarding-emails.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/growth-onboarding-emails.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-onboarding-emails.json` | onboarding-sequence JSON skeleton validating against scripts/. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

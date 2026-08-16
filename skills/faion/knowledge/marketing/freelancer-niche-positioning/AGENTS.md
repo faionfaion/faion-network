@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/positioning-spec.json` | JSON example of positioning spec |
-| `templates/validation-log.md` | Markdown skeleton for the 3-signal validation log |
+| `templates/validation-log.md.j2` | Markdown skeleton for the 3-signal validation log |
+| `templates/validation-log.md` | Markdown skeleton for the 3-signal validation log Generated from `templates/validation-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

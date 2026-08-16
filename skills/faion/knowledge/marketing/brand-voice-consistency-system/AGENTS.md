@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/brand-voice-consistency-system.json` | VoiceDoc + ChannelChecklist JSON skeleton. |
-| `templates/brand-voice-consistency-system.md` | One-page voice doc + adaptation table. |
+| `templates/brand-voice-consistency-system.md.j2` | One-page voice doc + adaptation table. |
+| `templates/brand-voice-consistency-system.md` | One-page voice doc + adaptation table. Generated from `templates/brand-voice-consistency-system.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

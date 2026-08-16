@@ -9,12 +9,12 @@
 Fill the following fields per instance. Remove placeholders; do not leave brackets.
 
 - artefact_id: <slug-or-uuid>
-- owner: <single-named-handle>
+- owner: <owner_handle>
 - inputs_used: [<source-path-or-url>, ...]
 - decision: <the-answer>
 - rationale: <>=2 sentences, cites at least one input by name>
 - version: 1.0.0
-- last_reviewed: <ISO-date>
+- last_reviewed: <last_reviewed_date>
 
 ## Body
 

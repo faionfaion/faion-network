@@ -6,15 +6,15 @@ depends-on: content/02-output-contract.xml schema
 token-budget-impact: ~400 tokens when filled
 -->
 
-# STAR Interview Scorecard: [Candidate Name] — [Role]
+# STAR Interview Scorecard: <candidate_name> — <role>
 
-**Interviewer:** [Name]
-**Date:** [YYYY-MM-DD]
+**Interviewer:** <name>
+**Date:** <date>
 **Competencies covered:** [list from role's competency model]
 
 ---
 
-## Question 1: [Behavioral question text]
+## Question 1: <behavioral_question_text>
 
 **Competency:** [e.g., Ownership]
 
@@ -36,7 +36,7 @@ token-budget-impact: ~400 tokens when filled
 
 ---
 
-## Question 2: [Behavioral question text]
+## Question 2: <behavioral_question_text>
 
 **Competency:** [e.g., Problem-Solving]
 
@@ -51,7 +51,7 @@ token-budget-impact: ~400 tokens when filled
 
 ---
 
-## Question 3: [Behavioral question text]
+## Question 3: <behavioral_question_text>
 
 **Competency:** [e.g., Collaboration]
 

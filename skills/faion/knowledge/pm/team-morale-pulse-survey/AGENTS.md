@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pulse-survey.md` | The 4-question form (verbatim text) |
+| `templates/pulse-survey.md.j2` | The 4-question form (verbatim text) |
+| `templates/pulse-survey.md` | The 4-question form (verbatim text) Generated from `templates/pulse-survey.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/morale-pulse.json` | `MoralePulse` schema skeleton |
 | `templates/alert-event.json` | Alert event schema skeleton |
 | `templates/_smoke-test.json` | Minimum viable filled `MoralePulse` for validator |

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/service-blueprint.md` | Markdown skeleton: 5-swimlane table + moments-of-truth scoring section + backlog item slots. |
+| `templates/service-blueprint.md.j2` | Markdown skeleton: 5-swimlane table + moments-of-truth scoring section + backlog item slots. |
+| `templates/service-blueprint.md` | Markdown skeleton: 5-swimlane table + moments-of-truth scoring section + backlog item slots. Generated from `templates/service-blueprint.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/resource-plan.md` | Resource plan with summary table, calendar grid, skill matrix, resource risks |
-| `templates/resource-request.md` | Resource request form with role, skills, dates, justification, impact-if-not-filled |
+| `templates/resource-plan.md.j2` | Resource plan with summary table, calendar grid, skill matrix, resource risks |
+| `templates/resource-plan.md` | Resource plan with summary table, calendar grid, skill matrix, resource risks Generated from `templates/resource-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/resource-request.md.j2` | Resource request form with role, skills, dates, justification, impact-if-not-filled |
+| `templates/resource-request.md` | Resource request form with role, skills, dates, justification, impact-if-not-filled Generated from `templates/resource-request.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/capacity.yaml` | Per-person weekly capacity input schema for the planner script |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Skeleton voice-platform decision record |
+| `templates/decision-record.md.j2` | Skeleton voice-platform decision record |
+| `templates/decision-record.md` | Skeleton voice-platform decision record Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

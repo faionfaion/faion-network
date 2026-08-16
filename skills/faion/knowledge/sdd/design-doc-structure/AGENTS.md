@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-doc-structure.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-doc-structure.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-doc-structure.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/design-doc-structure.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

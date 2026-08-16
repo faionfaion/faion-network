@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Human-in-the-Loop UI — <artefact_id>
 
-- **artefact_id**: hui-<kebab-case-slug>
+- **artefact_id**: hui-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/TECH_DEBT_REGISTER.md` | Skeleton register the team commits to repo |
+| `templates/TECH_DEBT_REGISTER.md.j2` | Skeleton register the team commits to repo |
+| `templates/TECH_DEBT_REGISTER.md` | Skeleton register the team commits to repo Generated from `templates/TECH_DEBT_REGISTER.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scan-debt.sh` | Shell scan that surfaces candidates |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

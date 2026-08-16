@@ -7,8 +7,8 @@ token-budget-impact: ~500 tokens when filled.
 -->
 
 ---
-artefact_id: "<product-slug>-ai-metrics"
-owner: "ai-pm:<person>"
+artefact_id: "<product_slug>-ai-metrics"
+owner: "ai-pm:<owner_full_name>"
 version: "1.0.0"
 last_reviewed: "2026-05-22"
 inputs_used:
@@ -23,34 +23,34 @@ inputs_used:
 ## Deflection rate
 
 - Definition: percentage of sessions resolved by the AI without human escalation.
-- Source: <log table / dashboard URL>
+- Source: <source>
 - Baseline: <%>
 
 ## Intervention rate
 
 - Definition: percentage of sessions where a human had to step in.
-- Source: <log table>
+- Source: <log_table>
 - Baseline: <%>
 
 ## Hallucination rate
 
 - Definition: percentage of AI responses containing factually incorrect or unsupported claims (manual audit of N=100 sample).
-- Source: <audit-sample-link>
+- Source: <audit_sample_link>
 - Baseline: <%>
 
 ## Time-to-correction
 
 - Definition: median minutes between a wrong AI output and the corrected one (after user / human intervention).
-- Source: <log table>
+- Source: <log_table>
 - Baseline: <minutes>
 
 ## Retention on AI features
 
 - Definition: 28-day return rate of users who triggered the AI feature at least once.
-- Source: <retention dashboard>
+- Source: <retention_dashboard>
 - Baseline: <%>
 
 ## Decisions / Actions / Next review
 
-- <decision 1>
+- <decision_1>
 - Next review: <ISO date, ≤90 days>

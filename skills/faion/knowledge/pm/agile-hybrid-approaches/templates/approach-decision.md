@@ -15,7 +15,7 @@
 - domain_uncertainty_high:
 
 ## Recommendation
-- Mode: <predictive | agile | hybrid>
+- Mode: <predictive_agile_hybrid>
 - Named tilt (if hybrid): <text>
 
 ## Re-evaluation triggers

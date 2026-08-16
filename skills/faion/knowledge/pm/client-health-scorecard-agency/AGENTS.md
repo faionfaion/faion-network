@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-health-scorecard-agency.json` | JSON Schema (draft-07) for the Client Health Scorecard Agency output contract |
-| `templates/client-health-scorecard-agency.md` | Markdown skeleton with the required fields for the Client Health Scorecard Agency artefact |
+| `templates/client-health-scorecard-agency.md.j2` | Markdown skeleton with the required fields for the Client Health Scorecard Agency artefact |
+| `templates/client-health-scorecard-agency.md` | Markdown skeleton with the required fields for the Client Health Scorecard Agency artefact Generated from `templates/client-health-scorecard-agency.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/client-health-scorecard-agency.example.json` | Worked filled-in example of a valid Client Health Scorecard Agency artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

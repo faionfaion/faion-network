@@ -59,7 +59,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/team-charter-working-agreement.json` | JSON schema for the charter output contract. |
-| `templates/team-charter-working-agreement.md` | Markdown skeleton with the required fields. |
+| `templates/team-charter-working-agreement.md.j2` | Markdown skeleton with the required fields. |
+| `templates/team-charter-working-agreement.md` | Markdown skeleton with the required fields. Generated from `templates/team-charter-working-agreement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -8,17 +8,17 @@ token-budget-impact: ~250 tokens.
 
 # Engagement Pattern Memory — <artefact_id>
 
-- **engagement_id** (string): <client / repo identifier>
+- **engagement_id** (string): <client_repo_identifier>
 - **memory_file_path** (string): <path to memory.md>
 - **repo_conventions** (object): <linting / naming / commit format>
 - **reviewer_preferences** (object): <per-named-reviewer preferences>
 - **deploy_quirks** (array): <non-obvious deploy gotchas>
 - **recurring_traps** (array): <≥1 trap with detector + fix>
-- **glossary** (object): <client-specific terms>
-- **resolved_questions** (array): <questions + resolution dates>
-- **owner** (string): <named contractor>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **glossary** (object): <client_specific_terms>
+- **resolved_questions** (array): <questions_resolution_dates>
+- **owner** (string): <named_contractor>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

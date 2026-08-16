@@ -6,7 +6,7 @@
 
 # Register table: ID, description, category, P, I, score, strategy, response, owner, status
 
-**Date:** [ISO date] | **Owner:** [role]
+**Date:** <iso_date> | **Owner:** <owner_role>
 
 ## Summary
 
@@ -16,8 +16,8 @@
 
 | Metric | Value | Threshold | Status |
 |--------|-------|-----------|--------|
-| [name] | [n] | [t] | green / amber / red |
+| <name> | [n] | <t> | green / amber / red |
 
 ## Next Action
 
-- [owner] — [imperative sentence] — [date]
+- <next_action_owner> — <imperative_sentence> — <date>

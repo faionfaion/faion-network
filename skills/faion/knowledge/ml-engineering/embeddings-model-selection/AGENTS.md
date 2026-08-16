@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Embeddings model decision record skeleton |
+| `templates/decision-record.md.j2` | Embeddings model decision record skeleton |
+| `templates/decision-record.md` | Embeddings model decision record skeleton Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/axis-scoring.csv` | 3-axis scoring rubric template |
 | `templates/eval-script.py` | Embedding eval script (recall@k) |
 | `templates/matryoshka-truncate.py` | Matryoshka truncation helper |

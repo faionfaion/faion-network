@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/dod.yaml` | Machine-readable Definition of Done with must/should items and scope tags |
-| `templates/defect-report.md` | Defect report template with severity, steps, environment, root cause |
+| `templates/defect-report.md.j2` | Defect report template with severity, steps, environment, root cause |
+| `templates/defect-report.md` | Defect report template with severity, steps, environment, root cause Generated from `templates/defect-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/quality-checklist.md.j2` | Pre-ship quality checklist (code, testing, performance, security, accessibility) |
 | `templates/quality-checklist.md` | Pre-ship quality checklist (code, testing, performance, security, accessibility) Generated from `templates/quality-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

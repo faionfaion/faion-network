@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/hallucination-report.json` | Report skeleton |
-| `templates/worked-example.md` | End-to-end worked detection narrative |
+| `templates/worked-example.md.j2` | End-to-end worked detection narrative |
+| `templates/worked-example.md` | End-to-end worked detection narrative Generated from `templates/worked-example.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

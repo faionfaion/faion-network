@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | HandoverSessionRecord skeleton with task list + gap log + sign-off blocks |
+| `templates/skeleton.md.j2` | HandoverSessionRecord skeleton with task list + gap log + sign-off blocks |
+| `templates/skeleton.md` | HandoverSessionRecord skeleton with task list + gap log + sign-off blocks Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `HandoverSessionRecord` |
 

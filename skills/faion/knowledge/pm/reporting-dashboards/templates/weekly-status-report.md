@@ -26,7 +26,7 @@ token-budget-impact: ~200-600 tokens when loaded as context
 | Sprint Velocity | {X} pts | {Y} pts | → |
 | Bug Count (open) | &lt;5 | {N} | ↓ |
 | Cycle Time | {X} days | {Y} days | ↓ |
-| Completion Rate | 85% | {N}% | → |
+| Completion Rate | 85% | <completion_rate>% | → |
 
 ## Risks and Issues
 | # | Description | Impact | Mitigation | Status |

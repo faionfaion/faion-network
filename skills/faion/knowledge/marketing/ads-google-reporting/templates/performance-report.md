@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-# Google Ads Performance Report: [Date Range]
+# Google Ads Performance Report: <date_range>
 
 ## Summary
 
@@ -19,7 +19,7 @@
 
 | Campaign | Spend | Conv | CPA | IS | QS Avg | Status |
 |----------|-------|------|-----|----|-------|--------|
-| [name] | $X | X | $X | X% | X | ok/alert |
+| <name> | $X | X | $X | X% | X | ok/alert |
 
 ## Segments
 
@@ -31,7 +31,7 @@
 ## Search Terms
 
 - High-cost non-converting: N
-- Negatives added: [list]
+- Negatives added: <list>
 
 ## Actions
 

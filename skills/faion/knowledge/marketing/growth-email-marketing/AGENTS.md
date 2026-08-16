@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-email-marketing.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-email-marketing.md.j2` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-email-marketing.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/growth-email-marketing.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-email-marketing.json` | email-program JSON skeleton validating against scripts/. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

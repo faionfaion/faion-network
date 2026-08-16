@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/story-map.md` | Markdown skeleton with journey + slices + stories. |
+| `templates/story-map.md.j2` | Markdown skeleton with journey + slices + stories. |
+| `templates/story-map.md` | Markdown skeleton with journey + slices + stories. Generated from `templates/story-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/story-row.csv` | Header for individual story rows. |
 | `templates/_smoke-test.md.j2` | Minimum viable story map. |
 | `templates/_smoke-test.md` | Minimum viable story map. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

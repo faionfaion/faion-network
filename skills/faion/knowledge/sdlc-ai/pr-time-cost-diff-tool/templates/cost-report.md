@@ -15,5 +15,5 @@ token-budget-impact: low — ~150 tokens when loaded as context
 | $/req | <base_cents>¢ | <head_cents>¢ | <delta_cents>¢ (<delta_pct>%) |
 | eval pass-rate | <base_pct>% | <head_pct>% | <delta_pp>pp |
 
-Verdict: **<pass|fail|warn>** — <reason or "within budget">.
+Verdict: **<pass_fail_warn>** — <reason or "within budget">.
 Eval set hash: `<eval_set_hash>` · Cost table: `<cost_table_version>`.

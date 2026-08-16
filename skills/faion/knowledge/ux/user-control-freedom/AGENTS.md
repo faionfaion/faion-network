@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/control-audit.md` | Control audit report skeleton. |
+| `templates/control-audit.md.j2` | Control audit report skeleton. |
+| `templates/control-audit.md` | Control audit report skeleton. Generated from `templates/control-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/verify-escape-exits.spec.js` | Playwright spec verifying Escape + outside-click + back-button. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

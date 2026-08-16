@@ -68,7 +68,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/change-strategy-spec.md` | Markdown skeleton with options + transitions + readiness + recommendation. |
+| `templates/change-strategy-spec.md.j2` | Markdown skeleton with options + transitions + readiness + recommendation. |
+| `templates/change-strategy-spec.md` | Markdown skeleton with options + transitions + readiness + recommendation. Generated from `templates/change-strategy-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/option-trade-off.csv` | Header for option × dimension scoring matrix. |
 | `templates/_smoke-test.md.j2` | Minimum viable change strategy. |
 | `templates/_smoke-test.md` | Minimum viable change strategy. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

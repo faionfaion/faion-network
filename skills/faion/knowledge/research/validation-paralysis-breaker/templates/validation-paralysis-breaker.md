@@ -10,13 +10,13 @@ token-budget-impact: ~250 tokens.
 
 - **hypothesis** (string): <one-line statement>
 - **falsification_trigger** (string): <observable that would falsify>
-- **budget_start** (datetime): <ISO datetime>
-- **budget_end** (datetime): <budget_start + 72h>
+- **budget_start** (datetime): <iso_datetime>
+- **budget_end** (datetime): <budget_start_72h>
 - **verdict** (string): <ship | park | extend-once>
 - **named_risk** (string): <the risk being taken or carried>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

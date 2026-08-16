@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/checklist.json` | JSON instance with per-item pass/fail |
-| `templates/checklist.md` | Markdown checklist matching the rule set |
+| `templates/checklist.md.j2` | Markdown checklist matching the rule set |
+| `templates/checklist.md` | Markdown checklist matching the rule set Generated from `templates/checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

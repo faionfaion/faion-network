@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/tool-trust-boundary-model.json` | JSON Schema for the Tool Trust Boundary Model output contract |
-| `templates/tool-trust-boundary-model.md` | Markdown skeleton with the required fields |
+| `templates/tool-trust-boundary-model.md.j2` | Markdown skeleton with the required fields |
+| `templates/tool-trust-boundary-model.md` | Markdown skeleton with the required fields Generated from `templates/tool-trust-boundary-model.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a tool-trust-boundary-model record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a tool-trust-boundary-model record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

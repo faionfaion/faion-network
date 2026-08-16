@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~100 tokens when loaded -->
 
-# Commitments from [Conversation Topic] — [Date]
+# Commitments from <conversation_topic> — <date>
 
 | Who | What | By When | Follow-up |
 |-----|------|---------|-----------|

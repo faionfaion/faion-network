@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/queries.yaml` | Priority + watch query lists |
-| `templates/action-ladder.md` | Documented action mapping for each finding type |
+| `templates/action-ladder.md.j2` | Documented action mapping for each finding type |
+| `templates/action-ladder.md` | Documented action mapping for each finding type Generated from `templates/action-ladder.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

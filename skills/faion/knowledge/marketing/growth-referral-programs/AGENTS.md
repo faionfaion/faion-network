@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-referral-programs.spec.md` | Markdown spec skeleton with 5-line header |
+| `templates/growth-referral-programs.spec.md.j2` | Markdown spec skeleton with 5-line header |
+| `templates/growth-referral-programs.spec.md` | Markdown spec skeleton with 5-line header Generated from `templates/growth-referral-programs.spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-referral-programs.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

@@ -70,9 +70,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/data-dictionary.md` | One row per data element: name, type, source, owner, quality, scope. |
-| `templates/data-quality-assessment.md` | Six-dimension scoreboard with thresholds. |
-| `templates/data-requirements.md` | BR-linked data requirements: source, transformation, target. |
+| `templates/data-dictionary.md.j2` | One row per data element: name, type, source, owner, quality, scope. |
+| `templates/data-dictionary.md` | One row per data element: name, type, source, owner, quality, scope. Generated from `templates/data-dictionary.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/data-quality-assessment.md.j2` | Six-dimension scoreboard with thresholds. |
+| `templates/data-quality-assessment.md` | Six-dimension scoreboard with thresholds. Generated from `templates/data-quality-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/data-requirements.md.j2` | BR-linked data requirements: source, transformation, target. |
+| `templates/data-requirements.md` | BR-linked data requirements: source, transformation, target. Generated from `templates/data-requirements.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable data dictionary. |
 | `templates/_smoke-test.md` | Minimum viable data dictionary. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

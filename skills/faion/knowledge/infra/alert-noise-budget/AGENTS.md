@@ -70,7 +70,8 @@
 |------|---------|
 | `templates/noise-budget.json` | Per-service budget config |
 | `templates/alert-ack-record.json` | Per-event acknowledgement record |
-| `templates/tuning-action-record.md` | Tuning decision log skeleton |
+| `templates/tuning-action-record.md.j2` | Tuning decision log skeleton |
+| `templates/tuning-action-record.md` | Tuning decision log skeleton Generated from `templates/tuning-action-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

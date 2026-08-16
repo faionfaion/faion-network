@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # HTTP Caching Headers (Cache-Control, ETag, Vary, CDN) — <artefact_id>
 
-- **artefact_id**: hch-<kebab-case-slug>
+- **artefact_id**: hch-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

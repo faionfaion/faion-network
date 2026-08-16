@@ -13,7 +13,7 @@
 - Dialog completion target: >=<X>%
 
 ## Fixtures
-- Utterance corpus: real anonymised logs, n=<N>
+- Utterance corpus: real anonymised logs, n=<utterance_corpus>
 - Ambient noise stems: cafe, traffic, tv
 - Locales: <list>
 
@@ -23,4 +23,4 @@
 - Field-replay (release, real-device farm)
 
 ## ASR version pin
-<provider/model/version>
+<provider_model_version>

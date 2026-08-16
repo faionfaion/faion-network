@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/gateway-selection-adr.md` | ADR template: pattern + product + rationale + alternatives. |
+| `templates/gateway-selection-adr.md.j2` | ADR template: pattern + product + rationale + alternatives. |
+| `templates/gateway-selection-adr.md` | ADR template: pattern + product + rationale + alternatives. Generated from `templates/gateway-selection-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/gateway-config.json` | `gateway_config` skeleton — operational half of the artefact (r6-r13). |
 | `templates/kong-route.yml` | Kong declarative route, deck-sync compatible, consumer-scoped rate limit. |
 | `templates/nginx-gateway.conf` | nginx gateway config keyed on consumer identity, not source IP. |

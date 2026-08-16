@@ -40,7 +40,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/index-budget-record.yaml` | Fill-in record; ships valid against the contract. |
-| `templates/index-entry-format.md` | The entry shape, with a before/after showing what a discriminator removes. |
+| `templates/index-entry-format.md.j2` | The entry shape, with a before/after showing what a discriminator removes. |
+| `templates/index-entry-format.md` | The entry shape, with a before/after showing what a discriminator removes. Generated from `templates/index-entry-format.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

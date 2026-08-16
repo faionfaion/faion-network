@@ -26,9 +26,9 @@
 
 ## Options considered
 
-- fixed: <kept / rejected with reason>
-- hourly: <kept / rejected with reason>
-- hybrid: <kept / rejected with reason>
+- fixed: <fixed>
+- hourly: <hourly>
+- hybrid: <hybrid>
 
 ## Chosen
 
@@ -37,8 +37,8 @@
 ## Kill criteria (per option)
 
 - `fixed`: <numeric threshold to reopen>
-- `hourly`: <numeric threshold>
-- `hybrid`: <numeric threshold>
+- `hourly`: <numeric_threshold>
+- `hybrid`: <numeric_threshold>
 
 ## Reversal trigger
 

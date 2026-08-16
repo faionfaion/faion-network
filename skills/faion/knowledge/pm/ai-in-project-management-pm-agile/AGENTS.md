@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Framework adoption checklist: AI-decision log template + PMBOK 8 mapping table + DORA baseline columns + audit-trail block. |
+| `templates/skeleton.md.j2` | Framework adoption checklist: AI-decision log template + PMBOK 8 mapping table + DORA baseline columns + audit-trail block. |
+| `templates/skeleton.md` | Framework adoption checklist: AI-decision log template + PMBOK 8 mapping table + DORA baseline columns + audit-trail block. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

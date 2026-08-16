@@ -12,7 +12,7 @@
 
 ## Linked issue
 
-Closes #<issue-number> if exists, otherwise link to public issue or repro.
+Closes #<issue_number> if exists, otherwise link to public issue or repro.
 
 ## Test plan
 
@@ -22,7 +22,7 @@ Closes #<issue-number> if exists, otherwise link to public issue or repro.
 
 ## Context for maintainers
 
-We hit this while building <Faion project>. Our internal FixDecision evaluated the change as ≥ UPSTREAM-PR (strategic_dependency=3); we run a fork-pin in parallel and will drop it as soon as this PR merges.
+We hit this while building <faion_project>. Our internal FixDecision evaluated the change as ≥ UPSTREAM-PR (strategic_dependency=3); we run a fork-pin in parallel and will drop it as soon as this PR merges.
 
 ## Faion FixDecision link
 

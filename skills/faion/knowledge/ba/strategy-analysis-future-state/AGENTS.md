@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/future-state-spec.md` | Markdown skeleton with all to-be sections. |
+| `templates/future-state-spec.md.j2` | Markdown skeleton with all to-be sections. |
+| `templates/future-state-spec.md` | Markdown skeleton with all to-be sections. Generated from `templates/future-state-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/outcome-traceback.csv` | Outcome → business-need metric mapping table. |
 | `templates/_smoke-test.md.j2` | Minimum viable future-state spec. |
 | `templates/_smoke-test.md` | Minimum viable future-state spec. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

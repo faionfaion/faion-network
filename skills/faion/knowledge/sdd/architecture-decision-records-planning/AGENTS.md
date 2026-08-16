@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/architecture-decision-records.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/architecture-decision-records.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/architecture-decision-records.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/architecture-decision-records.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

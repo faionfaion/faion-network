@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Fixed-Price vs T&M Change-Request Pricing Playbook — <artefact_id>
 
-- **artefact_id**: fpcr-<kebab-case-slug>
+- **artefact_id**: fpcr-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

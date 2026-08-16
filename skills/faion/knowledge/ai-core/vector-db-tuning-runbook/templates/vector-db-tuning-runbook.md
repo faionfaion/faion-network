@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Vector DB Tuning Runbook — <artefact_id>
 
-- **artefact_id**: vdbt-<kebab-case-slug>
+- **artefact_id**: vdbt-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

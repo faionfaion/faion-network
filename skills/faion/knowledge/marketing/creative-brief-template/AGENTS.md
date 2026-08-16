@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/creative-brief.md` | Markdown skeleton with every required field labelled |
+| `templates/creative-brief.md.j2` | Markdown skeleton with every required field labelled |
+| `templates/creative-brief.md` | Markdown skeleton with every required field labelled Generated from `templates/creative-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/creative-brief.json` | JSON example matching the output contract |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

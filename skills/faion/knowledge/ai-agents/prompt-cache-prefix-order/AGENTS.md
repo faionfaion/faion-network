@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/prompt-cache-prefix-order-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/prompt-cache-prefix-order-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/prompt-cache-prefix-order-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/prompt-cache-prefix-order-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

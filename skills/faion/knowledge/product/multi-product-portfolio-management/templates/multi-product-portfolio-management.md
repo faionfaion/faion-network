@@ -8,13 +8,13 @@ token-budget-impact: ~250 tokens.
 
 # Multi Product Portfolio Management — <artefact_id>
 
-- **operator** (string): <named portfolio owner>
+- **operator** (string): <named_portfolio_owner>
 - **products** (array): <≥3 product objects (name, mode, mrr, traffic, time_budget_hours, capital_allocation_usd)>
-- **cross_product_kill_rule** (string): <explicit rule string>
-- **quarterly_review_at** (string): <ISO datetime>
-- **total_weekly_time_cap** (number): <hours ≤40>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **cross_product_kill_rule** (string): <explicit_rule_string>
+- **quarterly_review_at** (string): <iso_datetime>
+- **total_weekly_time_cap** (number): <hours_40>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

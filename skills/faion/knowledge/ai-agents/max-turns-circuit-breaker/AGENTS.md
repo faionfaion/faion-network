@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/circuit-breaker-spec.md` | Output. |
+| `templates/circuit-breaker-spec.md.j2` | Output. |
+| `templates/circuit-breaker-spec.md` | Output. Generated from `templates/circuit-breaker-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/breaker.py` | Working max_turns + catch. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

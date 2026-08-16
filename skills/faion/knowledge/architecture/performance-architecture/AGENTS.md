@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/performance-spec.md` | Performance spec skeleton with SLO targets + headroom + cache topology + load-test gate. |
+| `templates/performance-spec.md.j2` | Performance spec skeleton with SLO targets + headroom + cache topology + load-test gate. |
+| `templates/performance-spec.md` | Performance spec skeleton with SLO targets + headroom + cache topology + load-test gate. Generated from `templates/performance-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/k6-baseline.js` | k6 baseline script with SLO-derived thresholds. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/spatial-ux-fundamentals.json` | JSON skeleton conforming to the output-contract schema. |
-| `templates/spatial-ux-fundamentals.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spatial-ux-fundamentals.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spatial-ux-fundamentals.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/spatial-ux-fundamentals.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Change Request <CR-ID>
+# Change Request <cr_id>
 
-**req_id:** <REQ-ID>  |  **classification:** scope | clarification | defect
+**req_id:** <req_id>  |  **classification:** scope | clarification | defect
 
 ## Description
 <What is changing.>

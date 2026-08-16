@@ -9,12 +9,12 @@ token-budget-impact: ~250 tokens.
 # Portfolio Triage Indie — <artefact_id>
 
 - **iteration_id** (string): <yyyy-ww or yyyy-mm identifier>
-- **operator** (string): <named owner>
+- **operator** (string): <named_owner>
 - **rows** (array): <per-product rows (name, mode, mrr, traffic, verdict, evidence_link, next_action)>
 - **outcome_review** (string): <reference to prior iteration's actions>
-- **knowledge_space_url** (string): <where report lives>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **knowledge_space_url** (string): <where_report_lives>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

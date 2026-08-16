@@ -8,7 +8,7 @@
 
 **Subject:** You asked, we built: [Feature]
 
-Hi [Name],
+Hi <name>,
 
 A few months ago, you mentioned: "[original verbatim quote from feedback log]"
 
@@ -16,9 +16,9 @@ I'm excited to let you know that [feature] is now live.
 
 [One sentence: what it does and how it addresses the original request.]
 
-You can try it by [specific instructions].
+You can try it by <specific_instructions>.
 
-Thanks for helping us improve [Product]. Keep the feedback coming.
+Thanks for helping us improve <product>. Keep the feedback coming.
 
 [Your name]
 
@@ -28,13 +28,13 @@ Thanks for helping us improve [Product]. Keep the feedback coming.
 
 **Subject:** RE: Your request for [Feature]
 
-Hi [Name],
+Hi <name>,
 
 Thanks for sharing your idea about [feature]. We genuinely appreciate it.
 
-After careful consideration, we have decided not to pursue this right now because [honest reason — e.g., "it would require rebuilding our data model and would delay [higher-priority item] by a full quarter"].
+After careful consideration, we have decided not to pursue this right now because [honest reason — e.g., "it would require rebuilding our data model and would delay <higher_priority_item> by a full quarter"].
 
-We are focusing on [what we are doing instead], which should help with [related benefit].
+We are focusing on [what we are doing instead], which should help with <related_benefit>.
 
 Your feedback is in our register. We will revisit this decision at [specific future date or review cycle].
 
@@ -44,13 +44,13 @@ Your feedback is in our register. We will revisit this decision at [specific fut
 
 ## Feedback Response: More Info Needed
 
-Hi [Name],
+Hi <name>,
 
-Thanks for the feedback on [topic].
+Thanks for the feedback on <topic>.
 
 To understand your needs better and prioritize appropriately, could you tell us:
-- [Specific question 1]
-- [Specific question 2]
+- <specific_question_1>
+- <specific_question_2>
 
 This will help us scope the right solution. Even a short answer helps.
 

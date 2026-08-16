@@ -70,10 +70,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/observation-log.md` | Per-shift observation capture with closed taxonomy tags. |
-| `templates/listening-session-guide.md` | 60-minute structured guide with non-leading prompts. |
-| `templates/validation-matrix.md` | Per-variant coverage table (operator × method × completed). |
-| `templates/access-agreement.md` | Manager / HR sign-off template. |
+| `templates/observation-log.md.j2` | Per-shift observation capture with closed taxonomy tags. |
+| `templates/observation-log.md` | Per-shift observation capture with closed taxonomy tags. Generated from `templates/observation-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/listening-session-guide.md.j2` | 60-minute structured guide with non-leading prompts. |
+| `templates/listening-session-guide.md` | 60-minute structured guide with non-leading prompts. Generated from `templates/listening-session-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/validation-matrix.md.j2` | Per-variant coverage table (operator × method × completed). |
+| `templates/validation-matrix.md` | Per-variant coverage table (operator × method × completed). Generated from `templates/validation-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/access-agreement.md.j2` | Manager / HR sign-off template. |
+| `templates/access-agreement.md` | Manager / HR sign-off template. Generated from `templates/access-agreement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in report. |
 | `templates/_smoke-test.md` | Minimum viable filled-in report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

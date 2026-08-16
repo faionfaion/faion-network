@@ -62,10 +62,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/unit-economics-report.md` | Per-product COGS + margin + pricing recommendation. |
+| `templates/unit-economics-report.md.j2` | Per-product COGS + margin + pricing recommendation. |
+| `templates/unit-economics-report.md` | Per-product COGS + margin + pricing recommendation. Generated from `templates/unit-economics-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pricing-tier-table.md.j2` | Public pricing page tier definitions. |
 | `templates/pricing-tier-table.md` | Public pricing page tier definitions. Generated from `templates/pricing-tier-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/cap-policy.md` | Fair-use cap definition + customer-facing language. |
+| `templates/cap-policy.md.j2` | Fair-use cap definition + customer-facing language. |
+| `templates/cap-policy.md` | Fair-use cap definition + customer-facing language. Generated from `templates/cap-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

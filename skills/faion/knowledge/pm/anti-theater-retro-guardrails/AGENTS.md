@@ -58,8 +58,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-theater-retro-guardrails.md` | Markdown retro skeleton with required sections |
-| `templates/_smoke-test.md` | Minimum-viable filled retro |
+| `templates/anti-theater-retro-guardrails.md.j2` | Markdown retro skeleton with required sections |
+| `templates/anti-theater-retro-guardrails.md` | Markdown retro skeleton with required sections Generated from `templates/anti-theater-retro-guardrails.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled retro |
+| `templates/_smoke-test.md` | Minimum-viable filled retro Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

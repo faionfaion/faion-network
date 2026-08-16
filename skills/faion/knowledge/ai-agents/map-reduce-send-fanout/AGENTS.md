@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/fanout-profile.yaml` | Input. |
-| `templates/fanout-spec.md` | Output. |
+| `templates/fanout-spec.md.j2` | Output. |
+| `templates/fanout-spec.md` | Output. Generated from `templates/fanout-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/fanout.py` | Working Send / gather wrapper. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

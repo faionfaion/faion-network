@@ -60,7 +60,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/verbatim-to-eval-row-recipe.json` | JSON Schema for the Verbatim To Eval Row Recipe output contract |
-| `templates/verbatim-to-eval-row-recipe.md` | Markdown skeleton with the required fields |
+| `templates/verbatim-to-eval-row-recipe.md.j2` | Markdown skeleton with the required fields |
+| `templates/verbatim-to-eval-row-recipe.md` | Markdown skeleton with the required fields Generated from `templates/verbatim-to-eval-row-recipe.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

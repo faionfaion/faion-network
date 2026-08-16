@@ -66,9 +66,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agenda-template.md` | Standing Steerco agenda: status snapshot / asks / escalations / next-phase preview |
-| `templates/preread-pack.md` | Pre-read pack skeleton: status snapshot + decisions log + asks list |
-| `templates/decision-memo.md` | T+2 decision memo: ask / decision / rationale / owner / deadline |
+| `templates/agenda-template.md.j2` | Standing Steerco agenda: status snapshot / asks / escalations / next-phase preview |
+| `templates/agenda-template.md` | Standing Steerco agenda: status snapshot / asks / escalations / next-phase preview Generated from `templates/agenda-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/preread-pack.md.j2` | Pre-read pack skeleton: status snapshot + decisions log + asks list |
+| `templates/preread-pack.md` | Pre-read pack skeleton: status snapshot + decisions log + asks list Generated from `templates/preread-pack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-memo.md.j2` | T+2 decision memo: ask / decision / rationale / owner / deadline |
+| `templates/decision-memo.md` | T+2 decision memo: ask / decision / rationale / owner / deadline Generated from `templates/decision-memo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

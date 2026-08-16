@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rename-rubric.md` | Side-by-side template: `old_name → new_name`, reason, evidence row(s). |
+| `templates/rename-rubric.md.j2` | Side-by-side template: `old_name → new_name`, reason, evidence row(s). |
+| `templates/rename-rubric.md` | Side-by-side template: `old_name → new_name`, reason, evidence row(s). Generated from `templates/rename-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pydantic-rename.py` | Skeleton Pydantic model showing legacy `validation_alias` pattern for safe migration. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

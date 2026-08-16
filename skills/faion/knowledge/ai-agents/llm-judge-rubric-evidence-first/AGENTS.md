@@ -56,7 +56,8 @@
 | File | Purpose |
 |---|---|
 | `templates/eval-task-profile.yaml` | Input. |
-| `templates/judge-spec.md` | Output. |
+| `templates/judge-spec.md.j2` | Output. |
+| `templates/judge-spec.md` | Output. Generated from `templates/judge-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

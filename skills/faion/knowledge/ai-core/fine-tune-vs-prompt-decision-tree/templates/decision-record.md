@@ -8,7 +8,7 @@ token-budget-impact: ~500 tokens per filled record.
 
 # Fine-tune vs Prompt+RAG Decision — <workload>
 
-**Owner:** <name>      **Created:** <YYYY-MM-DD>
+**Owner:** <owner_full_name>      **Created:** <owner>
 **Recommendation:** `<no-change|prompt-improve|rag|routing|distillation|fine-tune|hybrid>`
 
 ## Axes (1=below target, 5=well above)

@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/company-prompt-library-pattern.json` | JSON schema for the spec output contract |
-| `templates/company-prompt-library-pattern.md` | Markdown skeleton with the required fields |
+| `templates/company-prompt-library-pattern.md.j2` | Markdown skeleton with the required fields |
+| `templates/company-prompt-library-pattern.md` | Markdown skeleton with the required fields Generated from `templates/company-prompt-library-pattern.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

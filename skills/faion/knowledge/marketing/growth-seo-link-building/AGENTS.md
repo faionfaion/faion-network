@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/link-building-checklist.md` | Markdown checklist: target qualification, outreach drafts, anchor-text mix, toxic-link audit cadence. |
+| `templates/link-building-checklist.md.j2` | Markdown checklist: target qualification, outreach drafts, anchor-text mix, toxic-link audit cadence. |
+| `templates/link-building-checklist.md` | Markdown checklist: target qualification, outreach drafts, anchor-text mix, toxic-link audit cadence. Generated from `templates/link-building-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

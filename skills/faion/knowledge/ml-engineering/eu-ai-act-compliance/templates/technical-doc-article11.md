@@ -7,7 +7,7 @@ token-budget-impact: ≤500 tokens to fill
 -->
 
 # Technical Documentation — Article 11
-## [System Name] v[X.Y] — CLASSIFICATION: HIGH-RISK AI SYSTEM
+## <system_name> v[X.Y] — CLASSIFICATION: HIGH-RISK AI SYSTEM
 
 **Provider:**
 **Date:**

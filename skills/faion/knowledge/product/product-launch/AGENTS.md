@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/product-launch.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/product-launch.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/product-launch.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/product-launch.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Tool Trust Boundary Model — <artefact_id>
 
-- **artefact_id**: ttb-<kebab-case-slug>
+- **artefact_id**: ttb-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

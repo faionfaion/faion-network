@@ -4,28 +4,28 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-800 tokens when filled -->
 
-## Industry: [Name]
+## Industry: <name>
 
 ### Current Red Ocean Factors (from competitor-analysis output)
 
 | Factor | Industry Standard | Customer Value |
 |--------|------------------|----------------|
-| [Factor 1] | [Level] | [High/Med/Low] |
-| [Factor 2] | [Level] | [High/Med/Low] |
+| <factor_1> | [Level] | [High/Med/Low] |
+| <factor_2> | [Level] | [High/Med/Low] |
 
 ### Four Actions
 
 #### Eliminate (remove entirely — costly but low value)
-- [Factor]: Why: [reason based on competitive analysis]
+- <factor>: Why: [reason based on competitive analysis]
 
 #### Reduce (below industry standard — over-engineered)
-- [Factor]: From [X] to [Y]: [rationale]
+- <factor>: From [X] to <y>: <rationale>
 
 #### Raise (above industry standard — underserved need)
-- [Factor]: From [X] to [Y]: [evidence from buyer interviews or reviews]
+- <factor>: From [X] to <y>: [evidence from buyer interviews or reviews]
 
 #### Create (new factors the industry has never offered)
-- [New factor]: [description] — evidence of demand: [source]
+- <new_factor>: <description> — evidence of demand: <source>
 
 ### New Value Curve
 Plot against actual competitor data from competitive-analysis.md (minimum 3 competitors).

@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml#r2-bounded-output -->
 <!-- token-budget-impact: ~140 tokens -->
 
-# Async 1:1 — [pair_id]
+# Async 1:1 — <pair_id>
 
 **Cycle:** YYYY-Www
-**Owner:** [PM role] / [person]
+**Owner:** <pm_role> / <owner_full_name>
 **Response window:** [N business hours, 24-168]
 **Last reviewed:** YYYY-MM-DD
 

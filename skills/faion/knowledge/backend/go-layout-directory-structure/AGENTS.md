@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/go-layout-directory-structure.json` | JSON Schema for the Go Standard Layout — Directory Structure output contract |
-| `templates/go-layout-directory-structure.md` | Markdown skeleton with the required fields |
+| `templates/go-layout-directory-structure.md.j2` | Markdown skeleton with the required fields |
+| `templates/go-layout-directory-structure.md` | Markdown skeleton with the required fields Generated from `templates/go-layout-directory-structure.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

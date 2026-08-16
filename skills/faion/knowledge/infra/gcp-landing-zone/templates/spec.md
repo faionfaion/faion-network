@@ -9,7 +9,7 @@
 <one-paragraph scope statement; environments + components covered>
 
 ## Components
-- <name>: <responsibility + interfaces>
+- <name>: <responsibility_interfaces>
 
 ## Decisions
 | ID | Topic | Choice | Rationale |

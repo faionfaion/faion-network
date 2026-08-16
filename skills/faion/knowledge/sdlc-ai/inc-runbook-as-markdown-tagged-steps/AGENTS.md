@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/runbook-template.md` | Runbook markdown skeleton with tagged steps |
+| `templates/runbook-template.md.j2` | Runbook markdown skeleton with tagged steps |
+| `templates/runbook-template.md` | Runbook markdown skeleton with tagged steps Generated from `templates/runbook-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/parser.py` | Reference runbook parser |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

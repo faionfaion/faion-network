@@ -11,10 +11,10 @@ WCAG: <2.1|2.2> AA  | axe-core: <version> | Date: <iso>
 ## Summary
 | Priority | Count |
 |----------|-------|
-| Critical | <N> |
-| High | <N> |
-| Medium | <N> |
-| Low | <N> |
+| Critical | <critical> |
+| High | <high> |
+| Medium | <medium> |
+| Low | <low> |
 
 ## Findings (POUR-grouped)
 
@@ -31,4 +31,4 @@ WCAG: <2.1|2.2> AA  | axe-core: <version> | Date: <iso>
 <rows>
 
 ## AT Evidence
-<pairings + recordings index>
+<pairings_recordings_index>

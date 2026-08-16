@@ -6,18 +6,18 @@
 
 # VUI Principles — <product>
 
-Runtime: <Alexa|Google|Siri|LLM-native>
+Runtime: <runtime>
 
 ## Simplicity
 - single-idea-per-response: <rules>
 - 15-second ceiling: <handling>
 
 ## Natural Conversation
-- barge-in: <enabled / handling>
-- turn-taking: <VAD or push-to-talk>
+- barge-in: <enabled_handling>
+- turn-taking: <turn_taking>
 - follow-up awareness: <pattern>
 
 ## Context Awareness
-- turns_remembered: <N>
-- max_duration_seconds: <N>
+- turns_remembered: <turns_remembered>
+- max_duration_seconds: <max_duration_seconds>
 - reset signal: <how user knows context dropped>

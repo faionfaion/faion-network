@@ -68,7 +68,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design.md` | Canonical design.md skeleton with AD-X, file table, data models, API contracts, testing sections. |
+| `templates/design.md.j2` | Canonical design.md skeleton with AD-X, file table, data models, API contracts, testing sections. |
+| `templates/design.md` | Canonical design.md skeleton with AD-X, file table, data models, API contracts, testing sections. Generated from `templates/design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

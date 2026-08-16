@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/supabase-backup-and-restore-drill.json` | DrillReport JSON skeleton. |
-| `templates/supabase-backup-and-restore-drill.md` | Audit trail + restore-time evidence. |
+| `templates/supabase-backup-and-restore-drill.md.j2` | Audit trail + restore-time evidence. |
+| `templates/supabase-backup-and-restore-drill.md` | Audit trail + restore-time evidence. Generated from `templates/supabase-backup-and-restore-drill.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

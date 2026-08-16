@@ -69,7 +69,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/framework-choice.md` | Decision-record skeleton with signals + scorecard + triggers. |
+| `templates/framework-choice.md.j2` | Decision-record skeleton with signals + scorecard + triggers. |
+| `templates/framework-choice.md` | Decision-record skeleton with signals + scorecard + triggers. Generated from `templates/framework-choice.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

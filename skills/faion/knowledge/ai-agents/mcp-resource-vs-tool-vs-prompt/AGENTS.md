@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/capability-inventory.yaml` | Input. |
-| `templates/classification-spec.md` | Output. |
+| `templates/classification-spec.md.j2` | Output. |
+| `templates/classification-spec.md` | Output. Generated from `templates/classification-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/server.py` | Working MCP server scaffold with all 3 primitives. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

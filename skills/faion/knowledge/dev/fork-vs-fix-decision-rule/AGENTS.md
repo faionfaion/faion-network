@@ -68,8 +68,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/fix-decision.json` | FixDecision artefact seed |
-| `templates/fork-pin-playbook.md` | Step-by-step fork procedure |
-| `templates/upstream-pr-template.md` | PR description template |
+| `templates/fork-pin-playbook.md.j2` | Step-by-step fork procedure |
+| `templates/fork-pin-playbook.md` | Step-by-step fork procedure Generated from `templates/fork-pin-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/upstream-pr-template.md.j2` | PR description template |
+| `templates/upstream-pr-template.md` | PR description template Generated from `templates/upstream-pr-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

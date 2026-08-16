@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/mobile-audit-report.md` | Mobile audit report skeleton. |
+| `templates/mobile-audit-report.md.j2` | Mobile audit report skeleton. |
+| `templates/mobile-audit-report.md` | Mobile audit report skeleton. Generated from `templates/mobile-audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Go Backend Development Patterns — <artefact_id>
 
-- **artefact_id**: gobe-<kebab-case-slug>
+- **artefact_id**: gobe-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

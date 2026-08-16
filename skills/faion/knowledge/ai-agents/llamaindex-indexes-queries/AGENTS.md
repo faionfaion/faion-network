@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/workload-profile.yaml` | Input. |
-| `templates/indexing-spec.md` | Output. |
+| `templates/indexing-spec.md.j2` | Output. |
+| `templates/indexing-spec.md` | Output. Generated from `templates/indexing-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/query_engine.py` | Working engine wiring. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

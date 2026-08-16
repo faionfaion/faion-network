@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Benefits Realization Report: [Project Name]
+# Benefits Realization Report: <project_name>
 
-**Reporting Period:** [Date Range]
-**Report Date:** [Date]
+**Reporting Period:** <date_range>
+**Report Date:** <date>
 
 ## Executive Summary
 [2-3 sentences on overall benefits status — RAG and top driver.]
@@ -25,12 +25,12 @@ RAG rubric: GREEN >= 90% of expected; YELLOW 70-89%; RED < 70%.
 
 | Benefit | Root Cause | Evidence | Corrective Action | Owner | Due |
 |---------|------------|----------|-------------------|-------|-----|
-| B-02 | Low adoption | [Evidence] | [Action] | [Name] | [Date] |
+| B-02 | Low adoption | <evidence> | <action> | [Name] | <date> |
 
 ## Forecast
 [Updated projection for full benefits realization, with assumptions.]
 
 ## Sponsor Override (if softening RED)
-**Benefit ID:** [B-NN]
+**Benefit ID:** <b_nn>
 **Override rationale:** [Explicit reason — must be signed by sponsor]
-**Sponsor:** [Name] **Date:** [Date]
+**Sponsor:** [Name] **Date:** <date>

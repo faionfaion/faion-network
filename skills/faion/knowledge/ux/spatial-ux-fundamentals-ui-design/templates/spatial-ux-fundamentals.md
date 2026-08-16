@@ -8,11 +8,11 @@ token-budget-impact: low — single MD file, <=300 tokens
 
 # Spatial UX Fundamentals
 
-- artefact_id: <slug>
-- owner: <@handle>
+- artefact_id: <artefact_slug>
+- owner: <owner_handle>
 - last_reviewed: 2026-05-23
 - version: 1.0.0
-- decision: <go|hold|no-op>
+- decision: <decision>
 - rationale: <>=2 sentences citing an input by name>
 - inputs_used:
-  - <input name>: <source path or URL>
+  - <input_name>: <source path or URL>

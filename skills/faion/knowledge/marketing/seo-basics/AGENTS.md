@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/technical-seo-checklist.md` | Markdown checklist: robots.txt / sitemap / HTTPS / hreflang / semantic HTML / CWV gates with pass/fail criteria. |
+| `templates/technical-seo-checklist.md.j2` | Markdown checklist: robots.txt / sitemap / HTTPS / hreflang / semantic HTML / CWV gates with pass/fail criteria. |
+| `templates/technical-seo-checklist.md` | Markdown checklist: robots.txt / sitemap / HTTPS / hreflang / semantic HTML / CWV gates with pass/fail criteria. Generated from `templates/technical-seo-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

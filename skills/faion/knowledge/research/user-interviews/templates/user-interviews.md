@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # User Interviews — <artefact_id>
 
-- **session_id** (string): <stable id>
+- **session_id** (string): <stable_id>
 - **respondent** (object): <Pnnn + cold/warm flag>
 - **script_used** (string): <path to Mom Test script>
 - **transcript_path** (string): <path to diarized transcript>
 - **behavioural_ask_outcome** (string): <yes-with-evidence | no | pending>
 - **insights** (array): <≥1 insight with frequency_count ≥1 and citation>
-- **owner** (string): <named researcher>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_researcher>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

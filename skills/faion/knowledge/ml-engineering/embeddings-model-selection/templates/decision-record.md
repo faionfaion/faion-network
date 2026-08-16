@@ -11,7 +11,7 @@ token-budget-impact: small (template fill ~300-600 tokens).
 ## Context
 
 - slug: embeddings-model-selection
-- version: <semver>
+- version: <document_version>
 - owner: <role:person>
 - approver: <role:person>
 - produced_at: <YYYY-MM-DDTHH:MM:SSZ>

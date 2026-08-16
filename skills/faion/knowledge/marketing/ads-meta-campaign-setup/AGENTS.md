@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/campaign-spec.md` | Meta campaign launch spec Markdown skeleton. |
-| `templates/naming-checklist.md` | Naming convention checklist. |
+| `templates/campaign-spec.md.j2` | Meta campaign launch spec Markdown skeleton. |
+| `templates/campaign-spec.md` | Meta campaign launch spec Markdown skeleton. Generated from `templates/campaign-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/naming-checklist.md.j2` | Naming convention checklist. |
+| `templates/naming-checklist.md` | Naming convention checklist. Generated from `templates/naming-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/campaign-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

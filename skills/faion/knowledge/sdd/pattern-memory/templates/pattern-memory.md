@@ -9,15 +9,15 @@ token-budget-impact: ~250 tokens.
 # Pattern Memory — <artefact_id>
 
 - **pattern_id** (string): <stable id (PM-001..)>
-- **title** (string): <pattern name>
+- **title** (string): <pattern_name>
 - **confidence** (number): <0.5..0.95>
 - **contexts_used** (array): <≥2 with citation>
 - **rationale** (string): <why it works>
 - **synced_to_claude_md** (boolean): <true when confidence ≥0.8>
 - **occurrence_count** (integer): <≥2>
-- **owner** (string): <named author>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_author>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

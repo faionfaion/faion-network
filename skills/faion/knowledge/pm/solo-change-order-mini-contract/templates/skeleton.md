@@ -4,32 +4,32 @@
 <!-- depends-on: content/01-core-rules.xml#r1 (master SOW anchor) -->
 <!-- token-budget-impact: ~150 tokens -->
 
-# Change Order — [co_id]
+# Change Order — <co_id>
 
-**Anchor SOW:** [master_sow.name] dated [date] (identifier: [identifier])
-**Owner:** [freelancer role] / [person]
-**Version:** [semver]
+**Anchor SOW:** [master_sow.name] dated <date> (identifier: <identifier>)
+**Owner:** <freelancer_role> / <owner_full_name>
+**Version:** <document_version>
 
 ## Email subject
 
-Change Order [co_id] — [project name] SOW dated [date]
+Change Order <co_id> — <project_name> SOW dated <date>
 
 ## Email body
 
-Hi [client],
+Hi <client>,
 
-Per our chat today, here is the change order for [scope summary], applying under our master SOW dated [date].
+Per our chat today, here is the change order for <scope_summary>, applying under our master SOW dated <date>.
 
 | Field | Delta |
 |-------|-------|
-| Scope | [scope_delta] |
-| Price | [price_delta] |
-| Schedule | [schedule_delta] |
-| Payment | [payment_terms_delta] |
+| Scope | <scope_delta> |
+| Price | <price_delta> |
+| Schedule | <schedule_delta> |
+| Payment | <payment_terms_delta> |
 
 Reply YES to this email to authorize this change order under the terms of the master agreement.
 
-— [freelancer]
+— <freelancer>
 
 ## Acceptance
 

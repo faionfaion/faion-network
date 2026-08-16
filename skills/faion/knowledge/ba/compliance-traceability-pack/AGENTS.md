@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/compliance-traceability-pack.json` | JSON Schema for the Compliance Traceability Pack output contract |
-| `templates/compliance-traceability-pack.md` | Markdown skeleton with the required fields |
+| `templates/compliance-traceability-pack.md.j2` | Markdown skeleton with the required fields |
+| `templates/compliance-traceability-pack.md` | Markdown skeleton with the required fields Generated from `templates/compliance-traceability-pack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a compliance-traceability-pack record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a compliance-traceability-pack record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

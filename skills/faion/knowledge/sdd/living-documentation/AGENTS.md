@@ -60,7 +60,8 @@
 | File | Purpose |
 |---|---|
 | `templates/living-documentation.json` | JSON Schema for the output contract (machine-validatable). |
-| `templates/living-documentation.md` | Markdown skeleton with the required fields. |
+| `templates/living-documentation.md.j2` | Markdown skeleton with the required fields. |
+| `templates/living-documentation.md` | Markdown skeleton with the required fields. Generated from `templates/living-documentation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

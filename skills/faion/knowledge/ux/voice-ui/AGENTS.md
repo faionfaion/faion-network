@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/voice-spec.json` | Skeleton voice-spec |
-| `templates/dialogue-template.md` | Dialogue-authoring template |
+| `templates/dialogue-template.md.j2` | Dialogue-authoring template |
+| `templates/dialogue-template.md` | Dialogue-authoring template Generated from `templates/dialogue-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

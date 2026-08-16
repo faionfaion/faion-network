@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Drift SLO Thresholds Cookbook — <artefact_id>
 
-- **artefact_id**: dst-<kebab-case-slug>
+- **artefact_id**: dst-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

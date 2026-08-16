@@ -4,17 +4,17 @@
 <!-- depends-on: content/01-core-rules.xml#r2-bounded-output -->
 <!-- token-budget-impact: ~150 tokens -->
 
-# RACI Matrix — [Project]
+# RACI Matrix — <project>
 
-**Owner:** [role] / [person]
+**Owner:** <owner_role> / <owner_full_name>
 **Trigger:** kickoff | roster_delta | quarterly_review
 **Last reviewed:** YYYY-MM-DD (within 90 days)
-**Version:** [semver]
+**Version:** <document_version>
 
 | WBS id | Deliverable | Responsible | Accountable (exactly one) | Consulted | Informed | Evidence |
 |--------|-------------|-------------|----|-----------|----------|----------|
-| 1.1    | Planning Documentation | [pm-handle] | [pm-lead] | [sponsor] | [team]  | charter#planning |
-| 2.1    | Login Endpoint | [be-eng]     | [be-lead]  | [security] | [PM]   | wbs-dict#2.1 |
+| 1.1    | Planning Documentation | <pm_handle> | <pm_lead> | <sponsor> | <team>  | charter#planning |
+| 2.1    | Login Endpoint | [be-eng]     | [be-lead]  | <security> | <pm>   | wbs-dict#2.1 |
 
 <!-- Rules:
 - Exactly one Accountable per row.

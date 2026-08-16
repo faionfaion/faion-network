@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml, content/04-procedure.xml -->
 <!-- token-budget-impact: ~400 tokens once filled -->
 
-# Story Map: [Product/Feature]
+# Story Map: <product_feature>
 
 ## Context
-- **User:** [Primary persona]
+- **User:** <primary_persona>
 - **Goal:** [What they're trying to achieve]
 - **Scope:** [What journey this covers]
 
@@ -15,7 +15,7 @@
 
 | Activity 1 | Activity 2 | Activity 3 | Activity 4 |
 |------------|------------|------------|------------|
-| [Verb phrase] | [Verb phrase] | [Verb phrase] | [Verb phrase] |
+| <verb_phrase> | <verb_phrase> | <verb_phrase> | <verb_phrase> |
 
 ## Walking Skeleton
 One task per activity, end-to-end. Every column must be covered.
@@ -26,20 +26,20 @@ One task per activity, end-to-end. Every column must be covered.
 
 **Delivers:** [Minimum viable outcome — what can a user accomplish end-to-end?]
 
-## Release 1: [Name/Value Statement]
+## Release 1: <name_value_statement>
 | Activity 1 | Activity 2 | Activity 3 | Activity 4 |
 |------------|------------|------------|------------|
 | [Task] | [Task] | [Task] | [Task] |
 | [Task] | [Task] | | [Task] |
 
-**Delivers:** [User value statement]
+**Delivers:** <user_value_statement>
 
-## Release 2: [Name/Value Statement]
+## Release 2: <name_value_statement>
 | Activity 1 | Activity 2 | Activity 3 | Activity 4 |
 |------------|------------|------------|------------|
 | [Task] | [Task] | [Task] | [Task] |
 
-**Delivers:** [User value statement]
+**Delivers:** <user_value_statement>
 
 ## Parking Lot
 Tasks not yet mapped to a release:

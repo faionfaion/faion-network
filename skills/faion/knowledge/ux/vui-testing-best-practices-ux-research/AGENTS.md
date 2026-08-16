@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/test-plan.md` | VUI test-plan skeleton: objectives, fixtures, metric targets, CI tier schedule |
+| `templates/test-plan.md.j2` | VUI test-plan skeleton: objectives, fixtures, metric targets, CI tier schedule |
+| `templates/test-plan.md` | VUI test-plan skeleton: objectives, fixtures, metric targets, CI tier schedule Generated from `templates/test-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/stress-corpus.sh` | Bash: mix clean utterances with ambient noise at 20/10/5dB SNR via ffmpeg |
 | `templates/llm-judge-prompt.txt` | Per-turn LLM judge prompt scoring intent_match, naturalness, brevity, error_recovery |
 

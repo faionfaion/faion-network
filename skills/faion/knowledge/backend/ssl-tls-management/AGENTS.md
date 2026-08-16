@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ssl-tls-management.json` | TlsPlan JSON skeleton (domains + mode + renewal). |
-| `templates/ssl-tls-management.md` | Human-readable audit trail. |
+| `templates/ssl-tls-management.md.j2` | Human-readable audit trail. |
+| `templates/ssl-tls-management.md` | Human-readable audit trail. Generated from `templates/ssl-tls-management.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ssl-params.conf` | Mozilla 'Intermediate' ciphers + protocols snippet. |
 | `templates/site-cloudflare.conf` | Reference vhost using Cloudflare origin cert. |
 | `templates/site-letsencrypt.conf` | Reference vhost using Let's Encrypt cert + ACME challenge. |

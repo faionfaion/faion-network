@@ -3,25 +3,25 @@
 <!-- produces: Markdown artefact -->
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: small -->
-# User Story Map: [Product Name]
+# User Story Map: <product_name>
 
 **Version:** [X.X]
-**Date:** [Date]
-**Product Owner:** [Name]
-**Business Analyst:** [Name]
+**Date:** <date>
+**Product Owner:** <name>
+**Business Analyst:** <name>
 
 ## Personas
 
-- [Persona 1]: [Brief description and primary goal]
-- [Persona 2]: [Brief description and primary goal]
+- <persona_1>: [Brief description and primary goal]
+- <persona_2>: [Brief description and primary goal]
 
 ## Backbone (Activities)
 
 | Step | Activity | Persona Goal |
 |------|----------|-------------|
-| 1 | [Activity 1] | [What user wants to achieve] |
-| 2 | [Activity 2] | [What user wants to achieve] |
-| 3 | [Activity 3] | [What user wants to achieve] |
+| 1 | <activity_1> | [What user wants to achieve] |
+| 2 | <activity_2> | [What user wants to achieve] |
+| 3 | <activity_3> | [What user wants to achieve] |
 
 ## Walking Skeleton (Tasks per Activity)
 
@@ -32,9 +32,9 @@
 
 ## Story Map
 
-### Activity 1: [Name]
+### Activity 1: <name>
 
-**Task 1.1: [Name]**
+**Task 1.1: <name>**
 
 | Release | Story | Persona | Priority | Size |
 |---------|-------|---------|----------|------|
@@ -43,8 +43,8 @@
 | R3 | [Story title] | [Persona] | Could | S/M/L |
 
 **Exception path (red row):**
-- [Exception scenario 1]
-- [Exception scenario 2]
+- <exception_scenario_1>
+- <exception_scenario_2>
 
 ## Release Plan
 
@@ -52,11 +52,11 @@
 **Goal:** [What coherent end-to-end journey this release delivers]
 **Walking skeleton check:** Read each cell aloud as a contiguous narrative — does it form a coherent user story?
 
-### Release 2: [Theme]
-**Goal:** [Enhancement delivered]
+### Release 2: <theme>
+**Goal:** <enhancement_delivered>
 
 ## NFR Register (linked, not mapped)
 
 | NFR | Category | Applies To | Owner |
 |-----|----------|------------|-------|
-| [NFR] | perf/sec/a11y/audit | [Release/Activity] | [Owner] |
+| <nfr> | perf/sec/a11y/audit | <release_activity> | <owner> |

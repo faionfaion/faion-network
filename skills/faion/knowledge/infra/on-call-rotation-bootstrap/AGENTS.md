@@ -70,7 +70,8 @@
 | `templates/on-call-charter.md.j2` | One-page charter posted to team wiki |
 | `templates/on-call-charter.md` | One-page charter posted to team wiki Generated from `templates/on-call-charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pagerduty-schedule.yaml` | PagerDuty schedule config skeleton |
-| `templates/comp-time-policy.md` | HR-handbook-ready comp-time policy document |
+| `templates/comp-time-policy.md.j2` | HR-handbook-ready comp-time policy document |
+| `templates/comp-time-policy.md` | HR-handbook-ready comp-time policy document Generated from `templates/comp-time-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

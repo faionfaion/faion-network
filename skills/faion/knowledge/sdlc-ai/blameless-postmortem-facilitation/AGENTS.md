@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/postmortem.md` | Postmortem markdown skeleton |
+| `templates/postmortem.md.j2` | Postmortem markdown skeleton |
+| `templates/postmortem.md` | Postmortem markdown skeleton Generated from `templates/postmortem.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/language-lint-rules.txt` | Forbidden phrase list |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

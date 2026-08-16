@@ -9,12 +9,12 @@ token-budget-impact: ~150 tokens when included in a bundle.
 # Project glossary (excerpt)
 
 ## Domain
-- <domain term>: <1-line definition>
-- <acronym>: <expansion + 1-line>
+- <domain_term>: <1-line definition>
+- <acronym>: <expansion_1_line>
 
 ## Architecture
-- <service name>: <what it does>
-- <pattern name>: <where it's used + alias>
+- <service_name>: <what it does>
+- <pattern_name>: <where it's used + alias>
 
 ## File / folder naming
 - `*.spec.ts`: unit test

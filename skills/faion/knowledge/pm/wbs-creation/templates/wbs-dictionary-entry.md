@@ -12,11 +12,11 @@
 | Name                | [Work Package Name — noun phrase] |
 | Description / Included | [What is in scope for this leaf] |
 | Description / Excluded | [What is explicitly NOT in scope] |
-| Deliverable         | [Tangible output produced] |
+| Deliverable         | <tangible_output_produced> |
 | Acceptance Criteria | [Observable, testable conditions for done — at least one] |
 | Owner               | [Role or named team — exactly one accountable; UNRESOLVED if not in stakeholder register] |
 | Effort Estimate     | [Hours — must be in [8, 80]] |
-| Dependencies        | [Predecessor WBS IDs] |
+| Dependencies        | <predecessor_wbs_ids> |
 | Notes               | [Risks, assumptions, constraints] |
 
 <!--

@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Go Channels and Pipeline Patterns — <artefact_id>
 
-- **artefact_id**: goch-<kebab-case-slug>
+- **artefact_id**: goch-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

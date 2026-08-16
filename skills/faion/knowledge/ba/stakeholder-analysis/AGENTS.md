@@ -65,9 +65,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stakeholder-register.md` | Markdown skeleton with rows for each stakeholder + power/interest + strategy. |
+| `templates/stakeholder-register.md.j2` | Markdown skeleton with rows for each stakeholder + power/interest + strategy. |
+| `templates/stakeholder-register.md` | Markdown skeleton with rows for each stakeholder + power/interest + strategy. Generated from `templates/stakeholder-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/raci.csv` | RACI matrix header: Decision, Responsible, Accountable, Consulted, Informed. |
-| `templates/comms-plan.md` | Communications plan with cadence + channel + owner. |
+| `templates/comms-plan.md.j2` | Communications plan with cadence + channel + owner. |
+| `templates/comms-plan.md` | Communications plan with cadence + channel + owner. Generated from `templates/comms-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable 3-stakeholder register. |
 | `templates/_smoke-test.md` | Minimum viable 3-stakeholder register. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

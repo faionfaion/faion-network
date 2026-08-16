@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/funnel-report.md` | Funnel diagnosis report skeleton with bottleneck section + experiment plan |
-| `templates/_smoke-test.md` | Filled-in report for a worked example (Senior Engineer role, screen→interview drop) |
+| `templates/funnel-report.md.j2` | Funnel diagnosis report skeleton with bottleneck section + experiment plan |
+| `templates/funnel-report.md` | Funnel diagnosis report skeleton with bottleneck section + experiment plan Generated from `templates/funnel-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in report for a worked example (Senior Engineer role, screen→interview drop) |
+| `templates/_smoke-test.md` | Filled-in report for a worked example (Senior Engineer role, screen→interview drop) Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/weekly-report.json` | JSON example of weekly AARRR report |
-| `templates/weekly-dashboard.md` | Markdown dashboard skeleton |
+| `templates/weekly-dashboard.md.j2` | Markdown dashboard skeleton |
+| `templates/weekly-dashboard.md` | Markdown dashboard skeleton Generated from `templates/weekly-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -59,7 +59,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/caching-in-memory.json` | JSON Schema for the In-Memory Application Cache (L1 with lru_cache + TTLCache + WarmableCache) output contract |
-| `templates/caching-in-memory.md` | Markdown skeleton with the required fields |
+| `templates/caching-in-memory.md.j2` | Markdown skeleton with the required fields |
+| `templates/caching-in-memory.md` | Markdown skeleton with the required fields Generated from `templates/caching-in-memory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -68,8 +68,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agent-prompts.md` | Prompt fragments per stage |
-| `templates/review-checklist.md` | Reviewer rejection criteria |
+| `templates/agent-prompts.md.j2` | Prompt fragments per stage |
+| `templates/agent-prompts.md` | Prompt fragments per stage Generated from `templates/agent-prompts.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/review-checklist.md.j2` | Reviewer rejection criteria |
+| `templates/review-checklist.md` | Reviewer rejection criteria Generated from `templates/review-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pipeline-run.json` | Empty pipeline-run record |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

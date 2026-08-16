@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
+| `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-mobile-responsive.py --self-test` |
 | `templates/playwright-devices.ts` | Playwright project matrix for mobile / tablet / desktop device profiles |
 | `templates/responsive-check.ts` | Multi-viewport screenshot run with a horizontal-overflow assertion per width |

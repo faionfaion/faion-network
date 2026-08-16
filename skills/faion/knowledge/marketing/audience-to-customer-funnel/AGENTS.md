@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/audience-to-customer-funnel.json` | FunnelArtefact JSON skeleton. |
-| `templates/audience-to-customer-funnel.md` | Per-stage definitions + diagnostic. |
+| `templates/audience-to-customer-funnel.md.j2` | Per-stage definitions + diagnostic. |
+| `templates/audience-to-customer-funnel.md` | Per-stage definitions + diagnostic. Generated from `templates/audience-to-customer-funnel.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

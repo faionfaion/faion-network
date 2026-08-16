@@ -8,16 +8,16 @@ token-budget-impact: ~250 tokens.
 
 # Kill Or Keep Criteria — <artefact_id>
 
-- **project_name** (string): <named side-project>
+- **project_name** (string): <named_side_project>
 - **mrr_snapshot** (number): <current MRR in USD>
-- **traffic_snapshot** (number): <current monthly visits>
+- **traffic_snapshot** (number): <current_monthly_visits>
 - **joy_score** (integer): <1-10 last-7-days self-rating>
-- **opportunity_cost_candidate** (string): <named alternative bet>
+- **opportunity_cost_candidate** (string): <named_alternative_bet>
 - **evidence_links** (object): <URL/ticket per floor>
 - **verdict** (string): <kill | keep (binary)>
 - **next_action** (string): <concrete action attached to verdict>
 - **template_version** (string): <kill-criteria-template version pinned>
-- **last_reviewed** (date): <ISO date>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Final Project Report: [Project Name]
+# Final Project Report: <project_name>
 
-**Date:** [Date]
-**Project Manager:** [Name]
-**Sponsor:** [Name]
+**Date:** <date>
+**Project Manager:** <name>
+**Sponsor:** <name>
 
 ## Executive Summary
 [Project objectives, outcomes, and key metrics in 2-3 sentences]
@@ -17,31 +17,31 @@
 
 | Deliverable | Status | Accepted By | Date |
 |-------------|--------|-------------|------|
-| [Deliverable 1] | Complete | [Name] | [Date] |
+| <deliverable_1> | Complete | <name> | <date> |
 
 ## Performance Summary
 
 | Dimension | Planned | Actual | Variance |
 |-----------|---------|--------|----------|
-| Schedule | [End date] | [Actual end] | [+/- days] |
-| Budget | [$X] | [$Y] | [+/- $Z] |
-| Scope | [Baseline] | [Delivered] | [Changes] |
-| Quality | [Metrics] | [Actual] | [Delta] |
+| Schedule | <end_date> | <actual_end> | <days> |
+| Budget | <x> | <y> | <z> |
+| Scope | <baseline> | <delivered> | <changes> |
+| Quality | <metrics> | <actual> | <delta> |
 
 ## Key Accomplishments
-- [Major achievement 1]
-- [Major achievement 2]
+- <major_achievement_1>
+- <major_achievement_2>
 
 ## Challenges and Resolutions
 
 | Challenge | Resolution |
 |-----------|------------|
-| [Problem encountered] | [How it was solved] |
+| <problem_encountered> | [How it was solved] |
 
 ## Lessons Learned Summary
-- [Top lesson 1]
-- [Top lesson 2]
-- [Top lesson 3]
+- <top_lesson_1>
+- <top_lesson_2>
+- <top_lesson_3>
 
 ## Transition Information
 [Handover details: who received what, support contacts, monitoring owner]

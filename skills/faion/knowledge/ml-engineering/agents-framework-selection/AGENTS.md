@@ -63,10 +63,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Framework selection decision record skeleton |
-| `templates/axis-scoring.md` | 3-axis scoring rubric (graph-vs-role, observability, deployment) |
-| `templates/rejected-alternatives.md` | Rejected alternatives section template |
-| `templates/review-memo.md` | 6-month review memo template |
+| `templates/decision-record.md.j2` | Framework selection decision record skeleton |
+| `templates/decision-record.md` | Framework selection decision record skeleton Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/axis-scoring.md.j2` | 3-axis scoring rubric (graph-vs-role, observability, deployment) |
+| `templates/axis-scoring.md` | 3-axis scoring rubric (graph-vs-role, observability, deployment) Generated from `templates/axis-scoring.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rejected-alternatives.md.j2` | Rejected alternatives section template |
+| `templates/rejected-alternatives.md` | Rejected alternatives section template Generated from `templates/rejected-alternatives.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/review-memo.md.j2` | 6-month review memo template |
+| `templates/review-memo.md` | 6-month review memo template Generated from `templates/review-memo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

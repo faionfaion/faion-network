@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/campaign-spec.md` | X campaign spec Markdown skeleton. |
+| `templates/campaign-spec.md.j2` | X campaign spec Markdown skeleton. |
+| `templates/campaign-spec.md` | X campaign spec Markdown skeleton. Generated from `templates/campaign-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/brand-safety-exclusions.json` | Standard brand-safety category exclusion list. |
 | `templates/campaign-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 

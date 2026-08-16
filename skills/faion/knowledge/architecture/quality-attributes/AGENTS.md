@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/nfr-scenario.md` | Single ATAM-style scenario skeleton. |
+| `templates/nfr-scenario.md.j2` | Single ATAM-style scenario skeleton. |
+| `templates/nfr-scenario.md` | Single ATAM-style scenario skeleton. Generated from `templates/nfr-scenario.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/nfr-spec.md.j2` | NFR spec template aggregating scenarios into ISO-25010 categories. |
 | `templates/nfr-spec.md` | NFR spec template aggregating scenarios into ISO-25010 categories. Generated from `templates/nfr-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |

@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/decision-options-memo-template.json` | JSON skeleton for the options memo. |
-| `templates/decision-options-memo-template.md` | Markdown skeleton with required fields. |
+| `templates/decision-options-memo-template.md.j2` | Markdown skeleton with required fields. |
+| `templates/decision-options-memo-template.md` | Markdown skeleton with required fields. Generated from `templates/decision-options-memo-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable options memo. |
 | `templates/_smoke-test.md` | Minimum viable options memo. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

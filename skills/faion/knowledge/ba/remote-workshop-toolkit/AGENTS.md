@@ -70,12 +70,15 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pre-read.md` | 1–2 page pre-read structure. |
+| `templates/pre-read.md.j2` | 1–2 page pre-read structure. |
+| `templates/pre-read.md` | 1–2 page pre-read structure. Generated from `templates/pre-read.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/miro-canvas-process-map.json` | Importable canvas for as-is/to-be process mapping. |
 | `templates/miro-canvas-story-map.json` | Story-map canvas (backbone + walking skeleton). |
 | `templates/miro-canvas-event-storming.json` | Big-picture event-storming canvas. |
-| `templates/ground-rules.md` | Camera, mic, chat, hand-raise, breakout conventions. |
-| `templates/async-pulse.md` | 5-min Loom or written pulse questionnaire. |
+| `templates/ground-rules.md.j2` | Camera, mic, chat, hand-raise, breakout conventions. |
+| `templates/ground-rules.md` | Camera, mic, chat, hand-raise, breakout conventions. Generated from `templates/ground-rules.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/async-pulse.md.j2` | 5-min Loom or written pulse questionnaire. |
+| `templates/async-pulse.md` | 5-min Loom or written pulse questionnaire. Generated from `templates/async-pulse.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in run-book. |
 | `templates/_smoke-test.md` | Minimum filled-in run-book. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

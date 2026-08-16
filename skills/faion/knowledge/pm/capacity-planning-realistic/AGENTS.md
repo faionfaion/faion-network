@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/capacity-planning-realistic.json` | JSON Schema (draft-07) for the Capacity Planning Realistic output contract |
-| `templates/capacity-planning-realistic.md` | Markdown skeleton with the required fields for the Capacity Planning Realistic artefact |
+| `templates/capacity-planning-realistic.md.j2` | Markdown skeleton with the required fields for the Capacity Planning Realistic artefact |
+| `templates/capacity-planning-realistic.md` | Markdown skeleton with the required fields for the Capacity Planning Realistic artefact Generated from `templates/capacity-planning-realistic.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/capacity-planning-realistic.example.json` | Worked filled-in example of a valid Capacity Planning Realistic artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

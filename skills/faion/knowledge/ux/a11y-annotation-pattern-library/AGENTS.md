@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/annotation-snippet-library.md` | Full library: archetype → annotation template |
-| `templates/handoff-doc.md` | Dev-handoff doc structure with annotation resolutions |
+| `templates/annotation-snippet-library.md.j2` | Full library: archetype → annotation template |
+| `templates/annotation-snippet-library.md` | Full library: archetype → annotation template Generated from `templates/annotation-snippet-library.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/handoff-doc.md.j2` | Dev-handoff doc structure with annotation resolutions |
+| `templates/handoff-doc.md` | Dev-handoff doc structure with annotation resolutions Generated from `templates/handoff-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/figma-annotation-component.json` | Figma component spec for the annotation stamp |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml + content/04-procedure.xml -->
 <!-- token-budget-impact: ~200-1200 tokens when loaded as context -->
 
-# Spec: <feature-name>
+# Spec: <feature_name>
 
-> Linked tracker: <ENG-NNNN>
+> Linked tracker: <eng_nnnn>
 > Branch: feat/<slug>
 > Status: draft | review | accepted
 
@@ -22,24 +22,24 @@
 ## Acceptance criteria
 
 - [ ] AC-1: <observable outcome, testable in pure functions or HTTP responses>
-- [ ] AC-2: <observable outcome>
-- [ ] AC-3: <observable outcome>
+- [ ] AC-2: <observable_outcome>
+- [ ] AC-3: <observable_outcome>
 
 ## Out of scope
 
-- <explicit exclusion 1>
-- <explicit exclusion 2>
+- <explicit_exclusion_1>
+- <explicit_exclusion_2>
 
 ## NEEDS CLARIFICATION
 
-- [NEEDS CLARIFICATION] <open question 1>
-- [NEEDS CLARIFICATION] <open question 2>
+- <needs_clarification> <open_question_1>
+- <needs_clarification> <open_question_2>
 
 ## Non-functional requirements
 
 - Latency: p95 ≤ <ms>
-- Security: <threat model anchor>
-- Observability: <metrics + log fields>
+- Security: <threat_model_anchor>
+- Observability: <metrics_log_fields>
 
 ## References
 

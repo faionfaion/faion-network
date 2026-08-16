@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stakeholder-register.md` | Register skeleton with 3 axes + cadence + decision rights. |
-| `templates/communication-plan.md` | Per-stakeholder comms plan template. |
+| `templates/stakeholder-register.md.j2` | Register skeleton with 3 axes + cadence + decision rights. |
+| `templates/stakeholder-register.md` | Register skeleton with 3 axes + cadence + decision rights. Generated from `templates/stakeholder-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/communication-plan.md.j2` | Per-stakeholder comms plan template. |
+| `templates/communication-plan.md` | Per-stakeholder comms plan template. Generated from `templates/communication-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pm-attention-diff.py` | Compute PM attention split per stakeholder vs target. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

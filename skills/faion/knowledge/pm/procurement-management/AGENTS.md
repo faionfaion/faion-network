@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sow.md` | Statement of Work template with acceptance criteria and clause checklist |
-| `templates/vendor-matrix.md` | Weighted evaluation matrix with scoring scale and sensitivity check |
+| `templates/sow.md.j2` | Statement of Work template with acceptance criteria and clause checklist |
+| `templates/sow.md` | Statement of Work template with acceptance criteria and clause checklist Generated from `templates/sow.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/vendor-matrix.md.j2` | Weighted evaluation matrix with scoring scale and sensitivity check |
+| `templates/vendor-matrix.md` | Weighted evaluation matrix with scoring scale and sensitivity check Generated from `templates/vendor-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

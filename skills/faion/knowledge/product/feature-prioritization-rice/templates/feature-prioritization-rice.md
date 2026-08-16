@@ -9,14 +9,14 @@ token-budget-impact: ~250 tokens.
 # Feature Prioritization RICE — <artefact_id>
 
 - **scoring_round_id** (string): <round id (e.g. 2026-Q2)>
-- **reach_unit** (string): <named unit>
-- **effort_unit** (string): <named unit>
+- **reach_unit** (string): <named_unit>
+- **effort_unit** (string): <named_unit>
 - **impact_anchors** (array): <3 cited examples>
 - **rows** (array): <feature objects with reach, impact, confidence, effort, source, rice_score>
-- **cut_line** (number): <score threshold>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **cut_line** (number): <score_threshold>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/weekly-growth-review-rhythm.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/weekly-growth-review-rhythm.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/weekly-growth-review-rhythm.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/weekly-growth-review-rhythm.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/weekly-growth-review-rhythm.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

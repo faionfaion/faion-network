@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Filled example for a customer-support agent GA. |
+| `templates/_smoke-test.md.j2` | Filled example for a customer-support agent GA. |
+| `templates/_smoke-test.md` | Filled example for a customer-support agent GA. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

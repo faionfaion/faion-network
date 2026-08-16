@@ -64,11 +64,13 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed |
+| `templates/decision-record.md.j2` | Markdown decision record — context + options + decision + owner + last_reviewed |
+| `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/decision-instance.json` | JSON instance of a filled decision record |
 | `templates/framework-fit.md.j2` | Framework-fit report — IIBA AE / DA / SAFe comparison + recommendation + 7-principle gap table |
 | `templates/framework-fit.md` | Framework-fit report — IIBA AE / DA / SAFe comparison + recommendation + 7-principle gap table Generated from `templates/framework-fit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/sprint-ba-activities.md` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) |
+| `templates/sprint-ba-activities.md.j2` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) |
+| `templates/sprint-ba-activities.md` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) Generated from `templates/sprint-ba-activities.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

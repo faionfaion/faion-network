@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Gateway Adapter Template — <artefact_id>
 
-- **artefact_id**: ga-<kebab-case-slug>
+- **artefact_id**: ga-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

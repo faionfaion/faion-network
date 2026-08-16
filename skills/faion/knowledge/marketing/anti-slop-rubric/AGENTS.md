@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-slop-rubric.md` | Markdown skeleton with all required fields |
+| `templates/anti-slop-rubric.md.j2` | Markdown skeleton with all required fields |
+| `templates/anti-slop-rubric.md` | Markdown skeleton with all required fields Generated from `templates/anti-slop-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

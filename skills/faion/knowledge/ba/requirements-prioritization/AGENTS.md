@@ -70,9 +70,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/prioritization-record.md` | Decision record with method + scores + rationale. |
-| `templates/moscow-matrix.md` | MoSCoW matrix skeleton. |
-| `templates/rice-sheet.md` | RICE scoring sheet. |
+| `templates/prioritization-record.md.j2` | Decision record with method + scores + rationale. |
+| `templates/prioritization-record.md` | Decision record with method + scores + rationale. Generated from `templates/prioritization-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/moscow-matrix.md.j2` | MoSCoW matrix skeleton. |
+| `templates/moscow-matrix.md` | MoSCoW matrix skeleton. Generated from `templates/moscow-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rice-sheet.md.j2` | RICE scoring sheet. |
+| `templates/rice-sheet.md` | RICE scoring sheet. Generated from `templates/rice-sheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in record. |
 | `templates/_smoke-test.md` | Minimum filled-in record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

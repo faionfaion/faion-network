@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/agent-loop-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/agent-loop-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/agent-loop-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/agent-loop-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum task spec (predictable, 5-step). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

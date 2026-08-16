@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/tool-card-template.json` | JSON Schema for the Tool Card Template output contract |
-| `templates/tool-card-template.md` | Markdown skeleton with the required fields |
+| `templates/tool-card-template.md.j2` | Markdown skeleton with the required fields |
+| `templates/tool-card-template.md` | Markdown skeleton with the required fields Generated from `templates/tool-card-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a tool-card-template record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a tool-card-template record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

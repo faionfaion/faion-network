@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/churn-save-email-pack-indie.md` | Markdown skeleton with required fields. |
+| `templates/churn-save-email-pack-indie.md.j2` | Markdown skeleton with required fields. |
+| `templates/churn-save-email-pack-indie.md` | Markdown skeleton with required fields. Generated from `templates/churn-save-email-pack-indie.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

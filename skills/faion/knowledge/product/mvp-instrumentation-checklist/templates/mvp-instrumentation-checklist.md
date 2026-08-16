@@ -8,16 +8,16 @@ token-budget-impact: ~250 tokens.
 
 # MVP Instrumentation Checklist — <artefact_id>
 
-- **product_name** (string): <named product>
+- **product_name** (string): <named_product>
 - **acquire** (object): <event_name + dashboard_segment>
 - **activate** (object): <event_name + dashboard_segment>
 - **retain** (object): <event_name + dashboard_segment>
 - **revenue** (object): <event_name + dashboard_segment>
-- **dashboard_url** (string): <public URL>
+- **dashboard_url** (string): <public_url>
 - **launch_gated** (boolean): <true means checklist gates launch event>
-- **owner** (string): <named human owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_human_owner>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

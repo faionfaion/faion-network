@@ -4,14 +4,14 @@
 <!-- depends-on: content/01-core-rules.xml (assign-ba-per-phase rule) -->
 <!-- token-budget-impact: ~300-800 tokens when loaded as context -->
 
-# Sprint <N> BA Activities: <Team Name>
+# Sprint <N> BA Activities: <team_name>
 
 ## Pre-Sprint (Refinement)
 
-- [ ] Refine top <N> backlog items
-- [ ] Write acceptance criteria for <Stories>
+- [ ] Refine top <refine_top> backlog items
+- [ ] Write acceptance criteria for <stories>
 - [ ] Create models/wireframes for complex items
-- [ ] Identify dependencies with <Teams>
+- [ ] Identify dependencies with <teams>
 
 ## Sprint Planning
 

@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/go-concurrency-patterns.json` | JSON Schema for the Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) output contract |
-| `templates/go-concurrency-patterns.md` | Markdown skeleton with the required fields |
+| `templates/go-concurrency-patterns.md.j2` | Markdown skeleton with the required fields |
+| `templates/go-concurrency-patterns.md` | Markdown skeleton with the required fields Generated from `templates/go-concurrency-patterns.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a go-concurrency-patterns record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-concurrency-patterns record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pool.go` | Leak-safe bounded worker pool: context cancellation, panic recovery, error collection, sender-owned close |

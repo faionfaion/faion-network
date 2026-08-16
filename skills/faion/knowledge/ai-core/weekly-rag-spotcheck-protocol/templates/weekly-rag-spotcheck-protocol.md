@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Weekly RAG Spotcheck Protocol — <artefact_id>
 
-- **artefact_id**: wrsp-<kebab-case-slug>
+- **artefact_id**: wrsp-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

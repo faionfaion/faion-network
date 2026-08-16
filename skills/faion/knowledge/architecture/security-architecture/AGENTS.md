@@ -67,7 +67,8 @@
 | `templates/threat-model-stride.md.j2` | STRIDE threat-model skeleton + asset-attacker-control table. |
 | `templates/threat-model-stride.md` | STRIDE threat-model skeleton + asset-attacker-control table. Generated from `templates/threat-model-stride.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/authz-matrix.json` | Authorisation matrix (role × resource × operation). |
-| `templates/security-spec.md` | Spec skeleton tying threat-model + controls + ASVS coverage. |
+| `templates/security-spec.md.j2` | Spec skeleton tying threat-model + controls + ASVS coverage. |
+| `templates/security-spec.md` | Spec skeleton tying threat-model + controls + ASVS coverage. Generated from `templates/security-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

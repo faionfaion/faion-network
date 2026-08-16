@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/alert-routing.yaml` | Authoritative routing config with fingerprints |
-| `templates/audit-report.md` | Quarterly audit report skeleton |
+| `templates/audit-report.md.j2` | Quarterly audit report skeleton |
+| `templates/audit-report.md` | Quarterly audit report skeleton Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/slo-dashboard.json` | Grafana / Datadog paging-SLO dashboard JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

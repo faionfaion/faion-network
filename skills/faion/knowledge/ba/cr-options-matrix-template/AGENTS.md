@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cr-options-matrix-template.json` | JSON skeleton for the options matrix. |
-| `templates/cr-options-matrix-template.md` | Markdown skeleton with required fields. |
+| `templates/cr-options-matrix-template.md.j2` | Markdown skeleton with required fields. |
+| `templates/cr-options-matrix-template.md` | Markdown skeleton with required fields. Generated from `templates/cr-options-matrix-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable options matrix. |
 | `templates/_smoke-test.md` | Minimum viable options matrix. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

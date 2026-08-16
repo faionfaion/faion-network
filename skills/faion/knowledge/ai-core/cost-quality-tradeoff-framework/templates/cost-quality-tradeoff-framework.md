@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Cost-Quality Tradeoff Framework — <artefact_id>
 
-- **artefact_id**: cqt-<kebab-case-slug>
+- **artefact_id**: cqt-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spike.md` | Spike skeleton: question / timebox / exit criteria / outcome / next action. |
+| `templates/spike.md.j2` | Spike skeleton: question / timebox / exit criteria / outcome / next action. |
+| `templates/spike.md` | Spike skeleton: question / timebox / exit criteria / outcome / next action. Generated from `templates/spike.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

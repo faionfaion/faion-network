@@ -68,8 +68,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/mlp-plan.md` | MLP plan skeleton with 4 layer scores + delight backlog + curve target. |
-| `templates/delight-sprint.md` | Single-theme delight sprint plan template. |
+| `templates/mlp-plan.md.j2` | MLP plan skeleton with 4 layer scores + delight backlog + curve target. |
+| `templates/mlp-plan.md` | MLP plan skeleton with 4 layer scores + delight backlog + curve target. Generated from `templates/mlp-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/delight-sprint.md.j2` | Single-theme delight sprint plan template. |
+| `templates/delight-sprint.md` | Single-theme delight sprint plan template. Generated from `templates/delight-sprint.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

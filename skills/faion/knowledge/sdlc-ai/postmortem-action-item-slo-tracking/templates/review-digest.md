@@ -8,7 +8,7 @@ token-budget-impact: low — ~150 tokens when loaded as context
 
 # Weekly Digest — <YYYY-MM-DD>
 
-- SLO compliance: <closed-on-time>/<total-due> P1 items closed within 2 weeks (<percent>%).
+- SLO compliance: <closed-on-time>/<total_due> P1 items closed within 2 weeks (<percent>%).
 - Overdue: <count> (entries: <list of ids>). Owner notified.
 - Closed this period: <count>.
 - Archived this period: <count> (retention horizon 24 months).
@@ -16,4 +16,4 @@ token-budget-impact: low — ~150 tokens when loaded as context
 
 ## Notes for owner
 
-- <free-form notes>
+- <free_form_notes>

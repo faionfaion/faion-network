@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/content-atomization-engine.md` | Markdown skeleton with required fields. |
+| `templates/content-atomization-engine.md.j2` | Markdown skeleton with required fields. |
+| `templates/content-atomization-engine.md` | Markdown skeleton with required fields. Generated from `templates/content-atomization-engine.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

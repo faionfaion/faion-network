@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/eeat-signal-pass-template.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/eeat-signal-pass-template.md.j2` | Markdown skeleton: artefact body + per-section table. |
+| `templates/eeat-signal-pass-template.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/eeat-signal-pass-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/eeat-signal-pass-template.json` | eeat-pass JSON skeleton validating against scripts/. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

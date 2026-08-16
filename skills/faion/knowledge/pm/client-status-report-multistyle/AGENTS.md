@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-status-report-multistyle.json` | JSON Schema (draft-07) for the Client Status Report Multistyle output contract |
-| `templates/client-status-report-multistyle.md` | Markdown skeleton with the required fields for the Client Status Report Multistyle artefact |
+| `templates/client-status-report-multistyle.md.j2` | Markdown skeleton with the required fields for the Client Status Report Multistyle artefact |
+| `templates/client-status-report-multistyle.md` | Markdown skeleton with the required fields for the Client Status Report Multistyle artefact Generated from `templates/client-status-report-multistyle.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/client-status-report-multistyle.example.json` | Worked filled-in example of a valid Client Status Report Multistyle artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

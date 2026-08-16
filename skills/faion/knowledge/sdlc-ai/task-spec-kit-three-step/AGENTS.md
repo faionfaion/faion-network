@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-skeleton.md` | spec.md skeleton with [NEEDS CLARIFICATION] markers and WHAT/WHY sections. |
-| `templates/tasks-skeleton.md` | tasks.md skeleton with [P] tag column and file-overlap proof column. |
+| `templates/spec-skeleton.md.j2` | spec.md skeleton with [NEEDS CLARIFICATION] markers and WHAT/WHY sections. |
+| `templates/spec-skeleton.md` | spec.md skeleton with [NEEDS CLARIFICATION] markers and WHAT/WHY sections. Generated from `templates/spec-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/tasks-skeleton.md.j2` | tasks.md skeleton with [P] tag column and file-overlap proof column. |
+| `templates/tasks-skeleton.md` | tasks.md skeleton with [P] tag column and file-overlap proof column. Generated from `templates/tasks-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

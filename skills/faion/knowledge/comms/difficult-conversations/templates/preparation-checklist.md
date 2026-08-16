@@ -7,9 +7,9 @@
 # Pre-Conversation Preparation
 
 What do I really want?
-- For me: [goal]
-- For them: [goal]
-- For the relationship: [goal]
+- For me: <goal>
+- For them: <goal>
+- For the relationship: <goal>
 
 Facts (observable, verifiable — no interpretations):
 - [Specific behavior with date or frequency]

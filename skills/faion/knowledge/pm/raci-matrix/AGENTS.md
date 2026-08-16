@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/raci-matrix.md` | Blank RACI grid template with role columns and task rows |
+| `templates/raci-matrix.md.j2` | Blank RACI grid template with role columns and task rows |
+| `templates/raci-matrix.md` | Blank RACI grid template with role columns and task rows Generated from `templates/raci-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

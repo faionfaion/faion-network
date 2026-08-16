@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/risk-register.md` | Register table: ID, description, category, P, I, score, strategy, response, owner, status |
-| `templates/risk-card.md` | Single risk deep-dive card with trigger, contingency, and ownership fields |
+| `templates/risk-register.md.j2` | Register table: ID, description, category, P, I, score, strategy, response, owner, status |
+| `templates/risk-register.md` | Register table: ID, description, category, P, I, score, strategy, response, owner, status Generated from `templates/risk-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/risk-card.md.j2` | Single risk deep-dive card with trigger, contingency, and ownership fields |
+| `templates/risk-card.md` | Single risk deep-dive card with trigger, contingency, and ownership fields Generated from `templates/risk-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

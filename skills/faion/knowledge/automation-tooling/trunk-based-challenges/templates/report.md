@@ -9,18 +9,18 @@
 ## Metrics (last 4 weeks)
 | Metric | Value |
 |--------|-------|
-| trunk break freq | <lt_1 / 1_3 / gt_3> per week |
-| PR size p95 | <NN> lines |
+| trunk break freq | <trunk_break_freq> per week |
+| PR size p95 | <pr_size_p95> lines |
 | CI p95 wall time | <NN> min |
-| Review p95 | <NN> hours |
+| Review p95 | <review_p95> hours |
 | Branch protection complete | yes / no |
 
 ## Ordered checklist walk
-1. Branch protection includes all CI jobs: <PASS/FAIL>
-2. CI < 10 min: <PASS/FAIL>
-3. Flags tracked + non-stale: <PASS/FAIL>
-4. PR < 200 lines (p95): <PASS/FAIL>
-5. Review SLA < 4h (p95): <PASS/FAIL>
+1. Branch protection includes all CI jobs: <pass_fail>
+2. CI < 10 min: <pass_fail>
+3. Flags tracked + non-stale: <pass_fail>
+4. PR < 200 lines (p95): <pass_fail>
+5. Review SLA < 4h (p95): <pass_fail>
 
 ## First failing check
 <name>

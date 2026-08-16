@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stat-power-precheck.md` | Markdown skeleton with all five inputs and the verdict block |
+| `templates/stat-power-precheck.md.j2` | Markdown skeleton with all five inputs and the verdict block |
+| `templates/stat-power-precheck.md` | Markdown skeleton with all five inputs and the verdict block Generated from `templates/stat-power-precheck.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/power-calc.py` | 10-line Python power calculator using statsmodels |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

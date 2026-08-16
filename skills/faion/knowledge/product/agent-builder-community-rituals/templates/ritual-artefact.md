@@ -8,7 +8,7 @@ token-budget-impact: ~200 tokens when filled.
 
 ---
 ritual_id: "<office-hours|eval-sharing|prompt-swap>"
-session_date: "<ISO date>"
+session_date: "<iso_date>"
 host: "host:<person>"
 organiser: "organiser:<person>"
 attendees: ["@a", "@b", "@c"]
@@ -24,8 +24,8 @@ session_index: 1
 
 ## Artefact produced
 
-- Type: <eval-row | prompt-diff | runbook-update>
-- Link: <URL>
+- Type: <type>
+- Link: <url>
 
 ## Retention update
 
@@ -34,5 +34,5 @@ session_index: 1
 
 ## Next session
 
-- Date: <ISO date>
+- Date: <iso_date>
 - Host: <next-host:person> (rotation cycle)

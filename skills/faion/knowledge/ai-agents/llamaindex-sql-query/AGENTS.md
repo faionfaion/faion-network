@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/db-profile.yaml` | Input. |
-| `templates/nlsql-spec.md` | Output. |
+| `templates/nlsql-spec.md.j2` | Output. |
+| `templates/nlsql-spec.md` | Output. Generated from `templates/nlsql-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/nl_sql.py` | Working NLSQLTableQueryEngine. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

@@ -8,13 +8,13 @@ token-budget-impact: ~250 tokens.
 
 # OKR Setting — <artefact_id>
 
-- **quarter** (string): <yyyy-Qn>
-- **quarter_dates** (object): <ISO start/end>
+- **quarter** (string): <yyyy_qn>
+- **quarter_dates** (object): <iso_start_end>
 - **objectives** (array): <≤3 objects each with title + owner + KRs[]>
 - **biweekly_checkin** (object): <day_of_week + time + recurrence>
 - **owner** (string): <named owner (overall)>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

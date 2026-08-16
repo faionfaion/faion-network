@@ -19,7 +19,7 @@
 - Option 2: <fill>
 - Option 3 (do nothing): <fill>
 - Option 4 (unconventional): <fill>
-- Eliminated: <option + reason>
+- Eliminated: <option_reason>
 
 ## Phase 3 — Trade-off Analysis
 See `tradeoff-matrix.json`.

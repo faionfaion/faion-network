@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/guardrails.yaml` | Neutral rule source: deny patterns + lint mapping + signoff block. |
-| `templates/copilot-rules.md` | Per-agent rendered example for Copilot Business. |
+| `templates/copilot-rules.md.j2` | Per-agent rendered example for Copilot Business. |
+| `templates/copilot-rules.md` | Per-agent rendered example for Copilot Business. Generated from `templates/copilot-rules.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

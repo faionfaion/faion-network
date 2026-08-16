@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | One-page cascade skeleton: company KR + team OBJ + 3-5 team KRs (baseline / target / measure) + contribution map + depends-on + alignment sign-off line. |
+| `templates/skeleton.md.j2` | One-page cascade skeleton: company KR + team OBJ + 3-5 team KRs (baseline / target / measure) + contribution map + depends-on + alignment sign-off line. |
+| `templates/skeleton.md` | One-page cascade skeleton: company KR + team OBJ + 3-5 team KRs (baseline / target / measure) + contribution map + depends-on + alignment sign-off line. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

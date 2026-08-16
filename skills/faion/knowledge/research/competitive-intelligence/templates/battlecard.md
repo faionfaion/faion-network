@@ -3,7 +3,7 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Battlecard: [Competitor]
+# Battlecard: <competitor>
 
 _generated_at: YYYY-MM-DDTHH:MM:SSZ | ttl_days: 14_
 

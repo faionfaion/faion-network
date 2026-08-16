@@ -7,7 +7,7 @@
 # Sprint [N] Planning
 
 **Sprint Goal:** [One sentence describing the objective]
-**Duration:** [Start date] - [End date] (2 weeks)
+**Duration:** <start_date> - <end_date> (2 weeks)
 
 ## Capacity
 
@@ -30,7 +30,7 @@ Target: ≤80% of total capacity to maintain buffer.
 
 ## Dependencies
 
-- [Story] needs [input] from [team/person] by [date]
+- <story> needs <input> from <team_person> by <date>
 
 ## Risks
 

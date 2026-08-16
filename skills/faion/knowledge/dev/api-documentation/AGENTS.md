@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/doc-structure.md` | Markdown skeleton enforcing the six-section structure |
+| `templates/doc-structure.md.j2` | Markdown skeleton enforcing the six-section structure |
+| `templates/doc-structure.md` | Markdown skeleton enforcing the six-section structure Generated from `templates/doc-structure.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/openapi-examples.yaml` | OpenAPI examples block patterns used by the docs site |
 | `templates/output-schema.json` | JSON Schema (draft-07) for the api-documentation artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in api-documentation artefact for validator round-trip |

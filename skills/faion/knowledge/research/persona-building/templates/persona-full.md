@@ -3,12 +3,12 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Persona: [Name] ([Type: Primary / Secondary / Negative])
+# Persona: <name> ([Type: Primary / Secondary / Negative])
 
 ## At a Glance
 
 **Name:** [Alliterative, role-based, memorable]
-**Role:** [Job title or situation]
+**Role:** <role>
 **Company:** [Type and size or "Independent"]
 **Quote:** "[Verbatim from interview — include citation: T03:L87]"
 
@@ -16,18 +16,18 @@
 
 *(Include only if 5+ transcripts agree on this dimension)*
 
-- **Age:** [Range]
-- **Location:** [City/region]
-- **Income:** [Range]
-- **Education:** [Level]
+- **Age:** <range>
+- **Location:** <city_region>
+- **Income:** <range>
+- **Education:** <level>
 
 ## Goals
 
 What they are trying to achieve:
 
 1. [Primary goal — source: T01, T04, T07]
-2. [Secondary goal]
-3. [Long-term aspiration]
+2. <secondary_goal>
+3. <long_term_aspiration>
 
 ## Frustrations
 
@@ -42,26 +42,26 @@ What blocks them:
 *(Optional — add only when handing off to a design or marketing team)*
 
 **Morning:** [What they do]
-**Workday:** [Core tasks]
+**Workday:** <core_tasks>
 **Evening:** [How they wind down]
 
 ## Tools & Technology
 
 - **Primary tools:** [list with versions if relevant]
 - **Software spending:** $[X]/month
-- **Tech savviness:** [Low / Medium / High]
+- **Tech savviness:** <low_medium_high>
 
 ## Information Sources
 
-- **Social:** [Platforms]
+- **Social:** <platforms>
 - **Content:** [Blogs, newsletters]
 - **Communities:** [Slack groups, forums, subreddits]
-- **Influencers:** [Names they trust]
+- **Influencers:** <names_they_trust>
 
 ## Buying Behavior
 
-- **Research style:** [Light / Heavy]
-- **Decision time:** [Days / weeks / months]
+- **Research style:** <light_heavy>
+- **Decision time:** <days_weeks_months>
 - **Key factors:** [Price? Reviews? Peer recommendation? Features?]
 - **Objections:** [Why they would not buy]
 - **Buying trigger:** [What makes them act — cite interview]
@@ -70,7 +70,7 @@ What blocks them:
 
 **Problem we solve:** [Specific problem, in their language]
 **Value we provide:** [Outcome, not feature]
-**Why us over alternatives:** [Concrete differentiator]
+**Why us over alternatives:** <concrete_differentiator>
 
 ## Messaging That Resonates
 
@@ -80,7 +80,7 @@ What blocks them:
 
 ## Data Sources
 
-- Interviews conducted: [N]
-- Surveys: [N responses]
-- Last validated: [YYYY-MM-DD]
+- Interviews conducted: <interviews_conducted>
+- Surveys: <n_responses>
+- Last validated: <last_validated>
 - Validated by: [showing doc to 3 real customers — names in private notes]

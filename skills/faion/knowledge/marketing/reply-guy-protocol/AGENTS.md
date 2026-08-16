@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/reply-protocol.md` | Markdown protocol: target-list schema, rotation rules, anti-cringe heuristics, daily time-box. |
+| `templates/reply-protocol.md.j2` | Markdown protocol: target-list schema, rotation rules, anti-cringe heuristics, daily time-box. |
+| `templates/reply-protocol.md` | Markdown protocol: target-list schema, rotation rules, anti-cringe heuristics, daily time-box. Generated from `templates/reply-protocol.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

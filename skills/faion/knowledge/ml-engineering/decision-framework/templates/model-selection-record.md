@@ -4,7 +4,7 @@
 <!-- depends-on: 01-core-rules.xml -->
 <!-- token-budget-impact: small -->
 
-# Model Selection Decision: [Application Name]
+# Model Selection Decision: <application_name>
 
 **Date:** YYYY-MM-DD
 **Status:** Draft | Approved | Implemented
@@ -14,10 +14,10 @@
 | Requirement | Value |
 |-------------|-------|
 | Task type | Generation / Classification / Extraction / Reasoning |
-| Quality threshold | [accuracy/quality level] |
+| Quality threshold | <accuracy_quality_level> |
 | Latency | Real-time (&lt;2s) / Interactive (&lt;10s) / Batch |
-| Volume | [requests/month] |
-| Budget | [monthly cap] |
+| Volume | <requests_month> |
+| Budget | <monthly_cap> |
 | Privacy | Public API OK / Self-hosted required |
 
 ## Options Considered
@@ -30,7 +30,7 @@
 
 ## Decision
 
-**Selected:** [Option]
+**Selected:** <option>
 
 **Rationale:** [2-3 bullet points]
 

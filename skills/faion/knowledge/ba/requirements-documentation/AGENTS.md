@@ -70,9 +70,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/br-record.md` | Business requirement record. |
-| `templates/sh-record.md` | Stakeholder requirement record. |
-| `templates/sr-record.md` | Solution requirement record (FR/NFR). |
+| `templates/br-record.md.j2` | Business requirement record. |
+| `templates/br-record.md` | Business requirement record. Generated from `templates/br-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sh-record.md.j2` | Stakeholder requirement record. |
+| `templates/sh-record.md` | Stakeholder requirement record. Generated from `templates/sh-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sr-record.md.j2` | Solution requirement record (FR/NFR). |
+| `templates/sr-record.md` | Solution requirement record (FR/NFR). Generated from `templates/sr-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in BR/SH/SR triple. |
 | `templates/_smoke-test.md` | Minimum filled-in BR/SH/SR triple. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

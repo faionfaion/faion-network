@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Tool Card Template — <artefact_id>
 
-- **artefact_id**: toolc-<kebab-case-slug>
+- **artefact_id**: toolc-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

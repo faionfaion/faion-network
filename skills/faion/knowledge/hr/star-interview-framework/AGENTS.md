@@ -60,10 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/star-scorecard.md` | Scorecard skeleton: competency × scale × behavior anchor + evidence slot |
+| `templates/star-scorecard.md.j2` | Scorecard skeleton: competency × scale × behavior anchor + evidence slot |
+| `templates/star-scorecard.md` | Scorecard skeleton: competency × scale × behavior anchor + evidence slot Generated from `templates/star-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/interviewer-guide.md.j2` | Guide explaining how to use the rubric live in an interview |
 | `templates/interviewer-guide.md` | Guide explaining how to use the rubric live in an interview Generated from `templates/interviewer-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/_smoke-test.md` | Filled-in scorecard for a single candidate × competency |
+| `templates/_smoke-test.md.j2` | Filled-in scorecard for a single candidate × competency |
+| `templates/_smoke-test.md` | Filled-in scorecard for a single candidate × competency Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

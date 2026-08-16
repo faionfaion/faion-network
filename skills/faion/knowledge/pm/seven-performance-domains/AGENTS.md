@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/domain-audit.md` | Seven-row audit table per domain: artefact / owner / last-updated / status / next-action |
+| `templates/domain-audit.md.j2` | Seven-row audit table per domain: artefact / owner / last-updated / status / next-action |
+| `templates/domain-audit.md` | Seven-row audit table per domain: artefact / owner / last-updated / status / next-action Generated from `templates/domain-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/domain-artefact-map.yaml` | Mapping table from canonical domains to expected artefacts |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

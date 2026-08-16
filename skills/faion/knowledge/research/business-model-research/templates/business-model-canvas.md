@@ -3,66 +3,66 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Business Model Canvas: [Product Name]
+# Business Model Canvas: <product_name>
 
 _Every cell tagged H (Hard: sourced from filing/pricing page/comparable) or S (Soft: founder estimate)._
 _Version: v1 | Date: YYYY-MM-DD_
 
 ## Customer Segments
 
-- **Primary:** [Segment 1] [H/S]
-- **Secondary:** [Segment 2] [H/S]
+- **Primary:** <segment_1> [H/S]
+- **Secondary:** <segment_2> [H/S]
 
 ## Value Propositions
 
-- For [Segment 1]: [Value delivered] [H/S]
-- For [Segment 2]: [Value delivered] [H/S]
+- For <segment_1>: <value_delivered> [H/S]
+- For <segment_2>: <value_delivered> [H/S]
 
 ## Channels
 
 | Phase | Channel | Notes |
 |-------|---------|-------|
 | Awareness | [How they find us] | [H/S] |
-| Evaluation | [How they evaluate] | [H/S] |
-| Purchase | [How they buy] | [H/S] |
+| Evaluation | <how_they_evaluate> | [H/S] |
+| Purchase | <how_they_buy> | [H/S] |
 | Delivery | [How they receive value] | [H/S] |
-| After-sales | [How we support] | [H/S] |
+| After-sales | <how_we_support> | [H/S] |
 
 ## Customer Relationships
 
-- Type: [Self-serve / Assisted / Automated] [H/S]
+- Type: <type> [H/S]
 - Retention mechanisms: [X] [H/S]
 
 ## Revenue Streams
 
 | Stream | Model | Price | % Revenue | Source |
 |--------|-------|-------|-----------|--------|
-| [Stream 1] | [Subscription/One-time/Transaction] | $X | X% | [URL] [H/S] |
+| <stream_1> | [Subscription/One-time/Transaction] | $X | X% | [URL] [H/S] |
 
 ## Key Resources
 
-- Physical: [Assets] [H/S]
+- Physical: <assets> [H/S]
 - Intellectual: [IP, data, brand] [H/S]
-- Human: [Key roles] [H/S]
-- Financial: [Capital needed] [H/S]
+- Human: <key_roles> [H/S]
+- Financial: <capital_needed> [H/S]
 
 ## Key Activities
 
-1. [Critical activity 1] [H/S]
-2. [Critical activity 2] [H/S]
-3. [Critical activity 3] [H/S]
+1. <critical_activity_1> [H/S]
+2. <critical_activity_2> [H/S]
+3. <critical_activity_3> [H/S]
 
 ## Key Partners
 
 | Partner | What they provide | What they get | [H/S] |
 |---------|-------------------|---------------|-------|
-| [Partner] | [Value] | [Value] | |
+| <partner> | <value> | <value> | |
 
 ## Cost Structure
 
 | Cost | Type | Amount | [H/S] | Source |
 |------|------|--------|-------|--------|
-| [Cost 1] | Fixed | $X/mo | | [URL] |
-| [Cost 2] | Variable | $X/unit | | [URL] |
+| <cost_1> | Fixed | $X/mo | | [URL] |
+| <cost_2> | Variable | $X/unit | | [URL] |
 
 Cost orientation: [ ] Cost-driven [ ] Value-driven

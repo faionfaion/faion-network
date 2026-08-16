@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft-07) for the debt-record artefact |
-| `templates/debt-record.md` | Markdown skeleton for one debt item with Fowler quadrant + trigger |
+| `templates/debt-record.md.j2` | Markdown skeleton for one debt item with Fowler quadrant + trigger |
+| `templates/debt-record.md` | Markdown skeleton for one debt item with Fowler quadrant + trigger Generated from `templates/debt-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in debt-record for validator round-trip |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

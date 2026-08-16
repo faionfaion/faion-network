@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/build-vs-buy-adr.md` | Build vs Buy ADR template. |
+| `templates/build-vs-buy-adr.md.j2` | Build vs Buy ADR template. |
+| `templates/build-vs-buy-adr.md` | Build vs Buy ADR template. Generated from `templates/build-vs-buy-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

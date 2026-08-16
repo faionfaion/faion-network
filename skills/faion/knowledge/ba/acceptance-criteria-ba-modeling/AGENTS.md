@@ -70,7 +70,8 @@
 |------|---------|
 | `templates/ac-bdd.md.j2` | Given/When/Then BDD template with stable AC ID. |
 | `templates/ac-bdd.md` | Given/When/Then BDD template with stable AC ID. Generated from `templates/ac-bdd.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/ac-rule-based.md` | Rule-based AC template for system constraints. |
+| `templates/ac-rule-based.md.j2` | Rule-based AC template for system constraints. |
+| `templates/ac-rule-based.md` | Rule-based AC template for system constraints. Generated from `templates/ac-rule-based.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-authoring.xml` | LLM prompt for AC authoring. |
 | `templates/prompt-verification.xml` | LLM prompt for AC quality review. |
 | `templates/ac-coverage.sh` | Shell helper computing AC coverage across stories. |

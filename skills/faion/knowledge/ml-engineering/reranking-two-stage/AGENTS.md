@@ -52,7 +52,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/two-stage-design.md` | Design record skeleton. |
+| `templates/two-stage-design.md.j2` | Design record skeleton. |
+| `templates/two-stage-design.md` | Design record skeleton. Generated from `templates/two-stage-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

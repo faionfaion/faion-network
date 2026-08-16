@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-handover-package.json` | JSON Schema for the handover artefact. |
-| `templates/handover-package.md` | Markdown skeleton with the 7 sections. |
+| `templates/handover-package.md.j2` | Markdown skeleton with the 7 sections. |
+| `templates/handover-package.md` | Markdown skeleton with the 7 sections. Generated from `templates/handover-package.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

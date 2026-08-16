@@ -4,21 +4,21 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# PM Tool Migration: [Source] → [Target]
+# PM Tool Migration: <source> → <target>
 
 ## Project Overview
 
-**Objective:** Migrate from [Source] to [Target] by [Date]
-**Sponsor:** [Name/Role]
-**PM:** [Name]
+**Objective:** Migrate from <source> to <target> by <date>
+**Sponsor:** <name_role>
+**PM:** <name>
 
 ## Scope
 
 ### In Scope
 - All active projects ([N])
 - Issues from last [N] years
-- Attachments under [N] MB
-- Key automations ([list])
+- Attachments under <attachments_under> MB
+- Key automations (<list>)
 
 ### Out of Scope
 - Archived projects
@@ -32,7 +32,7 @@
 |-------|----------|-------|
 | Planning | 2-4 weeks | PM |
 | Preparation | 2-3 weeks | Admin |
-| Pilot | 1-2 weeks | [Team] |
+| Pilot | 1-2 weeks | <team> |
 | Full Migration | 1-4 weeks | PM |
 | Cutover | 1 week | All |
 | Stabilization | 2-4 weeks | Support |

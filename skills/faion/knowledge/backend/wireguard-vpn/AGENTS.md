@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/wireguard-vpn.json` | VpnPlan JSON skeleton. |
-| `templates/wireguard-vpn.md` | Human-readable audit trail. |
+| `templates/wireguard-vpn.md.j2` | Human-readable audit trail. |
+| `templates/wireguard-vpn.md` | Human-readable audit trail. Generated from `templates/wireguard-vpn.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/wg0-server.conf` | Reference server config with PostUp/PostDown NAT rules. |
 | `templates/wg0-client-split.conf` | Split-tunnel client — VPN subnet only. |
 | `templates/wg0-client-full.conf` | Full-tunnel client — all traffic via VPS. |

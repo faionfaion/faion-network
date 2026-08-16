@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/review-checklist.md.j2` | Per-requirement validation checklist. |
 | `templates/review-checklist.md` | Per-requirement validation checklist. Generated from `templates/review-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/sign-off-form.md` | Sign-off form with reviewer + date + verdict. |
+| `templates/sign-off-form.md.j2` | Sign-off form with reviewer + date + verdict. |
+| `templates/sign-off-form.md` | Sign-off form with reviewer + date + verdict. Generated from `templates/sign-off-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/req-value-trace.sh` | Shell helper linking requirements to value drivers. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/repo-rules.md` | Guardrail Markdown skeleton with the canonical 6 sections. |
+| `templates/repo-rules.md.j2` | Guardrail Markdown skeleton with the canonical 6 sections. |
+| `templates/repo-rules.md` | Guardrail Markdown skeleton with the canonical 6 sections. Generated from `templates/repo-rules.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/repo-rules.schema.json` | JSON skeleton matching the output contract. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

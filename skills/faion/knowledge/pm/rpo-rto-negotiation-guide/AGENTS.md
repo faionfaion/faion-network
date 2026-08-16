@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | AcceptanceRecord skeleton with default tier-bands |
+| `templates/skeleton.md.j2` | AcceptanceRecord skeleton with default tier-bands |
+| `templates/skeleton.md` | AcceptanceRecord skeleton with default tier-bands Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `AcceptanceRecord` |
 

@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/shell-productivity.json` | ShellPlan JSON skeleton (tool list, shell, starship preset). |
-| `templates/shell-productivity.md` | Human-readable audit trail. |
+| `templates/shell-productivity.md.j2` | Human-readable audit trail. |
+| `templates/shell-productivity.md` | Human-readable audit trail. Generated from `templates/shell-productivity.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/install-cli-tools.sh` | Idempotent installer for the chosen tool list. |
 | `templates/fzf-config.sh` | fzf key-bindings + completion source block. |
 | `templates/starship.toml` | starship preset with concise prompt. |

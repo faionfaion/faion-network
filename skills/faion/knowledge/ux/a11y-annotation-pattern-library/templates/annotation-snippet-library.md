@@ -23,35 +23,35 @@ focus_behaviour: underline + outline
 
 ## dialog
 role: dialog (aria-modal=true)
-name: <modal title>
+name: <modal_title>
 states: open | closed
 keyboard: Esc → close; Tab → trap; Shift+Tab → cycle back
 focus_behaviour: focus first focusable on open; restore to trigger on close
 
 ## menu
 role: menu (or menubar)
-name: <menu purpose>
+name: <menu_purpose>
 states: collapsed | expanded
 keyboard: ArrowDown next item; ArrowUp previous; Esc close
 focus_behaviour: roving tabindex on items
 
 ## tabs
 role: tablist (children role=tab; panels role=tabpanel)
-name: <tab group label>
+name: <tab_group_label>
 states: selected | unselected
 keyboard: ArrowRight/Left between tabs; Home/End first/last
 focus_behaviour: manual activation (Space/Enter) OR automatic on focus
 
 ## combobox
 role: combobox (with listbox)
-name: <field purpose>
+name: <field_purpose>
 states: closed | open | filtering | has-selection
 keyboard: ArrowDown opens; Enter selects; Esc closes & restores
 focus_behaviour: aria-activedescendant on focused option
 
 ## form_field
 role: textbox | spinbutton | switch | radio | etc
-name: <field label>
+name: <field_label>
 states: empty | filled | error | disabled
 keyboard: Tab next field
 focus_behaviour: visible outline; aria-describedby for error/help text

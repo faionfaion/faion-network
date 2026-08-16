@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Embedding Spike Runbook — <artefact_id>
 
-- **artefact_id**: esr-<kebab-case-slug>
+- **artefact_id**: esr-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

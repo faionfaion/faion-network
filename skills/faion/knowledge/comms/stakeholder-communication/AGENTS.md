@@ -65,11 +65,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/meeting-prep.md` | Mode-tagged meeting prep skeleton |
+| `templates/meeting-prep.md.j2` | Mode-tagged meeting prep skeleton |
+| `templates/meeting-prep.md` | Mode-tagged meeting prep skeleton Generated from `templates/meeting-prep.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-interview-guide.txt` | Prompt for an Interview-mode question set |
 | `templates/prompt-socratic-chain.txt` | Prompt for a Socratic probe chain |
-| `templates/requirement-capture.md` | Requirements capture skeleton (Interview output) |
-| `templates/validation-email.md` | Validation write-back email skeleton |
+| `templates/requirement-capture.md.j2` | Requirements capture skeleton (Interview output) |
+| `templates/requirement-capture.md` | Requirements capture skeleton (Interview output) Generated from `templates/requirement-capture.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/validation-email.md.j2` | Validation write-back email skeleton |
+| `templates/validation-email.md` | Validation write-back email skeleton Generated from `templates/validation-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

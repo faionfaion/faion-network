@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Weekly LLM Cost Review Template — <artefact_id>
 
-- **artefact_id**: wlcr-<kebab-case-slug>
+- **artefact_id**: wlcr-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

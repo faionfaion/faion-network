@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ai-slop-detector-checklist.json` | SlopScore JSON skeleton. |
-| `templates/ai-slop-detector-checklist.md` | Scoring rubric + rewrite suggestions. |
+| `templates/ai-slop-detector-checklist.md.j2` | Scoring rubric + rewrite suggestions. |
+| `templates/ai-slop-detector-checklist.md` | Scoring rubric + rewrite suggestions. Generated from `templates/ai-slop-detector-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

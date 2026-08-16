@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sow.md` | Statement of Work template with scope, deliverables, acceptance, payment schedule |
+| `templates/sow.md.j2` | Statement of Work template with scope, deliverables, acceptance, payment schedule |
+| `templates/sow.md` | Statement of Work template with scope, deliverables, acceptance, payment schedule Generated from `templates/sow.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/vendor-scoring.py` | Vendor scoring script: criterion × weight × bid → normalised score |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -70,8 +70,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/automation-assessment.md` | Per-candidate automation assessment template. |
-| `templates/conformance-report.md` | Per-process conformance report. |
+| `templates/automation-assessment.md.j2` | Per-candidate automation assessment template. |
+| `templates/automation-assessment.md` | Per-candidate automation assessment template. Generated from `templates/automation-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/conformance-report.md.j2` | Per-process conformance report. |
+| `templates/conformance-report.md` | Per-process conformance report. Generated from `templates/conformance-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in report. |
 | `templates/_smoke-test.md` | Minimum filled-in report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

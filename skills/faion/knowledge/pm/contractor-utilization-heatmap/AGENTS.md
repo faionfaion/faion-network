@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/contractor-utilization-heatmap.json` | JSON Schema (draft-07) for the Contractor Utilization Heatmap output contract |
-| `templates/contractor-utilization-heatmap.md` | Markdown skeleton with the required fields for the Contractor Utilization Heatmap artefact |
+| `templates/contractor-utilization-heatmap.md.j2` | Markdown skeleton with the required fields for the Contractor Utilization Heatmap artefact |
+| `templates/contractor-utilization-heatmap.md` | Markdown skeleton with the required fields for the Contractor Utilization Heatmap artefact Generated from `templates/contractor-utilization-heatmap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/contractor-utilization-heatmap.example.json` | Worked filled-in example of a valid Contractor Utilization Heatmap artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

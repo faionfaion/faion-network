@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/adr.md` | ADR skeleton with score sheet + alternatives + consequences. |
+| `templates/adr.md.j2` | ADR skeleton with score sheet + alternatives + consequences. |
+| `templates/adr.md` | ADR skeleton with score sheet + alternatives + consequences. Generated from `templates/adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/decision-matrix.py` | Score → recommendation calculator. |
 | `templates/prompt-requirements.txt` | Constraint-elicitation prompt. |
 

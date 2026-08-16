@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Snapshot Stabilize Rules</title>
+<style>:root{color-scheme:light dark}
+body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+color:#1b1b1b;background:#fff}
+h1,h2,h3,h4,h5,h6{line-height:1.25;margin:2rem 0 .6rem}
+h1{font-size:1.9rem} h2{font-size:1.45rem} h3{font-size:1.15rem}
+p,ul,ol,blockquote,table,pre{margin:0 0 1rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+background:#f2f2f2;padding:.1em .3em;border-radius:3px}
+pre{background:#f6f6f6;padding:.9rem 1rem;border-radius:5px;overflow-x:auto}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #d0d0d0;margin-left:0;padding-left:1rem;
+color:#4a4a4a}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:left}
+th{background:#f6f6f6}
+hr{border:0;border-top:1px solid #ddd;margin:2rem 0}
+a{color:#0b57d0}
+@media(prefers-color-scheme:dark){
+body{color:#e6e6e6;background:#151515}
+code{background:#242424} pre{background:#1d1d1d}
+th{background:#1d1d1d} th,td{border-color:#333}
+blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
+<body>
+<h1>Snapshot Stabilize Rules</h1>
+<p>These rules belong in ONE central module (<code>tests/characterization/normalize.*</code>). Every snapshot test imports this module. NO ad-hoc per-test sanitization.</p>
+<h2>Timestamps</h2>
+<ul><li>Replace any <code>^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}</code> with <code>&lt;TS&gt;</code>.</li><li>Replace UNIX epoch millis (10+ digit ints in <code>*_ms</code> fields) with <code>&lt;EPOCH_MS&gt;</code>.</li></ul>
+<h2>UUIDs / IDs</h2>
+<ul><li>Replace <code>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}</code> with <code>&lt;UUID&gt;</code>.</li><li>Replace auto-increment IDs in <code>id</code> / <code>request_id</code> fields with <code>&lt;ID&gt;</code>.</li></ul>
+<h2>Ordering</h2>
+<ul><li>Sort dicts by key (deep).</li><li>Sort lists where ordering is unordered-by-contract; keep as-is where ordering matters (specify per field).</li></ul>
+<h2>PII</h2>
+<ul><li>Hash emails: <code>sha1(email)[:12]</code>, prefix <code>pii:</code>.</li><li>Drop <code>name</code>, <code>phone</code>, <code>address</code> fields entirely.</li></ul>
+<h2>Floating-point</h2>
+<ul><li>Round to business-meaningful precision (cents for money, ms for SLA).</li></ul>
+<h2>Server-only fields</h2>
+<ul><li>Drop <code>server_version</code>, <code>computed_at_ms</code>, <code>trace_id</code>, <code>region</code> — incidental.</li></ul>
+<h2>Worked example</h2>
+<pre><code class="language-python">def normalize(d: dict) -&gt; dict:
+    d = sort_keys_deep(d)
+    d = replace_field_match(d, r&quot;^\d{4}-\d{2}-\d{2}T&quot;, &quot;&lt;TS&gt;&quot;)
+    d = replace_field_match(d, r&quot;^[0-9a-f]{8}-[0-9a-f]{4}&quot;, &quot;&lt;UUID&gt;&quot;)
+    d.pop(&quot;request_id&quot;, None)
+    d.pop(&quot;computed_at_ms&quot;, None)
+    return d</code></pre>
+</body></html>

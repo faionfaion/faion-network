@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/topical-authority-map.md` | Markdown topic-map spec: pillar / cluster / supporting structure with entity coverage matrix and internal-link plan. |
+| `templates/topical-authority-map.md.j2` | Markdown topic-map spec: pillar / cluster / supporting structure with entity coverage matrix and internal-link plan. |
+| `templates/topical-authority-map.md` | Markdown topic-map spec: pillar / cluster / supporting structure with entity coverage matrix and internal-link plan. Generated from `templates/topical-authority-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

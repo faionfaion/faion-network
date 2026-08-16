@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with not_applicable markers. |
+| `templates/skeleton.md.j2` | Canonical section list with not_applicable markers. |
+| `templates/skeleton.md` | Canonical section list with not_applicable markers. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

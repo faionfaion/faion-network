@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/recruiting-playbook-step.md` | Full-cycle step skeleton with inputs/outputs/exit-criteria per stage |
-| `templates/_smoke-test.md` | Filled-in example for a single Senior Engineer requisition |
+| `templates/recruiting-playbook-step.md.j2` | Full-cycle step skeleton with inputs/outputs/exit-criteria per stage |
+| `templates/recruiting-playbook-step.md` | Full-cycle step skeleton with inputs/outputs/exit-criteria per stage Generated from `templates/recruiting-playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in example for a single Senior Engineer requisition |
+| `templates/_smoke-test.md` | Filled-in example for a single Senior Engineer requisition Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

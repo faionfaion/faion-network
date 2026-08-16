@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/churn-cohort-analysis.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/churn-cohort-analysis.md.j2` | Filled artefact skeleton conforming to 02-output-contract.xml |
+| `templates/churn-cohort-analysis.md` | Filled artefact skeleton conforming to 02-output-contract.xml Generated from `templates/churn-cohort-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/churn-cohort-analysis.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
 | `templates/_smoke-test.md.j2` | Minimum-viable filled-in version exercised by scripts/validate-churn-cohort-analysis.py --self-test |
 | `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-churn-cohort-analysis.py --self-test Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

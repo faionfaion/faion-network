@@ -24,7 +24,7 @@
 - <risk> mitigated by <control>
 
 ## Non-risks
-- <attribute pair> currently aligned; no trade-off required.
+- <attribute_pair> currently aligned; no trade-off required.
 
 ## Review trigger
 - <fill>

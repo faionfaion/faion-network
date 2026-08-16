@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-webinar-delivery.md` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-webinar-delivery.md.j2` | Markdown skeleton: artefact body + per-section table. |
+| `templates/growth-webinar-delivery.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/growth-webinar-delivery.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-webinar-delivery.json` | webinar-runbook JSON skeleton validating against scripts/. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

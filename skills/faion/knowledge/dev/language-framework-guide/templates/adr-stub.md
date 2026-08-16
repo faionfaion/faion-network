@@ -6,7 +6,7 @@
 # ADR-NNN: Stack selection for <project>
 
 Status: Proposed
-Date: <YYYY-MM-DD>
+Date: <date>
 
 ## Context
 
@@ -18,8 +18,8 @@ Date: <YYYY-MM-DD>
 
 ## Alternatives Considered
 
-- <alt 1>: rejected because <reason>
-- <alt 2>: rejected because <reason>
+- <alt_1>: rejected because <reason>
+- <alt_2>: rejected because <reason>
 
 ## Consequences
 

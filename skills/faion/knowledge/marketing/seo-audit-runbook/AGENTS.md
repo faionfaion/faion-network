@@ -60,8 +60,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/seo-audit-runbook.md` | Audit report skeleton with six-phase sections + executive summary |
-| `templates/_smoke-test.md` | Minimum-viable filled audit report |
+| `templates/seo-audit-runbook.md.j2` | Audit report skeleton with six-phase sections + executive summary |
+| `templates/seo-audit-runbook.md` | Audit report skeleton with six-phase sections + executive summary Generated from `templates/seo-audit-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled audit report |
+| `templates/_smoke-test.md` | Minimum-viable filled audit report Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

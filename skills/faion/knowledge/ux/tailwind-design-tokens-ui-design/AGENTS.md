@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tailwind-design-tokens.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/tailwind-design-tokens.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/tailwind-design-tokens.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/tailwind-design-tokens.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

@@ -7,19 +7,19 @@
 # Intent: <name>
 
 ## Dialogue 1 (happy path)
-User: <natural wording>
+User: <natural_wording>
 Assistant: <≤12 words>
-User: <follow-up>
+User: <follow_up>
 Assistant: <≤12 words>
 
 ## Dialogue 2 (missing slot)
-User: <utterance without time>
-Assistant: <rephrase prompt>
-User: <provides slot>
+User: <utterance_without_time>
+Assistant: <rephrase_prompt>
+User: <provides_slot>
 Assistant: <confirms>
 
 ## Dialogue 3 (error recovery)
-User: <ambiguous utterance>
-Assistant: <tier-1 rephrase>
-User: <still ambiguous>
-Assistant: <tier-2 examples>
+User: <ambiguous_utterance>
+Assistant: <tier_1_rephrase>
+User: <still_ambiguous>
+Assistant: <tier_2_examples>

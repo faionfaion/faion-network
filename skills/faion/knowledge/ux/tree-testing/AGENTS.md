@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/tree-test-config.json` | Skeleton tree-test config |
-| `templates/task-template.md` | Task-writing template |
+| `templates/task-template.md.j2` | Task-writing template |
+| `templates/task-template.md` | Task-writing template Generated from `templates/task-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

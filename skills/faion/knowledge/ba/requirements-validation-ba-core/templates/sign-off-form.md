@@ -6,7 +6,7 @@
 
 # Sign-Off Form
 
-**approver:** <email>  |  **approved_at:** <YYYY-MM-DD>  |  **artefact:** <ref>
+**approver:** <email>  |  **approved_at:** <approver>  |  **artefact:** <ref>
 
 ## Verdict
 pass | fail | conditional

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/seo-content-brief.md` | Markdown SEO content brief: keyword data, SERP analysis, requirements, on-page details, internal links. |
+| `templates/seo-content-brief.md.j2` | Markdown SEO content brief: keyword data, SERP analysis, requirements, on-page details, internal links. |
+| `templates/seo-content-brief.md` | Markdown SEO content brief: keyword data, SERP analysis, requirements, on-page details, internal links. Generated from `templates/seo-content-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

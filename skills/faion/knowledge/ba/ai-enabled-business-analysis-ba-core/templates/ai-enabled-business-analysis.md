@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # AI-Enabled Business Analysis — <artefact_id>
 
-- **artefact_id**: aiba-<kebab-case-slug>
+- **artefact_id**: aiba-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

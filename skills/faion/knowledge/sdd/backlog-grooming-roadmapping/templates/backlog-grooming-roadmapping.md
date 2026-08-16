@@ -12,12 +12,12 @@ token-budget-impact: ~250 tokens.
 - **p0_items** (array): <≤3>
 - **scoring_framework** (string): <RICE | MoSCoW>
 - **now_items** (array): <currently in flight>
-- **next_items** (array): <next horizon>
-- **later_items** (array): <later horizon>
-- **last_groomed_at** (datetime): <ISO datetime>
-- **owner** (string): <named PM>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **next_items** (array): <next_horizon>
+- **later_items** (array): <later_horizon>
+- **last_groomed_at** (datetime): <iso_datetime>
+- **owner** (string): <named_pm>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

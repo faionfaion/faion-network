@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/user-interviews.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/user-interviews.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/user-interviews.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/user-interviews.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/user-interviews.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scope-creep-email-language-pack.md` | Working checklist skeleton with 5-line header |
+| `templates/scope-creep-email-language-pack.md.j2` | Working checklist skeleton with 5-line header |
+| `templates/scope-creep-email-language-pack.md` | Working checklist skeleton with 5-line header Generated from `templates/scope-creep-email-language-pack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

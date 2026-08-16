@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/prompt-inventory.md` | Inventory + parameter map skeleton + validation-suite stub. |
+| `templates/prompt-inventory.md.j2` | Inventory + parameter map skeleton + validation-suite stub. |
+| `templates/prompt-inventory.md` | Inventory + parameter map skeleton + validation-suite stub. Generated from `templates/prompt-inventory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

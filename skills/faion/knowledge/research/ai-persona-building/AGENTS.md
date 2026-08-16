@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/persona-spec.md` | Persona spec skeleton |
+| `templates/persona-spec.md.j2` | Persona spec skeleton |
+| `templates/persona-spec.md` | Persona spec skeleton Generated from `templates/persona-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/personas.json` | Machine-readable personas matching schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

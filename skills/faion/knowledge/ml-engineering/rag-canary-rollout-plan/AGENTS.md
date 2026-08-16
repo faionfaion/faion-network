@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/rollout-plan.json` | JSON schema for the rollout plan. |
-| `templates/rollout-plan.md` | Markdown skeleton for the human-readable plan. |
+| `templates/rollout-plan.md.j2` | Markdown skeleton for the human-readable plan. |
+| `templates/rollout-plan.md` | Markdown skeleton for the human-readable plan. Generated from `templates/rollout-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/step-gate-result.json` | Per-step gate result schema. |
 | `templates/rollback-receipt.json` | Rollback receipt schema (records the 60s contract). |
 

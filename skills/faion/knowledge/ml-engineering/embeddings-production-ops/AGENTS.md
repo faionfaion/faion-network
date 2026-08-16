@@ -66,7 +66,8 @@
 | `templates/embeddings-ops.yaml` | Production ops config skeleton |
 | `templates/rate-limit-handler.py` | Exponential-backoff + jitter wrapper |
 | `templates/cost-attribution.py` | Per-call (tenant, use case, tokens, $) logger |
-| `templates/migration-playbook.md` | Dual-index migration runbook |
+| `templates/migration-playbook.md.j2` | Dual-index migration runbook |
+| `templates/migration-playbook.md` | Dual-index migration runbook Generated from `templates/migration-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

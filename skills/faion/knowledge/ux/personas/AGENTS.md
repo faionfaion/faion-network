@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/persona-template.md` | Per-persona markdown template with all required fields |
-| `templates/clustering-prompt.md` | Agent-assisted clustering prompt for transcript synthesis |
+| `templates/persona-template.md.j2` | Per-persona markdown template with all required fields |
+| `templates/persona-template.md` | Per-persona markdown template with all required fields Generated from `templates/persona-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/clustering-prompt.md.j2` | Agent-assisted clustering prompt for transcript synthesis |
+| `templates/clustering-prompt.md` | Agent-assisted clustering prompt for transcript synthesis Generated from `templates/clustering-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

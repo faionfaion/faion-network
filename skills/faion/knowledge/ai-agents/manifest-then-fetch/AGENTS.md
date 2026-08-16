@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/tool-inventory.yaml` | Input. |
-| `templates/protocol-spec.md` | Output. |
+| `templates/protocol-spec.md.j2` | Output. |
+| `templates/protocol-spec.md` | Output. Generated from `templates/protocol-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/manifest_then_fetch.py` | Working tool wrapper. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

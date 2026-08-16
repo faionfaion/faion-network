@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-doc-writing-process.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-doc-writing-process.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-doc-writing-process.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/design-doc-writing-process.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

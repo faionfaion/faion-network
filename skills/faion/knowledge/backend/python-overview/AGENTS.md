@@ -55,7 +55,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Domain + stack + methodology list + Python version skeleton. |
+| `templates/decision-record.md.j2` | Domain + stack + methodology list + Python version skeleton. |
+| `templates/decision-record.md` | Domain + stack + methodology list + Python version skeleton. Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

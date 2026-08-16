@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/fixed-price-vs-tm-cr-pricing-playbook.json` | JSON Schema for the Fixed-Price vs T&M Change-Request Pricing Playbook output contract |
-| `templates/fixed-price-vs-tm-cr-pricing-playbook.md` | Markdown skeleton with the required fields |
+| `templates/fixed-price-vs-tm-cr-pricing-playbook.md.j2` | Markdown skeleton with the required fields |
+| `templates/fixed-price-vs-tm-cr-pricing-playbook.md` | Markdown skeleton with the required fields Generated from `templates/fixed-price-vs-tm-cr-pricing-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a fixed-price-vs-tm-cr-pricing-playbook record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a fixed-price-vs-tm-cr-pricing-playbook record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

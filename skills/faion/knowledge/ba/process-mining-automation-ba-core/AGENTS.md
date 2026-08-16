@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/automation-assessment.md` | Report skeleton: variants ranked, candidate automations, feasibility. |
+| `templates/automation-assessment.md.j2` | Report skeleton: variants ranked, candidate automations, feasibility. |
+| `templates/automation-assessment.md` | Report skeleton: variants ranked, candidate automations, feasibility. Generated from `templates/automation-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pm-feasibility-audit.py` | Stdlib audit checking event-log integrity before mining. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

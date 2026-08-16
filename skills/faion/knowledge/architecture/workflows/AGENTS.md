@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft-07) for the workflow-instance artefact |
-| `templates/workflow-instance.md` | Markdown skeleton with steps + role table + review gates |
+| `templates/workflow-instance.md.j2` | Markdown skeleton with steps + role table + review gates |
+| `templates/workflow-instance.md` | Markdown skeleton with steps + role table + review gates Generated from `templates/workflow-instance.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in workflow-instance for validator round-trip |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

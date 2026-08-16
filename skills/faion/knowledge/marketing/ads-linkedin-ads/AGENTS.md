@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/campaign-plan.md` | LinkedIn campaign plan skeleton with objective, audience, format, bid, creative. |
+| `templates/campaign-plan.md.j2` | LinkedIn campaign plan skeleton with objective, audience, format, bid, creative. |
+| `templates/campaign-plan.md` | LinkedIn campaign plan skeleton with objective, audience, format, bid, creative. Generated from `templates/campaign-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/abm-account-list.csv` | Matched-account list CSV header for ABM seeding. |
 | `templates/campaign-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 

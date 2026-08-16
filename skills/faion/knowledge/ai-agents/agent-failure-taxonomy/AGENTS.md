@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Filled example with 6 default labels. |
+| `templates/_smoke-test.md.j2` | Filled example with 6 default labels. |
+| `templates/_smoke-test.md` | Filled example with 6 default labels. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

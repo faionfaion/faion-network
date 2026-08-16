@@ -7,7 +7,7 @@ token-budget-impact: ~600 tokens to fill end-to-end; review costs ~200 tokens.
 -->
 ---
 version: 0.1.0           # bump on every refresh
-owner: qa-eng:<person>   # person, not team
+owner: qa-eng:<owner_full_name>   # person, not team
 last_reviewed: YYYY-MM-DD
 incident_url: https://...
 ---
@@ -29,7 +29,7 @@ incident_url: https://...
 # Evidence
 
 - <Sentry / Jira / ticket URL>
-- <PR URL>
+- <pr_url>
 - <regression test path: tests/regression/...>
 
 # Decisions

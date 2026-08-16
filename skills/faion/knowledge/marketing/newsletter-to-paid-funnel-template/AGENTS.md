@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/newsletter-funnel-spec.md` | Markdown skeleton: stage table (free → wedge → paid) with conversion gates, owners, weekly KPIs. |
+| `templates/newsletter-funnel-spec.md.j2` | Markdown skeleton: stage table (free → wedge → paid) with conversion gates, owners, weekly KPIs. |
+| `templates/newsletter-funnel-spec.md` | Markdown skeleton: stage table (free → wedge → paid) with conversion gates, owners, weekly KPIs. Generated from `templates/newsletter-funnel-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

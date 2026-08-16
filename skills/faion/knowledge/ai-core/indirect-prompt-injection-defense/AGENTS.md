@@ -62,9 +62,11 @@
 | File | Purpose |
 |---|---|
 | `templates/defense-spec.schema.json` | JSON Schema for the IPI defense specification. |
-| `templates/trust-boundary.md` | Markdown skeleton with diagram, sources table, taint-rules table. |
+| `templates/trust-boundary.md.j2` | Markdown skeleton with diagram, sources table, taint-rules table. |
+| `templates/trust-boundary.md` | Markdown skeleton with diagram, sources table, taint-rules table. Generated from `templates/trust-boundary.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ipi-eval-set.jsonl` | Seed adversarial eval cases: Spotlight, base64-smuggle, embedded-URL fetch, exfil canary. |
-| `templates/_smoke-test.md` | Minimum viable filled spec for a single-source agent. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled spec for a single-source agent. |
+| `templates/_smoke-test.md` | Minimum viable filled spec for a single-source agent. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

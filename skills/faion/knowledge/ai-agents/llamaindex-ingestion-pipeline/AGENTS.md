@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/corpus-profile.yaml` | Input. |
-| `templates/ingestion-spec.md` | Output. |
+| `templates/ingestion-spec.md.j2` | Output. |
+| `templates/ingestion-spec.md` | Output. Generated from `templates/ingestion-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pipeline.py` | Working IngestionPipeline. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

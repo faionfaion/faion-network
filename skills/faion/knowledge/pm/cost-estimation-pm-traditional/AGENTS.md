@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cost-worksheet.md` | Bottom-up cost worksheet with three-point PERT per package + contingency stack |
+| `templates/cost-worksheet.md.j2` | Bottom-up cost worksheet with three-point PERT per package + contingency stack |
+| `templates/cost-worksheet.md` | Bottom-up cost worksheet with three-point PERT per package + contingency stack Generated from `templates/cost-worksheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/risk-contingency.py` | Risk register → contingency reserve via expected monetary value |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

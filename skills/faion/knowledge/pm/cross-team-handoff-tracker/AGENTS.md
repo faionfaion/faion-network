@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cross-team-handoff-tracker.json` | JSON Schema (draft-07) for the Cross Team Handoff Tracker output contract |
-| `templates/cross-team-handoff-tracker.md` | Markdown skeleton with the required fields for the Cross Team Handoff Tracker artefact |
+| `templates/cross-team-handoff-tracker.md.j2` | Markdown skeleton with the required fields for the Cross Team Handoff Tracker artefact |
+| `templates/cross-team-handoff-tracker.md` | Markdown skeleton with the required fields for the Cross Team Handoff Tracker artefact Generated from `templates/cross-team-handoff-tracker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/cross-team-handoff-tracker.example.json` | Worked filled-in example of a valid Cross Team Handoff Tracker artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

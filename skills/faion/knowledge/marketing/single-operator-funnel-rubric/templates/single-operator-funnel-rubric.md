@@ -14,8 +14,8 @@ token-budget-impact: ~250 tokens.
 - **broken_stage** (enum): <one of visit|signup|paid|retained>
 - **next_action** (string): <single committed investigation for next week>
 - **time_spent_min** (integer): <≤20 minutes>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

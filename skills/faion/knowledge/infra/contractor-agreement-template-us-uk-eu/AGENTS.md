@@ -66,9 +66,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/contractor-us.md` | US 1099-NEC contractor agreement skeleton |
-| `templates/contractor-uk.md` | UK contractor agreement with IR35 mitigation |
-| `templates/contractor-eu.md` | EU baseline with DE/FR/PT/ES addenda |
+| `templates/contractor-us.md.j2` | US 1099-NEC contractor agreement skeleton |
+| `templates/contractor-us.md` | US 1099-NEC contractor agreement skeleton Generated from `templates/contractor-us.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/contractor-uk.md.j2` | UK contractor agreement with IR35 mitigation |
+| `templates/contractor-uk.md` | UK contractor agreement with IR35 mitigation Generated from `templates/contractor-uk.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/contractor-eu.md.j2` | EU baseline with DE/FR/PT/ES addenda |
+| `templates/contractor-eu.md` | EU baseline with DE/FR/PT/ES addenda Generated from `templates/contractor-eu.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | Signed contract metadata schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

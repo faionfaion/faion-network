@@ -69,7 +69,8 @@
 |------|---------|
 | `templates/risk-register.md.j2` | PMBoK-aligned register with EMV-ready columns. |
 | `templates/risk-register.md` | PMBoK-aligned register with EMV-ready columns. Generated from `templates/risk-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/risk-response-plan.md` | Per-risk response plan attached to register row. |
+| `templates/risk-response-plan.md.j2` | Per-risk response plan attached to register row. |
+| `templates/risk-response-plan.md` | Per-risk response plan attached to register row. Generated from `templates/risk-response-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

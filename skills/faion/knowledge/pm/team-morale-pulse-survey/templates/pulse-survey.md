@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml#r1-four-question-cap -->
 <!-- token-budget-impact: ~120 tokens when loaded as context -->
 
-# Weekly Team Pulse — Sprint [N], Week ISO [YYYY-Www]
+# Weekly Team Pulse — Sprint [N], Week ISO <yyyy_www>
 
 This survey is anonymous. The PM acts on alerts within 48 business hours. No retaliation.
 

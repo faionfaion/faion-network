@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Workflow record skeleton with sections alert / red-test / fix / verification / review. |
+| `templates/skeleton.md.j2` | Workflow record skeleton with sections alert / red-test / fix / verification / review. |
+| `templates/skeleton.md` | Workflow record skeleton with sections alert / red-test / fix / verification / review. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

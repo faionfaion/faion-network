@@ -7,7 +7,7 @@ token-budget-impact: ~10-30k once filled
 -->
 ---
 artefact_id: design-<feature>
-owner: <Full Name> <email>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 feature: <feature-name>
@@ -19,18 +19,18 @@ spec_ref: .aidocs/features/<status>/<feature>/spec.md
 
 ## Codebase Survey
 
-- `<path>:<lines>` — <pattern observed>.
-- `<path>:<lines>` — <pattern observed>.
-- `<path>:<lines>` — <pattern observed>.
+- `<path>:<lines>` — <pattern_observed>.
+- `<path>:<lines>` — <pattern_observed>.
+- `<path>:<lines>` — <pattern_observed>.
 
 ## Architectural Decisions
 
-### AD-<N>: <decision headline>
+### AD-<ad>: <decision_headline>
 
 - Chosen: <one sentence>.
-- Rejected: <option A>, <option B>.
+- Rejected: <option A>, <option_b>.
 - Rationale: <2-3 sentences>.
-- Satisfies: FR-<N>, NFR-<N>.
+- Satisfies: FR-<satisfies>, NFR-<satisfies>.
 - Trade-off: <one sentence>.
 
 ## File Table
@@ -52,10 +52,10 @@ spec_ref: .aidocs/features/<status>/<feature>/spec.md
 
 ## Testing Strategy
 
-- AD-<N> covered by <unit|integration|e2e|contract> tests at `<test-path>`.
+- AD-<ad> covered by <unit|integration|e2e|contract> tests at `<test-path>`.
 
 ## FR Coverage
 
 | FR | AD |
 |----|-----|
-| FR-<N> | AD-<N> |
+| FR-<fr> | AD-<fr> |

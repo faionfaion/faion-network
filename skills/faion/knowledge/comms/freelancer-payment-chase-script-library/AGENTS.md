@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/freelancer-payment-chase-script-library.md` | Working checklist skeleton with 5-line header |
+| `templates/freelancer-payment-chase-script-library.md.j2` | Working checklist skeleton with 5-line header |
+| `templates/freelancer-payment-chase-script-library.md` | Working checklist skeleton with 5-line header Generated from `templates/freelancer-payment-chase-script-library.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

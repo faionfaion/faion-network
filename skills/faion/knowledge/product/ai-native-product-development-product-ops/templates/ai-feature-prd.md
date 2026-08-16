@@ -12,7 +12,7 @@
 
 ## Eval contract
 
-- **eval_set_id:** <support-q2-2026>
+- **eval_set_id:** <support_q2_2026>
 - **thresholds:**
     - faithfulness_min: 0.85
     - refusal_max_rate: 0.05

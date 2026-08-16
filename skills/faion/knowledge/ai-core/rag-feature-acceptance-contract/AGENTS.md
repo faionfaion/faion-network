@@ -73,7 +73,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/acceptance-contract.schema.yaml` | JSON-Schema (YAML form) for the contract document |
-| `templates/intent-rubric-card.md` | Per-intent rubric: outcome, pass/borderline/fail examples, metric thresholds |
+| `templates/intent-rubric-card.md.j2` | Per-intent rubric: outcome, pass/borderline/fail examples, metric thresholds |
+| `templates/intent-rubric-card.md` | Per-intent rubric: outcome, pass/borderline/fail examples, metric thresholds Generated from `templates/intent-rubric-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sme-interview-guide.md.j2` | 45-minute structured interview with the SME, role-play of edge cases |
 | `templates/sme-interview-guide.md` | 45-minute structured interview with the SME, role-play of edge cases Generated from `templates/sme-interview-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum-viable two-intent contract that validates clean |

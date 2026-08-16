@@ -62,14 +62,16 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-system-inventory.md` | Inventory row + per-system detailed record skeleton. |
+| `templates/ai-system-inventory.md.j2` | Inventory row + per-system detailed record skeleton. |
+| `templates/ai-system-inventory.md` | Inventory row + per-system detailed record skeleton. Generated from `templates/ai-system-inventory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/conformity-self-assessment.md.j2` | Conformity self-assessment template (Article 43). |
 | `templates/conformity-self-assessment.md` | Conformity self-assessment template (Article 43). Generated from `templates/conformity-self-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/model-card.md.j2` | GPAI model card (Article 53). |
 | `templates/model-card.md` | GPAI model card (Article 53). Generated from `templates/model-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-bias-assessment.txt` | LLM prompt to draft Article 10 data-governance bias check. |
 | `templates/prompt-risk-classification.txt` | LLM prompt to draft risk-tier classification. |
-| `templates/technical-doc-article11.md` | Article 11 technical documentation skeleton. |
+| `templates/technical-doc-article11.md.j2` | Article 11 technical documentation skeleton. |
+| `templates/technical-doc-article11.md` | Article 11 technical documentation skeleton. Generated from `templates/technical-doc-article11.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

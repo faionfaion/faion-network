@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tdd-red.skill.md` | SKILL.md for the RED sub-agent with disjoint tool whitelist. |
-| `templates/tdd-green.skill.md` | SKILL.md for the GREEN sub-agent with disjoint tool whitelist. |
+| `templates/tdd-red.skill.md.j2` | SKILL.md for the RED sub-agent with disjoint tool whitelist. |
+| `templates/tdd-red.skill.md` | SKILL.md for the RED sub-agent with disjoint tool whitelist. Generated from `templates/tdd-red.skill.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/tdd-green.skill.md.j2` | SKILL.md for the GREEN sub-agent with disjoint tool whitelist. |
+| `templates/tdd-green.skill.md` | SKILL.md for the GREEN sub-agent with disjoint tool whitelist. Generated from `templates/tdd-green.skill.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -8,17 +8,17 @@ token-budget-impact: ~250 tokens.
 
 # Pricing Experiment Log — <artefact_id>
 
-- **experiment_id** (string): <unique id>
+- **experiment_id** (string): <unique_id>
 - **hypothesis** (string): <falsifiable claim with numeric expectation>
 - **toggle** (object): <before/after pricing config>
 - **baseline** (object): <mrr + conversion% at toggle_at>
 - **measurement_window** (object): <ISO start/end locked pre-toggle>
 - **observed** (object): <post-window mrr + conversion%>
-- **decision** (string): <keep | revert | iterate>
-- **evidence_links** (array): <Stripe + dashboard URLs>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **decision** (string): <keep_revert_iterate>
+- **evidence_links** (array): <stripe_dashboard_urls>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

@@ -4,54 +4,54 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-## MLP Plan: [Product Name]
+## MLP Plan: <product_name>
 
 ### Current State (MVP)
 
-**Version:** [Current]
-**Users:** [Count]
+**Version:** <current>
+**Users:** <count>
 **Retention:** Day-7: [X]%, Day-30: [Y]%
-**NPS:** [Score]
+**NPS:** <score>
 
 ### MLP Goal
 
 **Target Day-30 retention:** [Y]%
-**Target NPS:** [Score]
+**Target NPS:** <score>
 **Timeline:** [X] weeks
 
 ### Feature Audit
 
 | Feature | Functional (1-5) | Reliable (1-5) | Usable (1-5) | Delight (1-5) | Evidence | Priority |
 |---------|-----------------|----------------|--------------|---------------|----------|----------|
-| [Core 1] | 5 | 4 | 3 | 2 | [verbatim/replay] | High |
-| [Core 2] | 5 | 5 | 4 | 3 | [verbatim/replay] | Medium |
+| <core_1> | 5 | 4 | 3 | 2 | [verbatim/replay] | High |
+| <core_2> | 5 | 5 | 4 | 3 | [verbatim/replay] | Medium |
 
 MLP threshold: all features at 4+ on all layers.
 
 ### Delight Opportunities
 
 #### First Impression (Onboarding)
-- Current: [What happens now]
+- Current: <what_happens_now>
 - MLP target: [What should happen]
-- Tasks: [Specific tasks]
+- Tasks: <specific_tasks>
 - Delight category: [Speed/Simplicity/Personality/Anticipation/Celebration]
 
-#### Core Action: [Action Name]
-- Current: [What happens now]
+#### Core Action: <action_name>
+- Current: <what_happens_now>
 - MLP target: [What should happen]
-- Tasks: [Specific tasks]
+- Tasks: <specific_tasks>
 
 #### Success Moments
-- Current: [What happens now]
+- Current: <what_happens_now>
 - MLP target: [What should happen]
-- Tasks: [Specific tasks]
+- Tasks: <specific_tasks>
 
 ### Polish Backlog
 
 | Task | Layer | Pain | Freq | Visibility | Score | Effort | Priority |
 |------|-------|------|------|-----------|-------|--------|----------|
-| [Task 1] | Usable | 4 | 5 | 4 | 80 | 1d | P1 |
-| [Task 2] | Delight | 3 | 4 | 4 | 48 | 2d | P2 |
+| <task_1> | Usable | 4 | 5 | 4 | 80 | 1d | P1 |
+| <task_2> | Delight | 3 | 4 | 4 | 48 | 2d | P2 |
 
 Score = Pain x Freq x Visibility
 

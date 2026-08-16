@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ruby-sidekiq-jobs.json` | JSON Schema for the Sidekiq Background Jobs for Rails output contract |
-| `templates/ruby-sidekiq-jobs.md` | Markdown skeleton with the required fields |
+| `templates/ruby-sidekiq-jobs.md.j2` | Markdown skeleton with the required fields |
+| `templates/ruby-sidekiq-jobs.md` | Markdown skeleton with the required fields Generated from `templates/ruby-sidekiq-jobs.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a ruby-sidekiq-jobs record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a ruby-sidekiq-jobs record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

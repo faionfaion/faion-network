@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/signing-config.gradle.kts` | Gradle Kotlin DSL signing config skeleton with build-type separation |
-| `templates/signing-policy.md` | Markdown policy + decision record for the signing approach |
+| `templates/signing-policy.md.j2` | Markdown policy + decision record for the signing approach |
+| `templates/signing-policy.md` | Markdown policy + decision record for the signing approach Generated from `templates/signing-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.gradle.kts` | Minimum-viable filled-in signing config |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

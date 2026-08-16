@@ -60,7 +60,8 @@
 | File | Purpose |
 |---|---|
 | `templates/tweet-thread-launch-template.json` | JSON Schema for the output contract. |
-| `templates/tweet-thread-launch-template.md` | Markdown skeleton with the required fields. |
+| `templates/tweet-thread-launch-template.md.j2` | Markdown skeleton with the required fields. |
+| `templates/tweet-thread-launch-template.md` | Markdown skeleton with the required fields. Generated from `templates/tweet-thread-launch-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

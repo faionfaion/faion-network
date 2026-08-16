@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/server-inventory.yaml` | Input. |
-| `templates/gateway-spec.md` | Output. |
+| `templates/gateway-spec.md.j2` | Output. |
+| `templates/gateway-spec.md` | Output. Generated from `templates/gateway-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

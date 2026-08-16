@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/portability-spec.json` | JSON skeleton matching 02-output-contract. |
-| `templates/portability-spec.md` | Narrative review draft. |
+| `templates/portability-spec.md.j2` | Narrative review draft. |
+| `templates/portability-spec.md` | Narrative review draft. Generated from `templates/portability-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

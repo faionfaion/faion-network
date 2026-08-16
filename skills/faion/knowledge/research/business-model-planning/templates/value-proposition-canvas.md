@@ -4,24 +4,24 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-800 tokens when filled -->
 
-## Customer Segment: [Name]
+## Customer Segment: <name>
 **valid_until:** [Date 90 days from creation — regenerate after this date]
 
 ### Customer Profile
 
 #### Jobs
 - Functional: [task the customer is trying to complete]
-- Emotional: [feeling or state the customer seeks]
+- Emotional: <emotional>
 - Social: [how the customer wants to be perceived]
 
 #### Pains (ranked by intensity, max 2 above 7/10)
-1. [Pain] — intensity: [X]/10 — source: [interview transcript ID]
-2. [Pain] — intensity: [X]/10 — source: [interview transcript ID]
-3. [Pain] — intensity: [X]/10 — source: [interview transcript ID]
+1. <pain> — intensity: [X]/10 — source: <interview_transcript_id>
+2. <pain> — intensity: [X]/10 — source: <interview_transcript_id>
+3. <pain> — intensity: [X]/10 — source: <interview_transcript_id>
 
 #### Gains (ranked by relevance)
-1. [Gain] — relevance: Essential / Expected / Desired
-2. [Gain] — relevance: Essential / Expected / Desired
+1. <gain> — relevance: Essential / Expected / Desired
+2. <gain> — relevance: Essential / Expected / Desired
 
 ### Value Map
 
@@ -29,12 +29,12 @@
 - [Product or feature name]
 
 #### Pain Relievers (map to pains above — required 1:1)
-- [Pain 1] → [How this product relieves it]
-- [Pain 2] → [How this product relieves it]
+- <pain_1> → [How this product relieves it]
+- <pain_2> → [How this product relieves it]
 
 #### Gain Creators (map to gains above — required 1:1)
-- [Gain 1] → [How this product enables it]
-- [Gain 2] → [How this product enables it]
+- <gain_1> → [How this product enables it]
+- <gain_2> → [How this product enables it]
 
 ### FIT Assessment
 - Pain coverage: [X] of top-ranked pains addressed

@@ -15,8 +15,8 @@ token-budget-impact: ~300 tokens when filled.
 
 ## Channel
 
-- Slack: <#channel>
-- Pager: <pager-route>
+- Slack: <channel>
+- Pager: <pager_route>
 
 ## SLA
 

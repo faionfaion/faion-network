@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/search-intent-brief.md` | Markdown brief: intent / entities / JTBD / SERP-features / contract blocks per rule. |
+| `templates/search-intent-brief.md.j2` | Markdown brief: intent / entities / JTBD / SERP-features / contract blocks per rule. |
+| `templates/search-intent-brief.md` | Markdown brief: intent / entities / JTBD / SERP-features / contract blocks per rule. Generated from `templates/search-intent-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

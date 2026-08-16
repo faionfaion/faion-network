@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tradeoff-report.md` | ATAM-style report skeleton. |
+| `templates/tradeoff-report.md.j2` | ATAM-style report skeleton. |
+| `templates/tradeoff-report.md` | ATAM-style report skeleton. Generated from `templates/tradeoff-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scenario-pairs.json` | Scenario-pair payload. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

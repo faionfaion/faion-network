@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/compliance-checklist-by-domain.json` | JSON skeleton for the checked checklist. |
-| `templates/compliance-checklist-by-domain.md` | Markdown skeleton with required fields. |
+| `templates/compliance-checklist-by-domain.md.j2` | Markdown skeleton with required fields. |
+| `templates/compliance-checklist-by-domain.md` | Markdown skeleton with required fields. Generated from `templates/compliance-checklist-by-domain.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable checked checklist. |
 | `templates/_smoke-test.md` | Minimum viable checked checklist. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

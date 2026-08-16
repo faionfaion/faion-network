@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Hallucination Incident Runbook — <artefact_id>
 
-- **artefact_id**: hir-<kebab-case-slug>
+- **artefact_id**: hir-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

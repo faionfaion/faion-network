@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/voice-ui-basics.json` | JSON skeleton conforming to the output-contract schema. |
-| `templates/voice-ui-basics.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/voice-ui-basics.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/voice-ui-basics.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/voice-ui-basics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

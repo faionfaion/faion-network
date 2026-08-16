@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/pm-1on1-template-engineering-design.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/pm-1on1-template-engineering-design.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/pm-1on1-template-engineering-design.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/pm-1on1-template-engineering-design.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/pm-1on1-template-engineering-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

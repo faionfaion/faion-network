@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dark-knowledge-pack.md` | 5-session pack skeleton: architecture / hot files / on-call / contacts / AI rules. |
+| `templates/dark-knowledge-pack.md.j2` | 5-session pack skeleton: architecture / hot files / on-call / contacts / AI rules. |
+| `templates/dark-knowledge-pack.md` | 5-session pack skeleton: architecture / hot files / on-call / contacts / AI rules. Generated from `templates/dark-knowledge-pack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

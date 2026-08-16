@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/enterprise-xr-spec.md` | Enterprise XR application spec covering all 6 gates |
+| `templates/enterprise-xr-spec.md.j2` | Enterprise XR application spec covering all 6 gates |
+| `templates/enterprise-xr-spec.md` | Enterprise XR application spec covering all 6 gates Generated from `templates/enterprise-xr-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

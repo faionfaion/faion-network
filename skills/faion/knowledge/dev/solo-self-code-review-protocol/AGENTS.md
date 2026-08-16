@@ -69,7 +69,8 @@
 |------|---------|
 | `templates/self-review-checklist.md.j2` | Self-review checklist (>=10 items) + risk-flag list. |
 | `templates/self-review-checklist.md` | Self-review checklist (>=10 items) + risk-flag list. Generated from `templates/self-review-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/ai-review-prompt.md` | AI second-reviewer prompt template. |
+| `templates/ai-review-prompt.md.j2` | AI second-reviewer prompt template. |
+| `templates/ai-review-prompt.md` | AI second-reviewer prompt template. Generated from `templates/ai-review-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable self-review record for validator smoke-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

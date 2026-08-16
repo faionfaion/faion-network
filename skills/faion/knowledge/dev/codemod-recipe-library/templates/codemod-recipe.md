@@ -7,8 +7,8 @@ token-budget-impact: small (template is loaded only when an artefact is being au
 -->
 # Codemod Recipe — <name>
 
-**Tool:** <jscodeshift | ast-grep | libcst | Bowler>
-**Owner:** <@handle>
+**Tool:** <tool>
+**Owner:** <owner_handle>
 
 ## What it does
 

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/wireframe-doc.md` | Wireframe document skeleton. |
-| `templates/component-wireframe.md` | Single-component wireframe template. |
+| `templates/wireframe-doc.md.j2` | Wireframe document skeleton. |
+| `templates/wireframe-doc.md` | Wireframe document skeleton. Generated from `templates/wireframe-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/component-wireframe.md.j2` | Single-component wireframe template. |
+| `templates/component-wireframe.md` | Single-component wireframe template. Generated from `templates/component-wireframe.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-wireframe.txt` | Agent prompt skeleton for wireframe generation. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

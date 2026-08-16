@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/change-request-rate-card-template.json` | JSON Schema (draft-07) for the Change Request Rate Card Template output contract |
-| `templates/change-request-rate-card-template.md` | Markdown skeleton with the required fields for the Change Request Rate Card Template artefact |
+| `templates/change-request-rate-card-template.md.j2` | Markdown skeleton with the required fields for the Change Request Rate Card Template artefact |
+| `templates/change-request-rate-card-template.md` | Markdown skeleton with the required fields for the Change Request Rate Card Template artefact Generated from `templates/change-request-rate-card-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/change-request-rate-card-template.example.json` | Worked filled-in example of a valid Change Request Rate Card Template artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

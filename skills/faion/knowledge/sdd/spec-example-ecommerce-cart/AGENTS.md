@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-example-ecommerce-cart.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spec-example-ecommerce-cart.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/spec-example-ecommerce-cart.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/spec-example-ecommerce-cart.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

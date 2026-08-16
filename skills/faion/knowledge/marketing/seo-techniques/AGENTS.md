@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/schema-validation-checklist.md` | Markdown checklist: schema JSON-LD types, llms.txt placement, OG meta, internal-link audit; all gated by Rich Results Test pass. |
+| `templates/schema-validation-checklist.md.j2` | Markdown checklist: schema JSON-LD types, llms.txt placement, OG meta, internal-link audit; all gated by Rich Results Test pass. |
+| `templates/schema-validation-checklist.md` | Markdown checklist: schema JSON-LD types, llms.txt placement, OG meta, internal-link audit; all gated by Rich Results Test pass. Generated from `templates/schema-validation-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

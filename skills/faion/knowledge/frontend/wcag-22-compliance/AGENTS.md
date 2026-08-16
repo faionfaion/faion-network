@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/wcag-22-report.md` | Markdown skeleton for the 9-SC report |
+| `templates/wcag-22-report.md.j2` | Markdown skeleton for the 9-SC report |
+| `templates/wcag-22-report.md` | Markdown skeleton for the 9-SC report Generated from `templates/wcag-22-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

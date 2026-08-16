@@ -17,7 +17,7 @@ _Doc ref: `<path/to/doc.md>` · Run ID: `<run-id>` · Last reviewed: 2026-05-23_
 
 | ID | Category | Severity | Evidence (verbatim quote) | Section ref | Remediation owner |
 |----|----------|----------|---------------------------|-------------|-------------------|
-| f-1 | <vague_quantifier / undefined_term / contradictory_ac / missing_edge_case / unowned_decision> | <blocking/major/minor> | "<quote>" | <section> | <owner> |
+| f-1 | <vague_quantifier / undefined_term / contradictory_ac / missing_edge_case / unowned_decision> | <blocking_major_minor> | "<quote>" | <section> | <owner> |
 
 ## Summary by category
 

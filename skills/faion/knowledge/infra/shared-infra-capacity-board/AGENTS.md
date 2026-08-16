@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/shared-infra-capacity-board.md` | Working skeleton for the `shared-infra-capacity-board` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/shared-infra-capacity-board.md.j2` | Working skeleton for the `shared-infra-capacity-board` artefact with required fields and `not_applicable: <reason>` markers per row. |
+| `templates/shared-infra-capacity-board.md` | Working skeleton for the `shared-infra-capacity-board` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/shared-infra-capacity-board.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

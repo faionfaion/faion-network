@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/personalization-rubric.md` | Markdown rubric with 5 scoring criteria, weight, evidence requirement, pass threshold. |
+| `templates/personalization-rubric.md.j2` | Markdown rubric with 5 scoring criteria, weight, evidence requirement, pass threshold. |
+| `templates/personalization-rubric.md` | Markdown rubric with 5 scoring criteria, weight, evidence requirement, pass threshold. Generated from `templates/personalization-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

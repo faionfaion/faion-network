@@ -9,19 +9,19 @@
 ## Account warmup
 - Start: [25-50]% of target budget
 - Ramp: +[10-50]% every 3 stable days
-- Target stable date: [date]
+- Target stable date: <date>
 
 ## Placement mix
 - feed + reels + marketplace (default)
-- audience_network: [excluded | included with data]
+- audience_network: <audience_network>
 
 ## Learning phase
 - Weekly conv forecast: ≥50/ad set
 - Ramp days: 14
 
 ## iOS
-- Domain verified: [yes/no]
-- AEM events configured (8 by value): [yes/no]
+- Domain verified: <yes_no>
+- AEM events configured (8 by value): <yes_no>
 
 ## Page quality
-[standard | above_standard]
+<standard_above_standard>

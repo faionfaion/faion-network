@@ -10,13 +10,13 @@ token-budget-impact: ~250 tokens.
 
 - **horizon** (object): <ISO start/end across ≥2 quarters>
 - **swim_lanes** (array): <per-product lanes ≥2>
-- **outcomes_by_quarter** (object): <quarter → outcomes[]>
+- **outcomes_by_quarter** (object): <quarter_outcomes>
 - **dependency_edges** (array): <from/to/type/rationale objects>
 - **confidence_decay_applied** (boolean): <true means decay applied unless cited>
 - **quarter_reviews** (array): <per closed quarter review entry>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

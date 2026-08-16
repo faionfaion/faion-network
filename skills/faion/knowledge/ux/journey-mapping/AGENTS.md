@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/journey-map.md` | Full journey map: stage × row matrix. |
-| `templates/stage-detail.md` | Single-stage deep-dive template. |
+| `templates/journey-map.md.j2` | Full journey map: stage × row matrix. |
+| `templates/journey-map.md` | Full journey map: stage × row matrix. Generated from `templates/journey-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/stage-detail.md.j2` | Single-stage deep-dive template. |
+| `templates/stage-detail.md` | Single-stage deep-dive template. Generated from `templates/stage-detail.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-map.txt` | Agent prompt skeleton for journey-map synthesis. |
 | `templates/funnel-to-stages.py` | Convert funnel CSV to stage summaries for ingest. |
 

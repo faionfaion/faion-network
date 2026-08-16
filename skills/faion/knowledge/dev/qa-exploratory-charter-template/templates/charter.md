@@ -8,7 +8,7 @@ token-budget-impact: ~150-400 tokens when loaded as context
 
 # Charter — ES-REPLACE, 2026-05-23
 
-Mission: Explore [target] to discover [class of information] in [scope].
+Mission: Explore <target> to discover [class of information] in <scope>.
 
 Target: /replace/path
 Time-box: 75 (one of 60 / 75 / 90 / 120) minutes

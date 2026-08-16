@@ -3,14 +3,14 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Competitor Analysis Report: [Product Name]
+# Competitor Analysis Report: <product_name>
 
 ## Market Overview
 
 - **Category:** [X]
 - **Total competitors identified:** [X] direct, [X] indirect, [X] future
-- **Analysis date:** [YYYY-MM-DD]
-- **Geography:** [Target region]
+- **Analysis date:** <analysis_date>
+- **Geography:** <target_region>
 
 ## Competitor Map
 
@@ -22,25 +22,25 @@
 
 ## Detailed Analysis
 
-### [Competitor 1]
+### <competitor_1>
 
 **Overview:** [1-sentence description]
-**Website:** [URL]
+**Website:** <url>
 
 **Product:**
-- Core features: [list]
-- Unique features: [list]
-- Missing features: [list]
+- Core features: <list>
+- Unique features: <list>
+- Missing features: <list>
 
 **Pricing:**
 
 | Tier | Price (monthly, 1 user) | Notes |
 |------|-------------------------|-------|
 | Free | $0 | [what's included] |
-| Pro | $X/mo | [source URL] |
+| Pro | $X/mo | <source_url> |
 
-**Target audience:** [Who]
-**Positioning headline:** [Their message]
+**Target audience:** <who>
+**Positioning headline:** <their_message>
 
 **Strengths:**
 1. [X — source: URL or "from 1-star reviews"]
@@ -51,8 +51,8 @@
 2. [X]
 
 **Notable reviews:**
-- Positive: "[Quote]" — [source URL]
-- Negative: "[Quote]" — [source URL]
+- Positive: "<quote>" — <source_url>
+- Negative: "<quote>" — <source_url>
 
 ---
 
@@ -89,8 +89,8 @@
 ## Our Differentiation
 
 **Positioning statement:**
-For [target audience] who [need], [Product] is a [category] that [key benefit].
-Unlike [competitors], we [key differentiator].
+For <target_audience> who <need>, <product> is a <category> that <key_benefit>.
+Unlike <competitors>, we <key_differentiator>.
 
 **Key differentiators:**
 1. [X]

@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/bug-spec.md` | Markdown bug-spec template (symptom + expected + repro + fix link). |
+| `templates/bug-spec.md.j2` | Markdown bug-spec template (symptom + expected + repro + fix link). |
+| `templates/bug-spec.md` | Markdown bug-spec template (symptom + expected + repro + fix link). Generated from `templates/bug-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/bisect.sh` | Wrapper running git bisect with the failing spec as oracle. |
 | `templates/_smoke-test.json` | Minimum viable bug-spec record for validator smoke-test. |
 

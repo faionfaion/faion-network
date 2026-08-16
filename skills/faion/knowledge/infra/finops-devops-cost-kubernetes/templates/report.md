@@ -5,7 +5,7 @@
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 # finops-devops-cost-kubernetes Report
 
-Period: <YYYY-MM-DD> → <YYYY-MM-DD>
+Period: <period> → <period>
 
 ## Findings
 | ID | Severity | Summary |

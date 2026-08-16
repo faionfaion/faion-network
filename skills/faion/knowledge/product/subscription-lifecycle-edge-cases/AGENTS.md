@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/subscription-lifecycle-edge-cases.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/subscription-lifecycle-edge-cases.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/subscription-lifecycle-edge-cases.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/subscription-lifecycle-edge-cases.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

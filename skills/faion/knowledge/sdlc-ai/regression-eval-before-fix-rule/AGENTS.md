@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/regression-eval-record.md` | Decision-record skeleton (incident → eval case path → fix PR). |
+| `templates/regression-eval-record.md.j2` | Decision-record skeleton (incident → eval case path → fix PR). |
+| `templates/regression-eval-record.md` | Decision-record skeleton (incident → eval case path → fix PR). Generated from `templates/regression-eval-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/eval-case-jsonl.fixture` | Minimal failing eval-case JSONL fixture. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

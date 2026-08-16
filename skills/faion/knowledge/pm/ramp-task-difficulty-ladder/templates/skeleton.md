@@ -8,14 +8,14 @@ token-budget-impact: ~800 tokens when filled.
 
 ---
 version: "1.0.0"
-owner: "tech-lead:<person>"
+owner: "tech-lead:<owner_full_name>"
 last_reviewed: "2026-05-22"
 trigger: "hire-signed"
 evidence_root: "onboarding/"
 review_cadence: "quarterly"
 ---
 
-# Ramp Task Difficulty Ladder — <team-name>
+# Ramp Task Difficulty Ladder — <team_name>
 
 ## Trigger
 
@@ -37,12 +37,12 @@ review_cadence: "quarterly"
 
 ## Outcome review
 
-- Last run: <ISO date>
-- Next due: <ISO date>
+- Last run: <iso_date>
+- Next due: <iso_date>
 - Outcomes measured: <onboarding completion rate, time-to-first-PR, retention>
 
 ## Decisions / Actions / Next review
 
-- <decision 1>
+- <decision_1>
 - <action 1, owner, deadline>
-- Next review: <ISO date>
+- Next review: <next_review_date>

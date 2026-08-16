@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # Instagram Growth — <artefact_id>
 
-- **operator** (string): <named account owner>
+- **operator** (string): <named_account_owner>
 - **pillar** (object): <{niche, icp, voice_attributes}>
 - **reel_batch** (array): <≥28 scripts with hook + payoff + CTA>
 - **stories_cadence** (object): <{daily_count, dm_cta_frequency}>
 - **dm_trigger** (object): <{phrase, lead_magnet_url}>
 - **engagement_block** (string): <30-min daily slot with criterion>
 - **kpi_set** (object): <{reach, profile_visits, dm_starts, qualified_dms}>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

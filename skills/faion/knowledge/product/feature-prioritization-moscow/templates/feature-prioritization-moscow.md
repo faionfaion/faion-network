@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # Feature Prioritization MoSCoW — <artefact_id>
 
-- **cycle_id** (string): <sprint / release id>
+- **cycle_id** (string): <sprint_release_id>
 - **capacity** (number): <story points or hours>
 - **buckets** (object): <must / should / could / wont arrays>
-- **tiebreaker_rule** (string): <named rule>
+- **tiebreaker_rule** (string): <named_rule>
 - **must_cap_pct** (number): <0-60>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

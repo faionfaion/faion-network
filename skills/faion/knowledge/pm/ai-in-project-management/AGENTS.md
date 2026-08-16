@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | AI-decision record skeleton: model + input hash + reviewer + approved/modified/rejected + rationale. |
+| `templates/skeleton.md.j2` | AI-decision record skeleton: model + input hash + reviewer + approved/modified/rejected + rationale. |
+| `templates/skeleton.md` | AI-decision record skeleton: model + input hash + reviewer + approved/modified/rejected + rationale. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

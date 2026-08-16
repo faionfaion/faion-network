@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/synthesis-report.md` | Final synthesis report skeleton |
+| `templates/synthesis-report.md.j2` | Final synthesis report skeleton |
+| `templates/synthesis-report.md` | Final synthesis report skeleton Generated from `templates/synthesis-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/synthesis.json` | Machine-readable synthesis matching schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cheatsheet-skeleton.md` | Generated cheatsheet skeleton with header + numbered list of 10 methodologies. |
-| `templates/cheatsheet-overrides-skeleton.md` | Override skeleton — pinned entries that survive regenerate. |
+| `templates/cheatsheet-skeleton.md.j2` | Generated cheatsheet skeleton with header + numbered list of 10 methodologies. |
+| `templates/cheatsheet-skeleton.md` | Generated cheatsheet skeleton with header + numbered list of 10 methodologies. Generated from `templates/cheatsheet-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/cheatsheet-overrides-skeleton.md.j2` | Override skeleton — pinned entries that survive regenerate. |
+| `templates/cheatsheet-overrides-skeleton.md` | Override skeleton — pinned entries that survive regenerate. Generated from `templates/cheatsheet-overrides-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

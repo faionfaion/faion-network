@@ -5,37 +5,37 @@ produces: a recognition-over-recall artefact validating against scripts/validate
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600-1500 tokens once filled
 -->
-# Recognition Audit: [Feature / Screen]
+# Recognition Audit: <feature_screen>
 
-**Date:** [Date]
-**Reviewer:** [Name]
+**Date:** <date>
+**Reviewer:** <reviewer_name>
 
 ## Recall Requirements
 
 | Task | Recall Required | Recognition Alternative | Priority |
 |------|-----------------|------------------------|----------|
-| [Task] | [What user must remember] | [How to show instead] | H/M/L |
+| <task> | [What user must remember] | [How to show instead] | H/M/L |
 
 ## Hidden Information
 
 | Information | Where Hidden | Should Be Visible? | Notes |
 |-------------|--------------|-------------------|-------|
-| [Info] | [Location] | Y/N | [Context] |
+| <info> | <location> | Y/N | <context> |
 
 ## Icons Without Labels
 
 | Icon | Meaning | Label Needed? | Tooltip Acceptable? |
 |------|---------|---------------|---------------------|
-| [Icon] | [Meaning] | Y/N | Y/N |
+| <icon> | <meaning> | Y/N | Y/N |
 
 ## Multi-step Context Failures
 
 | Step | Information from Prior Step | Still Visible? | Fix |
 |------|-----------------------------|----------------|-----|
-| [Step] | [Prior info needed] | Y/N | [How to show] |
+| <step> | <prior_info_needed> | Y/N | [How to show] |
 
 ## Recommendations
 
 | Issue | Recall Burden | Recognition Alternative | Priority |
 |-------|---------------|------------------------|----------|
-| [Issue] | [What must be recalled] | [Recognition fix] | H/M/L |
+| <issue> | [What must be recalled] | <recognition_fix> | H/M/L |

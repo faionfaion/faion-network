@@ -4,12 +4,12 @@
 <!-- depends-on: content/01-core-rules.xml#r5-no-skipped-tasks -->
 <!-- token-budget-impact: ~160 tokens -->
 
-# Shadow Handover Session — [session_id]
+# Shadow Handover Session — <session_id>
 
-**Owner:** [PM role] / [person]
-**Outgoing engineer:** [handle]
-**Receiver:** [handle]
-**Version:** [semver]
+**Owner:** <pm_role> / <owner_full_name>
+**Outgoing engineer:** <handle>
+**Receiver:** <handle>
+**Version:** <document_version>
 **Last reviewed:** YYYY-MM-DD
 
 ## Task list (pre-agreed, ≥ 5 tasks)
@@ -27,7 +27,7 @@
 
 ## Sign-off
 
-- outgoing_signed_by: [outgoing handle]
-- receiver_signed_by: [receiver handle]
+- outgoing_signed_by: <outgoing_handle>
+- receiver_signed_by: <receiver_handle>
 - signed_at: YYYY-MM-DD
 - spf_undocumented: [list any single-point-of-failure facts still without doc_link]

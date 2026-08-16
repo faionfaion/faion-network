@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/creative-brief.md` | Meta creative brief Markdown skeleton. |
+| `templates/creative-brief.md.j2` | Meta creative brief Markdown skeleton. |
+| `templates/creative-brief.md` | Meta creative brief Markdown skeleton. Generated from `templates/creative-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/variant-matrix.csv` | Variant matrix CSV header for production hand-off. |
 | `templates/creative-brief.json` | Schema-conformant sample artefact used by validator self-test. |
 

@@ -4,13 +4,13 @@
 <!-- depends-on: content/01-core-rules.xml#r4-written-change-request -->
 <!-- token-budget-impact: ~150 tokens -->
 
-# Change Order — [Project Name]
+# Change Order — <project_name>
 
-**Reference SOW:** [SOW id / signed date]
-**CR id:** CR-[YYYYMMDD-N]
-**Requested by:** [client name + channel]
-**Drafted by:** [vendor name]
-**Date:** [YYYY-MM-DD]
+**Reference SOW:** <reference_sow>
+**CR id:** CR-<yyyymmdd_n>
+**Requested by:** <client_name_channel>
+**Drafted by:** <vendor_name>
+**Date:** <date>
 
 ## What was asked outside the original SOW
 
@@ -20,17 +20,17 @@
 
 | Item | Was (SOW) | Now (CR) |
 |------|-----------|----------|
-| [Deliverable] | [original] | [updated] |
+| <deliverable> | <original> | <updated> |
 
 ## Price delta
 
-- Estimated hours: [N]
-- Rate: [$X/hr]
-- Subtotal: [$Y]
+- Estimated hours: <estimated_hours>
+- Rate: <x_hr>
+- Subtotal: <y>
 
 ## Schedule delta
 
-- New deliverable date: [YYYY-MM-DD]
+- New deliverable date: <new_deliverable_date>
 - Impact on existing milestones: [yes/no, details]
 
 ## Payment terms

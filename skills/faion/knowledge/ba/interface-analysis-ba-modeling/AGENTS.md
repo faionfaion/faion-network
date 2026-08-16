@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/interface-spec.md` | Markdown skeleton (per interface: protocol, payload, errors, SLA, owner) |
+| `templates/interface-spec.md.j2` | Markdown skeleton (per interface: protocol, payload, errors, SLA, owner) |
+| `templates/interface-spec.md` | Markdown skeleton (per interface: protocol, payload, errors, SLA, owner) Generated from `templates/interface-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable interface-inventory fixture |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

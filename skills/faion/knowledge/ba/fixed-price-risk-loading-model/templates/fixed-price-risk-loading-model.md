@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Fixed-Price Risk Loading Model — <artefact_id>
 
-- **artefact_id**: fprl-<kebab-case-slug>
+- **artefact_id**: fprl-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

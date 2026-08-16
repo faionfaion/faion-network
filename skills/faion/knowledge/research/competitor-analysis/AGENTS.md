@@ -68,8 +68,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/competitor-report.md` | Full analysis report skeleton (matrix + gap analysis + differentiation) |
-| `templates/competitor-snapshot.md` | Single-competitor snapshot template for parallel sub-tasks |
+| `templates/competitor-report.md.j2` | Full analysis report skeleton (matrix + gap analysis + differentiation) |
+| `templates/competitor-report.md` | Full analysis report skeleton (matrix + gap analysis + differentiation) Generated from `templates/competitor-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/competitor-snapshot.md.j2` | Single-competitor snapshot template for parallel sub-tasks |
+| `templates/competitor-snapshot.md` | Single-competitor snapshot template for parallel sub-tasks Generated from `templates/competitor-snapshot.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scrape-competitor.sh` | Bash scraper: homepage + pricing + G2 + Wayback for one competitor |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

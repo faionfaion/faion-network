@@ -16,19 +16,19 @@
 ## Comfort budget
 - Max continuous: <minutes>
 - Break cadence: every <minutes>
-- Vestibular-safe motion: <true/false>
+- Vestibular-safe motion: <true_false>
 
 ## IT integration
 - SSO: <provider>
 - MDM: <provider>
-- Network: <latency/bandwidth>
+- Network: <latency_bandwidth>
 - Offline mode: <details>
 
 ## Security review
-- Spatial data privacy: <retention + scope>
-- Recording governance: <encryption + retention>
+- Spatial data privacy: <retention_scope>
+- Recording governance: <encryption_retention>
 
 ## ROI
 - Baseline: <metric>
-- Target: <%/value>
-- Measurement: <method + cadence>
+- Target: <value>
+- Measurement: <method_cadence>

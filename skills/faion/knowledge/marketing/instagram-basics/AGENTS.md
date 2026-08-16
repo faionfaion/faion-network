@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/instagram-basics.md` | Markdown skeleton (5-line header) for the weekly content pack artefact. |
+| `templates/instagram-basics.md.j2` | Markdown skeleton (5-line header) for the weekly content pack artefact. |
+| `templates/instagram-basics.md` | Markdown skeleton (5-line header) for the weekly content pack artefact. Generated from `templates/instagram-basics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/instagram-basics.json` | JSON Schema (draft-07) for the output contract. |
 | `templates/bio-template.txt` | Three-line bio formula (what / credibility / CTA). |
 | `templates/reel-script.txt` | Hook + body + CTA Reel script template. |

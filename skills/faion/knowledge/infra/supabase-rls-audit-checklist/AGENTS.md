@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/supabase-rls-audit-checklist.json` | RlsAuditReport JSON skeleton. |
-| `templates/supabase-rls-audit-checklist.md` | Audit trail + per-table verdict table. |
+| `templates/supabase-rls-audit-checklist.md.j2` | Audit trail + per-table verdict table. |
+| `templates/supabase-rls-audit-checklist.md` | Audit trail + per-table verdict table. Generated from `templates/supabase-rls-audit-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

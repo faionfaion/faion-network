@@ -4,12 +4,12 @@
 # depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 # token-budget-impact: ~400-1500 tokens once filled
 ---
-artefact_id: adr-<short-slug>-<NNN>
-owner: <Full Name> <email>
+artefact_id: adr-<short_slug>-<NNN>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 adr_id: NNN
-title: <decision title>
+title: <decision_title>
 status: Proposed
 date: 2026-05-23
 deciders: [name1, name2]
@@ -17,18 +17,18 @@ deciders: [name1, name2]
 
 ## Context and Problem Statement
 
-<problem framing>
+<problem_framing>
 
 ## Decision Drivers
 
-- <driver 1>
-- <driver 2>
+- <driver_1>
+- <driver_2>
 
 ## Considered Options
 
-- <option 1>
-- <option 2>
-- <option 3>
+- <option_1>
+- <option_2>
+- <option_3>
 
 ## Decision Outcome
 
@@ -44,7 +44,7 @@ Chosen option: <option>, because <reason>.
 
 ## Pros and Cons of the Options
 
-### <option 1>
+### <option_1>
 
 - pro: ...
 - con: ...

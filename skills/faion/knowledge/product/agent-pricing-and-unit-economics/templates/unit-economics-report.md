@@ -7,8 +7,8 @@ token-budget-impact: ~600 tokens when filled.
 -->
 
 ---
-product: "<product-slug>"
-owner: "ai-pm:<person>"
+product: "<product_slug>"
+owner: "ai-pm:<owner_full_name>"
 version: "1.0.0"
 last_reviewed: "2026-05-22"
 ---
@@ -51,5 +51,5 @@ last_reviewed: "2026-05-22"
 
 ## Decisions / Actions / Next review
 
-- <decision 1>
+- <decision_1>
 - Next review: <ISO date, ≤90 days>

@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/quarterly-review.md` | Markdown template for the quarterly re-score review |
+| `templates/quarterly-review.md.j2` | Markdown template for the quarterly re-score review |
+| `templates/quarterly-review.md` | Markdown template for the quarterly re-score review Generated from `templates/quarterly-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/rubric.json` | JSON instance with axis scores |
-| `templates/rubric.md` | Rubric skeleton with weighted axes |
+| `templates/rubric.md.j2` | Rubric skeleton with weighted axes |
+| `templates/rubric.md` | Rubric skeleton with weighted axes Generated from `templates/rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

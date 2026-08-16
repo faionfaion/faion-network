@@ -10,14 +10,14 @@ token-budget-impact: ~200 tokens.
 
 ## Threshold
 
-- Monthly cap: <n tasks>
+- Monthly cap: <n_tasks>
 - Burst window: <n tasks in 24h>
 
 ## What happens at the cap
 
 - Soft throttle: <text>
 - Hard overage charge: $<x>/task above cap
-- Notification: <when + where>
+- Notification: <when_where>
 
 ## Why we have a cap
 
@@ -25,4 +25,4 @@ token-budget-impact: ~200 tokens.
 
 ## Appeal / override
 
-- Contact <support-channel>; we will quote a custom plan for sustained heavy use.
+- Contact <support_channel>; we will quote a custom plan for sustained heavy use.

@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pmax-spec.md` | PMax spec Markdown skeleton with asset groups + signals + negatives. |
+| `templates/pmax-spec.md.j2` | PMax spec Markdown skeleton with asset groups + signals + negatives. |
+| `templates/pmax-spec.md` | PMax spec Markdown skeleton with asset groups + signals + negatives. Generated from `templates/pmax-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/brand-negatives.csv` | Brand negatives seed CSV. |
 | `templates/pmax-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 

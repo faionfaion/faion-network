@@ -58,7 +58,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cross-team-points-calibration-protocol.json` | JSON Schema (draft-07) for the Cross Team Points Calibration Protocol output contract |
-| `templates/cross-team-points-calibration-protocol.md` | Markdown skeleton with the required fields for the Cross Team Points Calibration Protocol artefact |
+| `templates/cross-team-points-calibration-protocol.md.j2` | Markdown skeleton with the required fields for the Cross Team Points Calibration Protocol artefact |
+| `templates/cross-team-points-calibration-protocol.md` | Markdown skeleton with the required fields for the Cross Team Points Calibration Protocol artefact Generated from `templates/cross-team-points-calibration-protocol.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/cross-team-points-calibration-protocol.example.json` | Worked filled-in example of a valid Cross Team Points Calibration Protocol artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/creational-selection.md` | Creational pattern selection record. |
+| `templates/creational-selection.md.j2` | Creational pattern selection record. |
+| `templates/creational-selection.md` | Creational pattern selection record. Generated from `templates/creational-selection.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

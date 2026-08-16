@@ -6,13 +6,13 @@
 # Agency Discovery Call Scorecard — Rubric
 
 ## Owner
-[name]
+<name>
 
 ## Axes (>=3)
 | Name | Weight | Anchors |
 |------|--------|---------|
 | fit | 0.3 | poor / good / excellent |
-| budget | 0.3 | <5k / 5-20k / >20k |
+| budget | 0.3 | <budget>20k |
 | urgency | 0.2 | browsing / this quarter / this month |
 | decision_maker | 0.2 | IC / manager / owner |
 

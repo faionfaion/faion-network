@@ -8,16 +8,16 @@ token-budget-impact: ~250 tokens.
 
 # Growth Community Building — <artefact_id>
 
-- **community_id** (string): <kebab-case slug>
+- **community_id** (string): <kebab_case_slug>
 - **host** (string): <named human accountable for rituals>
 - **platform** (enum): <discord|slack|circle|telegram>
 - **seed_members** (array): <≥50 entries with name + handle + reason>
 - **planted_conversations** (array): <5-10 conversation prompts with author>
 - **rituals** (array): <≥3 with cadence + owner + agenda>
-- **guidelines** (string): <community guidelines markdown>
+- **guidelines** (string): <community_guidelines_markdown>
 - **health_targets** (object): <{dau_mau: 0.25, weekly_active_members_pct: 0.4}>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

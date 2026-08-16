@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/workflow-profile.yaml` | Input contract. |
-| `templates/workflow-spec.md` | Output skeleton. |
+| `templates/workflow-spec.md.j2` | Output skeleton. |
+| `templates/workflow-spec.md` | Output skeleton. Generated from `templates/workflow-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/graph.py` | Working StateGraph wiring. |
 | `templates/_smoke-test.yaml` | Minimum profile. |
 

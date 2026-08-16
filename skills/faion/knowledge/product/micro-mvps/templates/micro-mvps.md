@@ -9,15 +9,15 @@ token-budget-impact: ~250 tokens.
 # Micro MVPs — <artefact_id>
 
 - **hypothesis** (string): <single falsifiable claim with numeric prediction>
-- **gate_event** (string): <named gate>
-- **gate_threshold** (number): <numeric gate>
+- **gate_event** (string): <named_gate>
+- **gate_threshold** (number): <numeric_gate>
 - **build_window** (object): <ISO start/end ≤7 days>
 - **manual_backend_plan** (string): <explicit description of manual back-end>
 - **decision_at** (string): <ISO datetime ≤ window_close + 7 days>
-- **decision** (string): <go | kill | iterate>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **decision** (string): <go_kill_iterate>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

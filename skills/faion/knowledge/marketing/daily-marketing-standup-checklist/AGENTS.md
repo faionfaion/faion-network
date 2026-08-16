@@ -55,7 +55,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Example filled standup. |
+| `templates/_smoke-test.md.j2` | Example filled standup. |
+| `templates/_smoke-test.md` | Example filled standup. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/compliance-report.md` | Compliance-report skeleton with surface table + reg matrix + remediation backlog |
-| `templates/accessibility-statement.md` | Public accessibility statement with WCAG version, testing methodology, feedback channel, commitments |
+| `templates/compliance-report.md.j2` | Compliance-report skeleton with surface table + reg matrix + remediation backlog |
+| `templates/compliance-report.md` | Compliance-report skeleton with surface table + reg matrix + remediation backlog Generated from `templates/compliance-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/accessibility-statement.md.j2` | Public accessibility statement with WCAG version, testing methodology, feedback channel, commitments |
+| `templates/accessibility-statement.md` | Public accessibility statement with WCAG version, testing methodology, feedback channel, commitments Generated from `templates/accessibility-statement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

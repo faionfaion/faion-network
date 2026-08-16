@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/content-attribution-model.md` | Markdown skeleton with per-piece table |
+| `templates/content-attribution-model.md.j2` | Markdown skeleton with per-piece table |
+| `templates/content-attribution-model.md` | Markdown skeleton with per-piece table Generated from `templates/content-attribution-model.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

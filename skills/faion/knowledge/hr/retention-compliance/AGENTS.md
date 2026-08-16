@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/retention-compliance-report.md` | Diagnostic report skeleton with attrition + compliance findings sections |
-| `templates/_smoke-test.md` | Worked example for engineering org with GDPR + attrition findings |
+| `templates/retention-compliance-report.md.j2` | Diagnostic report skeleton with attrition + compliance findings sections |
+| `templates/retention-compliance-report.md` | Diagnostic report skeleton with attrition + compliance findings sections Generated from `templates/retention-compliance-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Worked example for engineering org with GDPR + attrition findings |
+| `templates/_smoke-test.md` | Worked example for engineering org with GDPR + attrition findings Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

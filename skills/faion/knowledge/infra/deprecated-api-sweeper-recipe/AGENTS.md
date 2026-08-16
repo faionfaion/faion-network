@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Deprecated-API sweep report skeleton |
+| `templates/skeleton.md.j2` | Deprecated-API sweep report skeleton |
+| `templates/skeleton.md` | Deprecated-API sweep report skeleton Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | JSON schema for the sweep report |
 | `templates/sweep-config.yaml` | Pluto/kubent configuration template |
 

@@ -9,12 +9,12 @@
 ## Sprint Info
 | Item | Value |
 |------|-------|
-| Duration | [Start Date] - [End Date] |
-| Working Days | [N] |
-| Team Capacity | [N] person-days |
+| Duration | <start_date> - <end_date> |
+| Working Days | <working_days> |
+| Team Capacity | <team_capacity> person-days |
 
 ## Sprint Goal
-> [One sentence, falsifiable: "By end of sprint, users can [do X] as demonstrated by [Y]"]
+> [One sentence, falsifiable: "By end of sprint, users can [do X] as demonstrated by <y>"]
 
 ## Team Capacity
 | Member | Days Available | Focus Area | Notes |
@@ -22,7 +22,7 @@
 | @dev1 | 10 | Backend | |
 | @dev2 | 8 | Frontend | PTO Friday |
 
-**Total Capacity:** [N] person-days
+**Total Capacity:** <total_capacity> person-days
 **Velocity (3-sprint avg):** [N] story points
 
 ## Sprint Backlog — Committed
@@ -31,7 +31,7 @@
 | #123 | Story A | 5 | @dev1 |
 | #124 | Story B | 3 | @dev2 |
 
-**Total Points:** [N]
+**Total Points:** <total_points>
 
 ## Stretch Goals
 | ID | Title | Points |
@@ -39,7 +39,7 @@
 | #130 | Nice-to-have | 2 |
 
 ## Risks and Dependencies
-- [ ] Risk: [description] — Mitigation: [action]
+- [ ] Risk: <description> — Mitigation: <action>
 - [ ] Dependency: Story B requires API from Team X by Day 3
 
 ## Action Items

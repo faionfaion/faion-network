@@ -12,17 +12,17 @@ token-budget-impact: ~200-600 tokens when loaded as context
 |-----------|-------|
 | Sprint Goal | {goal} |
 | Duration | {Start} - {End} |
-| Team Size | {N} |
+| Team Size | <team_size> |
 
 ## Goal Achievement: Met / Partial / Not Met
 
 ## Delivery Summary
 | Metric | Committed | Completed | Delta |
 |--------|-----------|-----------|-------|
-| Stories | {N} | {N} | {+/-N} |
-| Points | {N} | {N} | {+/-N} |
-| Bugs Fixed | {N} | {N} | {+/-N} |
-| Scope Added | — | {N} | — |
+| Stories | <stories> | <stories> | {+/-N} |
+| Points | <points> | <points> | {+/-N} |
+| Bugs Fixed | <bugs_fixed> | <bugs_fixed> | {+/-N} |
+| Scope Added | — | <scope_added> | — |
 
 ## Completed Items
 | Key | Title | Points | Type |
@@ -35,8 +35,8 @@ token-budget-impact: ~200-600 tokens when loaded as context
 | #{NNN} | {Title} | {N} | {Blocked by / Descoped} |
 
 ## Quality Metrics
-- Bugs Found: {N}
-- Bugs Fixed: {N}
+- Bugs Found: <bugs_found>
+- Bugs Fixed: <bugs_fixed>
 - Escaped Defects (found in prod): {N}
 - Test Coverage Change: {+/-N}%
 

@@ -8,11 +8,11 @@
 
 ## artefact_id
 
-<kebab-case slug>
+<artefact_slug>
 
 ## owner
 
-<name @handle>
+<name_handle>
 
 ## scope
 
@@ -21,13 +21,13 @@
 
 ## requirements
 
-1. <requirement-1>
-2. <requirement-2>
+1. <requirement_1>
+2. <requirement_2>
 
 ## acceptance
 
-- <check-1>
-- <check-2>
+- <check_1>
+- <check_2>
 
 ## metadata
 

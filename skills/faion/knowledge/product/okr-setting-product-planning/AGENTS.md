@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/okr-setting.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/okr-setting.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/okr-setting.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/okr-setting.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

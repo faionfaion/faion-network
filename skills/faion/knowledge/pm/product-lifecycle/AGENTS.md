@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/lifecycle-assessment.md` | Lifecycle assessment skeleton. |
-| `templates/stage-strategy-guide.md` | Per-stage investment strategy guide. |
+| `templates/lifecycle-assessment.md.j2` | Lifecycle assessment skeleton. |
+| `templates/lifecycle-assessment.md` | Lifecycle assessment skeleton. Generated from `templates/lifecycle-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/stage-strategy-guide.md.j2` | Per-stage investment strategy guide. |
+| `templates/stage-strategy-guide.md` | Per-stage investment strategy guide. Generated from `templates/stage-strategy-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

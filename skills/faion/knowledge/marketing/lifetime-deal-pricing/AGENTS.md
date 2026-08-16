@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ltd-pricing-spec.md` | Markdown skeleton: floor/cap math, scarcity ladder, refund-policy block, post-LTD migration plan. |
+| `templates/ltd-pricing-spec.md.j2` | Markdown skeleton: floor/cap math, scarcity ladder, refund-policy block, post-LTD migration plan. |
+| `templates/ltd-pricing-spec.md` | Markdown skeleton: floor/cap math, scarcity ladder, refund-policy block, post-LTD migration plan. Generated from `templates/ltd-pricing-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

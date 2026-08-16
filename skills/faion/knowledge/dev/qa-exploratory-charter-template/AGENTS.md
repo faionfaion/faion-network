@@ -69,7 +69,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/charter.md` | One-page charter: mission, focus, target, time-box. |
+| `templates/charter.md.j2` | One-page charter: mission, focus, target, time-box. |
+| `templates/charter.md` | One-page charter: mission, focus, target, time-box. Generated from `templates/charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/observation-log.md.j2` | Time-stamped log of test ideas, observations, questions, bugs. |
 | `templates/observation-log.md` | Time-stamped log of test ideas, observations, questions, bugs. Generated from `templates/observation-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/debrief.md.j2` | Post-session debrief: findings, follow-ups, debt, time spent. |

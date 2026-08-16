@@ -11,7 +11,7 @@
 Proposed
 
 ## Context
-Workload: <fill>. Invocation pattern: <event-driven | sync request/response | scheduled | streaming>.
+Workload: <fill>. Invocation pattern: <workload>.
 
 ## Decision Drivers
 - Latency budget

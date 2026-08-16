@@ -65,10 +65,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/test-plan.md` | Test plan skeleton. |
+| `templates/test-plan.md.j2` | Test plan skeleton. |
+| `templates/test-plan.md` | Test plan skeleton. Generated from `templates/test-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/session-script.md.j2` | Session script skeleton with neutral phrasing. |
 | `templates/session-script.md` | Session script skeleton with neutral phrasing. Generated from `templates/session-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/finding-format.md` | Finding entry format with severity + frequency. |
+| `templates/finding-format.md.j2` | Finding entry format with severity + frequency. |
+| `templates/finding-format.md` | Finding entry format with severity + frequency. Generated from `templates/finding-format.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-test-plan.txt` | Agent prompt for plan draft. |
 | `templates/prompt-synthesize.txt` | Agent prompt for findings synthesis. |
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/c4-diagram-pack.md` | C4 diagram-pack spec listing levels + toolchain + sync policy. |
+| `templates/c4-diagram-pack.md.j2` | C4 diagram-pack spec listing levels + toolchain + sync policy. |
+| `templates/c4-diagram-pack.md` | C4 diagram-pack spec listing levels + toolchain + sync policy. Generated from `templates/c4-diagram-pack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/structurizr-workspace.dsl` | Structurizr DSL workspace skeleton: system + actors + container view scaffolding. |
 | `templates/plantuml-context.puml` | PlantUML C4 Context-diagram template using `C4-PlantUML` includes. |
 | `templates/mermaid-container.md.j2` | Mermaid Container-diagram template inside a Markdown fence for repo docs. |

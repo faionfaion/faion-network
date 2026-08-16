@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/engagement-plan.md` | Full engagement plan: assessment matrix + per-stakeholder strategy + activity table |
-| `templates/meeting-prep.md` | Pre/post meeting brief for a single stakeholder interaction |
+| `templates/engagement-plan.md.j2` | Full engagement plan: assessment matrix + per-stakeholder strategy + activity table |
+| `templates/engagement-plan.md` | Full engagement plan: assessment matrix + per-stakeholder strategy + activity table Generated from `templates/engagement-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/meeting-prep.md.j2` | Pre/post meeting brief for a single stakeholder interaction |
+| `templates/meeting-prep.md` | Pre/post meeting brief for a single stakeholder interaction Generated from `templates/meeting-prep.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/assessment-matrix.csv` | Power × Interest × Current × Desired × Gap × Next-Activity schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

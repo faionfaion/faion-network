@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/alt-input-matrix.ts` | TypeScript auditor: each interaction must have ≥2 modalities and seated-mode flag |
-| `templates/spatial-a11y-report.md` | Markdown report skeleton with interaction matrix + comfort options + tester log |
+| `templates/spatial-a11y-report.md.j2` | Markdown report skeleton with interaction matrix + comfort options + tester log |
+| `templates/spatial-a11y-report.md` | Markdown report skeleton with interaction matrix + comfort options + tester log Generated from `templates/spatial-a11y-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

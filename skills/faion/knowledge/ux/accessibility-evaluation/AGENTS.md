@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/audit-report.md` | POUR-grouped findings report skeleton with W3C-technique citations |
+| `templates/audit-report.md.j2` | POUR-grouped findings report skeleton with W3C-technique citations |
+| `templates/audit-report.md` | POUR-grouped findings report skeleton with W3C-technique citations Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scan.mjs` | axe-core + Pa11y + Lighthouse runner emitting normalised JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

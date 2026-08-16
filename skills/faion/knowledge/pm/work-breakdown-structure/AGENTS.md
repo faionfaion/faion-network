@@ -70,7 +70,8 @@
 |------|---------|
 | `templates/wbs-template.md.j2` | Hierarchical WBS outline with PM + all mandatory branches |
 | `templates/wbs-template.md` | Hierarchical WBS outline with PM + all mandatory branches Generated from `templates/wbs-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/wbs-dict-entry.md` | Single work-package Dictionary card |
+| `templates/wbs-dict-entry.md.j2` | Single work-package Dictionary card |
+| `templates/wbs-dict-entry.md` | Single work-package Dictionary card Generated from `templates/wbs-dict-entry.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/wbs-validate.py` | Helper validator (weight + 8-80) consumed by Step 6 |
 | `templates/_smoke-test.json` | Minimum-viable filled `WBS` for validator self-test |
 

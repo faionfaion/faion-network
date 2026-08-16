@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Business Analysis Approach: <Initiative Name>
+# Business Analysis Approach: <initiative_name>
 
-**Version:** 1.0.0  |  **Date:** <YYYY-MM-DD>  |  **BA:** <name@org>
+**Version:** 1.0.0  |  **Date:** <version>  |  **BA:** <name_org>
 
 ## 1. Initiative Overview
 <Brief description.>

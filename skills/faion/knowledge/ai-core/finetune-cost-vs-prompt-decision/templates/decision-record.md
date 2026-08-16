@@ -8,8 +8,8 @@ token-budget-impact: ~600 tokens per filled record.
 
 # Fine-tune Cost vs Prompt Decision — <workload>
 
-**Owner:** <name + email>
-**Created:** <YYYY-MM-DD>   **Recheck:** <YYYY-MM-DD ≤ 6mo>
+**Owner:** <name_email>
+**Created:** <created>   **Recheck:** <YYYY-MM-DD ≤ 6mo>
 **Lift bar (pre-committed):** <e.g. +0.03 F1>
 **Recommendation:** `<fine-tune|prompt-improve|rag|route|hybrid>`
 
@@ -19,15 +19,15 @@ token-budget-impact: ~600 tokens per filled record.
 |---|---|
 | eval score | <0.78> |
 | $/k tokens | <3.0> |
-| daily volume | <50000> |
+| daily volume | <daily_volume> |
 
 ## Candidate (fine-tune)
 
 | Metric | Value |
 |---|---|
-| training cost | <800> |
+| training cost | <training_cost> |
 | hosting $/k | <0.5> |
-| training examples | <6500> |
+| training examples | <training_examples> |
 | pilot lift | <+0.02> |
 
 ## Break-even math

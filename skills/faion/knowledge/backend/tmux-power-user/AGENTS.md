@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/tmux-power-user.json` | TmuxPlan JSON skeleton. |
-| `templates/tmux-power-user.md` | Human-readable audit trail + keybinding cheatsheet. |
+| `templates/tmux-power-user.md.j2` | Human-readable audit trail + keybinding cheatsheet. |
+| `templates/tmux-power-user.md` | Human-readable audit trail + keybinding cheatsheet. Generated from `templates/tmux-power-user.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/tmux.conf` | Reference tmux.conf with prefix C-a, mouse on, 100k history, TPM. |
 | `templates/tmux-session.sh` | Launcher for a named project session with split layout. |
 | `templates/tmux-system.sh` | System tmux session (monitoring, logs). |

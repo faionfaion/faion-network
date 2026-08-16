@@ -24,7 +24,7 @@ Problem: <fill>. Symptom evidence: <fill>.
 3. <pattern>
 
 ## Decision
-Chosen: <pattern>. Rejected: <pattern + reason>.
+Chosen: <pattern>. Rejected: <pattern_reason>.
 
 ## Consequences
 Good: <fill>. Bad: <fill>. Review trigger: <fill>.

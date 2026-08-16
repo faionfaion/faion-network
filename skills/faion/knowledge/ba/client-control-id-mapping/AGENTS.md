@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-control-id-mapping.json` | JSON skeleton for the control-mapping record. |
-| `templates/client-control-id-mapping.md` | Markdown skeleton with required fields. |
+| `templates/client-control-id-mapping.md.j2` | Markdown skeleton with required fields. |
+| `templates/client-control-id-mapping.md` | Markdown skeleton with required fields. Generated from `templates/client-control-id-mapping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable control mapping. |
 | `templates/_smoke-test.md` | Minimum viable control mapping. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

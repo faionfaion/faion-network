@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Filled-in canonical example for calibration |
+| `templates/_smoke-test.md.j2` | Filled-in canonical example for calibration |
+| `templates/_smoke-test.md` | Filled-in canonical example for calibration Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

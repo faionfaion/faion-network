@@ -60,7 +60,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/error-handling.json` | JSON Schema for the Error Handling (RFC 7807 Problem Details) output contract |
-| `templates/error-handling.md` | Markdown skeleton with the required fields |
+| `templates/error-handling.md.j2` | Markdown skeleton with the required fields |
+| `templates/error-handling.md` | Markdown skeleton with the required fields Generated from `templates/error-handling.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a error-handling record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a error-handling record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/problem-details.schema.yaml` | JSON Schema 2020-12 for the ProblemDetails response body — drop-in for jsonschema / ajv / schemathesis |

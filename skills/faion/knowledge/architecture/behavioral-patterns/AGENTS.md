@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pattern-selection.md` | Behavioural pattern selection record. |
+| `templates/pattern-selection.md.j2` | Behavioural pattern selection record. |
+| `templates/pattern-selection.md` | Behavioural pattern selection record. Generated from `templates/pattern-selection.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/chain-py.py` | Chain of Responsibility Python skeleton with fluent `set_next` chaining. |
 | `templates/command-py.py` | Command pattern Python skeleton with invoker + undo/redo stack. |
 | `templates/observer-py.py` | Observer pattern Python skeleton: subject + subscribe/unsubscribe + notify. |

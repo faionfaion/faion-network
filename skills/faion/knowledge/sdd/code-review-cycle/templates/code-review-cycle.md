@@ -10,14 +10,14 @@ token-budget-impact: ~250 tokens.
 
 - **pr_id** (string): <PR or branch id>
 - **prescreen_findings** (array): <AI pre-screen list>
-- **reviewer_findings** (array): <parallel reviewer findings>
-- **merged_findings** (array): <deduplicated unified list>
+- **reviewer_findings** (array): <parallel_reviewer_findings>
+- **merged_findings** (array): <deduplicated_unified_list>
 - **block_count** (integer): <count of BLOCK findings>
 - **reflexion_writeback** (array): <{file, entry} pairs written to memory>
 - **verdict** (string): <merge-ready | block-on-human>
-- **owner** (string): <named human reviewer>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_human_reviewer>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

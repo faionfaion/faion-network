@@ -4,20 +4,20 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-# Meta Audience Spec: [campaign]
+# Meta Audience Spec: <campaign>
 
 ## Core (cold)
-- Interests: [list]
-- Demo / behavior: [list]
+- Interests: <list>
+- Demo / behavior: <list>
 - Size estimate: [500K-2M]
 
 ## Custom (warm)
 - Sources: site_visitors_30d, video_75pct, lead-form_opens, ig_engagers
 
 ## Lookalike (scale)
-- Source: [purchasers_180d / signups_90d]
+- Source: <source>
 - Source size: [≥1000]
-- Pct: [1% | 2-3% | 5-10%]
+- Pct: <pct>
 
 ## Exclusions
 - current_customers
@@ -25,4 +25,4 @@
 - recent_converters
 
 ## Advantage+ Audience?
-[allowed | disabled] — gate: budget ≥ $100/day AND broad appeal
+<allowed_disabled> — gate: budget ≥ $100/day AND broad appeal

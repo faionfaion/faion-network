@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # FinTech KYC BA Pack — <artefact_id>
 
-- **artefact_id**: fkyc-<kebab-case-slug>
+- **artefact_id**: fkyc-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

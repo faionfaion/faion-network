@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Data Exfiltration Canary Tokens — <artefact_id>
 
-- **artefact_id**: dect-<kebab-case-slug>
+- **artefact_id**: dect-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

@@ -59,10 +59,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/content-brief.md` | AI content prompt template with role/constraints/context/task/output |
-| `templates/differentiation-checklist.md` | Pre-publish checklist: generic signals out, differentiation signals in |
-| `templates/eeat-enhancement.md` | Template for adding Experience / Expertise / Authoritativeness / Trust signals |
-| `templates/_smoke-test.md` | Minimum-viable filled brief |
+| `templates/content-brief.md.j2` | AI content prompt template with role/constraints/context/task/output |
+| `templates/content-brief.md` | AI content prompt template with role/constraints/context/task/output Generated from `templates/content-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/differentiation-checklist.md.j2` | Pre-publish checklist: generic signals out, differentiation signals in |
+| `templates/differentiation-checklist.md` | Pre-publish checklist: generic signals out, differentiation signals in Generated from `templates/differentiation-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/eeat-enhancement.md.j2` | Template for adding Experience / Expertise / Authoritativeness / Trust signals |
+| `templates/eeat-enhancement.md` | Template for adding Experience / Expertise / Authoritativeness / Trust signals Generated from `templates/eeat-enhancement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled brief |
+| `templates/_smoke-test.md` | Minimum-viable filled brief Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

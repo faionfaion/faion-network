@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/capacity-bottleneck-checklist.json` | JSON skeleton matching the output contract. |
-| `templates/capacity-bottleneck-checklist.md` | Markdown skeleton naming the checklist sections. |
+| `templates/capacity-bottleneck-checklist.md.j2` | Markdown skeleton naming the checklist sections. |
+| `templates/capacity-bottleneck-checklist.md` | Markdown skeleton naming the checklist sections. Generated from `templates/capacity-bottleneck-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

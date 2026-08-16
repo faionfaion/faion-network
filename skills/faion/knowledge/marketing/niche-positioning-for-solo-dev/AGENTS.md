@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Markdown decision record skeleton |
-| `templates/_smoke-test.md` | Minimum viable filled decision record |
+| `templates/decision-record.md.j2` | Markdown decision record skeleton |
+| `templates/decision-record.md` | Markdown decision record skeleton Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled decision record |
+| `templates/_smoke-test.md` | Minimum viable filled decision record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

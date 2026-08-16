@@ -59,8 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tool-evaluation.md` | Per-tool evaluation skeleton with function bucket and scoring axes |
-| `templates/_smoke-test.md` | Minimum-viable filled evaluation |
+| `templates/tool-evaluation.md.j2` | Per-tool evaluation skeleton with function bucket and scoring axes |
+| `templates/tool-evaluation.md` | Per-tool evaluation skeleton with function bucket and scoring axes Generated from `templates/tool-evaluation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled evaluation |
+| `templates/_smoke-test.md` | Minimum-viable filled evaluation Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

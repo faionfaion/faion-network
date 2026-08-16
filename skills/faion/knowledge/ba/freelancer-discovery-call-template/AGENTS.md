@@ -66,10 +66,12 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema for the full output artefact |
-| `templates/discovery-call-template.md` | Pre-filled 30-min call template with 5 sections |
+| `templates/discovery-call-template.md.j2` | Pre-filled 30-min call template with 5 sections |
+| `templates/discovery-call-template.md` | Pre-filled 30-min call template with 5 sections Generated from `templates/discovery-call-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scorecard.md.j2` | 5-axis go/no-go scorecard |
 | `templates/scorecard.md` | 5-axis go/no-go scorecard Generated from `templates/scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/proposal-seed.md` | 1-page proposal seed skeleton |
+| `templates/proposal-seed.md.j2` | 1-page proposal seed skeleton |
+| `templates/proposal-seed.md` | 1-page proposal seed skeleton Generated from `templates/proposal-seed.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

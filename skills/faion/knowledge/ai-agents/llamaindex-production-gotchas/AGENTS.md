@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/deployment-profile.yaml` | Input. |
-| `templates/hardening-record.md` | Output. |
+| `templates/hardening-record.md.j2` | Output. |
+| `templates/hardening-record.md` | Output. Generated from `templates/hardening-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/patches.py` | Working async + concurrency + error patches. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

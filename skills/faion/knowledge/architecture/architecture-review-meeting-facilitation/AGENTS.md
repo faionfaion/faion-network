@@ -60,9 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/review-facilitation-step.md` | Playbook step skeleton with pre-meeting / in-meeting / post-meeting phases |
-| `templates/decision-log.md` | Decision log template with decision + dissent + follow-ups |
-| `templates/_smoke-test.md` | Filled-in playbook for one review session |
+| `templates/review-facilitation-step.md.j2` | Playbook step skeleton with pre-meeting / in-meeting / post-meeting phases |
+| `templates/review-facilitation-step.md` | Playbook step skeleton with pre-meeting / in-meeting / post-meeting phases Generated from `templates/review-facilitation-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-log.md.j2` | Decision log template with decision + dissent + follow-ups |
+| `templates/decision-log.md` | Decision log template with decision + dissent + follow-ups Generated from `templates/decision-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in playbook for one review session |
+| `templates/_smoke-test.md` | Filled-in playbook for one review session Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

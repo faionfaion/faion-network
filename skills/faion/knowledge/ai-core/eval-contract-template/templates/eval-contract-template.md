@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Eval Contract Template — <artefact_id>
 
-- **artefact_id**: ect-<kebab-case-slug>
+- **artefact_id**: ect-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

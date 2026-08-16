@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/thematic-analysis-report.md` | Markdown skeleton: themes section + per-theme quote anchors + backlog table. |
+| `templates/thematic-analysis-report.md.j2` | Markdown skeleton: themes section + per-theme quote anchors + backlog table. |
+| `templates/thematic-analysis-report.md` | Markdown skeleton: themes section + per-theme quote anchors + backlog table. Generated from `templates/thematic-analysis-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/codebook.json` | Codebook JSON: open codes + axial categories + kappa log. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

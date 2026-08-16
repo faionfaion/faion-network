@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/business-need-statement.md` | BABOK KA6 business need statement skeleton. |
+| `templates/business-need-statement.md.j2` | BABOK KA6 business need statement skeleton. |
+| `templates/business-need-statement.md` | BABOK KA6 business need statement skeleton. Generated from `templates/business-need-statement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/gap-analysis.md.j2` | Current-vs-future gap table with closure plan. |
 | `templates/gap-analysis.md` | Current-vs-future gap table with closure plan. Generated from `templates/gap-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/validate-ka6.sh` | Shell validator for BABOK KA6 artefacts. |

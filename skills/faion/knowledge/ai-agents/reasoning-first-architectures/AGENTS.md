@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/reasoning-first-architectures-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/reasoning-first-architectures-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/reasoning-first-architectures-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/reasoning-first-architectures-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

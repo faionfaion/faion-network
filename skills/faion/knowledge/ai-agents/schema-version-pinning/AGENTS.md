@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/schema-version-pinning-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/schema-version-pinning-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/schema-version-pinning-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/schema-version-pinning-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -6,9 +6,9 @@
 
 ---
 version: 1.0.0
-owner: <named-human>
+owner: <owner_full_name>
 last_reviewed: <YYYY-MM-DD>
-client: <client-name>
+client: <client_name>
 title: <client> — <one-line-headline>
 ---
 
@@ -21,26 +21,26 @@ title: <client> — <one-line-headline>
 ### Option 1 — Light (fixed)
 - Scope: <bounded scope; ≤2 weeks of work>
 - Price: $<amount>
-- Duration: <N> weeks
+- Duration: <duration> weeks
 
 ### Option 2 — Standard (fixed)
-- Scope: <full scope>
+- Scope: <full_scope>
 - Price: $<amount>
-- Duration: <N> weeks
+- Duration: <duration> weeks
 
 ### Option 3 — Outcome-based
 - Scope: <full scope with measurable success metric>
-- Price: $<base> + $<success-fee> on <metric ≤ threshold>
-- Duration: <N> weeks
+- Price: $<base> + $<success_fee> on <metric_threshold>
+- Duration: <duration> weeks
 
 ## Evidence
 
-- <evidence URL 1>
-- <evidence URL 2>
+- <evidence_url_1>
+- <evidence_url_2>
 
 ## Actions
 
-- <YYYY-MM-DD> — <owner> — <action>
-- <YYYY-MM-DD> — <owner> — <action>
+- <YYYY-MM-DD> — <next_action_owner> — <action>
+- <YYYY-MM-DD> — <next_action_owner> — <action>
 
 <!-- Sections that do not apply: replace body with `not_applicable: <reason>` -->

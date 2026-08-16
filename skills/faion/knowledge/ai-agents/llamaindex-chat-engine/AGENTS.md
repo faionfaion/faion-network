@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/chat-profile.yaml` | Input. |
-| `templates/chat-engine-spec.md` | Output. |
+| `templates/chat-engine-spec.md.j2` | Output. |
+| `templates/chat-engine-spec.md` | Output. Generated from `templates/chat-engine-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/chat.py` | Working chat-engine wiring. |
 | `templates/_smoke-test.yaml` | Minimum. |
 

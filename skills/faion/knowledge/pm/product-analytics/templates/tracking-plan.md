@@ -4,7 +4,7 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-# Tracking Plan: [Product]
+# Tracking Plan: <product>
 
 <!-- Source of truth for event taxonomy. Runtime catalogs drift toward this file via PR, never the reverse.
      Each event must state which decision it informs. Run tracking-plan-lint.sh before committing. -->
@@ -34,7 +34,7 @@
 
 | Event | Trigger | Side | Owner | Decision It Informs | Properties |
 |-------|---------|------|-------|---------------------|------------|
-| [object]_[action] | [when it fires] | server/client | @owner | [which decision] | [properties] |
+| <object>_<action> | [when it fires] | server/client | @owner | <which_decision> | <properties> |
 
 ### Conversion Events
 

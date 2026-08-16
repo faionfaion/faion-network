@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Migration wave 2: 1,340 more templates converted — 2,464 of 2,505 declared
+  templates are now Jinja.** Each carries `<name>.md.j2` + `<name>.vars.schema.json`
+  as source with `<name>.html.j2` and a regenerated `<name>.md` as outputs.
+
+  All 1,340 exited 1 — converted what is unambiguous, flagged the rest. That is
+  the designed outcome for this wave, not a failure: wave 1 had already taken
+  every template that needed no judgement, so nothing here was ever going to be
+  clean. **41 refused, writing nothing**: 22 already carrying raw
+  `{{audit_log_path}}`-style tokens with no declaration behind them, 19 with
+  braces that are not identifiers (`{{1-sentence}}`, `{{N}}`). Those 41 plus the
+  1,349 partials are the adjudication queue.
+
+  Verified by execution: `--check` **drift=0 across all 2,464**;
+  `validate-methodology-templates.py --all` **2521 pass / 0 fail**, unchanged;
+  tools 0 findings; dictionary validator clean. Every regenerated `.md` compared
+  against its pre-migration content — **2,436 byte-identical** after normalising
+  placeholder spelling, 28 differing, and all 24 with fewer lines are the
+  `variables:` block correctly moving out of the header into the schema.
+
+  **The description-wins rule held.** 24 templates carried hand-authored
+  `variables:` blocks between them; **158 authored descriptions preserved, 0
+  dropped.** Without the fix landed just before this wave, every one of those
+  158 would have been overwritten by a generic dictionary sentence — and under
+  §1b that sentence is what an agent puts to a human.
+
 - **The SIGPIPE-plus-pipefail trap had three more call sites, and two of them
   were silently vacuous.** Found because wave 1 staged 4,265 paths and the
   pre-commit CHANGELOG gate rejected the commit while `CHANGELOG.md` sat in the

@@ -69,8 +69,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/ka-route.sh` | Shell helper to print KA → method list for a situation. |
-| `templates/ka-detail.md` | Per-KA detail page skeleton. |
-| `templates/workflow-sequence.md` | Workflow sequence table for greenfield/change/transformation. |
+| `templates/ka-detail.md.j2` | Per-KA detail page skeleton. |
+| `templates/ka-detail.md` | Per-KA detail page skeleton. Generated from `templates/ka-detail.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/workflow-sequence.md.j2` | Workflow sequence table for greenfield/change/transformation. |
+| `templates/workflow-sequence.md` | Workflow sequence table for greenfield/change/transformation. Generated from `templates/workflow-sequence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in routing record. |
 | `templates/_smoke-test.md` | Minimum filled-in routing record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

@@ -68,10 +68,13 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/qbr-deck.md` | 6-slide outline: cover / status / outcomes / blockers / renewal options / next quarter |
-| `templates/qbr-talking-points.md` | Verbatim opening, transition, and closing lines for each segment |
+| `templates/qbr-deck.md.j2` | 6-slide outline: cover / status / outcomes / blockers / renewal options / next quarter |
+| `templates/qbr-deck.md` | 6-slide outline: cover / status / outcomes / blockers / renewal options / next quarter Generated from `templates/qbr-deck.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/qbr-talking-points.md.j2` | Verbatim opening, transition, and closing lines for each segment |
+| `templates/qbr-talking-points.md` | Verbatim opening, transition, and closing lines for each segment Generated from `templates/qbr-talking-points.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/decision-record.json` | Renewal decision schema (continue / scale_up / scope_down / terminate / deferred_with_date) |
-| `templates/follow-up-email.md` | 1-page recap email — sent within 24h of call |
+| `templates/follow-up-email.md.j2` | 1-page recap email — sent within 24h of call |
+| `templates/follow-up-email.md` | 1-page recap email — sent within 24h of call Generated from `templates/follow-up-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

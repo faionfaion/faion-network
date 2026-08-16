@@ -59,8 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/daily-standup-ai-prebrief-template.md` | Markdown pre-brief skeleton with all sections |
-| `templates/_smoke-test.md` | Minimum-viable filled pre-brief |
+| `templates/daily-standup-ai-prebrief-template.md.j2` | Markdown pre-brief skeleton with all sections |
+| `templates/daily-standup-ai-prebrief-template.md` | Markdown pre-brief skeleton with all sections Generated from `templates/daily-standup-ai-prebrief-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled pre-brief |
+| `templates/_smoke-test.md` | Minimum-viable filled pre-brief Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

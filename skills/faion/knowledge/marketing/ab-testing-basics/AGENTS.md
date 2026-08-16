@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/pre-registration.json` | JSON example of a pre-registration |
-| `templates/pre-registration.md` | Pre-registration markdown template |
+| `templates/pre-registration.md.j2` | Pre-registration markdown template |
+| `templates/pre-registration.md` | Pre-registration markdown template Generated from `templates/pre-registration.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

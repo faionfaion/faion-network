@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/codemod.ts` | jscodeshift codemod skeleton. |
-| `templates/codemod-pr.md` | PR body template documenting the codemod. |
+| `templates/codemod-pr.md.j2` | PR body template documenting the codemod. |
+| `templates/codemod-pr.md` | PR body template documenting the codemod. Generated from `templates/codemod-pr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

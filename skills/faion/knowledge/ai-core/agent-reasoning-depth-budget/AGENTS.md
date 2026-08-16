@@ -59,7 +59,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/under-over-detector.py.tmpl` | Detector skeleton from trace stream. |
-| `templates/_smoke-test.md` | Filled example for a 5-class task agent. |
+| `templates/_smoke-test.md.j2` | Filled example for a 5-class task agent. |
+| `templates/_smoke-test.md` | Filled example for a 5-class task agent. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

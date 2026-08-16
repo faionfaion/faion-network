@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ssh-hardening.json` | SshPlan JSON skeleton. |
-| `templates/ssh-hardening.md` | Human-readable audit trail + rollback steps. |
+| `templates/ssh-hardening.md.j2` | Human-readable audit trail + rollback steps. |
+| `templates/ssh-hardening.md` | Human-readable audit trail + rollback steps. Generated from `templates/ssh-hardening.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/99-hardening.conf` | Drop-in sshd_config.d/99-hardening.conf (key-only, modern crypto, AllowUsers). |
 | `templates/ssh-client-config` | Reference ~/.ssh/config with multiplexing + host alias. |
 

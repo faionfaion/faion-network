@@ -55,7 +55,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/vendor-feature-portability-matrix.json` | JSON Schema for the Vendor Feature Portability Matrix output contract |
-| `templates/vendor-feature-portability-matrix.md` | Markdown skeleton with the required fields |
+| `templates/vendor-feature-portability-matrix.md.j2` | Markdown skeleton with the required fields |
+| `templates/vendor-feature-portability-matrix.md` | Markdown skeleton with the required fields Generated from `templates/vendor-feature-portability-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a vendor-feature-portability-matrix record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a vendor-feature-portability-matrix record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

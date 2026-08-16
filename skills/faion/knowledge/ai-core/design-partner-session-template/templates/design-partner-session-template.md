@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Design Partner Session Template — <artefact_id>
 
-- **artefact_id**: dps-<kebab-case-slug>
+- **artefact_id**: dps-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

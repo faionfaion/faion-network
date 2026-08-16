@@ -67,11 +67,16 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
-| `templates/blue-ocean-canvas.md` | Sub-artefact skeleton consumed by the main output |
-| `templates/niche-scorecard.md` | Sub-artefact skeleton consumed by the main output |
-| `templates/pricing-strategy.md` | Sub-artefact skeleton consumed by the main output |
-| `templates/value-proposition-canvas.md` | Sub-artefact skeleton consumed by the main output |
+| `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
+| `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/blue-ocean-canvas.md.j2` | Sub-artefact skeleton consumed by the main output |
+| `templates/blue-ocean-canvas.md` | Sub-artefact skeleton consumed by the main output Generated from `templates/blue-ocean-canvas.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/niche-scorecard.md.j2` | Sub-artefact skeleton consumed by the main output |
+| `templates/niche-scorecard.md` | Sub-artefact skeleton consumed by the main output Generated from `templates/niche-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/pricing-strategy.md.j2` | Sub-artefact skeleton consumed by the main output |
+| `templates/pricing-strategy.md` | Sub-artefact skeleton consumed by the main output Generated from `templates/pricing-strategy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/value-proposition-canvas.md.j2` | Sub-artefact skeleton consumed by the main output |
+| `templates/value-proposition-canvas.md` | Sub-artefact skeleton consumed by the main output Generated from `templates/value-proposition-canvas.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

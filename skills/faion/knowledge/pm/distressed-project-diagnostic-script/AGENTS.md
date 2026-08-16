@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown skeleton of the six-week rescue diagnostic with interview list, numeric pulls, triangulation matrix, and rescue plan. |
+| `templates/skeleton.md.j2` | Markdown skeleton of the six-week rescue diagnostic with interview list, numeric pulls, triangulation matrix, and rescue plan. |
+| `templates/skeleton.md` | Markdown skeleton of the six-week rescue diagnostic with interview list, numeric pulls, triangulation matrix, and rescue plan. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

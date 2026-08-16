@@ -70,9 +70,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/team-charter.md` | Charter skeleton: mission, members, working agreements, cadence, success metrics. |
-| `templates/skills-matrix.md` | Role × skill grid (1–4 scale, `?` for unknown) with Gap-Action column. |
-| `templates/retro.md` | Went-well / didn't-go-well / ideas / action items (owner + sprint deadline). |
+| `templates/team-charter.md.j2` | Charter skeleton: mission, members, working agreements, cadence, success metrics. |
+| `templates/team-charter.md` | Charter skeleton: mission, members, working agreements, cadence, success metrics. Generated from `templates/team-charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/skills-matrix.md.j2` | Role × skill grid (1–4 scale, `?` for unknown) with Gap-Action column. |
+| `templates/skills-matrix.md` | Role × skill grid (1–4 scale, `?` for unknown) with Gap-Action column. Generated from `templates/skills-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retro.md.j2` | Went-well / didn't-go-well / ideas / action items (owner + sprint deadline). |
+| `templates/retro.md` | Went-well / didn't-go-well / ideas / action items (owner + sprint deadline). Generated from `templates/retro.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum-viable filled `TeamDevelopmentReport` for validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

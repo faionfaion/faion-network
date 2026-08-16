@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ost.yaml` | OST-as-YAML skeleton with outcome → opportunity → solution → assumption-test fields. |
-| `templates/weekly-discovery.md` | Weekly discovery readout template with shipped / coded / tree-diff / next-week sections. |
+| `templates/weekly-discovery.md.j2` | Weekly discovery readout template with shipped / coded / tree-diff / next-week sections. |
+| `templates/weekly-discovery.md` | Weekly discovery readout template with shipped / coded / tree-diff / next-week sections. Generated from `templates/weekly-discovery.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ost-apply.py` | Apply a tree-diff (JSON-patch / YAML-diff) to the current OST file. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

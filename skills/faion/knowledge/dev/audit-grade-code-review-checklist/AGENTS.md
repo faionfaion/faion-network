@@ -60,9 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/review-checklist.md` | Per-PR audit checklist with sections per concern |
-| `templates/review-evidence-log.md` | Log capturing reviewer + timestamp + check pass/fail per PR |
-| `templates/_smoke-test.md` | Filled-in checklist for a small payments PR |
+| `templates/review-checklist.md.j2` | Per-PR audit checklist with sections per concern |
+| `templates/review-checklist.md` | Per-PR audit checklist with sections per concern Generated from `templates/review-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/review-evidence-log.md.j2` | Log capturing reviewer + timestamp + check pass/fail per PR |
+| `templates/review-evidence-log.md` | Log capturing reviewer + timestamp + check pass/fail per PR Generated from `templates/review-evidence-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in checklist for a small payments PR |
+| `templates/_smoke-test.md` | Filled-in checklist for a small payments PR Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

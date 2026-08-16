@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/preparation-checklist.md` | Pre-conversation preparation checklist |
-| `templates/wwwf-tracker.md` | WHO/WHAT/WHEN/Follow-up commitment tracker |
+| `templates/preparation-checklist.md.j2` | Pre-conversation preparation checklist |
+| `templates/preparation-checklist.md` | Pre-conversation preparation checklist Generated from `templates/preparation-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/wwwf-tracker.md.j2` | WHO/WHAT/WHEN/Follow-up commitment tracker |
+| `templates/wwwf-tracker.md` | WHO/WHAT/WHEN/Follow-up commitment tracker Generated from `templates/wwwf-tracker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-state-script.txt` | Prompt to generate a STATE opening from fact + story |
 | `templates/prompt-desc-script.txt` | Prompt to generate a DESC written boundary message |
 

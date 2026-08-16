@@ -4,13 +4,13 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-## Delight Sprint: [Focus Area]
+## Delight Sprint: <focus_area>
 
 ### Scope
 
 **Area:** [Part of product — single workflow only]
 **Duration:** [X] days (max 14)
-**Goal:** Add delight to [specific workflow] to increase [metric] from [X] to [Y]
+**Goal:** Add delight to <specific_workflow> to increase <metric> from [X] to <y>
 
 ### Current Experience
 
@@ -26,19 +26,19 @@ User reaction we aim for: "[What we want them to feel or say]"
 
 | Task | Delight Category | Layer | Effort | Owner |
 |------|-----------------|-------|--------|-------|
-| [Task 1] | Personality | L4 | 2 hrs | [Name] |
-| [Task 2] | Speed | L3 | 4 hrs | [Name] |
-| [Task 3] | Celebration | L4 | 1d | [Name] |
+| <task_1> | Personality | L4 | 2 hrs | [Name] |
+| <task_2> | Speed | L3 | 4 hrs | [Name] |
+| <task_3> | Celebration | L4 | 1d | [Name] |
 
 ### Kill-Switch Metrics
 
 | Metric | Baseline | Kill Threshold | Owner |
 |--------|----------|----------------|-------|
-| Task completion time | [X]s | > [X+20%] | [Name] |
-| Rage-click rate | [X]% | > [X+50%] | [Name] |
+| Task completion time | [X]s | > <x_20> | [Name] |
+| Rage-click rate | [X]% | > <x_50> | [Name] |
 
 ### Success Criteria
 
-- [ ] [Specific measurable outcome]
-- [ ] User testing: [X] of [Y] participants react positively (smile, exclaim, comment)
+- [ ] <specific_measurable_outcome>
+- [ ] User testing: [X] of <y> participants react positively (smile, exclaim, comment)
 - [ ] Kill-switch metrics remain within threshold after 1-week flag rollout

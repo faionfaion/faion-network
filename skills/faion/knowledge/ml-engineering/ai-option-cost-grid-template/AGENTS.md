@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/grid.md` | Markdown grid skeleton with every column header + N/A discipline. |
+| `templates/grid.md.j2` | Markdown grid skeleton with every column header + N/A discipline. |
+| `templates/grid.md` | Markdown grid skeleton with every column header + N/A discipline. Generated from `templates/grid.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/output-schema.json` | JSON Schema for the structured grid. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

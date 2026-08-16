@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Minimum viable Laravel project structure reference. |
+| `templates/_smoke-test.md.j2` | Minimum viable Laravel project structure reference. |
+| `templates/_smoke-test.md` | Minimum viable Laravel project structure reference. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

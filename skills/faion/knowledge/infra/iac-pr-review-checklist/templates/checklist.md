@@ -10,7 +10,7 @@ Each row: ID · Rule · MUST/SHOULD · Evidence · Owner.
 | ID | Rule | MUST/SHOULD | Evidence | Owner |
 |----|------|-------------|----------|-------|
 | i1 | <rule 1 from 01-core-rules.xml> | MUST | <pointer> | <name> |
-| i2 | <rule 2> | MUST | <pointer> | <name> |
-| i3 | <rule 3> | SHOULD | <pointer> | <name> |
-| i4 | <rule 4> | MUST | <pointer> | <name> |
-| i5 | <rule 5> | SHOULD | <pointer> | <name> |
+| i2 | <rule_2> | MUST | <pointer> | <name> |
+| i3 | <rule_3> | SHOULD | <pointer> | <name> |
+| i4 | <rule_4> | MUST | <pointer> | <name> |
+| i5 | <rule_5> | SHOULD | <pointer> | <name> |

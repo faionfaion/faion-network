@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/retargeting-plan.md` | Retargeting plan Markdown skeleton with the 5-tier ladder. |
+| `templates/retargeting-plan.md.j2` | Retargeting plan Markdown skeleton with the 5-tier ladder. |
+| `templates/retargeting-plan.md` | Retargeting plan Markdown skeleton with the 5-tier ladder. Generated from `templates/retargeting-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/frequency-matrix.csv` | Per-stage frequency cap matrix. |
 | `templates/retargeting-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 

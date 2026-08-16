@@ -68,8 +68,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/survey-design-doc.md` | Survey doc skeleton (hypothesis + questions + sample plan) |
-| `templates/question-bank.md` | Pre-vetted question phrasings by survey type |
+| `templates/survey-design-doc.md.j2` | Survey doc skeleton (hypothesis + questions + sample plan) |
+| `templates/survey-design-doc.md` | Survey doc skeleton (hypothesis + questions + sample plan) Generated from `templates/survey-design-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/question-bank.md.j2` | Pre-vetted question phrasings by survey type |
+| `templates/question-bank.md` | Pre-vetted question phrasings by survey type Generated from `templates/question-bank.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/bias-linter.py` | Lint questions for leading/double-barreled/loaded patterns |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

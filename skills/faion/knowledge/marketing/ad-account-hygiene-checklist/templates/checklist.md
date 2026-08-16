@@ -10,10 +10,10 @@ _Cycle:_ weekly | _Owner:_ TEAM-NAMED-OWNER
 
 | # | Item | Platform | Status | Evidence | Skip reason |
 |---|------|----------|--------|----------|-------------|
-| 1 | <CHECK ITEM 1> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
-| 2 | <CHECK ITEM 2> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
-| 3 | <CHECK ITEM 3> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
-| 4 | <CHECK ITEM 4> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
-| 5 | <CHECK ITEM 5> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
+| 1 | <check_item_1> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
+| 2 | <check_item_2> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
+| 3 | <check_item_3> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
+| 4 | <check_item_4> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
+| 5 | <check_item_5> | google\|meta\|linkedin | done\|skipped\|blocked | <timestamp + observation> | <only if skipped> |
 
 _Audit log path:_ `evidence/<artefact_id>/<cycle>.md`

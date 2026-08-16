@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
 <!-- token-budget-impact: ~350 tokens loaded as template context -->
 
-# Interface Specification: [Interface Name]
+# Interface Specification: <interface_name>
 
 **Version:** [X.X]
-**Date:** [Date]
+**Date:** <date>
 **Author:** [Name]
 
 ## Overview
@@ -25,11 +25,11 @@
 | System | Role | Contact |
 |--------|------|---------|
 | Our system | Provider / Consumer | [Name] |
-| [External system] | Provider / Consumer | [Name] |
+| <external_system> | Provider / Consumer | [Name] |
 
 ## Data Specification
 
-### [Message/Payload Name]
+### <message_payload_name>
 
 **Direction:** Inbound / Outbound
 **Format:** JSON / XML / CSV / Binary / Event
@@ -37,7 +37,7 @@
 
 | Field | Type | Required | Validation | Description |
 |-------|------|----------|------------|-------------|
-| [field_name] | string/int/bool | Y/N | [rules] | [description] |
+| [field_name] | string/int/bool | Y/N | <rules> | <description> |
 
 **Example Payload (literal values, no placeholders):**
 ```json
@@ -57,7 +57,7 @@
 | **Rate limit** | [X requests per Y or "tbd"] |
 | **Timeout** | [X seconds — both caller and callee] |
 | **Idempotency** | [Key field name + dedup window, or N/A] |
-| **Retry safe?** | Yes / No / [conditions] |
+| **Retry safe?** | Yes / No / <conditions> |
 
 ## Operational Specification
 
@@ -71,15 +71,15 @@
 
 | Error Code | Condition | Consumer must | Retry? | Alert? |
 |------------|-----------|---------------|--------|--------|
-| [Code] | [When it occurs] | [Specific action] | Y/N | Y/N |
+| <code> | [When it occurs] | <specific_action> | Y/N | Y/N |
 
 _Error codes verified against: [live traffic capture / vendor docs URL]_
 
 ## Security Requirements
 - Auth type: [cite vendor docs URL]
-- [Specific requirement]
+- <specific_requirement>
 
 ## Traceability
-- Requirements: [REQ-XXX]
+- Requirements: <req_xxx>
 - Design: design.md section [X]
 - Test plan: test-plan.md IF-XXX contract tests

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rfc-lite-pm-template.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/rfc-lite-pm-template.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/rfc-lite-pm-template.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/rfc-lite-pm-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

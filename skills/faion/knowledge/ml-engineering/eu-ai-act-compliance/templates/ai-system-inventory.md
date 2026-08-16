@@ -19,7 +19,7 @@ token-budget-impact: ≤500 tokens to fill
 **Description:**
 **Risk Classification:** Prohibited / High / Limited / Minimal
 **Role:** Provider / Deployer / Importer / Distributor
-**Provider:** [Vendor Name]
+**Provider:** <vendor_name>
 **Deployment Date:**
 **Business Owner:**
 **Technical Owner:**

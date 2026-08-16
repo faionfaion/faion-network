@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/caching-write-patterns.json` | JSON Schema for the Cache Write Patterns (Cache-Aside, Write-Through, Write-Behind) output contract |
-| `templates/caching-write-patterns.md` | Markdown skeleton with the required fields |
+| `templates/caching-write-patterns.md.j2` | Markdown skeleton with the required fields |
+| `templates/caching-write-patterns.md` | Markdown skeleton with the required fields Generated from `templates/caching-write-patterns.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a caching-write-patterns record |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-write-patterns record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

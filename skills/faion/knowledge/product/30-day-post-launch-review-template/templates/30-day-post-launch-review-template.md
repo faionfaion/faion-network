@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # 30 Day Post Launch Review Template — <artefact_id>
 
-- **launch_id** (string): <named launch>
-- **launch_comms_kit_id** (string): <upstream artefact id>
+- **launch_id** (string): <named_launch>
+- **launch_comms_kit_id** (string): <upstream_artefact_id>
 - **review_at** (string): <ISO date (T+30)>
 - **funnel_by_channel** (object): <per-channel acquire/activate/retain/revenue counts>
 - **hypothesis_verdicts** (array): <≥1 verdict object (hypothesis_id, verdict, evidence)>
 - **next_bets** (array): <≥3 ranked bets with budget_usd + budget_hours>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

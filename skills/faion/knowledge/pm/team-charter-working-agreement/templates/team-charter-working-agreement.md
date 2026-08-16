@@ -7,8 +7,8 @@ token-budget-impact: ~500 tokens when filled.
 -->
 
 ---
-artefact_id: "<team-slug>-charter"
-owner: "tech-lead:<person>"
+artefact_id: "<team_slug>-charter"
+owner: "tech-lead:<owner_full_name>"
 version: "1.0.0"
 last_reviewed: "2026-05-22"
 inputs_used:
@@ -16,7 +16,7 @@ inputs_used:
     source: "<repo-or-doc-link>"
 ---
 
-# Team Charter — <team-name>
+# Team Charter — <team_name>
 
 ## Mission
 
@@ -45,4 +45,4 @@ inputs_used:
 ## Decisions / Actions / Next review
 
 - <decision 1 + rationale + input citation>
-- Next review: <ISO date>
+- Next review: <next_review_date>

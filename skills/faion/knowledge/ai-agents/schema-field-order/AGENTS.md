@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/schema-field-order-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/schema-field-order-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/schema-field-order-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/schema-field-order-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

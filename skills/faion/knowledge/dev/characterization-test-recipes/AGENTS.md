@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/characterization-test-recipes.json` | JSON Schema for the suite-manifest artefact. |
-| `templates/snapshot-stabilize-rules.md` | Common normalization rules: timestamps, UUIDs, ordering. |
+| `templates/snapshot-stabilize-rules.md.j2` | Common normalization rules: timestamps, UUIDs, ordering. |
+| `templates/snapshot-stabilize-rules.md` | Common normalization rules: timestamps, UUIDs, ordering. Generated from `templates/snapshot-stabilize-rules.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

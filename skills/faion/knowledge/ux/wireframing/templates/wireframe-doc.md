@@ -5,10 +5,10 @@ produces: a wireframing artefact validating against scripts/validate-wireframing
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600-1500 tokens once filled
 -->
-# Wireframe: [Page/Screen Name]
+# Wireframe: <page_screen_name>
 
 **Version:** [X.X]
-**Date:** [Date]
+**Date:** <date>
 **Designer:** [Name]
 **Status:** Draft / Review / Approved
 
@@ -53,15 +53,15 @@ token-budget-impact: ~600-1500 tokens once filled
 
 | Element | Trigger | Action | Result |
 |---------|---------|--------|--------|
-| [Element] | Click / Hover / Submit | [What happens] | [Outcome / state change] |
+| <element> | Click / Hover / Submit | <what_happens> | <outcome_state_change> |
 
 ## Responsive Notes
 
-- **Desktop (1280px+):** [How layout changes]
-- **Tablet (768-1279px):** [How layout changes]
-- **Mobile (375-767px):** [How layout changes]
+- **Desktop (1280px+):** <how_layout_changes>
+- **Tablet (768-1279px):** <how_layout_changes>
+- **Mobile (375-767px):** <how_layout_changes>
 
 ## Open Questions
 
 - [Question 1 — decision needed before engineering begins]
-- [Question 2]
+- <question_2>

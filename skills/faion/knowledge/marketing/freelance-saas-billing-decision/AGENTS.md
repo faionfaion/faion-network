@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/decision-record.json` | JSON example of billing decision record |
-| `templates/pricing-page-math.md` | Pricing-page math template (unit breakdown) |
+| `templates/pricing-page-math.md.j2` | Pricing-page math template (unit breakdown) |
+| `templates/pricing-page-math.md` | Pricing-page math template (unit breakdown) Generated from `templates/pricing-page-math.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

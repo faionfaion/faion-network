@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/context-bleed-detection-recipe.json` | JSON schema for the incident record output |
-| `templates/context-bleed-detection-recipe.md` | Markdown skeleton for the incident record |
+| `templates/context-bleed-detection-recipe.md.j2` | Markdown skeleton for the incident record |
+| `templates/context-bleed-detection-recipe.md` | Markdown skeleton for the incident record Generated from `templates/context-bleed-detection-recipe.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

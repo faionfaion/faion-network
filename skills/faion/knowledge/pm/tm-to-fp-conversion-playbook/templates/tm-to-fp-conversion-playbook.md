@@ -8,15 +8,15 @@
 
 ## step_id
 
-<kebab-case slug>
+<kebab_case_slug>
 
 ## owner
 
-<named accountable human>
+<named_accountable_human>
 
 ## input artefacts
 
-- <input — source>
+- <input_source>
 
 ## action
 

@@ -6,7 +6,7 @@
 
 # Acceptance Criterion (rule-based)
 
-**ac_id:** AC-<STORY>-<NN>
+**ac_id:** AC-<story>-<ac_id>
 
-**Rule:** <constraint statement>
+**Rule:** <constraint_statement>
 **Measurement:** <how to observe>

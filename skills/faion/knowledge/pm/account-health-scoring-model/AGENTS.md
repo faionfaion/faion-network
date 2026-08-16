@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/account-health-card.md` | Per-account score card with 6 signals, trend, action |
 | `templates/weekly-dashboard.md` | All accounts on one page with traffic-light status |
-| `templates/signal-thresholds.md` | The cutoffs for each 0/1/2 score per signal |
+| `templates/signal-thresholds.md.j2` | The cutoffs for each 0/1/2 score per signal |
+| `templates/signal-thresholds.md` | The cutoffs for each 0/1/2 score per signal Generated from `templates/signal-thresholds.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

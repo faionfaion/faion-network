@@ -70,8 +70,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rtm.md` | RTM skeleton with role vocabulary. |
-| `templates/per-req-trace.md` | Per-requirement trace block. |
+| `templates/rtm.md.j2` | RTM skeleton with role vocabulary. |
+| `templates/rtm.md` | RTM skeleton with role vocabulary. Generated from `templates/rtm.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/per-req-trace.md.j2` | Per-requirement trace block. |
+| `templates/per-req-trace.md` | Per-requirement trace block. Generated from `templates/per-req-trace.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rtm.py` | Render RTM + coverage report from YAML store. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in RTM. |
 | `templates/_smoke-test.md` | Minimum filled-in RTM. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

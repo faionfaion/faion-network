@@ -8,8 +8,8 @@
 
 ## Metadata
 
-- `artefact_id`: <slug>-<client>-<YYYY-MM-DD>
-- `owner`: Full Name <email>
+- `artefact_id`: <artefact_slug>-<client_slug>-<artefact_id>
+- `owner`: Full Name <owner_email>
 - `version`: 1.0.0
 - `last_reviewed`: 2026-05-23
 

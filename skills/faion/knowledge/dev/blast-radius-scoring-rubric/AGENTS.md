@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/blast-radius-scoring-rubric.json` | JSON Schema for the rubric output artefact. |
-| `templates/pr-template-blast-field.md` | Markdown snippet for the PR template's blast self-score block. |
+| `templates/pr-template-blast-field.md.j2` | Markdown snippet for the PR template's blast self-score block. |
+| `templates/pr-template-blast-field.md` | Markdown snippet for the PR template's blast self-score block. Generated from `templates/pr-template-blast-field.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

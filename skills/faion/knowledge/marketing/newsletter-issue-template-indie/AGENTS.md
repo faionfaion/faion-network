@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/newsletter-issue.md` | Markdown skeleton: hook-story-lesson-CTA blocks with word-budget and evidence-anchor slots. |
+| `templates/newsletter-issue.md.j2` | Markdown skeleton: hook-story-lesson-CTA blocks with word-budget and evidence-anchor slots. |
+| `templates/newsletter-issue.md` | Markdown skeleton: hook-story-lesson-CTA blocks with word-budget and evidence-anchor slots. Generated from `templates/newsletter-issue.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

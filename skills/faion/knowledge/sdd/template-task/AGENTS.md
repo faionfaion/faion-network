@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/task.md` | Canonical TASK_NNN.md skeleton with all required sections. |
+| `templates/task.md.j2` | Canonical TASK_NNN.md skeleton with all required sections. |
+| `templates/task.md` | Canonical TASK_NNN.md skeleton with all required sections. Generated from `templates/task.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/task-lifecycle.sh` | Validates required sections before moving task between todo / in-progress / done. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

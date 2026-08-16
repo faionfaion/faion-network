@@ -57,7 +57,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/progressive-disclosure-skills-spec.md` | Markdown wrapper for the JSON spec. |
+| `templates/progressive-disclosure-skills-spec.md.j2` | Markdown wrapper for the JSON spec. |
+| `templates/progressive-disclosure-skills-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/progressive-disclosure-skills-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

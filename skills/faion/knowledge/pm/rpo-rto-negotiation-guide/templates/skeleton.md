@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml#r3-tier-banded-options -->
 <!-- token-budget-impact: ~150 tokens -->
 
-# RPO/RTO Acceptance Record — [system_id]
+# RPO/RTO Acceptance Record — <system_id>
 
-**Owner:** [architect] / [person]
-**Version:** [semver]
+**Owner:** <architect> / <owner_full_name>
+**Version:** <document_version>
 
 ## Impact basis
 

@@ -58,7 +58,8 @@
 | File | Purpose |
 |---|---|
 | `templates/utm-taxonomy-discipline.json` | JSON Schema for the output contract (machine-validatable). |
-| `templates/utm-taxonomy-discipline.md` | Markdown skeleton with the required fields. |
+| `templates/utm-taxonomy-discipline.md.j2` | Markdown skeleton with the required fields. |
+| `templates/utm-taxonomy-discipline.md` | Markdown skeleton with the required fields. Generated from `templates/utm-taxonomy-discipline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

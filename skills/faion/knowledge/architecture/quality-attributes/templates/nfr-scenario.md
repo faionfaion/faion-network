@@ -9,12 +9,12 @@
 
 | Field         | Value                                                       |
 |---------------|-------------------------------------------------------------|
-| ID            | qa-<short-slug>                                             |
-| Source        | <who/what initiates>                                        |
+| ID            | qa-<short_slug>                                             |
+| Source        | <who_what_initiates>                                        |
 | Stimulus      | <event>                                                     |
-| Environment   | <normal | degraded | failure>                               |
-| Artefact      | <system / module>                                           |
+| Environment   | <normal_degraded_failure>                               |
+| Artefact      | <system_module>                                           |
 | Response      | <what the system does>                                      |
-| Measure       | <numeric target>                                            |
+| Measure       | <numeric_target>                                            |
 | Priority      | high / medium / low                                          |
 | Difficulty    | high / medium / low                                          |

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-content-quality-review.md` | Markdown skeleton with required fields. |
+| `templates/ai-content-quality-review.md.j2` | Markdown skeleton with required fields. |
+| `templates/ai-content-quality-review.md` | Markdown skeleton with required fields. Generated from `templates/ai-content-quality-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

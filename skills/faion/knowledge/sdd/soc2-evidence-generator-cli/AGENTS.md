@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/evidence-stub.json` | Signed stub schema with actor, diff hash, control labels, approval link. |
-| `templates/soc2-cli.md` | CLI usage cheat-sheet: hook install + query commands. |
+| `templates/soc2-cli.md.j2` | CLI usage cheat-sheet: hook install + query commands. |
+| `templates/soc2-cli.md` | CLI usage cheat-sheet: hook install + query commands. Generated from `templates/soc2-cli.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

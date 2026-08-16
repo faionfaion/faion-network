@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cross-border-tax-cheatsheet.json` | JSON Schema (draft-07) for the Cross Border Tax Cheatsheet output contract |
-| `templates/cross-border-tax-cheatsheet.md` | Markdown skeleton with the required fields for the Cross Border Tax Cheatsheet artefact |
+| `templates/cross-border-tax-cheatsheet.md.j2` | Markdown skeleton with the required fields for the Cross Border Tax Cheatsheet artefact |
+| `templates/cross-border-tax-cheatsheet.md` | Markdown skeleton with the required fields for the Cross Border Tax Cheatsheet artefact Generated from `templates/cross-border-tax-cheatsheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/cross-border-tax-cheatsheet.example.json` | Worked filled-in example of a valid Cross Border Tax Cheatsheet artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

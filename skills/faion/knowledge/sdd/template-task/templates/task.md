@@ -56,8 +56,8 @@ If this description contains "and", split the task.}
 
 ## Acceptance Criteria
 
-- [ ] AC-{NNN}.1: Given {precondition} / When {action} / Then {verifiable result}
-- [ ] AC-{NNN}.2: Given {precondition} / When {action} / Then {verifiable result}
+- [ ] AC-<ac>.1: Given {precondition} / When {action} / Then {verifiable result}
+- [ ] AC-<ac>.2: Given {precondition} / When {action} / Then {verifiable result}
 
 ---
 

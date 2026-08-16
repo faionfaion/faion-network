@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/context-window-curation-for-coding-agents.json` | JSON Schema for the bundle artefact. |
-| `templates/glossary-snippet.md` | 200-token project-glossary template. |
+| `templates/glossary-snippet.md.j2` | 200-token project-glossary template. |
+| `templates/glossary-snippet.md` | 200-token project-glossary template. Generated from `templates/glossary-snippet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

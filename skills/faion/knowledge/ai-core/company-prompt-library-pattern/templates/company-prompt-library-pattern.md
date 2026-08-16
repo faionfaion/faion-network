@@ -8,7 +8,7 @@ token-budget-impact: ~200 tokens.
 
 # Company Prompt Library Spec — <spec_id>
 
-- **spec_id**: <org-slug>-prompt-library
+- **spec_id**: <org_slug>-prompt-library
 - **owner**: <handle or email — single named human, never "team">
 - **version**: 1.0.0
 - **last_reviewed**: 2026-05-22

@@ -8,14 +8,14 @@ token-budget-impact: ~250 tokens.
 
 # Outcome Based Roadmaps — <artefact_id>
 
-- **quarter** (string): <yyyy-Qn>
+- **quarter** (string): <yyyy_qn>
 - **outcomes** (array): <≤3 outcome objects with target metrics + opportunities[]>
 - **solutions** (array): <linked to opportunities with confidence + delivery_window_month_range>
-- **public_url** (string): <stakeholder-facing URL>
+- **public_url** (string): <stakeholder_facing_url>
 - **quarter_review** (object): <shipped/slipped lists + adjustments>
-- **owner** (string): <named owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <owner_full_name>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

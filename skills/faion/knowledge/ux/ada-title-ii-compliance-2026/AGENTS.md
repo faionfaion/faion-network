@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/conformance-report.md` | DOJ Title II conformance report skeleton with WCAG 2.1 AA scoresheet |
+| `templates/conformance-report.md.j2` | DOJ Title II conformance report skeleton with WCAG 2.1 AA scoresheet |
+| `templates/conformance-report.md` | DOJ Title II conformance report skeleton with WCAG 2.1 AA scoresheet Generated from `templates/conformance-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

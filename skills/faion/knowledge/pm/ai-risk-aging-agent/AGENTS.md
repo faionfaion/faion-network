@@ -58,7 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-risk-aging-agent.md` | Markdown skeleton with daily report structure |
+| `templates/ai-risk-aging-agent.md.j2` | Markdown skeleton with daily report structure |
+| `templates/ai-risk-aging-agent.md` | Markdown skeleton with daily report structure Generated from `templates/ai-risk-aging-agent.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

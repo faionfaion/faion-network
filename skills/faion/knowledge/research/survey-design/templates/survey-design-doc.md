@@ -3,7 +3,7 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-## Survey: [Title]
+## Survey: <title>
 
 ### Research Objective
 **Question:** [What we want to learn — one specific researchable question]
@@ -12,9 +12,9 @@
 **Target N:** [Sample size needed — anchor to decision precision, not vanity]
 
 ### Screener Questions
-1. [Qualifying question]
+1. <qualifying_question>
    - [Option A] → Continue
-   - [Option B] → End survey (disqualify)
+   - <option_b> → End survey (disqualify)
 
 ### Attention Check
 At Q5 or midpoint: "Select 'Somewhat agree' to confirm you are reading carefully."
@@ -27,7 +27,7 @@ At Q5 or midpoint: "Select 'Somewhat agree' to confirm you are reading carefully
 - [ ] Option A
 - [ ] Option B
 - [ ] Option C
-Type: [Multiple choice / Rating scale / Ranking / Open-ended / Matrix / NPS]
+Type: <type>
 
 #### Q2: [Topic]
 ...
@@ -42,12 +42,12 @@ Type: [Multiple choice / Rating scale / Ranking / Open-ended / Matrix / NPS]
 "Is there anything else you'd like to share about [topic]?"
 
 ### Distribution Plan
-- **Channel:** [Where — email list / social / paid panel / in-product / community]
+- **Channel:** <channel>
 - **Duration:** [How long the survey stays open]
 - **Incentive:** [If any — required for paid panels]
 
 ### Analysis Plan
-- [Metric 1]: Compare across [segment variable]
-- [Metric 2]: Correlate with [factor]
+- <metric_1>: Compare across <segment_variable>
+- <metric_2>: Correlate with <factor>
 - Segments defined before fielding: [list segments]
 - Post-hoc slices flagged as exploratory: [list if any planned]

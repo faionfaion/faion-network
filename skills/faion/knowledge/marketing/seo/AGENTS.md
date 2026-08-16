@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/seo-aeo-audit-report.md` | Markdown audit report: pillar-by-pillar findings, evidence anchors, prioritised remediation backlog. |
+| `templates/seo-aeo-audit-report.md.j2` | Markdown audit report: pillar-by-pillar findings, evidence anchors, prioritised remediation backlog. |
+| `templates/seo-aeo-audit-report.md` | Markdown audit report: pillar-by-pillar findings, evidence anchors, prioritised remediation backlog. Generated from `templates/seo-aeo-audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/at-testing-config.json` | Skeleton three-tier config |
-| `templates/a11y-bug-template.md` | Bug-report template (Jira / Linear) |
+| `templates/a11y-bug-template.md.j2` | Bug-report template (Jira / Linear) |
+| `templates/a11y-bug-template.md` | Bug-report template (Jira / Linear) Generated from `templates/a11y-bug-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

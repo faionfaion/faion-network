@@ -16,5 +16,5 @@
 3. [Argument 3 + specific evidence]
 
 ## Next Steps
-- [Specific action] — [Owner] — [Date]
-- [Specific action] — [Owner] — [Date]
+- <specific_action> — <owner> — <date>
+- <specific_action> — <owner> — <date>

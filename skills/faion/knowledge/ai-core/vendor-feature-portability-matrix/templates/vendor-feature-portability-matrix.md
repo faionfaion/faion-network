@@ -8,7 +8,7 @@ token-budget-impact: ~180 tokens.
 
 # Vendor Feature Portability Matrix — <artefact_id>
 
-- **artefact_id**: vfpm-<kebab-case-slug>
+- **artefact_id**: vfpm-<artefact_slug>
 - **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0

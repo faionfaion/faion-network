@@ -66,8 +66,10 @@
 |------|---------|
 | `templates/walkthrough-plan.md.j2` | Walkthrough planning sheet: task, profile, evaluators, schedule |
 | `templates/walkthrough-plan.md` | Walkthrough planning sheet: task, profile, evaluators, schedule Generated from `templates/walkthrough-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/evaluation-form.md` | Per-step evaluation form with Q1-Q4 |
-| `templates/summary-report.md` | Executive rollup of findings + severity counts |
+| `templates/evaluation-form.md.j2` | Per-step evaluation form with Q1-Q4 |
+| `templates/evaluation-form.md` | Per-step evaluation form with Q1-Q4 Generated from `templates/evaluation-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/summary-report.md.j2` | Executive rollup of findings + severity counts |
+| `templates/summary-report.md` | Executive rollup of findings + severity counts Generated from `templates/summary-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-maturity-assessment-rubric.json` | JSON Schema (draft-07) for the Client Maturity Assessment Rubric output contract |
-| `templates/client-maturity-assessment-rubric.md` | Markdown skeleton with the required fields for the Client Maturity Assessment Rubric artefact |
+| `templates/client-maturity-assessment-rubric.md.j2` | Markdown skeleton with the required fields for the Client Maturity Assessment Rubric artefact |
+| `templates/client-maturity-assessment-rubric.md` | Markdown skeleton with the required fields for the Client Maturity Assessment Rubric artefact Generated from `templates/client-maturity-assessment-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/client-maturity-assessment-rubric.example.json` | Worked filled-in example of a valid Client Maturity Assessment Rubric artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

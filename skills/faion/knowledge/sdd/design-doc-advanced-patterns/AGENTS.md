@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/design-doc-advanced-patterns.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/design-doc-advanced-patterns.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-doc-advanced-patterns.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/design-doc-advanced-patterns.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/design-doc-advanced-patterns.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

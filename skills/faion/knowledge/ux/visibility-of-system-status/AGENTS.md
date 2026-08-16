@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/status-audit.md` | Status audit report skeleton. |
+| `templates/status-audit.md.j2` | Status audit report skeleton. |
+| `templates/status-audit.md` | Status audit report skeleton. Generated from `templates/status-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/loading-state.spec.ts` | Playwright spec verifying loading / success / error states + latency. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

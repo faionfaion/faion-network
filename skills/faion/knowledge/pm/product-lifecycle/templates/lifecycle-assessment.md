@@ -4,7 +4,7 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-## Lifecycle Assessment: [Product]
+## Lifecycle Assessment: <product>
 
 ### Current Metrics
 
@@ -26,10 +26,10 @@
 | Competition level | | | | |
 | Customer migration evidence | | | | |
 
-### Assessed Stage: [Stage]
+### Assessed Stage: <stage>
 
-**Confidence:** [High/Medium/Low]
-**Evidence sources:** [Source 1] + [Source 2]
+**Confidence:** <high_medium_low>
+**Evidence sources:** <source_1> + <source_2>
 **Rationale:** [Why this stage based on the two evidence sources]
 
 ### Stage-Appropriate Actions
@@ -44,4 +44,4 @@
 
 **Next stage trigger:** [Numeric threshold that signals transition]
 **Pre-committed kill threshold:** [e.g., "if MRR YoY < 0 for 3 quarters → Decline review"]
-**Preparation needed:** [What to build or change before transition]
+**Preparation needed:** <preparation_needed>

@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/stakeholder-register.md.j2` | Master register: name, role, category, contact, influence, interest. |
 | `templates/stakeholder-register.md` | Master register: name, role, category, contact, influence, interest. Generated from `templates/stakeholder-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/stakeholder-profile.md` | Per-key-stakeholder profile with engagement strategy. |
+| `templates/stakeholder-profile.md.j2` | Per-key-stakeholder profile with engagement strategy. |
+| `templates/stakeholder-profile.md` | Per-key-stakeholder profile with engagement strategy. Generated from `templates/stakeholder-profile.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/raci-lint.sh` | Shell helper checking RACI has exactly one A per row. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

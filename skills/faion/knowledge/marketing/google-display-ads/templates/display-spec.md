@@ -7,10 +7,10 @@
 # Google Display Spec
 
 ## Audiences (≥3 tiers)
-- in_market: [topic]
-- affinity: [topic]
+- in_market: <topic>
+- affinity: <topic>
 - remarketing: [list, size]
-- custom_intent: [URL/keyword set] (optional)
+- custom_intent: <url_keyword_set> (optional)
 
 ## Placement exclusions
 - [x] mobile_apps_excluded

@@ -7,8 +7,8 @@ token-budget-impact: small (template is loaded only when an artefact is being au
 -->
 # Choreography vs Orchestration — <workflow>
 
-**Owner:** <@handle>
-**Pattern:** <choreography | orchestration>
+**Owner:** <owner_handle>
+**Pattern:** <choreography_orchestration>
 
 ## Workflow
 

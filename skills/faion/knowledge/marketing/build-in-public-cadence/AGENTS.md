@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/build-in-public-cadence.md` | Markdown skeleton with required fields. |
+| `templates/build-in-public-cadence.md.j2` | Markdown skeleton with required fields. |
+| `templates/build-in-public-cadence.md` | Markdown skeleton with required fields. Generated from `templates/build-in-public-cadence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

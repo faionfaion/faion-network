@@ -31,14 +31,14 @@ risk_profile: [low|medium|high_uncertainty]
 | MMP | | | | | |
 | RAT | | | | | |
 | SLC | | | | | |
-| [others] | | | | | |
+| <others> | | | | | |
 
 ## Exit Criteria
 
-1. **Quantitative:** [metric] reaches [threshold] within [window] — e.g., "Day-30 retention >= 25% in week 6"
-2. **Kill criterion:** [disqualifying condition] — e.g., "Day-7 activation < 10% after 3 weeks → stop and re-pick"
+1. **Quantitative:** <metric> reaches <threshold> within <window> — e.g., "Day-30 retention >= 25% in week 6"
+2. **Kill criterion:** <disqualifying_condition> — e.g., "Day-7 activation < 10% after 3 weeks → stop and re-pick"
 
 ## History
 
-- [YYYY-MM-DD]: initial pick = [framework] — [one-line context]
-- [YYYY-MM-DD]: re-pick to [framework] — [reason for pivot]
+- [YYYY-MM-DD]: initial pick = <framework> — [one-line context]
+- [YYYY-MM-DD]: re-pick to <framework> — [reason for pivot]

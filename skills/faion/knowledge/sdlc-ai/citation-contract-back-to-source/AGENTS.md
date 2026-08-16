@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/citation-format.md` | Citation format specification + verifier recipe + 3 adapter snippets. |
+| `templates/citation-format.md.j2` | Citation format specification + verifier recipe + 3 adapter snippets. |
+| `templates/citation-format.md` | Citation format specification + verifier recipe + 3 adapter snippets. Generated from `templates/citation-format.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

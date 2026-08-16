@@ -10,7 +10,7 @@
 
 | Competitor | Model | Price Range | Target Segment | Notes |
 |------------|-------|-------------|----------------|-------|
-| [Name] | Subscription | $X-Y/mo | [Segment] | [Key differentiator] |
+| [Name] | Subscription | $X-Y/mo | [Segment] | <key_differentiator> |
 | [Name] | Freemium | Free-$X | [Segment] | [Conversion rate if known] |
 
 ### Value Analysis
@@ -21,24 +21,24 @@
 ### Pricing Model Decision
 **Recommended model:** [Name]
 **Rejection reasons for other 5 models:**
-- Freemium: [reason if rejected]
+- Freemium: <reason_if_rejected>
 - Subscription: [reason if rejected — or justification if chosen: 3 WTP segments named below]
-- Usage-based: [reason if rejected]
-- One-time: [reason if rejected]
-- Per-seat: [reason if rejected]
+- Usage-based: <reason_if_rejected>
+- One-time: <reason_if_rejected>
+- Per-seat: <reason_if_rejected>
 
 **WTP segments (required if tiered subscription chosen):**
-1. [Segment name] — JTBD: [job] — WTP: $[X]/mo (source: Van Westendorp PSM, n=[N])
-2. [Segment name] — JTBD: [job] — WTP: $[X]/mo
-3. [Segment name] — JTBD: [job] — WTP: $[X]/mo
+1. <segment_name> — JTBD: <job> — WTP: $[X]/mo (source: Van Westendorp PSM, n=[N])
+2. <segment_name> — JTBD: <job> — WTP: $[X]/mo
+3. <segment_name> — JTBD: <job> — WTP: $[X]/mo
 
 ### Pricing Tiers
 
 | Tier | Price | Features | Target Segment | Y3 SOM |
 |------|-------|----------|----------------|--------|
-| [Free] | $0 | [features] | [Segment] | — |
-| [Pro] | $X/mo | [features] | [Segment] | $[X] |
-| [Team] | $X/mo | [features] | [Segment] | $[X] |
+| <free> | $0 | [features] | [Segment] | — |
+| <pro> | $X/mo | [features] | [Segment] | $[X] |
+| <team> | $X/mo | [features] | [Segment] | $[X] |
 
 ### Justification
 [Why this model fits the actual economics — reference competitor pricing and value analysis above]

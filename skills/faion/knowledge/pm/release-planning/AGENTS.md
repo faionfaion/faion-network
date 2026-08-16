@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/release-plan.md` | Release plan skeleton with cadence + matrix + deprecations. |
+| `templates/release-plan.md.j2` | Release plan skeleton with cadence + matrix + deprecations. |
+| `templates/release-plan.md` | Release plan skeleton with cadence + matrix + deprecations. Generated from `templates/release-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/release-notes.md` | Customer-facing release notes template. |
 | `templates/release_readiness_lint.py` | Lint script for readiness matrix completeness. |
 | `templates/prompt-manifest-generation.txt` | Prompt template for change-control manifest. |

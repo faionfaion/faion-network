@@ -6,11 +6,11 @@
 
 # Risk Response Plan — R-NNN
 
-- Owner: <name>
-- Strategy: <avoid|transfer|mitigate|accept | exploit|enhance|share|accept>
+- Owner: <owner_full_name>
+- Strategy: <strategy>
 - Trigger condition (observable): <metric / signal / calendar event>
 - Pre-trigger actions: <bullets>
 - Post-trigger actions: <bullets>
-- Residual EMV: $<n>
-- Source rationale: <link / cite>
+- Residual EMV: $<residual_emv>
+- Source rationale: <link_cite>
 - Last reviewed: YYYY-MM-DD

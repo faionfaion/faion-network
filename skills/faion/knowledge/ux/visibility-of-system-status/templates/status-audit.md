@@ -5,26 +5,26 @@ produces: a visibility-of-system-status artefact validating against scripts/vali
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600-1500 tokens once filled
 -->
-# System Status Audit: [Feature / Page]
+# System Status Audit: <feature_page>
 
-**Date:** [Date]
-**Reviewer:** [Name]
-**Scope:** [Which screens / user flows]
+**Date:** <date>
+**Reviewer:** <reviewer_name>
+**Scope:** <scope>
 
 ## Actions Reviewed
 
 | Action | Feedback Present | Feedback Type | Timing | ARIA | Notes |
 |--------|-----------------|---------------|--------|------|-------|
-| [Button click] | Y/N | [spinner / toast / banner] | [<100ms / <1s / <3s] | Present/Missing | |
-| [Form submit] | Y/N | [disabled + spinner] | [immediate] | aria-busy? | |
-| [File upload] | Y/N | [progress bar] | [% shown?] | role="progressbar"? | |
+| <button_click> | Y/N | <spinner_toast_banner> | [<100ms / <1s / <3s] | Present/Missing | |
+| <form_submit> | Y/N | <disabled_spinner> | <immediate> | aria-busy? | |
+| <file_upload> | Y/N | <progress_bar> | [% shown?] | role="progressbar"? | |
 
 ## State Coverage
 
 | Interactive Element | Loading State | Success State | Error State |
 |--------------------|--------------|--------------|-------------|
-| [Submit button] | Present/Missing | Present/Missing | Present/Missing |
-| [Upload trigger] | Present/Missing | Present/Missing | Present/Missing |
+| <submit_button> | Present/Missing | Present/Missing | Present/Missing |
+| <upload_trigger> | Present/Missing | Present/Missing | Present/Missing |
 
 ## Gaps Identified
 
@@ -38,9 +38,9 @@ token-budget-impact: ~600-1500 tokens once filled
 
 | Element | ARIA Required | ARIA Present | Fix |
 |---------|--------------|--------------|-----|
-| [Loading region] | aria-busy="true" | Missing | Add to button during async |
-| [Status updates] | aria-live="polite" | Missing | Add role="status" to toast container |
-| [Error messages] | aria-live="assertive" | Present | OK |
+| <loading_region> | aria-busy="true" | Missing | Add to button during async |
+| <status_updates> | aria-live="polite" | Missing | Add role="status" to toast container |
+| <error_messages> | aria-live="assertive" | Present | OK |
 
 ## Priority Recommendations
 

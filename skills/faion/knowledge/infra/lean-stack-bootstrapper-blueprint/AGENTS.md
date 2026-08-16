@@ -52,7 +52,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Filled example for a B2B SaaS founder. |
+| `templates/_smoke-test.md.j2` | Filled example for a B2B SaaS founder. |
+| `templates/_smoke-test.md` | Filled example for a B2B SaaS founder. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

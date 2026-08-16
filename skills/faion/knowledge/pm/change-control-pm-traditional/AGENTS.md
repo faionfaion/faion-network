@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/change-register.md.j2` | Change register template with CR ID, requestor, decision, baseline impact |
 | `templates/change-register.md` | Change register template with CR ID, requestor, decision, baseline impact Generated from `templates/change-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/change-request-form.md` | Change Request Form template: trigger, impact, alternatives, recommendation |
+| `templates/change-request-form.md.j2` | Change Request Form template: trigger, impact, alternatives, recommendation |
+| `templates/change-request-form.md` | Change Request Form template: trigger, impact, alternatives, recommendation Generated from `templates/change-request-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

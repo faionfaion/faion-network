@@ -8,15 +8,15 @@ token-budget-impact: ~250 tokens.
 
 # Launch Tier Decision Frame — <artefact_id>
 
-- **launch_name** (string): <named launch>
+- **launch_name** (string): <named_launch>
 - **funnel_goal** (string): <enum (signups | paid | waitlist | press | qualitative)>
 - **selected_tier** (integer): <1-4 (soft / friend / ph-day / blitz)>
 - **readiness_score** (object): <capacity + support + rollback subscores>
-- **retreat_cost** (string): <concrete units>
+- **retreat_cost** (string): <concrete_units>
 - **rationale** (string): <≥200 chars>
-- **owner** (string): <named human owner>
-- **version** (string): <semver>
-- **last_reviewed** (date): <ISO date>
+- **owner** (string): <named_human_owner>
+- **version** (string): <document_version>
+- **last_reviewed** (date): <last_reviewed_date>
 
 ## Notes
 

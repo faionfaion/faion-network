@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pattern-selection-adr.md` | ADR skeleton recording the chosen pattern + rejected alternatives. |
+| `templates/pattern-selection-adr.md.j2` | ADR skeleton recording the chosen pattern + rejected alternatives. |
+| `templates/pattern-selection-adr.md` | ADR skeleton recording the chosen pattern + rejected alternatives. Generated from `templates/pattern-selection-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pattern-signal-table.md.j2` | Lookup table mapping symptom → candidate patterns. |
 | `templates/pattern-signal-table.md` | Lookup table mapping symptom → candidate patterns. Generated from `templates/pattern-signal-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |

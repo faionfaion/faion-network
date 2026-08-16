@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/win-loss-script.md` | Interview script: 7 evidence-anchored questions + neutral-interviewer notes. |
-| `templates/win-loss-synthesis.md` | Quarterly synthesis skeleton: 50/50 sample table + 3-channel actions. |
+| `templates/win-loss-script.md.j2` | Interview script: 7 evidence-anchored questions + neutral-interviewer notes. |
+| `templates/win-loss-script.md` | Interview script: 7 evidence-anchored questions + neutral-interviewer notes. Generated from `templates/win-loss-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/win-loss-synthesis.md.j2` | Quarterly synthesis skeleton: 50/50 sample table + 3-channel actions. |
+| `templates/win-loss-synthesis.md` | Quarterly synthesis skeleton: 50/50 sample table + 3-channel actions. Generated from `templates/win-loss-synthesis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

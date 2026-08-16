@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/decision-rationale-capture.json` | JSON skeleton for the decision record. |
-| `templates/decision-rationale-capture.md` | Markdown skeleton with required fields. |
+| `templates/decision-rationale-capture.md.j2` | Markdown skeleton with required fields. |
+| `templates/decision-rationale-capture.md` | Markdown skeleton with required fields. Generated from `templates/decision-rationale-capture.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable decision record. |
 | `templates/_smoke-test.md` | Minimum viable decision record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

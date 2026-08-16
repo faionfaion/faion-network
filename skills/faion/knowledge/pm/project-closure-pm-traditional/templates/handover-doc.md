@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Operations Handover: [Project/System Name]
+# Operations Handover: <project_system_name>
 
-**Effective Date:** [Date]
-**Prepared By:** [PM Name]
-**Accepted By:** [Ops Manager]
+**Effective Date:** <date>
+**Prepared By:** <pm_name>
+**Accepted By:** <ops_manager>
 
 ## System Overview
 [Brief description of what is being handed over]
@@ -17,8 +17,8 @@
 
 | Item | Details |
 |------|---------|
-| Environment | [Production URL/location] |
-| Architecture | [High-level overview] |
+| Environment | <production_url_location> |
+| Architecture | <high_level_overview> |
 | Dependencies | [External systems, services] |
 | Access | [How to access, credentials location] |
 
@@ -43,13 +43,13 @@
 
 | Issue | Workaround | Target Fix |
 |-------|------------|------------|
-| [Issue] | [Workaround] | [Date/Status] |
+| <issue> | <workaround> | <date_status> |
 
 ## Monitoring
 
 | Metric | Tool | Alert Threshold |
 |--------|------|-----------------|
-| [Metric] | [Tool] | [Threshold] |
+| <metric> | <tool> | <threshold> |
 
 ## Scheduled Maintenance
 [Any planned maintenance windows or recurring tasks]

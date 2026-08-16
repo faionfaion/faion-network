@@ -5,9 +5,9 @@ produces: a user-control-freedom artefact validating against scripts/validate-us
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600-1500 tokens once filled
 -->
-# User Control Audit: [Feature]
+# User Control Audit: <feature>
 
-**Reviewer:** [Name]
+**Reviewer:** <reviewer_name>
 
 ## Actions × Control Mechanisms
 
@@ -21,8 +21,8 @@ Severity: High = irreversible + no confirmation + no undo; Medium = reversible b
 
 | Context | Exit Available? | Methods | Notes |
 |---------|-----------------|---------|-------|
-| [Modal/dialog] | Y/N | [X + Escape + outside] | |
-| [Multi-step flow] | Y/N | [Back + Cancel] | |
+| <modal_dialog> | Y/N | [X + Escape + outside] | |
+| <multi_step_flow> | Y/N | <back_cancel> | |
 
 ## Destructive Actions
 
@@ -42,4 +42,4 @@ Severity: High = irreversible + no confirmation + no undo; Medium = reversible b
 
 | Gap | Severity | Recommendation |
 |-----|----------|----------------|
-| [Gap] | H/M/L | [Fix] |
+| <gap> | H/M/L | [Fix] |

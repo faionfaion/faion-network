@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/audit-checklist.yaml` | The 12 items with pass / flag fields per item. |
-| `templates/pr-description-section.md` | PR description snippet the reviewer fills in. |
+| `templates/pr-description-section.md.j2` | PR description snippet the reviewer fills in. |
+| `templates/pr-description-section.md` | PR description snippet the reviewer fills in. Generated from `templates/pr-description-section.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

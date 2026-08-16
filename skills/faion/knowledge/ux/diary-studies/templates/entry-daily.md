@@ -5,7 +5,7 @@
 <!-- token-budget-impact: ~150 per entry -->
 
 Time: <local>
-Location: <home|work|other>
+Location: <home_work_other>
 What did you use today? <text>
 What worked? <text>
 What didn't? <text>

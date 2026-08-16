@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sentry-alert-routing-for-solos.md` | Markdown skeleton with required fields. |
+| `templates/sentry-alert-routing-for-solos.md.j2` | Markdown skeleton with required fields. |
+| `templates/sentry-alert-routing-for-solos.md` | Markdown skeleton with required fields. Generated from `templates/sentry-alert-routing-for-solos.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -4,37 +4,37 @@
 # depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 # token-budget-impact: ~400-1500 tokens once filled
 ---
-artefact_id: architect-pr-review-checklist-<repo>-<pr-num>
-owner: <Full Name> <email>
+artefact_id: architect-pr-review-checklist-<repo>-<pr_num>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
-pr_url: <URL>
-verdict: <ship|block|escalate>
+pr_url: <url>
+verdict: <ship_block_escalate>
 ---
 
 ## 1. Contract
-- public API shape changes documented? <yes|no>
-- backward compatibility preserved? <yes|no>
+- public API shape changes documented? <yes_no>
+- backward compatibility preserved? <yes_no>
 
 ## 2. Dependency direction
-- module boundary respected (inner -> outer only)? <yes|no>
-- forbidden cross-imports introduced? <yes|no>
+- module boundary respected (inner -> outer only)? <yes_no>
+- forbidden cross-imports introduced? <yes_no>
 
 ## 3. Error model
-- error types named and documented? <yes|no>
-- swallowed exceptions / silent recovery present? <yes|no>
+- error types named and documented? <yes_no>
+- swallowed exceptions / silent recovery present? <yes_no>
 
 ## 4. Observability
-- structured logs at module boundaries? <yes|no>
-- metrics + traces aligned with module ownership? <yes|no>
+- structured logs at module boundaries? <yes_no>
+- metrics + traces aligned with module ownership? <yes_no>
 
 ## 5. Security
-- secret / PII echo risk? <yes|no>
-- authn/authz delta documented? <yes|no>
+- secret / PII echo risk? <yes_no>
+- authn/authz delta documented? <yes_no>
 
 ## 6. ADR conformance
-- relevant ADRs respected? <yes|no>
-- new architectural decision documented? <yes|no>
+- relevant ADRs respected? <yes_no>
+- new architectural decision documented? <yes_no>
 
 ## Verdict
 <one paragraph>

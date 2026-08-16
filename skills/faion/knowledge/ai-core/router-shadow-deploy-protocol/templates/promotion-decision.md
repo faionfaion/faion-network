@@ -33,11 +33,11 @@ token-budget-impact: 0 at runtime
 - T+12d: decommission old router
 
 ## If NO-GO — corrective actions
-- <root cause>
+- <root_cause>
 - <fix>
 - <re-shadow window plan>
 
 ## Sign-offs
-- ML engineer: <email> <YYYY-MM-DD>
-- Product owner: <email> <YYYY-MM-DD>
+- ML engineer: <email> <ml_engineer>
+- Product owner: <email> <product_owner>
 - On-call lead: <email> <YYYY-MM-DD>

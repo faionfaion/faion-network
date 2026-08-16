@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/activity-list.md` | Activity table with ID, duration, dependencies, and resource columns |
+| `templates/activity-list.md.j2` | Activity table with ID, duration, dependencies, and resource columns |
+| `templates/activity-list.md` | Activity table with ID, duration, dependencies, and resource columns Generated from `templates/activity-list.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/dependencies.yaml` | Predecessor edges with type (FS/FF/SS/SF) + lag |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

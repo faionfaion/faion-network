@@ -7,7 +7,7 @@ token-budget-impact: ~8-20k once filled
 -->
 ---
 artefact_id: spec-<feature>
-owner: <Full Name> <email>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 feature: <feature-name>
@@ -18,16 +18,16 @@ status: Draft
 
 ## Functional Requirements
 
-- FR-<N>: System SHALL <verifiable behavior from the user's perspective>.
+- FR-<fr>: System SHALL <verifiable behavior from the user's perspective>.
 
 ## Non-Functional Requirements
 
-- NFR-<N>: System SHALL <quantified quality attribute, e.g., p95 latency, throughput>.
+- NFR-<nfr>: System SHALL <quantified quality attribute, e.g., p95 latency, throughput>.
 
 ## In Scope
 
-- <bounded statement 1>
-- <bounded statement 2>
+- <bounded_statement_1>
+- <bounded_statement_2>
 
 ## Out of Scope
 
@@ -41,9 +41,9 @@ status: Draft
 
 ## Glossary
 
-- **<domain term 1>** — <one-sentence definition>.
-- **<domain term 2>** — <one-sentence definition>.
-- **<domain term 3>** — <one-sentence definition>.
+- **<domain_term_1>** — <one-sentence definition>.
+- **<domain_term_2>** — <one-sentence definition>.
+- **<domain_term_3>** — <one-sentence definition>.
 
 ## Open Questions
 

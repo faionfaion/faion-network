@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/output.md` | Report skeleton matching the schema in 02-output-contract.xml |
-| `templates/_smoke-test.md` | Filled-in canonical example for calibration |
+| `templates/output.md.j2` | Report skeleton matching the schema in 02-output-contract.xml |
+| `templates/output.md` | Report skeleton matching the schema in 02-output-contract.xml Generated from `templates/output.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in canonical example for calibration |
+| `templates/_smoke-test.md` | Filled-in canonical example for calibration Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

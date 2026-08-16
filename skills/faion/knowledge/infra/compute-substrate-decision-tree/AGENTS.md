@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Decision-record skeleton with trade-off table |
+| `templates/skeleton.md.j2` | Decision-record skeleton with trade-off table |
+| `templates/skeleton.md` | Decision-record skeleton with trade-off table Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | JSON shape for the decision artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -6,7 +6,7 @@ depends-on: content/02-output-contract.xml schema
 token-budget-impact: ~400 tokens when filled
 -->
 
-# Structured Interview Design: [Role Title]
+# Structured Interview Design: <role_title>
 
 ## Role Overview
 
@@ -39,12 +39,12 @@ Total weight must equal 100%.
 **Questions:**
 1. "Walk me through your background and what brought you to this opportunity."
 2. "What interests you about this role and company specifically?"
-3. "Tell me about your experience with [key required skill]."
+3. "Tell me about your experience with <key_required_skill>."
 
 ### Round 2: Technical / Skills (60 min)
 **Interviewer:** [Name, Title]
 **Format:** Video or on-site
-**Competencies covered:** [Competency 1], [Competency 2]
+**Competencies covered:** <competency_1>, <competency_2>
 
 **Questions:**
 1. [Technical question — 20 min]
@@ -54,7 +54,7 @@ Total weight must equal 100%.
 ### Round 3: Cross-Functional (45 min)
 **Interviewer:** [Name, Title]
 **Format:** Video or on-site
-**Competencies covered:** [Competency 3], [Competency 4]
+**Competencies covered:** <competency_3>, <competency_4>
 
 **Questions:**
 1. [Behavioral question on Competency 3] (STAR)
@@ -64,10 +64,10 @@ Total weight must equal 100%.
 ### Round 4: Hiring Manager (45 min)
 **Interviewer:** Hiring Manager
 **Format:** On-site preferred
-**Competencies covered:** [Competency 5], career goals
+**Competencies covered:** <competency_5>, career goals
 
 **Questions:**
-1. [Motivational / culture question]
+1. <motivational_culture_question>
 2. [Behavioral question on Competency 5] (STAR)
 3. "Where do you want to be in 2-3 years?"
 4. Candidate questions
@@ -84,7 +84,7 @@ Total weight must equal 100%.
 | 2 | Developing — below expectations |
 | 1 | Insufficient — does not meet requirements |
 
-### Behavioral Anchors: [Competency 1]
+### Behavioral Anchors: <competency_1>
 
 | Score | Behavior |
 |-------|----------|

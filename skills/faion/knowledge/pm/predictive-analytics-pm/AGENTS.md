@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/model-spec.md` | Model card: features, target, training data, calibration metrics, ethics. |
+| `templates/model-spec.md.j2` | Model card: features, target, training data, calibration metrics, ethics. |
+| `templates/model-spec.md` | Model card: features, target, training data, calibration metrics, ethics. Generated from `templates/model-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/forecast-output.json` | Forecast envelope: point + 80% PI + 95% PI per risk dimension. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

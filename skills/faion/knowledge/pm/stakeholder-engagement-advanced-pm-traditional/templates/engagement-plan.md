@@ -7,9 +7,9 @@
 # Engagement Plan — <stakeholder>
 
 - Stakeholder: <name>
-- Current engagement: <unaware|resistant|neutral|supportive|leading>
+- Current engagement: <current_engagement>
 - Desired engagement: <...>
 - Strategy: <bullets, behaviourally specific>
 - Indicators (measurable):
   - <indicator>: baseline=<v>, target=<v>, evidence=<source>
-- Review cadence: <weekly|biweekly|monthly>
+- Review cadence: <weekly_biweekly_monthly>

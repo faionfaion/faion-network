@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
 <!-- token-budget-impact: ~300 tokens loaded as template context -->
 
-# Week-One Pack: [project_name]
+# Week-One Pack: <project_name>
 
-**BA:** [ba_name]
-**Week:** [YYYY-MM-DD]/[YYYY-MM-DD]
-**Sign-off:** [engagement_manager_name] — [ISO 8601 timestamp]
+**BA:** <ba_name>
+**Week:** <week>/<week>
+**Sign-off:** <engagement_manager_name> — <sign_off>
 
 ## Required files
 
@@ -24,10 +24,10 @@
 
 | Name | Role | Authority | Channel | Cares about |
 |------|------|-----------|---------|-------------|
-| [Full Name] | [Role] | Approve/Consult/Inform/None | [Channel] | [One concrete care-about] |
+| <full_name> | <role> | Approve/Consult/Inform/None | <channel> | [One concrete care-about] |
 
 ### glossary.md
 
 | Term | Definition | Source | Contested |
 |------|------------|--------|-----------|
-| [Term] | [≤20 words] | [Interview / Doc / Observed] | yes/no |
+| <term> | [≤20 words] | <interview_doc_observed> | yes/no |

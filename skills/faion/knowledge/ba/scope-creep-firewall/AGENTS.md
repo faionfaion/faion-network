@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scope-creep-firewall.md` | Working playbook-step skeleton with 5-line header |
+| `templates/scope-creep-firewall.md.j2` | Working playbook-step skeleton with 5-line header |
+| `templates/scope-creep-firewall.md` | Working playbook-step skeleton with 5-line header Generated from `templates/scope-creep-firewall.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

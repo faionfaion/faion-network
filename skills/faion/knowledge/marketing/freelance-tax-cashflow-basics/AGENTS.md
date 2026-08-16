@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/tax-checklist.json` | JSON example of the freelance tax/cashflow checklist |
-| `templates/checklist.md` | Print-friendly Markdown quarterly checklist |
+| `templates/checklist.md.j2` | Print-friendly Markdown quarterly checklist |
+| `templates/checklist.md` | Print-friendly Markdown quarterly checklist Generated from `templates/checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

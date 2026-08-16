@@ -68,9 +68,12 @@
 | File | Purpose |
 |------|---------|
 | `templates/user-story-mapping.json` | JSON skeleton conforming to the output contract schema. |
-| `templates/user-story-mapping.md` | Markdown skeleton for human-readable artefact rendering. |
-| `templates/story-map.md` | Story-map worksheet: context, backbone, walking skeleton, release slices, parking lot. |
-| `templates/story-card.md` | Single story card: placement, story frame, acceptance criteria, error path, size. |
+| `templates/user-story-mapping.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/user-story-mapping.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/user-story-mapping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/story-map.md.j2` | Story-map worksheet: context, backbone, walking skeleton, release slices, parking lot. |
+| `templates/story-map.md` | Story-map worksheet: context, backbone, walking skeleton, release slices, parking lot. Generated from `templates/story-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/story-card.md.j2` | Single story card: placement, story frame, acceptance criteria, error path, size. |
+| `templates/story-card.md` | Single story card: placement, story frame, acceptance criteria, error path, size. Generated from `templates/story-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/storymap-check.py` | Checks one-task-per-activity skeleton coverage and full-backbone release spans (stdin JSON). |
 | `templates/validate-story-map.py` | Checks backbone size, task→backbone referential integrity and skeleton coverage (YAML input). |
 

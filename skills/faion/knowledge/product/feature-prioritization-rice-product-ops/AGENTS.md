@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/feature-prioritization-rice.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/feature-prioritization-rice.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/feature-prioritization-rice.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/feature-prioritization-rice.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

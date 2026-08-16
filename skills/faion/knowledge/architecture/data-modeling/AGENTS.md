@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/schema-3-pass.md` | Three-pass schema spec: conceptual + logical + physical. |
+| `templates/schema-3-pass.md.j2` | Three-pass schema spec: conceptual + logical + physical. |
+| `templates/schema-3-pass.md` | Three-pass schema spec: conceptual + logical + physical. Generated from `templates/schema-3-pass.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pg-standard-table.sql` | PostgreSQL standard 3NF table skeleton with PK + audit columns + indexes. |
 | `templates/pg-junction-table.sql` | PostgreSQL many-to-many junction table with composite PK + FK cascade rules. |
 | `templates/mongo-schema.js` | MongoDB collection schema with `$jsonSchema` validator + indexes. |

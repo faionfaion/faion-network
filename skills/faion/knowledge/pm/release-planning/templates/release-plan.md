@@ -7,9 +7,9 @@
 # Release Plan: v[X.Y.Z]
 
 ## Metadata
-- **Release Date:** [Date]
+- **Release Date:** <date>
 - **Release Manager:** [Name]
-- **Type:** [Major/Minor/Patch]
+- **Type:** <major_minor_patch>
 
 ## Release Goal
 [What this release achieves for users — one sentence outcome]
@@ -17,38 +17,38 @@
 ## Success Metrics
 | Metric | Current | Target | Tracking |
 |--------|---------|--------|----------|
-| [Metric] | [X] | [Y] | [How] |
+| <metric> | [X] | <y> | <how> |
 
 ## Contents
 
 ### Features
 | Feature | Ticket | Owner | Status |
 |---------|--------|-------|--------|
-| [Feature 1] | [#123] | [Name] | Ready |
+| <feature_1> | [#123] | [Name] | Ready |
 
 ### Bug Fixes
 | Fix | Ticket | Priority |
 |-----|--------|----------|
-| [Bug 1] | [#789] | High |
+| <bug_1> | [#789] | High |
 
 ### Other Changes
-- [Config change]
-- [Dependency update]
+- <config_change>
+- <dependency_update>
 
 ## Excluded (Next Release)
 | Item | Reason |
 |------|--------|
-| [Feature] | Not ready |
+| <feature> | Not ready |
 
 ## Cross-Team Dependencies
 | Dependency | Owner | Status | Evidence |
 |------------|-------|--------|----------|
-| [Dep 1] | [Name] | [Status] | [URL] |
+| <dep_1> | [Name] | <status> | [URL] |
 
 ## Risks
 | Risk | Mitigation |
 |------|------------|
-| [Risk 1] | [Plan] |
+| <risk_1> | <plan> |
 
 ## Rollback Plan
 [How to rollback if issues occur — must be drillable in staging]

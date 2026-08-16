@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/pyproject.toml` | pyproject.toml skeleton with [project] + [tool.uv] sections. |
-| `templates/agents-md-snippet.md` | Markdown snippet enforcing `uv run` for all Python tool calls in AGENTS.md. |
+| `templates/agents-md-snippet.md.j2` | Markdown snippet enforcing `uv run` for all Python tool calls in AGENTS.md. |
+| `templates/agents-md-snippet.md` | Markdown snippet enforcing `uv run` for all Python tool calls in AGENTS.md. Generated from `templates/agents-md-snippet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

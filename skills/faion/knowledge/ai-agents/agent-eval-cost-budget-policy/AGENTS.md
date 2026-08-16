@@ -61,7 +61,8 @@
 |------|---------|
 | `templates/stratified-sample.py.tmpl` | Stratified subset selector. |
 | `templates/fallback-judge.py.tmpl` | Cheap-judge fallback switch. |
-| `templates/_smoke-test.md` | Filled example for a 200-example suite. |
+| `templates/_smoke-test.md.j2` | Filled example for a 200-example suite. |
+| `templates/_smoke-test.md` | Filled example for a 200-example suite. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

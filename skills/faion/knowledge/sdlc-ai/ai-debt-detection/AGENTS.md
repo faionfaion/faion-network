@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-debt-report.md` | Report skeleton: signals / thresholds / severity-ranked findings / routes. |
+| `templates/ai-debt-report.md.j2` | Report skeleton: signals / thresholds / severity-ranked findings / routes. |
+| `templates/ai-debt-report.md` | Report skeleton: signals / thresholds / severity-ranked findings / routes. Generated from `templates/ai-debt-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

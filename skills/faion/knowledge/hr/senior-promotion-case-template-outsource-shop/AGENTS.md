@@ -61,9 +61,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/promotion-case-spec.md` | Promotion case skeleton: scope/impact/judgment/leadership × engagement |
-| `templates/evidence-tracker.md` | Per-engagement evidence tracker for live data collection |
-| `templates/_smoke-test.md` | Filled-in case for a Mid → Senior Engineer promotion |
+| `templates/promotion-case-spec.md.j2` | Promotion case skeleton: scope/impact/judgment/leadership × engagement |
+| `templates/promotion-case-spec.md` | Promotion case skeleton: scope/impact/judgment/leadership × engagement Generated from `templates/promotion-case-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/evidence-tracker.md.j2` | Per-engagement evidence tracker for live data collection |
+| `templates/evidence-tracker.md` | Per-engagement evidence tracker for live data collection Generated from `templates/evidence-tracker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in case for a Mid → Senior Engineer promotion |
+| `templates/_smoke-test.md` | Filled-in case for a Mid → Senior Engineer promotion Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -3,12 +3,12 @@
 <!-- produces: Markdown artefact -->
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: small -->
-# Solution Assessment Report: [Solution Name]
+# Solution Assessment Report: <solution_name>
 
 **Version:** 1.0
 **Assessor:** [Name — must be independent of delivery team]
 **Assessment Type:** Design / Implementation / Deployment / Post-Implementation
-**Assessment Window:** [Start date] to [End date]
+**Assessment Window:** <start_date> to <end_date>
 
 ## Executive Summary
 
@@ -16,14 +16,14 @@
 
 ## Assessment Scope
 
-- **Solution:** [What was assessed]
+- **Solution:** <what_was_assessed>
 - **Participants:** [Who provided input — QA, ops, users, finance]
 
 ## Requirements Compliance
 
 | Req ID  | Requirement          | Status             | Evidence URL | Notes |
 |---------|----------------------|--------------------|--------------|-------|
-| REQ-001 | [Requirement]        | Met / Partial / Not Met / Deprecated | [URL] | - |
+| REQ-001 | <requirement>        | Met / Partial / Not Met / Deprecated | <url> | - |
 
 **Summary:** Met: [X] ([X%]) | Partially Met: [X] ([X%]) | Not Met: [X] ([X%])
 
@@ -33,15 +33,15 @@ _Accept requires zero Critical issues and zero Not Met requirements._
 
 | Metric | Baseline | Target | Actual | Sample n | Variance | Status |
 |--------|----------|--------|--------|----------|----------|--------|
-| [Metric] | [Value] | [Value] | [Value] | [n] | [+/-X%] | On Track / At Risk / Off Track / Exceeded |
+| <metric> | <value> | <value> | <value> | [n] | [+/-X%] | On Track / At Risk / Off Track / Exceeded |
 
 ## User Feedback
 
 | Aspect | Rating (1-5) | n | Comments |
 |--------|-------------|---|----------|
-| Usability | [X] | [n] | [Theme] |
-| Performance | [X] | [n] | [Theme] |
-| Functionality | [X] | [n] | [Theme] |
+| Usability | [X] | <usability> | [Theme] |
+| Performance | [X] | <performance> | [Theme] |
+| Functionality | [X] | <functionality> | [Theme] |
 
 **Response rate:** [X%] (flag if < 30%)
 
@@ -49,23 +49,23 @@ _Accept requires zero Critical issues and zero Not Met requirements._
 
 | Issue | Severity | Impact | Recommendation |
 |-------|----------|--------|----------------|
-| [Issue] | Critical / High / Medium / Low | [Impact] | [Action] |
+| <issue> | Critical / High / Medium / Low | [Impact] | <action> |
 
 ## Limitations
 
 | Limitation | Business Impact | Workaround |
 |------------|-----------------|------------|
-| [Limitation] | [Impact] | [Workaround] |
+| <limitation> | [Impact] | <workaround> |
 
 ## Recommendations
 
 **Verdict:** Accept / Accept with conditions / Require changes / Reject
 
 ### Immediate (0-30 days)
-1. [Action]
+1. <action>
 
 ### Short-term (30-90 days)
-1. [Action]
+1. <action>
 
 ### Long-term (90+ days)
-1. [Action]
+1. <action>

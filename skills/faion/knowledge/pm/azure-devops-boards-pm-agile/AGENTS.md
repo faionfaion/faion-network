@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the Azure DevOps Boards configuration artefact. |
 | `templates/create-story.sh` | Bash helper to create a User Story work item via REST API. |
-| `templates/user-story.md` | Markdown template for a Scrum user story (As a / I want / So that, AC). |
+| `templates/user-story.md.j2` | Markdown template for a Scrum user story (As a / I want / So that, AC). |
+| `templates/user-story.md` | Markdown template for a Scrum user story (As a / I want / So that, AC). Generated from `templates/user-story.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

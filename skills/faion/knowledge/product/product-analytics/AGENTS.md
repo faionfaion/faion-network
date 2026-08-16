@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/product-analytics.md` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/product-analytics.md.j2` | Markdown skeleton for human-readable artefact rendering. |
+| `templates/product-analytics.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/product-analytics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

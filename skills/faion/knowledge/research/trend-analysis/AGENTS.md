@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/trend-report.md` | Trend report skeleton (signals + score + decay + verdict) |
+| `templates/trend-report.md.j2` | Trend report skeleton (signals + score + decay + verdict) |
+| `templates/trend-report.md` | Trend report skeleton (signals + score + decay + verdict) Generated from `templates/trend-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/trend-signals.py` | Pull + normalize the 5 signal classes; emit JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

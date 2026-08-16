@@ -61,7 +61,8 @@
 |------|---------|
 | `templates/pr-balance.sh` | Pre-commit guard: reject PRs over 400 lines unless labeled `large-pr-approved`. |
 | `templates/pr-checks.yml` | Required GitHub Actions checks (lint, types, tests, coverage, oasdiff, security). |
-| `templates/pr-description.md` | PR description template with risk / scope / test sections. |
+| `templates/pr-description.md.j2` | PR description template with risk / scope / test sections. |
+| `templates/pr-description.md` | PR description template with risk / scope / test sections. Generated from `templates/pr-description.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

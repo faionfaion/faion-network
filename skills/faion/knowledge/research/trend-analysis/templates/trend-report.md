@@ -3,13 +3,13 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Trend Analysis: [Trend Name]
+# Trend Analysis: <trend_name>
 
 ## Summary
-- **Trend:** [Description]
-- **Category:** [Fad / Trend / Megatrend / Shift]
-- **Stage:** [Innovator / Early / Mainstream / Decline]
-- **Opportunity Window:** [Timeframe or milestone]
+- **Trend:** <description>
+- **Category:** <category>
+- **Stage:** <stage>
+- **Opportunity Window:** <opportunity_window>
 
 ## Evidence
 
@@ -22,11 +22,11 @@
 
 ## STEEP Analysis
 
-- **Social:** [Behavior/value change]
+- **Social:** <behavior_value_change>
 - **Technology:** [Enabling tech, new capabilities]
 - **Economic:** [Financial drivers, cost arbitrage]
-- **Environmental:** [n/a or sustainability factors]
-- **Political:** [Regulatory landscape]
+- **Environmental:** <environmental>
+- **Political:** <regulatory_landscape>
 
 ## Trend Strength Score
 
@@ -49,7 +49,7 @@
 
 | Player | Stage | Funding | Notes |
 |--------|-------|---------|-------|
-| [Name] | [Early/Mainstream] | $X | [Strength/weakness] |
+| <name> | <early_mainstream> | $X | <strength_weakness> |
 
 ## Recommendation
 
