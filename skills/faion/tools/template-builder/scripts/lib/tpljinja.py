@@ -252,8 +252,19 @@ def build_schema(decls: list[dict], *, schema_id: str, title: str,
         # that emits its placeholder, is not required of the CALLER — and
         # `required` here is a statement about the value map, not about the
         # document.
-        if decl.get("required") and decl.get("default") is None \
-                and not decl.get("sensitive"):
+        #
+        # Sensitivity is read from the DICTIONARY as well as the local
+        # declaration. Reading only the local one put 638 of the corpus's 639
+        # sensitive slots into `required`: the converter drafts a declaration
+        # with `sensitive: False` and the entry it $refs is what actually
+        # carries `x-faion-sensitive`. Under §1b the schema IS the wire format,
+        # so the effect was not cosmetic — a client reading it asks a human for
+        # exactly the values the server must refuse to accept, which is the one
+        # class of data §2.2 exists to keep off a multi-tenant assembler.
+        entry = dictionary.get(name) or {} if dictionary else {}
+        sensitive = decl.get("sensitive") or entry.get("x-faion-sensitive")
+        has_default = decl.get("default") is not None or "default" in entry
+        if decl.get("required") and not has_default and not sensitive:
             required.append(name)
     schema = {
         "$schema": DRAFT07,

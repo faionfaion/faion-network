@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **638 of 639 sensitive slots were listed as `required` in shipped schemas.** Under
+  §1b the schema **is** the wire format, so this was not cosmetic: a client reading
+  it asks a human for exactly the values the server must refuse to accept — the one
+  class of data §2.2 exists to keep off a multi-tenant assembler. Cause:
+  `build_schema` read `sensitive` only from the local declaration, while the
+  converter drafts declarations with `sensitive: false` and the *dictionary entry*
+  is what carries `x-faion-sensitive`. Now read from both, and a dictionary
+  `default` also excuses a variable from `required`. **0 of 639 remain.**
+
+- **`--migrate` is NOT idempotent once the `.md` is a generated output** — recorded
+  because I learned it by causing damage and reverting. Re-running the migration to
+  regenerate schemas rewrote **78 templates backwards**, turning hand-declared
+  `{{ audit_log_path }}` into literal `<audit_log_path>`. The regenerated `.md`
+  carries no `variables:` block (it moved into the schema), so a second pass has no
+  declarations to honour, re-proposes from scratch, and the code-span rule then
+  classifies a backticked token as an example rather than a slot.
+
+  **`--check` being drift-free does not license re-migration.** It proves the
+  generator is self-consistent against its current source; it says nothing about
+  feeding a generated output back in as source. Conflating those two is what cost
+  78 templates. The corpus edit was reverted whole and the `required` repair applied
+  surgically to the existing schemas instead — 549 rewritten, 726 entries removed,
+  `--check` **drift=0 across all 2,502** afterwards, `validate-methodology-templates`
+  still 2521/0.
+
 - **Wave 3: the 41 refusals adjudicated — 38 converted, 3 left alone on purpose.
   2,502 of 2,505 declared templates are now Jinja.** 322 variables declared by
   hand, each with a description written as the question put to a human, because
