@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/cold-start-spec.md` | Spec capturing baseline + chosen mitigation + post-fix numbers. |
 | `templates/lambda-config.yaml` | Sample Lambda config with provisioned concurrency + SnapStart settings. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/charters.md` | Markdown skeleton for the artefact. |
+| `templates/charters.md.j2` | Markdown skeleton for the artefact. |
+| `templates/charters.md` | Markdown skeleton for the artefact. Generated from `templates/charters.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/bug-bash-ledger.csv` | CSV template for tabular artefacts. |
 | `templates/_smoke-test.csv` | Minimum viable filled-in artefact for sanity-checking the schema. |
 

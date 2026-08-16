@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the weekly invoice batch artefact. |
-| `templates/invoice-row.md` | Per-client invoice row skeleton with evidence + reason fields. |
+| `templates/invoice-row.md.j2` | Per-client invoice row skeleton with evidence + reason fields. |
+| `templates/invoice-row.md` | Per-client invoice row skeleton with evidence + reason fields. Generated from `templates/invoice-row.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

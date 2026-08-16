@@ -64,9 +64,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/conversational-spec.md` | Spec skeleton for conversational UI |
+| `templates/conversational-spec.md.j2` | Spec skeleton for conversational UI |
+| `templates/conversational-spec.md` | Spec skeleton for conversational UI Generated from `templates/conversational-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/turn-schema.json` | Turn schema (user/assistant/tool) skeleton |
-| `templates/_smoke-test.md` | Minimum viable filled-in conversational-UI spec |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in conversational-UI spec |
+| `templates/_smoke-test.md` | Minimum viable filled-in conversational-UI spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

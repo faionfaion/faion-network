@@ -53,9 +53,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/handoff.md` | Structured handoff checklist. |
-| `templates/fatigue-note.md` | Outgoing engineer fatigue + rest signal. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/handoff.md.j2` | Structured handoff checklist. |
+| `templates/handoff.md` | Structured handoff checklist. Generated from `templates/handoff.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/fatigue-note.md.j2` | Outgoing engineer fatigue + rest signal. |
+| `templates/fatigue-note.md` | Outgoing engineer fatigue + rest signal. Generated from `templates/fatigue-note.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

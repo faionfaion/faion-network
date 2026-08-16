@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Discovery Call Writeup — <LEAD-ID>
+# Discovery Call Writeup — <lead_id>
 
 **budget_range:** {min, max, currency}
 **decision_maker:** {name, title} (signing power confirmed)

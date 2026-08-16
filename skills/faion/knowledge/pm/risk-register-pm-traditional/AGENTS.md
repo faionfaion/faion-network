@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/risk-register.md` | Living register table. |
-| `templates/risk-card.md` | Detailed single-risk record. |
+| `templates/risk-card.md.j2` | Detailed single-risk record. |
+| `templates/risk-card.md` | Detailed single-risk record. Generated from `templates/risk-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

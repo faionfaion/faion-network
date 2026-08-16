@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Multi-project audit listing port ranges + isolation + vhost coverage. |
-| `templates/_smoke-test.md` | Minimum viable filled-in multi-project audit. |
+| `templates/skeleton.md.j2` | Multi-project audit listing port ranges + isolation + vhost coverage. |
+| `templates/skeleton.md` | Multi-project audit listing port ranges + isolation + vhost coverage. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in multi-project audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in multi-project audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/port-registry.txt` | Plain-text source of truth for port allocations per project. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

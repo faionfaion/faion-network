@@ -73,7 +73,8 @@
 | `templates/process-analysis.md` | Per-process analysis narrative with VA/BN/NVA classification + baseline metrics. |
 | `templates/process-documentation.md` | BPMN-linked process documentation skeleton with control-point markers. |
 | `templates/rank-portfolio.py` | Score processes by nva_minutes_per_year × strategic_fit and emit the deep-modelling Pareto set. |
-| `templates/_smoke-test.md` | Minimum viable filled-in process analysis. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in process analysis. |
+| `templates/_smoke-test.md` | Minimum viable filled-in process analysis. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

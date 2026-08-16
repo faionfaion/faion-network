@@ -58,9 +58,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/runbook.md` | Full rollout runbook with 1/10/50/100 stages + abort criteria. |
-| `templates/post-rollout-audit.md` | Cleanup checklist + flag-removal PR template. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/runbook.md.j2` | Full rollout runbook with 1/10/50/100 stages + abort criteria. |
+| `templates/runbook.md` | Full rollout runbook with 1/10/50/100 stages + abort criteria. Generated from `templates/runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/post-rollout-audit.md.j2` | Cleanup checklist + flag-removal PR template. |
+| `templates/post-rollout-audit.md` | Cleanup checklist + flag-removal PR template. Generated from `templates/post-rollout-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

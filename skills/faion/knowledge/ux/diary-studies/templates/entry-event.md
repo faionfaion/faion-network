@@ -4,7 +4,7 @@
 <!-- depends-on: study-plan.md -->
 <!-- token-budget-impact: ~150 per entry -->
 
-Trigger: <what happened>
+Trigger: <what_happened>
 When: <timestamp>
 Where: <context>
 What were you trying to do?

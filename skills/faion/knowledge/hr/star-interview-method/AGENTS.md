@@ -62,7 +62,8 @@
 |------|---------|
 | `templates/star-playbook-step.md` | Per-question STAR probing playbook with probe prompts + note-slots |
 | `templates/star-scorecard.md` | Per-question scorecard with STAR evidence rows + competency rating |
-| `templates/hiring-manager-guide.md` | Hiring-manager-facing summary of the STAR method |
+| `templates/hiring-manager-guide.md.j2` | Hiring-manager-facing summary of the STAR method |
+| `templates/hiring-manager-guide.md` | Hiring-manager-facing summary of the STAR method Generated from `templates/hiring-manager-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/star-completeness.py` | Helper to score STAR completeness from a transcript |
 | `templates/_smoke-test.md` | Filled-in playbook for a single competency × question |
 

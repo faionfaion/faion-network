@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/domain-rubric.md` | 8-row rubric: domain, score, evidence, recommended action. |
+| `templates/domain-rubric.md.j2` | 8-row rubric: domain, score, evidence, recommended action. |
+| `templates/domain-rubric.md` | 8-row rubric: domain, score, evidence, recommended action. Generated from `templates/domain-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -58,8 +58,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/fairness-report.md` | Per-engineer load report template. |
-| `templates/compensation-policy.md` | On-call comp + time-off-in-lieu policy. |
+| `templates/fairness-report.md.j2` | Per-engineer load report template. |
+| `templates/fairness-report.md` | Per-engineer load report template. Generated from `templates/fairness-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/compensation-policy.md.j2` | On-call comp + time-off-in-lieu policy. |
+| `templates/compensation-policy.md` | On-call comp + time-off-in-lieu policy. Generated from `templates/compensation-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

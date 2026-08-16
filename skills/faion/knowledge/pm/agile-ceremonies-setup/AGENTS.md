@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sprint-planning.md` | Sprint planning template. |
-| `templates/retrospective.md` | Retro template with mandatory action items. |
+| `templates/sprint-planning.md.j2` | Sprint planning template. |
+| `templates/sprint-planning.md` | Sprint planning template. Generated from `templates/sprint-planning.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retrospective.md.j2` | Retro template with mandatory action items. |
+| `templates/retrospective.md` | Retro template with mandatory action items. Generated from `templates/retrospective.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/standup-bot.yaml` | Standup bot config. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

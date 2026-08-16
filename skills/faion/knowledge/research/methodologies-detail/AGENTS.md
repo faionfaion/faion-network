@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/methodology-detail.md` | Deep-dive page template (sections in canonical order) |
-| `templates/audit-checklist.md` | Audit checklist (12 binary checks) used by the audit pass |
+| `templates/methodology-detail.md.j2` | Deep-dive page template (sections in canonical order) |
+| `templates/methodology-detail.md` | Deep-dive page template (sections in canonical order) Generated from `templates/methodology-detail.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/audit-checklist.md.j2` | Audit checklist (12 binary checks) used by the audit pass |
+| `templates/audit-checklist.md` | Audit checklist (12 binary checks) used by the audit pass Generated from `templates/audit-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,8 +64,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the trial-task library artefact. |
-| `templates/task-entry.md` | Markdown skeleton for a single trial-task entry. |
-| `templates/rubric.md` | Rubric skeleton with good/acceptable/fail anchors. |
+| `templates/task-entry.md.j2` | Markdown skeleton for a single trial-task entry. |
+| `templates/task-entry.md` | Markdown skeleton for a single trial-task entry. Generated from `templates/task-entry.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rubric.md.j2` | Rubric skeleton with good/acceptable/fail anchors. |
+| `templates/rubric.md` | Rubric skeleton with good/acceptable/fail anchors. Generated from `templates/rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

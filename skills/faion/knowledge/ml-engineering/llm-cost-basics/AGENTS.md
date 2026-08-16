@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/usage-log.json` | Per-call usage log schema |
-| `templates/cost-dashboard.md` | Weekly cost dashboard skeleton |
+| `templates/cost-dashboard.md.j2` | Weekly cost dashboard skeleton |
+| `templates/cost-dashboard.md` | Weekly cost dashboard skeleton Generated from `templates/cost-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-skeleton.md` | From Hourly to Fixed-Price Transition skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in From Hourly to Fixed-Price Transition. |
+| `templates/spec-skeleton.md.j2` | From Hourly to Fixed-Price Transition skeleton — fill per artefact, do not commit free-form output. |
+| `templates/spec-skeleton.md` | From Hourly to Fixed-Price Transition skeleton — fill per artefact, do not commit free-form output. Generated from `templates/spec-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in From Hourly to Fixed-Price Transition. |
+| `templates/_smoke-test.md` | Minimum viable filled-in From Hourly to Fixed-Price Transition. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

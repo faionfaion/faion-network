@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cap-pacelc-walkthrough.json` | JSON skeleton matching the output contract. |
-| `templates/cap-pacelc-walkthrough.md` | Markdown skeleton naming both axes. |
+| `templates/cap-pacelc-walkthrough.md.j2` | Markdown skeleton naming both axes. |
+| `templates/cap-pacelc-walkthrough.md` | Markdown skeleton naming both axes. Generated from `templates/cap-pacelc-walkthrough.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

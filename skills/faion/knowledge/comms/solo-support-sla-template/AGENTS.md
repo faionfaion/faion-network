@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sla-policy.md` | Public SLA page skeleton |
+| `templates/sla-policy.md.j2` | Public SLA page skeleton |
+| `templates/sla-policy.md` | Public SLA page skeleton Generated from `templates/sla-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/canned-replies.yaml` | 4 canned reply skeletons |
 | `templates/sla-policy.json` | Machine-readable policy |
 

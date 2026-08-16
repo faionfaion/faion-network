@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown skeleton for the pre-flight checklist. |
-| `templates/_smoke-test.md` | Minimum viable filled-in checklist for one travel day. |
+| `templates/skeleton.md.j2` | Markdown skeleton for the pre-flight checklist. |
+| `templates/skeleton.md` | Markdown skeleton for the pre-flight checklist. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in checklist for one travel day. |
+| `templates/_smoke-test.md` | Minimum viable filled-in checklist for one travel day. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

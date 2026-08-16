@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ADR-AI-template.md` | ADR skeleton with AI-attribution frontmatter + approver field |
-| `templates/ai-adr-prompt.md` | LLM prompt template for ADR drafting |
+| `templates/ADR-AI-template.md.j2` | ADR skeleton with AI-attribution frontmatter + approver field |
+| `templates/ADR-AI-template.md` | ADR skeleton with AI-attribution frontmatter + approver field Generated from `templates/ADR-AI-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ai-adr-prompt.md.j2` | LLM prompt template for ADR drafting |
+| `templates/ai-adr-prompt.md` | LLM prompt template for ADR drafting Generated from `templates/ai-adr-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/closure-report.md` | Closure report skeleton with lesson table + decisions. |
-| `templates/lessons-interview.md` | Per-role lessons interview script. |
+| `templates/closure-report.md.j2` | Closure report skeleton with lesson table + decisions. |
+| `templates/closure-report.md` | Closure report skeleton with lesson table + decisions. Generated from `templates/closure-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/lessons-interview.md.j2` | Per-role lessons interview script. |
+| `templates/lessons-interview.md` | Per-role lessons interview script. Generated from `templates/lessons-interview.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

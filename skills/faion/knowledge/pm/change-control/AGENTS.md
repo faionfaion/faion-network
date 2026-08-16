@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/change-request.md` | CR document: requester, description, justification, impact, attachments. |
-| `templates/change-register.md` | Register row: id, status, tier, decision, approver, baseline-version. |
+| `templates/change-request.md.j2` | CR document: requester, description, justification, impact, attachments. |
+| `templates/change-request.md` | CR document: requester, description, justification, impact, attachments. Generated from `templates/change-request.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/change-register.md.j2` | Register row: id, status, tier, decision, approver, baseline-version. |
+| `templates/change-register.md` | Register row: id, status, tier, decision, approver, baseline-version. Generated from `templates/change-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

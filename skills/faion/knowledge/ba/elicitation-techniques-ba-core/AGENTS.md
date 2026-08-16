@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/interview-guide.md` | 1:1 interview guide skeleton with open + probing questions. |
-| `templates/workshop-agenda.md` | Multi-stakeholder workshop agenda with facilitation cues. |
+| `templates/workshop-agenda.md.j2` | Multi-stakeholder workshop agenda with facilitation cues. |
+| `templates/workshop-agenda.md` | Multi-stakeholder workshop agenda with facilitation cues. Generated from `templates/workshop-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/technique-selector.py` | CLI selector mapping (info_type, stakeholder_count) → technique. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

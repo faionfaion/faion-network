@@ -73,7 +73,8 @@
 | `templates/prioritization-record.md` | Decision record with method + scores + rationale. |
 | `templates/moscow-matrix.md` | MoSCoW matrix skeleton. |
 | `templates/rice-sheet.md` | RICE scoring sheet. |
-| `templates/_smoke-test.md` | Minimum filled-in record. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in record. |
+| `templates/_smoke-test.md` | Minimum filled-in record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | ADR template. |
-| `templates/eval-scorecard.md` | Tool comparison scorecard. |
+| `templates/decision-record.md.j2` | ADR template. |
+| `templates/decision-record.md` | ADR template. Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/eval-scorecard.md.j2` | Tool comparison scorecard. |
+| `templates/eval-scorecard.md` | Tool comparison scorecard. Generated from `templates/eval-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

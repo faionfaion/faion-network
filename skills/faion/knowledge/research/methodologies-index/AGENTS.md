@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/INDEX.xml` | Skeleton L2 INDEX with <groups> partition |
-| `templates/index-checklist.md` | Author / audit checklist for INDEX.xml against F-066 A2 |
+| `templates/index-checklist.md.j2` | Author / audit checklist for INDEX.xml against F-066 A2 |
+| `templates/index-checklist.md` | Author / audit checklist for INDEX.xml against F-066 A2 Generated from `templates/index-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

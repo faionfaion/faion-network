@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ac-mapping.yaml` | YAML skeleton listing ac_id, test_path, test_name, asserted_behavior, assertion_class. |
-| `templates/pr-mapping-section.md` | PR-description snippet reviewers expect to find. |
+| `templates/pr-mapping-section.md.j2` | PR-description snippet reviewers expect to find. |
+| `templates/pr-mapping-section.md` | PR-description snippet reviewers expect to find. Generated from `templates/pr-mapping-section.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in mapping used by the validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

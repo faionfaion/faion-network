@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/azure-lz-spec.md` | Markdown skeleton for the Azure architecture spec |
+| `templates/azure-lz-spec.md.j2` | Markdown skeleton for the Azure architecture spec |
+| `templates/azure-lz-spec.md` | Markdown skeleton for the Azure architecture spec Generated from `templates/azure-lz-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/main.bicep` | Bicep skeleton using AVM modules (deployment-level) |
 | `templates/policy-initiative.json` | Sample Azure Policy initiative JSON enforcing baseline controls |
 | `templates/_smoke-test.json` | Minimum spec artefact used by validate-azure-architecture.py --self-test |

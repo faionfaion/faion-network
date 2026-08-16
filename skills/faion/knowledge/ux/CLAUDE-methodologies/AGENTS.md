@@ -55,9 +55,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/routing-step.md` | Playbook-step skeleton for the routing decision |
+| `templates/routing-step.md.j2` | Playbook-step skeleton for the routing decision |
+| `templates/routing-step.md` | Playbook-step skeleton for the routing decision Generated from `templates/routing-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/signal-extraction.json` | Signal extraction JSON skeleton |
-| `templates/_smoke-test.md` | Minimum viable filled-in routing step |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in routing step |
+| `templates/_smoke-test.md` | Minimum viable filled-in routing step Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

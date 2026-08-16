@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Kernel tuning audit report listing keys + rationale + verify. |
-| `templates/_smoke-test.md` | Minimum viable filled-in kernel-tuning audit. |
+| `templates/skeleton.md.j2` | Kernel tuning audit report listing keys + rationale + verify. |
+| `templates/skeleton.md` | Kernel tuning audit report listing keys + rationale + verify. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in kernel-tuning audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in kernel-tuning audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/60-vps-tuning.conf` | sysctl drop-in for a multi-service VPS with rationale per line. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

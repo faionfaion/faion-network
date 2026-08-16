@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/analysis-report.md` | Single-interview analysis report skeleton |
+| `templates/analysis-report.md.j2` | Single-interview analysis report skeleton |
+| `templates/analysis-report.md` | Single-interview analysis report skeleton Generated from `templates/analysis-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/skeleton.json` | Skeleton template |
-| `templates/skeleton.md` | Skeleton template |
+| `templates/skeleton.md.j2` | Skeleton template |
+| `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -8,20 +8,20 @@
 
 ## Findings
 
-- <finding 1>
-- <finding 2>
-- <finding 3>
+- <finding_1>
+- <finding_2>
+- <finding_3>
 
 ## Recommendations
 
 | Label | Owner | Due cycle | Priority |
 |-------|-------|-----------|----------|
-| <action> | <named> | <YYYY-Www> | high\|medium\|low |
+| <action> | <named> | <yyyy_www> | high\|medium\|low |
 
 ## Evidence
 
-- <evidence 1>
-- <evidence 2>
+- <evidence_1>
+- <evidence_2>
 
 ## Status
 

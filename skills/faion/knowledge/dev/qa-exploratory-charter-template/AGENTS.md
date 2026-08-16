@@ -70,8 +70,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/charter.md` | One-page charter: mission, focus, target, time-box. |
-| `templates/observation-log.md` | Time-stamped log of test ideas, observations, questions, bugs. |
-| `templates/debrief.md` | Post-session debrief: findings, follow-ups, debt, time spent. |
+| `templates/observation-log.md.j2` | Time-stamped log of test ideas, observations, questions, bugs. |
+| `templates/observation-log.md` | Time-stamped log of test ideas, observations, questions, bugs. Generated from `templates/observation-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/debrief.md.j2` | Post-session debrief: findings, follow-ups, debt, time spent. |
+| `templates/debrief.md` | Post-session debrief: findings, follow-ups, debt, time spent. Generated from `templates/debrief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable charter+log+debrief artefact for the validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

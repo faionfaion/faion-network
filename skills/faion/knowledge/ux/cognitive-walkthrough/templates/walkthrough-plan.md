@@ -6,8 +6,8 @@
 
 # Walkthrough Plan
 
-- Task: <name + canonical sequence>
+- Task: <name_canonical_sequence>
 - User profile: <persona>
 - Evaluators: <names>
 - Frame discipline: first-time user
-- Schedule: <date / async windows>
+- Schedule: <date_async_windows>

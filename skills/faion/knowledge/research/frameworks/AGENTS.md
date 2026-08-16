@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/framework-router.sh` | CLI router: takes goal + stage and prints the picked framework slug |
-| `templates/framework-decision.md` | Decision-record skeleton (goal + candidates + verdict + rationale) |
+| `templates/framework-decision.md.j2` | Decision-record skeleton (goal + candidates + verdict + rationale) |
+| `templates/framework-decision.md` | Decision-record skeleton (goal + candidates + verdict + rationale) Generated from `templates/framework-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

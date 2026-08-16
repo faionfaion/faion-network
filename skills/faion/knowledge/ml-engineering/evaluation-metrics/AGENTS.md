@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/metric-card.yaml` | Per-task metric card skeleton |
-| `templates/rubric.md` | LLM-as-judge rubric template |
+| `templates/rubric.md.j2` | LLM-as-judge rubric template |
+| `templates/rubric.md` | LLM-as-judge rubric template Generated from `templates/rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

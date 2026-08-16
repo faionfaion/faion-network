@@ -4,14 +4,14 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Evidence Trail — <REQ-ID>
+# Evidence Trail — <req_id>
 
-**Signal:** <data source + window>
+**Signal:** <data_source_window>
 **Metric:** <numeric>
 **Confidence:** low | medium | high (calibrated to sample size)
 
 ## Baseline
-<current numeric>
+<current_numeric>
 
 ## Target
-<target numeric + date>
+<target_numeric_date>

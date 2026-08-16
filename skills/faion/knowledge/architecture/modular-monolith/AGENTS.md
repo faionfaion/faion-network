@@ -63,9 +63,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/module-layout.md` | Reference module layout (Python / Go / Java agnostic). |
+| `templates/module-layout.md.j2` | Reference module layout (Python / Go / Java agnostic). |
+| `templates/module-layout.md` | Reference module layout (Python / Go / Java agnostic). Generated from `templates/module-layout.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/import-linter.toml` | import-linter contract enforcing module isolation in CI. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

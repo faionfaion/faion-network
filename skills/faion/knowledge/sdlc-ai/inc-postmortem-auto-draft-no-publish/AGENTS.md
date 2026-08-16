@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/postmortem-draft.md` | Draft skeleton with placeholders + flags |
+| `templates/postmortem-draft.md.j2` | Draft skeleton with placeholders + flags |
+| `templates/postmortem-draft.md` | Draft skeleton with placeholders + flags Generated from `templates/postmortem-draft.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/draft-metadata.json` | JSON metadata sibling to draft |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

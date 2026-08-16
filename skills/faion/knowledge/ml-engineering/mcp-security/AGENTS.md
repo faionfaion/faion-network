@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/security-rubric.md` | Rubric skeleton with sections + score bands. |
-| `templates/consent-flow.md` | Consent-UI flow description per primitive type. |
+| `templates/security-rubric.md.j2` | Rubric skeleton with sections + score bands. |
+| `templates/security-rubric.md` | Rubric skeleton with sections + score bands. Generated from `templates/security-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/consent-flow.md.j2` | Consent-UI flow description per primitive type. |
+| `templates/consent-flow.md` | Consent-UI flow description per primitive type. Generated from `templates/consent-flow.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

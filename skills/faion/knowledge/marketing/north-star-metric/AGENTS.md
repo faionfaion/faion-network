@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/north-star-metric.adr.md` | ADR-style decision record skeleton |
+| `templates/north-star-metric.adr.md.j2` | ADR-style decision record skeleton |
+| `templates/north-star-metric.adr.md` | ADR-style decision record skeleton Generated from `templates/north-star-metric.adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/north-star-metric.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

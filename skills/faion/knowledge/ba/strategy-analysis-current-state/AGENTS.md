@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/current-state-spec.md` | Markdown skeleton with all as-is sections. |
 | `templates/process-map.md` | Text-based process map (no ASCII art). |
-| `templates/_smoke-test.md` | Minimum viable current-state spec. |
+| `templates/_smoke-test.md.j2` | Minimum viable current-state spec. |
+| `templates/_smoke-test.md` | Minimum viable current-state spec. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

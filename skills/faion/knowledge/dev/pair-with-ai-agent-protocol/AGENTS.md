@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/session_protocol.md` | Markdown skeleton for the artefact. |
+| `templates/session_protocol.md.j2` | Markdown skeleton for the artefact. |
+| `templates/session_protocol.md` | Markdown skeleton for the artefact. Generated from `templates/session_protocol.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/halt_log.json` | JSON template scaffolding the artefact contract. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 

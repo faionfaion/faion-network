@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown report listing wired configs + env-var checklist. |
-| `templates/_smoke-test.md` | Minimum viable filled-in wiring report for one project. |
+| `templates/skeleton.md.j2` | Markdown report listing wired configs + env-var checklist. |
+| `templates/skeleton.md` | Markdown report listing wired configs + env-var checklist. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in wiring report for one project. |
+| `templates/_smoke-test.md` | Minimum viable filled-in wiring report for one project. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sentry.server.config.ts` | Server-runtime Sentry config with scrubbing + ignore list. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

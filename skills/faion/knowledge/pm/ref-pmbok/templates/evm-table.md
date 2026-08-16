@@ -8,4 +8,4 @@
 
 | ID | Criterion | Weight | Score 1-5 | Evidence |
 |----|-----------|--------|-----------|----------|
-| R1 | [name] | 0.20 | [n] | [quote] |
+| R1 | <name> | 0.20 | <r1> | <quote> |

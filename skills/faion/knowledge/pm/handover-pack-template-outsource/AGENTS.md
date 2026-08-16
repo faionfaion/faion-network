@@ -65,8 +65,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the handover pack artefact. |
-| `templates/handover-pack.md` | Markdown skeleton for the pack: cover + decisions + open issues + runbooks + contacts + acceptance gate. |
-| `templates/acceptance-request.md` | Email/message template requesting the receiver's written acknowledgement. |
+| `templates/handover-pack.md.j2` | Markdown skeleton for the pack: cover + decisions + open issues + runbooks + contacts + acceptance gate. |
+| `templates/handover-pack.md` | Markdown skeleton for the pack: cover + decisions + open issues + runbooks + contacts + acceptance gate. Generated from `templates/handover-pack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/acceptance-request.md.j2` | Email/message template requesting the receiver's written acknowledgement. |
+| `templates/acceptance-request.md` | Email/message template requesting the receiver's written acknowledgement. Generated from `templates/acceptance-request.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/debt-ledger.md` | Markdown skeleton for the debt ledger (items + scores + decisions). |
-| `templates/scoring-rubric.md` | Rubric for impact + interest scores (1-5 scale, anchored examples). |
+| `templates/debt-ledger.md.j2` | Markdown skeleton for the debt ledger (items + scores + decisions). |
+| `templates/debt-ledger.md` | Markdown skeleton for the debt ledger (items + scores + decisions). Generated from `templates/debt-ledger.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scoring-rubric.md.j2` | Rubric for impact + interest scores (1-5 scale, anchored examples). |
+| `templates/scoring-rubric.md` | Rubric for impact + interest scores (1-5 scale, anchored examples). Generated from `templates/scoring-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled-in minimum viable debt ledger for validator smoke-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

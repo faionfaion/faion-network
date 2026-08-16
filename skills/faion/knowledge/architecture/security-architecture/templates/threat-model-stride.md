@@ -8,7 +8,7 @@
 # Threat Model (STRIDE)
 
 ## Assets
-- <data class> at <location>
+- <data_class> at <location>
 
 ## Attackers
 - External anonymous, external authenticated, internal authenticated, internal privileged, supply-chain.

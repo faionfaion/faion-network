@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cycle-report.md` | Cycle report Markdown template |
+| `templates/cycle-report.md.j2` | Cycle report Markdown template |
+| `templates/cycle-report.md` | Cycle report Markdown template Generated from `templates/cycle-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

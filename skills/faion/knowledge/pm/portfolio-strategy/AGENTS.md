@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/portfolio-allocation-record.md` | Portfolio allocation memo skeleton with horizon tags + triggers. |
+| `templates/portfolio-allocation-record.md.j2` | Portfolio allocation memo skeleton with horizon tags + triggers. |
+| `templates/portfolio-allocation-record.md` | Portfolio allocation memo skeleton with horizon tags + triggers. Generated from `templates/portfolio-allocation-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pm-role-skew.sh` | Compute PM-vs-portfolio role split for each product. |
 | `templates/prompt-portfolio-pm.txt` | Prompt template for the portfolio-PM allocation task. |
 | `templates/prompt-product-pm.txt` | Prompt template for the product-PM consultation step. |

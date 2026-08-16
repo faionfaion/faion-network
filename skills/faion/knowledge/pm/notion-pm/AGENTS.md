@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sprint-template.md` | Sprint page template with goal, metrics, backlog, retro |
-| `templates/task-template.md` | Task page template with description, AC, sub-tasks, updates |
+| `templates/sprint-template.md.j2` | Sprint page template with goal, metrics, backlog, retro |
+| `templates/sprint-template.md` | Sprint page template with goal, metrics, backlog, retro Generated from `templates/sprint-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/task-template.md.j2` | Task page template with description, AC, sub-tasks, updates |
+| `templates/task-template.md` | Task page template with description, AC, sub-tasks, updates Generated from `templates/task-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

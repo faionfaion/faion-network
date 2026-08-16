@@ -68,9 +68,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/quarter-retro-doc.md` | 2-page quarter retro report |
-| `templates/squad-appendix.md` | Per-squad evidence appendix |
-| `templates/dora-delta-table.md` | DORA quarter-on-quarter delta table |
+| `templates/quarter-retro-doc.md.j2` | 2-page quarter retro report |
+| `templates/quarter-retro-doc.md` | 2-page quarter retro report Generated from `templates/quarter-retro-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/squad-appendix.md.j2` | Per-squad evidence appendix |
+| `templates/squad-appendix.md` | Per-squad evidence appendix Generated from `templates/squad-appendix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/dora-delta-table.md.j2` | DORA quarter-on-quarter delta table |
+| `templates/dora-delta-table.md` | DORA quarter-on-quarter delta table Generated from `templates/dora-delta-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -69,8 +69,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/repo-health-report.md` | Weekly repository health-report skeleton |
-| `templates/ops-playbook.md` | Day-2 ops playbook (weekly tasks + monthly tasks) |
+| `templates/repo-health-report.md.j2` | Weekly repository health-report skeleton |
+| `templates/repo-health-report.md` | Weekly repository health-report skeleton Generated from `templates/repo-health-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ops-playbook.md.j2` | Day-2 ops playbook (weekly tasks + monthly tasks) |
+| `templates/ops-playbook.md` | Day-2 ops playbook (weekly tasks + monthly tasks) Generated from `templates/ops-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

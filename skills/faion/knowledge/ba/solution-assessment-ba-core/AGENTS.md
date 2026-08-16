@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/post-implementation-review.md` | PIR document skeleton. |
-| `templates/solution-assessment-report.md` | Detailed assessment report with KPI table + gap callouts. |
+| `templates/post-implementation-review.md.j2` | PIR document skeleton. |
+| `templates/post-implementation-review.md` | PIR document skeleton. Generated from `templates/post-implementation-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/solution-assessment-report.md.j2` | Detailed assessment report with KPI table + gap callouts. |
+| `templates/solution-assessment-report.md` | Detailed assessment report with KPI table + gap callouts. Generated from `templates/solution-assessment-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

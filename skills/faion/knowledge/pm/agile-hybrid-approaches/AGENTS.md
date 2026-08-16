@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/approach-decision.md` | Decision record skeleton with 6-dim score + hybrid tilt. |
-| `templates/kanban-board.md` | Kanban column template for hybrid teams. |
+| `templates/kanban-board.md.j2` | Kanban column template for hybrid teams. |
+| `templates/kanban-board.md` | Kanban column template for hybrid teams. Generated from `templates/kanban-board.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sprint-planning.md` | Hybrid sprint template (Scrum cadence + Kanban WIP). |
 
 ## Scripts

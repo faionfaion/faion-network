@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/gcp-resource-hierarchy.md` | Skeleton for the spec artefact this methodology produces. |
-| `templates/_smoke-test.md` | Minimum viable filled-in example. |
+| `templates/gcp-resource-hierarchy.md.j2` | Skeleton for the spec artefact this methodology produces. |
+| `templates/gcp-resource-hierarchy.md` | Skeleton for the spec artefact this methodology produces. Generated from `templates/gcp-resource-hierarchy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in example. |
+| `templates/_smoke-test.md` | Minimum viable filled-in example. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

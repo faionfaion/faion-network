@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/monitoring-dr-spec.md` | Markdown skeleton for the monitoring+DR spec |
+| `templates/monitoring-dr-spec.md.j2` | Markdown skeleton for the monitoring+DR spec |
+| `templates/monitoring-dr-spec.md` | Markdown skeleton for the monitoring+DR spec Generated from `templates/monitoring-dr-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/dashboard.tf` | Terraform CloudWatch dashboard with API Gateway + Lambda + DynamoDB widgets |
 | `templates/alarms.tf` | Terraform tiered alarms with SNS topics (critical / warning / info) |
 | `templates/_smoke-test.json` | Minimum spec used by validate-devops-aws-monitoring-dr.py --self-test |

@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/workflow-plan.md` | Workflow plan skeleton (mode + steps + artefacts + checkpoints) |
+| `templates/workflow-plan.md.j2` | Workflow plan skeleton (mode + steps + artefacts + checkpoints) |
+| `templates/workflow-plan.md` | Workflow plan skeleton (mode + steps + artefacts + checkpoints) Generated from `templates/workflow-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

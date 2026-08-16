@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/process-analysis.md` | Markdown skeleton for the report (current + analysis + future + diff) |
-| `templates/_smoke-test.md` | Minimum filled-in report for the smoke fixture |
+| `templates/process-analysis.md.j2` | Markdown skeleton for the report (current + analysis + future + diff) |
+| `templates/process-analysis.md` | Markdown skeleton for the report (current + analysis + future + diff) Generated from `templates/process-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in report for the smoke fixture |
+| `templates/_smoke-test.md` | Minimum filled-in report for the smoke fixture Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

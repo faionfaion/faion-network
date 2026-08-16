@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/caching-policy.md` | Per-data-class caching policy with pattern + TTL + invalidation rule. |
+| `templates/caching-policy.md.j2` | Per-data-class caching policy with pattern + TTL + invalidation rule. |
+| `templates/caching-policy.md` | Per-data-class caching policy with pattern + TTL + invalidation rule. Generated from `templates/caching-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/redis-config.conf` | Production Redis standalone config: maxmemory + eviction policy + bind + auth. |
 | `templates/cache-service.py` | Python cache-service skeleton: get-or-set + stampede protection + tag invalidation. |
 | `templates/django-cache-settings.py` | Django `CACHES` settings block wired to Redis with per-view + low-level patterns. |

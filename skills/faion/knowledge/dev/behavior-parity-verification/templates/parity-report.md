@@ -6,7 +6,7 @@ depends-on: parity_diffs table, normalizer code.
 token-budget-impact: ~200 tokens when copied into a stage write-up.
 -->
 
-# Parity report — <scope> — stage <1|2|3|4>
+# Parity report — <scope> — stage <parity_report_stage>
 
 ## Scope
 - Endpoint or function path:

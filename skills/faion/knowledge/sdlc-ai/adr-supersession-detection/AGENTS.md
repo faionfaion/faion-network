@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/supersession-report.md` | Markdown report listing candidate pairs with overlap % |
+| `templates/supersession-report.md.j2` | Markdown report listing candidate pairs with overlap % |
+| `templates/supersession-report.md` | Markdown report listing candidate pairs with overlap % Generated from `templates/supersession-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

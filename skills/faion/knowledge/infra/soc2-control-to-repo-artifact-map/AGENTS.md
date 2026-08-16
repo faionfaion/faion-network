@@ -59,8 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/evidence-bundle.md` | Audit-ready evidence bundle template. |
-| `templates/gap-analysis.md` | Per-quarter gap-analysis report. |
+| `templates/evidence-bundle.md.j2` | Audit-ready evidence bundle template. |
+| `templates/evidence-bundle.md` | Audit-ready evidence bundle template. Generated from `templates/evidence-bundle.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/gap-analysis.md.j2` | Per-quarter gap-analysis report. |
+| `templates/gap-analysis.md` | Per-quarter gap-analysis report. Generated from `templates/gap-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

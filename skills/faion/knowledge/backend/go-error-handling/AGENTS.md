@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/go-error-handling.json` | JSON Schema for the Go Error Handling (AppError + Centralised Mapper) output contract |
 | `templates/go-error-handling.md` | Markdown skeleton with the required fields |
-| `templates/_smoke-test.md` | Filled-in minimum viable example of a go-error-handling record |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a go-error-handling record |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a go-error-handling record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/apperror.go` | AppError type, immutable sentinels, fresh-instance constructors, status-preserving `Wrap`, `IsCode` |
 | `templates/error_middleware.go` | Gin ErrorHandler middleware rendering AppError to the JSON envelope |
 | `templates/error-middleware-stdlib.go` | net/http variant: `Handler func(w,r) error` + `Wrap` adapter, 4xx→slog.Info / 5xx→slog.Error |

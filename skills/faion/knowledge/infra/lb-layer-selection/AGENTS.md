@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/layer-decision-record.md` | ADR skeleton: traffic profile → layer → TLS strategy → rationale |
+| `templates/layer-decision-record.md.j2` | ADR skeleton: traffic profile → layer → TLS strategy → rationale |
+| `templates/layer-decision-record.md` | ADR skeleton: traffic profile → layer → TLS strategy → rationale Generated from `templates/layer-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

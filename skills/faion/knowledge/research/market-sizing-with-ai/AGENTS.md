@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/market-sizing-report.md` | Final report skeleton with three estimates + reconciliation |
+| `templates/market-sizing-report.md.j2` | Final report skeleton with three estimates + reconciliation |
+| `templates/market-sizing-report.md` | Final report skeleton with three estimates + reconciliation Generated from `templates/market-sizing-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/market-sizing.json` | Machine-readable estimate matching schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

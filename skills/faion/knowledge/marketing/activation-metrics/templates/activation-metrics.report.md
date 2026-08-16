@@ -6,7 +6,7 @@
 # Activation Metrics — Report
 
 ## Owner
-[name]
+<name>
 
 ## Period
 - start: YYYY-MM-DD
@@ -23,4 +23,4 @@
 - finding 2 (>=10 chars)
 
 ## Deviation log reference
-[path / link]
+<path_link>

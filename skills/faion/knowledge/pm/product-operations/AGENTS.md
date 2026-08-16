@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pm-ops-contract.md` | PM-ops contract skeleton with RACI + canonical map + escalation. |
+| `templates/pm-ops-contract.md.j2` | PM-ops contract skeleton with RACI + canonical map + escalation. |
+| `templates/pm-ops-contract.md` | PM-ops contract skeleton with RACI + canonical map + escalation. Generated from `templates/pm-ops-contract.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pm-ops-contract-check.sh` | Check that PM artefacts use canonical-store outputs (no parallel). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-qa-checklist.md` | 10-item checklist printable card. |
-| `templates/pr-comment.md` | PR comment template with per-item status. |
+| `templates/design-qa-checklist.md.j2` | 10-item checklist printable card. |
+| `templates/design-qa-checklist.md` | 10-item checklist printable card. Generated from `templates/design-qa-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/pr-comment.md.j2` | PR comment template with per-item status. |
+| `templates/pr-comment.md` | PR comment template with per-item status. Generated from `templates/pr-comment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

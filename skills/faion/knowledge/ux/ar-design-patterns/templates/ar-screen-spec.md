@@ -6,9 +6,9 @@
 
 # Screen: <name>
 
-- Runtime: <ARKit|ARCore|WebXR|Unity-ARF>
-- Anchoring: <plane|saved-anchor|image>
-- Occlusion: <people|depth|people+depth|none>
-- Lighting: <estimated|baked|none>
-- Gestures: <move|scale|rotate map>
-- Track-loss path: <prompt + state preservation>
+- Runtime: <runtime>
+- Anchoring: <anchoring>
+- Occlusion: <occlusion>
+- Lighting: <estimated_baked_none>
+- Gestures: <gestures>
+- Track-loss path: <prompt_state_preservation>

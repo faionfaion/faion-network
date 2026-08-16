@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/impact-comment.md` | Markdown comment skeleton with module list + coverage + hot-spot + AI flag |
+| `templates/impact-comment.md.j2` | Markdown comment skeleton with module list + coverage + hot-spot + AI flag |
+| `templates/impact-comment.md` | Markdown comment skeleton with module list + coverage + hot-spot + AI flag Generated from `templates/impact-comment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

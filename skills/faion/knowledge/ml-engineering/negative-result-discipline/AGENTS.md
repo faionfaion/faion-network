@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/negative-result.md` | 3-line negative-result skeleton |
-| `templates/index.md` | Tag-keyed index skeleton |
+| `templates/negative-result.md.j2` | 3-line negative-result skeleton |
+| `templates/negative-result.md` | 3-line negative-result skeleton Generated from `templates/negative-result.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/index.md.j2` | Tag-keyed index skeleton |
+| `templates/index.md` | Tag-keyed index skeleton Generated from `templates/index.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

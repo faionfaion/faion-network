@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~150-400 tokens when loaded as context -->
 
-# Perplexity Research — <research question>
+# Perplexity Research — <research_question>
 
 ## Sub-queries (recency_filter=year unless noted)
 

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/db-selection-adr.md` | Database selection ADR with scoring + rollback path. |
+| `templates/db-selection-adr.md.j2` | Database selection ADR with scoring + rollback path. |
+| `templates/db-selection-adr.md` | Database selection ADR with scoring + rollback path. Generated from `templates/db-selection-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

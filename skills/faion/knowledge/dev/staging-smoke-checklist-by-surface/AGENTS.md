@@ -67,8 +67,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/staging-smoke.md` | Markdown skeleton for the smoke checklist (3 surfaces + sign-off line). |
-| `templates/_smoke-test.md` | Filled-in minimum viable staging-smoke for the validator smoke-test. |
+| `templates/staging-smoke.md.j2` | Markdown skeleton for the smoke checklist (3 surfaces + sign-off line). |
+| `templates/staging-smoke.md` | Markdown skeleton for the smoke checklist (3 surfaces + sign-off line). Generated from `templates/staging-smoke.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable staging-smoke for the validator smoke-test. |
+| `templates/_smoke-test.md` | Filled-in minimum viable staging-smoke for the validator smoke-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -55,7 +55,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/decision_record.json` | Decision record: tool picked + rationale + sibling methodology to load next |
-| `templates/feature_matrix.md` | Puppeteer vs Playwright vs web-scraping feature matrix |
+| `templates/feature_matrix.md.j2` | Puppeteer vs Playwright vs web-scraping feature matrix |
+| `templates/feature_matrix.md` | Puppeteer vs Playwright vs web-scraping feature matrix Generated from `templates/feature_matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

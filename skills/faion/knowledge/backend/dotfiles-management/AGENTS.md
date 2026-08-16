@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Dotfiles audit listing layout + secret separation + install + override. |
-| `templates/_smoke-test.md` | Minimum viable filled-in dotfiles audit. |
+| `templates/skeleton.md.j2` | Dotfiles audit listing layout + secret separation + install + override. |
+| `templates/skeleton.md` | Dotfiles audit listing layout + secret separation + install + override. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in dotfiles audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in dotfiles audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/install.sh` | Dotfiles install script: stow per-tool with conflict-aware backups. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

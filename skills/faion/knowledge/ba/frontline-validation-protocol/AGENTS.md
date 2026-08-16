@@ -74,7 +74,8 @@
 | `templates/listening-session-guide.md` | 60-minute structured guide with non-leading prompts. |
 | `templates/validation-matrix.md` | Per-variant coverage table (operator × method × completed). |
 | `templates/access-agreement.md` | Manager / HR sign-off template. |
-| `templates/_smoke-test.md` | Minimum viable filled-in report. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in report. |
+| `templates/_smoke-test.md` | Minimum viable filled-in report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

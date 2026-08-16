@@ -60,7 +60,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/scorecard.json` | Per-vendor scorecard skeleton |
-| `templates/comparison.md` | Side-by-side vendor comparison narrative |
+| `templates/comparison.md.j2` | Side-by-side vendor comparison narrative |
+| `templates/comparison.md` | Side-by-side vendor comparison narrative Generated from `templates/comparison.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

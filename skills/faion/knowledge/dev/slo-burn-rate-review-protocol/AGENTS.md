@@ -63,10 +63,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/burn-review.md` | Weekly review note skeleton (5 sections + decision log block) |
-| `templates/decision-log-entry.md` | Shape of one decision-log entry produced by the review |
-| `templates/agenda-pre-brief.md` | 1-page brief sent 24h before the meeting |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/burn-review.md.j2` | Weekly review note skeleton (5 sections + decision log block) |
+| `templates/burn-review.md` | Weekly review note skeleton (5 sections + decision log block) Generated from `templates/burn-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-log-entry.md.j2` | Shape of one decision-log entry produced by the review |
+| `templates/decision-log-entry.md` | Shape of one decision-log entry produced by the review Generated from `templates/decision-log-entry.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/agenda-pre-brief.md.j2` | 1-page brief sent 24h before the meeting |
+| `templates/agenda-pre-brief.md` | 1-page brief sent 24h before the meeting Generated from `templates/agenda-pre-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/use-case.md` | Markdown skeleton (actor + goal + pre/post + main + alt + exception) |
+| `templates/use-case.md.j2` | Markdown skeleton (actor + goal + pre/post + main + alt + exception) |
+| `templates/use-case.md` | Markdown skeleton (actor + goal + pre/post + main + alt + exception) Generated from `templates/use-case.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable use-case JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/debt-scoring-rubric.json` | JSON Schema for the debt-register artefact. |
-| `templates/anchor-calibration.md` | 1-5 anchor definitions per factor, signed off by stakeholder. |
+| `templates/anchor-calibration.md.j2` | 1-5 anchor definitions per factor, signed off by stakeholder. |
+| `templates/anchor-calibration.md` | 1-5 anchor definitions per factor, signed off by stakeholder. Generated from `templates/anchor-calibration.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

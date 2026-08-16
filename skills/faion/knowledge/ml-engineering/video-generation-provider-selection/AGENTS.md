@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/provider-matrix.md` | Markdown capability-matrix scoring sheet |
-| `templates/decision-record.md` | Filled-in provider-selection decision record |
+| `templates/provider-matrix.md.j2` | Markdown capability-matrix scoring sheet |
+| `templates/provider-matrix.md` | Markdown capability-matrix scoring sheet Generated from `templates/provider-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-record.md.j2` | Filled-in provider-selection decision record |
+| `templates/decision-record.md` | Filled-in provider-selection decision record Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

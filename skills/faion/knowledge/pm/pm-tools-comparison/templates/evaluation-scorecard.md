@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Tool Evaluation Scorecard: [Tool Name]
+# Tool Evaluation Scorecard: <tool_name>
 
-**Evaluated by:** [Name]
-**PoC duration:** [Start] - [End]
-**Participants:** [Roles]
+**Evaluated by:** <name>
+**PoC duration:** <start> - <end>
+**Participants:** <roles>
 
 ## Setup and Configuration
 

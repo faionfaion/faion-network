@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Checklist with category headings + decision-per-prompt rows. |
-| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
+| `templates/skeleton.md.j2` | Checklist with category headings + decision-per-prompt rows. |
+| `templates/skeleton.md` | Checklist with category headings + decision-per-prompt rows. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in instance. |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

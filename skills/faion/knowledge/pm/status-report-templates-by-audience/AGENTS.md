@@ -68,10 +68,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ceo-template.md` | 5-line CEO email body |
-| `templates/pmo-template.md` | RAG-first PMO report |
-| `templates/sponsor-template.md` | Technical sponsor scope+blockers report |
-| `templates/leadership-template.md` | Internal leadership narrative report |
+| `templates/ceo-template.md.j2` | 5-line CEO email body |
+| `templates/ceo-template.md` | 5-line CEO email body Generated from `templates/ceo-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/pmo-template.md.j2` | RAG-first PMO report |
+| `templates/pmo-template.md` | RAG-first PMO report Generated from `templates/pmo-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sponsor-template.md.j2` | Technical sponsor scope+blockers report |
+| `templates/sponsor-template.md` | Technical sponsor scope+blockers report Generated from `templates/sponsor-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/leadership-template.md.j2` | Internal leadership narrative report |
+| `templates/leadership-template.md` | Internal leadership narrative report Generated from `templates/leadership-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audience-map.yaml` | Stakeholder → template map |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

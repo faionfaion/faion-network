@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/discovery-cadence-design.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
 | `templates/discovery-cadence-design.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
-| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-discovery-cadence-design.py --self-test |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in version exercised by scripts/validate-discovery-cadence-design.py --self-test |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-discovery-cadence-design.py --self-test Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

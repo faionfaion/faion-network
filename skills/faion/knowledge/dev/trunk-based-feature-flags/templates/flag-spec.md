@@ -9,7 +9,7 @@ token-budget-impact: ~180 tokens when copied.
 # Flag spec — <flag_id>
 
 ## Identity
-- artefact_id: ff-<slug>
+- artefact_id: ff-<artefact_slug>
 - flag_id (== ticket slug):
 - type: release | experiment | ops | permission
 - dark_launch: true | false

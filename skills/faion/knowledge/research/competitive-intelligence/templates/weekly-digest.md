@@ -6,7 +6,7 @@
 # CI Weekly Digest - week of YYYY-MM-DD
 
 ## Top 3 deltas
-1. [Competitor] - [Signal] - see `event_id` ...
+1. <competitor> - <signal> - see `event_id` ...
 
 ## Per-competitor cluster
 ### Competitor A

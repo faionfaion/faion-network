@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tech-decision-record.md` | ADR skeleton: environment → tech → downstream methodology pointer |
+| `templates/tech-decision-record.md.j2` | ADR skeleton: environment → tech → downstream methodology pointer |
+| `templates/tech-decision-record.md` | ADR skeleton: environment → tech → downstream methodology pointer Generated from `templates/tech-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

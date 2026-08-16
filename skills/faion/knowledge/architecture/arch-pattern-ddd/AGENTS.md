@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/context-map.md` | Bounded context map + per-context aggregate + events. |
+| `templates/context-map.md.j2` | Bounded context map + per-context aggregate + events. |
+| `templates/context-map.md` | Bounded context map + per-context aggregate + events. Generated from `templates/context-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -62,9 +62,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agent.md` | Agent definition template (frontmatter + role + inputs + steps + output contract) |
-| `templates/agent-code-reviewer.md` | Worked example: code-reviewer subagent |
-| `templates/agent-research.md` | Worked example: research subagent (Read+WebFetch only) |
+| `templates/agent.md.j2` | Agent definition template (frontmatter + role + inputs + steps + output contract) |
+| `templates/agent.md` | Agent definition template (frontmatter + role + inputs + steps + output contract) Generated from `templates/agent.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/agent-code-reviewer.md.j2` | Worked example: code-reviewer subagent |
+| `templates/agent-code-reviewer.md` | Worked example: code-reviewer subagent Generated from `templates/agent-code-reviewer.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/agent-research.md.j2` | Worked example: research subagent (Read+WebFetch only) |
+| `templates/agent-research.md` | Worked example: research subagent (Read+WebFetch only) Generated from `templates/agent-research.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sql-optimization-report.md` | Markdown skeleton for the optimization report (per-query before/after). |
+| `templates/sql-optimization-report.md.j2` | Markdown skeleton for the optimization report (per-query before/after). |
+| `templates/sql-optimization-report.md` | Markdown skeleton for the optimization report (per-query before/after). Generated from `templates/sql-optimization-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sql-optimization-report.json` | JSON skeleton matching the output contract. |
 | `templates/create_index_concurrently.sql` | Non-blocking index creation + the INVALID-index check + the EXPLAIN that proves the planner uses it. |
 

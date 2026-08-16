@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tech-radar.md` | Markdown radar with quadrants + entries + evidence column |
+| `templates/tech-radar.md.j2` | Markdown radar with quadrants + entries + evidence column |
+| `templates/tech-radar.md` | Markdown radar with quadrants + entries + evidence column Generated from `templates/tech-radar.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/eval-report.md` | Markdown skeleton for the eval report. |
+| `templates/eval-report.md.j2` | Markdown skeleton for the eval report. |
+| `templates/eval-report.md` | Markdown skeleton for the eval report. Generated from `templates/eval-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

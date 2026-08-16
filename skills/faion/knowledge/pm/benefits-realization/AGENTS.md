@@ -66,9 +66,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/benefits-register.md` | Register table: id, benefit, category, owner, metric, baseline, target, status. |
-| `templates/benefits-report.md` | Post-launch report: exec summary, status per benefit, barriers, forecast. |
-| `templates/business-case-benefits.md` | Business case section: financial table (3-year), non-financial, ROI/NPV. |
+| `templates/benefits-register.md.j2` | Register table: id, benefit, category, owner, metric, baseline, target, status. |
+| `templates/benefits-register.md` | Register table: id, benefit, category, owner, metric, baseline, target, status. Generated from `templates/benefits-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/benefits-report.md.j2` | Post-launch report: exec summary, status per benefit, barriers, forecast. |
+| `templates/benefits-report.md` | Post-launch report: exec summary, status per benefit, barriers, forecast. Generated from `templates/benefits-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/business-case-benefits.md.j2` | Business case section: financial table (3-year), non-financial, ROI/NPV. |
+| `templates/business-case-benefits.md` | Business case section: financial table (3-year), non-financial, ROI/NPV. Generated from `templates/business-case-benefits.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

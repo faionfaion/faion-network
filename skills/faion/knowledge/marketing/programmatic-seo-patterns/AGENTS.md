@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/program-plan.md` | Programmatic-SEO program plan Markdown skeleton. |
+| `templates/program-plan.md.j2` | Programmatic-SEO program plan Markdown skeleton. |
+| `templates/program-plan.md` | Programmatic-SEO program plan Markdown skeleton. Generated from `templates/program-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/program-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

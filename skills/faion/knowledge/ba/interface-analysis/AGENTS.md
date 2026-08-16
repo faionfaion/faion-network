@@ -73,7 +73,8 @@
 | `templates/interface-specification.md` | Per-interface spec: data elements, protocol, frequency, volume, security, errors. |
 | `templates/landscape-merge.sh` | Merge new specs into the integration register with diff. |
 | `templates/landscape-register.md` | Top-level integration landscape register skeleton. |
-| `templates/_smoke-test.md` | Minimum viable filled-in interface spec. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in interface spec. |
+| `templates/_smoke-test.md` | Minimum viable filled-in interface spec. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

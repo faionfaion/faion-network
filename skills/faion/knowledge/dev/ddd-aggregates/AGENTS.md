@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/Aggregate.py` | Python aggregate root with collected events |
 | `templates/Aggregate.cs` | C# aggregate root with private setters |
-| `templates/invariant-tests.md` | Markdown checklist of invariant→test mappings |
+| `templates/invariant-tests.md.j2` | Markdown checklist of invariant→test mappings |
+| `templates/invariant-tests.md` | Markdown checklist of invariant→test mappings Generated from `templates/invariant-tests.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

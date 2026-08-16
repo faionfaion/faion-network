@@ -5,7 +5,7 @@
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
 # INDEX.xml audit checklist
 
-- [ ] Root is <index domain count>
+- [ ] Root is <index_domain_count>
 - [ ] One-paragraph <description>
 - [ ] Every <methodology> has slug + tier + path + <summary>
 - [ ] <summary> <=200 chars, output-first phrasing

@@ -62,9 +62,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ecosystem-report.md` | Report skeleton with surface table + risk table + executive summary |
+| `templates/ecosystem-report.md.j2` | Report skeleton with surface table + risk table + executive summary |
+| `templates/ecosystem-report.md` | Report skeleton with surface table + risk table + executive summary Generated from `templates/ecosystem-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/surface-matrix.json` | Surface capability matrix skeleton |
-| `templates/_smoke-test.md` | Minimum viable filled-in ecosystem report |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in ecosystem report |
+| `templates/_smoke-test.md` | Minimum viable filled-in ecosystem report Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

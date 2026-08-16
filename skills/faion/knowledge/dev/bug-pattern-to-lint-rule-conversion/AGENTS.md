@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/bug-pattern-to-lint-rule-conversion.json` | JSON Schema for the decision-record artefact. |
-| `templates/bug-pattern-to-lint-rule-conversion.md` | Markdown skeleton authors fill before wiring the rule. |
+| `templates/bug-pattern-to-lint-rule-conversion.md.j2` | Markdown skeleton authors fill before wiring the rule. |
+| `templates/bug-pattern-to-lint-rule-conversion.md` | Markdown skeleton authors fill before wiring the rule. Generated from `templates/bug-pattern-to-lint-rule-conversion.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

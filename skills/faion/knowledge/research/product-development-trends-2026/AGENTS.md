@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/trend-brief-2026.md` | 2026 trend brief skeleton with the 6 canonical 2026 trend buckets |
+| `templates/trend-brief-2026.md.j2` | 2026 trend brief skeleton with the 6 canonical 2026 trend buckets |
+| `templates/trend-brief-2026.md` | 2026 trend brief skeleton with the 6 canonical 2026 trend buckets Generated from `templates/trend-brief-2026.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/collect-trends.py` | Pull 2026 source signals with freshness gate |
 | `templates/score-signals.py` | Apply 4-axis scoring to 2026 candidates |
 

@@ -78,7 +78,8 @@
 | `templates/risk-register.md` | Risk register template. |
 | `templates/solution-limitations.md` | Solution limitation assessment template. |
 | `templates/solution-options.md` | Solution options analysis template. |
-| `templates/_smoke-test.md` | Minimum filled-in decision record + one deliverable. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in decision record + one deliverable. |
+| `templates/_smoke-test.md` | Minimum filled-in decision record + one deliverable. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

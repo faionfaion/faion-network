@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml#r5-jurisdiction-review -->
 <!-- token-budget-impact: ~160 tokens -->
 
-# Late-Fee & Pause Clause — [jurisdiction]
+# Late-Fee & Pause Clause — <jurisdiction>
 
-**Owner:** [freelancer role] / [person]
-**Version:** [semver]
+**Owner:** <freelancer_role> / <owner_full_name>
+**Version:** <document_version>
 **Last reviewed:** YYYY-MM-DD
 
 ## Schedule (tiered)
@@ -39,4 +39,4 @@
 > After 30 days, 3.0%/month. After 60 days, 5.0%/month.
 > Pause right: Vendor may suspend work after 14 days unpaid with 5-business-day notice.
 > Re-engagement: $500 paid in advance to resume work after pause.
-> Applies to invoices issued on or after [effective date].
+> Applies to invoices issued on or after <effective_date>.

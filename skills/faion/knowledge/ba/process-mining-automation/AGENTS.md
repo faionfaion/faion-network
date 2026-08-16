@@ -72,7 +72,8 @@
 |------|---------|
 | `templates/automation-assessment.md` | Per-candidate automation assessment template. |
 | `templates/conformance-report.md` | Per-process conformance report. |
-| `templates/_smoke-test.md` | Minimum filled-in report. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in report. |
+| `templates/_smoke-test.md` | Minimum filled-in report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

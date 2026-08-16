@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/classifier-config.schema.json` | JSON Schema for classifier-config.json. |
-| `templates/system-prefix.md` | Cacheable system prefix template. |
+| `templates/system-prefix.md.j2` | Cacheable system prefix template. |
+| `templates/system-prefix.md` | Cacheable system prefix template. Generated from `templates/system-prefix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum valid classifier-config. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -57,7 +57,8 @@
 | File | Purpose |
 |---|---|
 | `templates/decision-record.json` | JSON skeleton: workflow_id + per-step surface + actor + handoff. |
-| `templates/surface-catalogue.md` | Reference list of Figma surfaces + agent-supported flag. |
+| `templates/surface-catalogue.md.j2` | Reference list of Figma surfaces + agent-supported flag. |
+| `templates/surface-catalogue.md` | Reference list of Figma surfaces + agent-supported flag. Generated from `templates/surface-catalogue.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled hybrid-workflow decision record. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

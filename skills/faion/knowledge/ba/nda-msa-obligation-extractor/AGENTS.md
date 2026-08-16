@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/nda-msa-obligation-extractor.md` | Markdown report skeleton with required sections + placeholders |
+| `templates/nda-msa-obligation-extractor.md.j2` | Markdown report skeleton with required sections + placeholders |
+| `templates/nda-msa-obligation-extractor.md` | Markdown report skeleton with required sections + placeholders Generated from `templates/nda-msa-obligation-extractor.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/nda-msa-obligation-extractor.schema.json` | JSON Schema for the structured report output |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -59,10 +59,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/topology-spec.md` | Region map + traffic policy + data plane. |
-| `templates/conflict-policy.md` | Per-data-class conflict rules. |
-| `templates/failover-drill.md` | Quarterly drill runbook. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/topology-spec.md.j2` | Region map + traffic policy + data plane. |
+| `templates/topology-spec.md` | Region map + traffic policy + data plane. Generated from `templates/topology-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/conflict-policy.md.j2` | Per-data-class conflict rules. |
+| `templates/conflict-policy.md` | Per-data-class conflict rules. Generated from `templates/conflict-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/failover-drill.md.j2` | Quarterly drill runbook. |
+| `templates/failover-drill.md` | Quarterly drill runbook. Generated from `templates/failover-drill.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

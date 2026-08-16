@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Minimum viable Rails service / job / spec layout reference. |
+| `templates/_smoke-test.md.j2` | Minimum viable Rails service / job / spec layout reference. |
+| `templates/_smoke-test.md` | Minimum viable Rails service / job / spec layout reference. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

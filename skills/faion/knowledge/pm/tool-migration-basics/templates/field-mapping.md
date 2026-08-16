@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Field Mapping Table — [Source Tool] to [Target Tool]
+# Field Mapping Table — <source_tool> to <target_tool>
 
-**Migration:** [Source] → [Target]  
-**Date:** [YYYY-MM-DD]  
+**Migration:** <source> → <target>  
+**Date:** <date>  
 **Status:** Draft / Approved / Final
 
 ## Standard Fields
@@ -63,7 +63,7 @@
 | Source Username | Target Email | Resolved |
 |-----------------|--------------|---------|
 | jsmith | john.smith@company.com | Yes |
-| [unresolved] | [unknown] | No — will drop @mention |
+| <unresolved> | <unknown> | No — will drop @mention |
 
 ## Validation Checklist
 

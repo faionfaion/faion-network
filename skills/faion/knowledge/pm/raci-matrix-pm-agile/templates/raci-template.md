@@ -4,29 +4,29 @@
 <!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# RACI Matrix — [Project Name]
+# RACI Matrix — <project_name>
 
 **Version:** 1.0  
-**Date:** [YYYY-MM-DD]  
-**Owner (Accountable for this matrix):** [Role]
+**Date:** <date>  
+**Owner (Accountable for this matrix):** <role>
 
 ## Role-to-Person Mapping
 
 | Role | Person | Contact |
 |------|--------|---------|
-| [Role 1] | [Name] | [email] |
-| [Role 2] | [Name] | [email] |
-| [Role 3] | [Name] | [email] |
+| <role_1> | [Name] | [email] |
+| <role_2> | [Name] | [email] |
+| <role_3> | [Name] | [email] |
 
 ## Matrix
 
-| Task / Deliverable | [Role 1] | [Role 2] | [Role 3] | [Role 4] | [Role 5] |
+| Task / Deliverable | <role_1> | <role_2> | <role_3> | <role_4> | <role_5> |
 |--------------------|----------|----------|----------|----------|----------|
-| [Task 1]           | A        | R        | C        | I        | I        |
-| [Task 2]           | I        | A        | R        | C        | I        |
-| [Task 3]           | A        | C        | R        | I        | I        |
-| [Task 4]           | C        | I        | C        | A/R      | I        |
-| [Task 5]           | A        | I        | I        | C        | R        |
+| <task_1>           | A        | R        | C        | I        | I        |
+| <task_2>           | I        | A        | R        | C        | I        |
+| <task_3>           | A        | C        | R        | I        | I        |
+| <task_4>           | C        | I        | C        | A/R      | I        |
+| <task_5>           | A        | I        | I        | C        | R        |
 
 **Legend:**  
 R = Responsible (does the work)  
@@ -36,7 +36,7 @@ I = Informed (notified after decision, one-way)
 
 ## Escalation Path
 
-If an Accountable role is unavailable for more than 24 hours, escalation owner is: [Role / Person].
+If an Accountable role is unavailable for more than 24 hours, escalation owner is: <role_person>.
 
 ## Validation Checklist
 

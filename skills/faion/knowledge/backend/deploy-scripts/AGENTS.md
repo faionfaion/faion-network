@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Deploy script audit report listing pre-gate + atomic switch + smoke + rollback. |
-| `templates/_smoke-test.md` | Minimum viable filled-in deploy audit. |
+| `templates/skeleton.md.j2` | Deploy script audit report listing pre-gate + atomic switch + smoke + rollback. |
+| `templates/skeleton.md` | Deploy script audit report listing pre-gate + atomic switch + smoke + rollback. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in deploy audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in deploy audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/deploy.sh` | Deploy script template with atomic switch + smoke check + rollback path. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

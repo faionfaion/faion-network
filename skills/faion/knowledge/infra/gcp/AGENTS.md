@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/decision-record.md` | ADR-style skeleton with context / options / decision / consequences |
-| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in version of the template used by `--self-test` |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

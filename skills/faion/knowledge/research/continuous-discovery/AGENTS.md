@@ -75,7 +75,8 @@
 | `templates/ost-schema.json` | OST node schema (id/type/parent/evidence/status) |
 | `templates/analytics-watcher.py` | Daily watcher: PostHog + tickets -> insight-log.md |
 | `templates/crontab.txt` | Cron schedule for 4 discovery cadences |
-| `templates/discovery-report.md` | Monthly research-review skeleton (kill list + doubled-down) |
+| `templates/discovery-report.md.j2` | Monthly research-review skeleton (kill list + doubled-down) |
+| `templates/discovery-report.md` | Monthly research-review skeleton (kill list + doubled-down) Generated from `templates/discovery-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

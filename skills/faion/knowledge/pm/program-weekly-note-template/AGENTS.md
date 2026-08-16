@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-note.md` | Weekly note skeleton with fixed sections. |
+| `templates/weekly-note.md.j2` | Weekly note skeleton with fixed sections. |
+| `templates/weekly-note.md` | Weekly note skeleton with fixed sections. Generated from `templates/weekly-note.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/outcomes.md` | Last-week outcomes table. |
 
 ## Scripts

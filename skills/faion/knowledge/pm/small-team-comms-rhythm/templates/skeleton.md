@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml#r1-three-rituals-only -->
 <!-- token-budget-impact: ~120 tokens -->
 
-# Small Team Comms Rhythm — [team_id]
+# Small Team Comms Rhythm — <team_id>
 
-**Owner:** [founder role] / [person]
+**Owner:** <founder_role> / <owner_full_name>
 **Team size:** 2 or 3 (HARD cap)
-**Version:** [semver]
+**Version:** <document_version>
 **Last reviewed:** YYYY-MM-DD
 
 ## Rituals (exactly 3)

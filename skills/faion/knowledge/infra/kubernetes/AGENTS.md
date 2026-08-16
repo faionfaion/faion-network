@@ -61,7 +61,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/checklist.md` | Checklist skeleton with id / rule / MUST/SHOULD / evidence columns |
-| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in version of the template used by `--self-test` |
+| `templates/_smoke-test.md` | Minimum viable filled-in version of the template used by `--self-test` Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

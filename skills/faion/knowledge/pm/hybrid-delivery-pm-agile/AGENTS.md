@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the hybrid-delivery ADR artefact. |
 | `templates/hybrid-alignment.py` | Reference script aligning component method assignment with risk profile. |
-| `templates/component-map.md` | Markdown skeleton listing components with method + risk profile + boundary contracts. |
+| `templates/component-map.md.j2` | Markdown skeleton listing components with method + risk profile + boundary contracts. |
+| `templates/component-map.md` | Markdown skeleton listing components with method + risk profile + boundary contracts. Generated from `templates/component-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

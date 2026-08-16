@@ -57,9 +57,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ownership-map.md` | Markdown table per service. |
-| `templates/orphan-resolution.md` | Decision template for unowned services. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/ownership-map.md.j2` | Markdown table per service. |
+| `templates/ownership-map.md` | Markdown table per service. Generated from `templates/ownership-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/orphan-resolution.md.j2` | Decision template for unowned services. |
+| `templates/orphan-resolution.md` | Decision template for unowned services. Generated from `templates/orphan-resolution.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

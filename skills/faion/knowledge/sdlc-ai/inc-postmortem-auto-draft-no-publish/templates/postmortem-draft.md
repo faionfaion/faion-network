@@ -4,19 +4,19 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~350 tokens -->
 
-# Postmortem DRAFT: <incident-id>
+# Postmortem DRAFT: <incident_id>
 
 > Status: `published=false` — agent-emitted; do not publish without human signoff.
 
 ## Timeline (evidence-anchored)
-- [T+0min] <event> — [evidence](url)
+- <t_0min> <event> — [evidence](url)
 
 ## Contributing factor CANDIDATES
 > Mark accepted candidates before publish.
 
-- [ ] <candidate factor 1>
-- [ ] <candidate factor 2>
-- [ ] <candidate factor 3>
+- [ ] <candidate_factor_1>
+- [ ] <candidate_factor_2>
+- [ ] <candidate_factor_3>
 
 ## Action items (PLACEHOLDERS — assign owner + deadline before publish)
 | Title | Owner | Deadline | Verifier |

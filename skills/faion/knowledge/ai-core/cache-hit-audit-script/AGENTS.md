@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/daily-report.md` | Markdown report template (overall + prefixes + alerts) |
+| `templates/daily-report.md.j2` | Markdown report template (overall + prefixes + alerts) |
+| `templates/daily-report.md` | Markdown report template (overall + prefixes + alerts) Generated from `templates/daily-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

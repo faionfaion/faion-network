@@ -71,7 +71,8 @@
 |------|---------|
 | `templates/parking-lot-canvas.md` | Markdown canvas with verbatim quote + requester + meeting context columns. |
 | `templates/requester-response.md` | 48h response template. |
-| `templates/_smoke-test.md` | Minimum filled-in parking lot. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in parking lot. |
+| `templates/_smoke-test.md` | Minimum filled-in parking lot. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

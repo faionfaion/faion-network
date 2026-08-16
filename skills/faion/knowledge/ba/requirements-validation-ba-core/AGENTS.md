@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/review-checklist.md` | Per-requirement validation checklist. |
+| `templates/review-checklist.md.j2` | Per-requirement validation checklist. |
+| `templates/review-checklist.md` | Per-requirement validation checklist. Generated from `templates/review-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sign-off-form.md` | Sign-off form with reviewer + date + verdict. |
 | `templates/req-value-trace.sh` | Shell helper linking requirements to value drivers. |
 

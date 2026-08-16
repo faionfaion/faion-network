@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/alignment-rubric.md` | Methodology × ECO-domain matrix with coverage score. |
-| `templates/study-plan.md` | Candidate study plan with weekly time-budget. |
+| `templates/alignment-rubric.md.j2` | Methodology × ECO-domain matrix with coverage score. |
+| `templates/alignment-rubric.md` | Methodology × ECO-domain matrix with coverage score. Generated from `templates/alignment-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/study-plan.md.j2` | Candidate study plan with weekly time-budget. |
+| `templates/study-plan.md` | Candidate study plan with weekly time-budget. Generated from `templates/study-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

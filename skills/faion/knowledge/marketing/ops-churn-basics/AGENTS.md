@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/report-skeleton.md` | Churn Basics skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Churn Basics. |
+| `templates/report-skeleton.md.j2` | Churn Basics skeleton — fill per artefact, do not commit free-form output. |
+| `templates/report-skeleton.md` | Churn Basics skeleton — fill per artefact, do not commit free-form output. Generated from `templates/report-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Churn Basics. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Churn Basics. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

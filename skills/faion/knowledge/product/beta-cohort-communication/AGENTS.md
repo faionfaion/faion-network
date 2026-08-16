@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/beta-cohort-communication.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/beta-cohort-communication.md.j2` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/beta-cohort-communication.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml Generated from `templates/beta-cohort-communication.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/beta-cohort-communication.schema.json` | JSON Schema seed + filled fixture for the playbook-step artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/runway-model.json` | Runway model skeleton |
-| `templates/burn-checklist.md` | All-categories burn checklist |
+| `templates/burn-checklist.md.j2` | All-categories burn checklist |
+| `templates/burn-checklist.md` | All-categories burn checklist Generated from `templates/burn-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

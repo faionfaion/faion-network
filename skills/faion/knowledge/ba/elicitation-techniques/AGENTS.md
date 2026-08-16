@@ -74,7 +74,8 @@
 | `templates/interview-guide.md` | Non-leading 60-minute interview structure with consent + PII block. |
 | `templates/workshop-agenda.md` | Structured workshop agenda with breakouts + ground rules. |
 | `templates/session-check.py` | Validate session artifact: consent flag, redaction tags, technique attestation. |
-| `templates/_smoke-test.md` | Minimum viable session artifact + REQ stub. |
+| `templates/_smoke-test.md.j2` | Minimum viable session artifact + REQ stub. |
+| `templates/_smoke-test.md` | Minimum viable session artifact + REQ stub. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

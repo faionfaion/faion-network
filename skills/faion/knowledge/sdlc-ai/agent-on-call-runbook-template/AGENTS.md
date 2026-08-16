@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/on-call-runbook.md` | Markdown runbook skeleton with step IDs + tool tier column |
+| `templates/on-call-runbook.md.j2` | Markdown runbook skeleton with step IDs + tool tier column |
+| `templates/on-call-runbook.md` | Markdown runbook skeleton with step IDs + tool tier column Generated from `templates/on-call-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

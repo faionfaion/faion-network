@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/_smoke-test.md` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example used by the validator self-test. |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/playbook-step.md.tmpl` | Markdown playbook-step skeleton: trigger, action, verification, rollback. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

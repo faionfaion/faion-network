@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/vdi-vs-byod-decision-matrix.md` | Working skeleton for the `vdi-vs-byod-decision-matrix` artefact with required fields and `not_applicable: <reason>` markers per row. |
-| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
+| `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

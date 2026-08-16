@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/graph-spec.yaml` | Hub-spoke graph spec skeleton |
-| `templates/audit-report.md` | Per-cluster audit findings markdown |
+| `templates/audit-report.md.j2` | Per-cluster audit findings markdown |
+| `templates/audit-report.md` | Per-cluster audit findings markdown Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable graph + audit for validator self-test |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

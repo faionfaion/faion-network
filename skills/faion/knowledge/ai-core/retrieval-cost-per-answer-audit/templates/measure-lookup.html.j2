@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Measuring one lookup</title>
+<style>:root{color-scheme:light dark}
+body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+color:#1b1b1b;background:#fff}
+h1,h2,h3,h4,h5,h6{line-height:1.25;margin:2rem 0 .6rem}
+h1{font-size:1.9rem} h2{font-size:1.45rem} h3{font-size:1.15rem}
+p,ul,ol,blockquote,table,pre{margin:0 0 1rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+background:#f2f2f2;padding:.1em .3em;border-radius:3px}
+pre{background:#f6f6f6;padding:.9rem 1rem;border-radius:5px;overflow-x:auto}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #d0d0d0;margin-left:0;padding-left:1rem;
+color:#4a4a4a}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:left}
+th{background:#f6f6f6}
+hr{border:0;border-top:1px solid #ddd;margin:2rem 0}
+a{color:#0b57d0}
+@media(prefers-color-scheme:dark){
+body{color:#e6e6e6;background:#151515}
+code{background:#242424} pre{background:#1d1d1d}
+th{background:#1d1d1d} th,td{border-color:#333}
+blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
+<body>
+<h1>Measuring one lookup</h1>
+<p>The unit is the whole lookup, not the retrieval call (r1). Wrap the counter around the outermost boundary — query in, answer body out — and attribute every string that crosses into the model to exactly one of three buckets.</p>
+<h2>Bucket assignment</h2>
+<table><thead><tr><th>Bucket</th><th>What goes in it</th></tr></thead><tbody><tr><td><code>index_tokens</code></td><td>Routing files, taxonomies, manifests, index or INDEX-style files, table-of-contents reads, schema dumps, any &quot;which document should I open&quot; step — including a routing LLM call's own input.</td></tr><tr><td><code>candidate_tokens</code></td><td>Every document, chunk or record retrieved and shown to a model or a reranker, <strong>including candidates later discarded</strong>. Reranker input counts here.</td></tr><tr><td><code>body_tokens</code></td><td>Only the content that actually answered. If a 6k-token chunk was retrieved and 1.2k of it answered, <code>body_tokens</code> is 1.2k and the other 4.8k belongs in <code>candidate_tokens</code>.</td></tr></tbody></table>
+<p>Double-counting is the usual error: a chunk counted in both <code>candidate_tokens</code> and <code>body_tokens</code> inflates the total and deflates the ratio. Split it.</p>
+<h2>Per retrieval shape</h2>
+<p><strong>Flat vector store.</strong> <code>index_tokens</code> is usually 0 (the ANN index is not read by the model). <code>candidate_tokens</code> is <code>top_k * chunk_size</code>, before reranking. Instrument at the call that assembles the prompt, not at the vector-store client.</p>
+<p><strong>Tree or hierarchical index.</strong> The expensive shape. <code>index_tokens</code> is the sum of every level read on the way down — L1 plus each L2 opened, plus any index re-read after a wrong turn. Count re-reads; a lookup that backtracks pays twice. This is the leg that dominates and the one no default instrumentation captures.</p>
+<p><strong>Graph traversal.</strong> <code>candidate_tokens</code> is every node and edge payload materialised during the walk, at every hop, before ranking truncated the set. Count the pre-truncation volume: that is what the traversal actually cost to produce.</p>
+<p><strong>Agent with a search tool.</strong> One lookup spans every tool call in the turn plus the tool results. If the agent searched three times before answering, all three searches and all three result sets belong to the same row. Do not record three rows.</p>
+<h2>Where the counter goes</h2>
+<p>Prefer the provider's usage field on each call and sum per lookup — it is the billed number and needs no tokenizer agreement. If usage is unavailable, tokenize the exact strings sent, with the same tokenizer on both sides of any comparison (r6). Character counts divided by four are an estimate, and an estimate in this format acquires the authority of a measurement (f6). If neither is available, do not produce a ledger.</p>
+<h2>Judging <code>correct</code></h2>
+<p>Coarse and binary, against a criterion stated once in <code>sampling</code>: did the delivered body contain what was needed to answer, judged by whoever asked. This exists only to make <code>tokens_per_correct_answer</code> computable and to catch cost reductions that are really quality regressions (f5). It is not a retrieval evaluation — use <code>rag-eval-retrieval-metrics</code> for that.</p>
+</body></html>

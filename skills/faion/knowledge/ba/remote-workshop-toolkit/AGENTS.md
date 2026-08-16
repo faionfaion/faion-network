@@ -76,7 +76,8 @@
 | `templates/miro-canvas-event-storming.json` | Big-picture event-storming canvas. |
 | `templates/ground-rules.md` | Camera, mic, chat, hand-raise, breakout conventions. |
 | `templates/async-pulse.md` | 5-min Loom or written pulse questionnaire. |
-| `templates/_smoke-test.md` | Minimum filled-in run-book. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in run-book. |
+| `templates/_smoke-test.md` | Minimum filled-in run-book. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

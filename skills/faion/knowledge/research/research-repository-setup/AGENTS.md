@@ -69,9 +69,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/platform-scorecard.md` | Scorecard template for repository platform selection |
+| `templates/platform-scorecard.md.j2` | Scorecard template for repository platform selection |
+| `templates/platform-scorecard.md` | Scorecard template for repository platform selection Generated from `templates/platform-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/taxonomy-seed.yaml` | Starter tag taxonomy grouped by class (segment / pain / JTBD / behavior) |
-| `templates/access-matrix.md` | Role-to-permission mapping |
+| `templates/access-matrix.md.j2` | Role-to-permission mapping |
+| `templates/access-matrix.md` | Role-to-permission mapping Generated from `templates/access-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -60,8 +60,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/kickoff-deck.md` | 8-12 slide deck outline. |
-| `templates/kickoff-brief.md` | 1-page brief feeding the deck. |
+| `templates/kickoff-deck.md.j2` | 8-12 slide deck outline. |
+| `templates/kickoff-deck.md` | 8-12 slide deck outline. Generated from `templates/kickoff-deck.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/kickoff-brief.md.j2` | 1-page brief feeding the deck. |
+| `templates/kickoff-brief.md` | 1-page brief feeding the deck. Generated from `templates/kickoff-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rtm-template.md` | RTM matrix template with columns: req_id, design_ref, code_ref, test_ref, release_ref. |
+| `templates/rtm-template.md.j2` | RTM matrix template with columns: req_id, design_ref, code_ref, test_ref, release_ref. |
+| `templates/rtm-template.md` | RTM matrix template with columns: req_id, design_ref, code_ref, test_ref, release_ref. Generated from `templates/rtm-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rtm_min.py` | Stdlib RTM generator that scans repo for req-ID mentions. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/flag-naming.md` | Positive flag naming reference |
 | `templates/dark-launch-ramp.yaml` | Dark-launch ramp schedule template |
-| `templates/feature-flags-inventory.md` | Inventory entry template under .aidocs/feature-flags.md |
+| `templates/feature-flags-inventory.md.j2` | Inventory entry template under .aidocs/feature-flags.md |
+| `templates/feature-flags-inventory.md` | Inventory entry template under .aidocs/feature-flags.md Generated from `templates/feature-flags-inventory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

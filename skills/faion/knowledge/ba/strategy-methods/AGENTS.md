@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scoring-matrix.md` | Method scoring matrix with fit axes. |
-| `templates/limitation-register.md` | Per-method limitation register. |
+| `templates/scoring-matrix.md.j2` | Method scoring matrix with fit axes. |
+| `templates/scoring-matrix.md` | Method scoring matrix with fit axes. Generated from `templates/scoring-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/limitation-register.md.j2` | Per-method limitation register. |
+| `templates/limitation-register.md` | Per-method limitation register. Generated from `templates/limitation-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sensitivity.py` | Stdlib sensitivity analysis for method-selection scores. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

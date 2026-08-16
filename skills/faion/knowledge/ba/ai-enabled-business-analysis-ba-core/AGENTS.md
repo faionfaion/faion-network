@@ -62,7 +62,8 @@
 |------|---------|
 | `templates/ai-enabled-business-analysis.json` | JSON Schema for the AI-Enabled Business Analysis output contract |
 | `templates/ai-enabled-business-analysis.md` | Markdown skeleton with the required fields |
-| `templates/_smoke-test.md` | Filled-in minimum viable example of a ai-enabled-business-analysis record |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a ai-enabled-business-analysis record |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a ai-enabled-business-analysis record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

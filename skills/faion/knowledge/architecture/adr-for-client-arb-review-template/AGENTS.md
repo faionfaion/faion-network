@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/adr-skeleton.md` | ADR skeleton with status / decision_class / context / decision / alternatives-rejected / consequences / rollback / signers. |
-| `templates/_smoke-test.md` | Minimum viable filled-in ADR. |
+| `templates/adr-skeleton.md.j2` | ADR skeleton with status / decision_class / context / decision / alternatives-rejected / consequences / rollback / signers. |
+| `templates/adr-skeleton.md` | ADR skeleton with status / decision_class / context / decision / alternatives-rejected / consequences / rollback / signers. Generated from `templates/adr-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in ADR. |
+| `templates/_smoke-test.md` | Minimum viable filled-in ADR. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

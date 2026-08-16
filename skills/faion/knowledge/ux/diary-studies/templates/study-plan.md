@@ -9,7 +9,7 @@
 - Duration: <days>
 - Segments: <list>
 - N per segment: >=8
-- Reminder cadence: <push + SMS schedule>
+- Reminder cadence: <push_sms_schedule>
 - Entry modes: daily (fixed time) + event-triggered (after <action>)
 - Retention: <days> with anonymisation + deletion rights
 - Analysis: per-participant theming → cross-participant affinity → longitudinal change

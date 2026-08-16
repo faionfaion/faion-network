@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ls-store.yaml` | Store + variants skeleton ready to fill |
-| `templates/dunning-sequence.md` | 3-email dunning sequence for failed renewals |
+| `templates/dunning-sequence.md.j2` | 3-email dunning sequence for failed renewals |
+| `templates/dunning-sequence.md` | 3-email dunning sequence for failed renewals Generated from `templates/dunning-sequence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable LS store config for validator self-test |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

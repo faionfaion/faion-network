@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/openai-jsonl-builder.py` | CSV→JSONL builder with schema validation. |
 | `templates/openai-validate-jsonl.py` | Pre-upload validator (schema + token counts). |
-| `templates/data-prep-spec.md` | Markdown spec listing source/transform/output. |
+| `templates/data-prep-spec.md.j2` | Markdown spec listing source/transform/output. |
+| `templates/data-prep-spec.md` | Markdown spec listing source/transform/output. Generated from `templates/data-prep-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

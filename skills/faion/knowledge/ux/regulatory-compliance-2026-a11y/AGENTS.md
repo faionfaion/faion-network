@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/vpat-acr-skeleton.md` | VPAT-ACR template (WCAG 2.2 AA). |
+| `templates/vpat-acr-skeleton.md.j2` | VPAT-ACR template (WCAG 2.2 AA). |
+| `templates/vpat-acr-skeleton.md` | VPAT-ACR template (WCAG 2.2 AA). Generated from `templates/vpat-acr-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/accessibility-statement.txt` | EU EAA accessibility statement skeleton. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

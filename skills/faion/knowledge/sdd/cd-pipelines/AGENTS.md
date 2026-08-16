@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/cd.yml` | GitHub Actions CD pipeline: build → unit → integration → staging → e2e → production (manual) |
-| `templates/rollback_runbook.md` | Rollback runbook: criteria, commands, comms |
+| `templates/rollback_runbook.md.j2` | Rollback runbook: criteria, commands, comms |
+| `templates/rollback_runbook.md` | Rollback runbook: criteria, commands, comms Generated from `templates/rollback_runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

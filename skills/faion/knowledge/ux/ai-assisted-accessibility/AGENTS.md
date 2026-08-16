@@ -60,7 +60,8 @@
 | File | Purpose |
 |---|---|
 | `templates/conformance-report.json` | JSON skeleton: site + target + automated + AT + verdict + signature + next audit. |
-| `templates/conformance-report.md` | Markdown narrative skeleton accompanying JSON. |
+| `templates/conformance-report.md.j2` | Markdown narrative skeleton accompanying JSON. |
+| `templates/conformance-report.md` | Markdown narrative skeleton accompanying JSON. Generated from `templates/conformance-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled faion.net partial-conformance example. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

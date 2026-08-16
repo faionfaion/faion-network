@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/synthetic-panel-report.md` | Markdown report skeleton with persona table + response panel + validation plan |
+| `templates/synthetic-panel-report.md.j2` | Markdown report skeleton with persona table + response panel + validation plan |
+| `templates/synthetic-panel-report.md` | Markdown report skeleton with persona table + response panel + validation plan Generated from `templates/synthetic-panel-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

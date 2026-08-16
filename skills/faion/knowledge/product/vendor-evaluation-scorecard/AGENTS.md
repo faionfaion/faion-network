@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scorecard.md` | Human-readable scorecard with five-axis table |
+| `templates/scorecard.md.j2` | Human-readable scorecard with five-axis table |
+| `templates/scorecard.md` | Human-readable scorecard with five-axis table Generated from `templates/scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scorecard.json` | Machine-readable scorecard matching schema |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

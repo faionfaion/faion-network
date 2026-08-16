@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/routing-rubric.md` | Human-readable routing rubric printable card. |
+| `templates/routing-rubric.md.j2` | Human-readable routing rubric printable card. |
+| `templates/routing-rubric.md` | Human-readable routing rubric printable card. Generated from `templates/routing-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

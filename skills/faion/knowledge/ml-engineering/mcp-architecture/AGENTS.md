@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/mcp-spec.md` | Spec skeleton: primitives + transport + auth + versions. |
+| `templates/mcp-spec.md.j2` | Spec skeleton: primitives + transport + auth + versions. |
+| `templates/mcp-spec.md` | Spec skeleton: primitives + transport + auth + versions. Generated from `templates/mcp-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/mcp-server-python.py` | Python MCP server skeleton via official SDK. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

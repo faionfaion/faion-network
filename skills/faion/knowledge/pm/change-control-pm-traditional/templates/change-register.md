@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Change Register: [Project Name]
+# Change Register: <project_name>
 
 **Last Updated:** [Date]
 
@@ -20,7 +20,7 @@
 
 | Metric | Original Baseline | Approved CR Impact | Current Baseline |
 |--------|-------------------|--------------------|-----------------|
-| Schedule | [X days] | +[X days] | [X days] |
+| Schedule | <x_days> | +<x_days> | <x_days> |
 | Cost | $[X] | +$[X] | $[X] |
 
 Run `scripts/cr_drift.sh` to recompute from the register table.

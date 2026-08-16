@@ -68,8 +68,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/hardening-report.md` | Markdown skeleton for the hardening report (controls + SLA + sign-off). |
-| `templates/rotation-runbook.md` | Webhook-secret rotation runbook with rollback plan. |
+| `templates/hardening-report.md.j2` | Markdown skeleton for the hardening report (controls + SLA + sign-off). |
+| `templates/hardening-report.md` | Markdown skeleton for the hardening report (controls + SLA + sign-off). Generated from `templates/hardening-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rotation-runbook.md.j2` | Webhook-secret rotation runbook with rollback plan. |
+| `templates/rotation-runbook.md` | Webhook-secret rotation runbook with rollback plan. Generated from `templates/rotation-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled-in minimum viable hardening report for validator smoke-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

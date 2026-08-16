@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/optimization-plan.md` | Monthly optimization plan Markdown skeleton. |
+| `templates/optimization-plan.md.j2` | Monthly optimization plan Markdown skeleton. |
+| `templates/optimization-plan.md` | Monthly optimization plan Markdown skeleton. Generated from `templates/optimization-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/change-log.csv` | Change-log CSV header. |
 | `templates/optimization-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 

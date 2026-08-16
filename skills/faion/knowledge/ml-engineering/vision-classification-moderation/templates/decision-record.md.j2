@@ -1,0 +1,30 @@
+<!-- purpose: Per-image moderation decision record -->
+<!-- consumes: inputs declared in vision-classification-moderation/AGENTS.md Prerequisites -->
+<!-- produces: fill-in artefact matching 02-output-contract.xml -->
+<!-- depends-on: 01-core-rules.xml + 02-output-contract.xml -->
+<!-- token-budget-impact: ~200-500 tokens when loaded as context -->
+
+# Per-image moderation decision record
+
+## Goal
+
+{Restate the methodology goal in one sentence.}
+
+## Inputs
+
+| Artefact | Source | Status |
+|----------|--------|--------|
+| {input} | {source} | pending |
+
+## Decision
+
+{Selected rule id from 01-core-rules.xml.}
+
+## Rationale
+
+- {Point 1}
+- {Point 2}
+
+## Risks / Open questions
+
+- {Risk 1}

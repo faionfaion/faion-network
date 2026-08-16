@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/elk-arch-spec.md` | Markdown skeleton for the ELK architecture spec |
+| `templates/elk-arch-spec.md.j2` | Markdown skeleton for the ELK architecture spec |
+| `templates/elk-arch-spec.md` | Markdown skeleton for the ELK architecture spec Generated from `templates/elk-arch-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/eck-manifest.yaml` | Sample ECK Elasticsearch CRD with role split + hot-warm tiers |
 | `templates/_smoke-test.json` | Minimum spec used by validate-devops-elk-architecture.py --self-test |
 

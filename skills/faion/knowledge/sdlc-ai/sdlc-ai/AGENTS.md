@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/routing-decision.md` | Markdown decision record naming task signal + chosen candidates + rationale |
+| `templates/routing-decision.md.j2` | Markdown decision record naming task signal + chosen candidates + rationale |
+| `templates/routing-decision.md` | Markdown decision record naming task signal + chosen candidates + rationale Generated from `templates/routing-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/client-conventions-intake.json` | JSON Schema for the intake-report artefact. |
-| `templates/conventions-interview.md` | 8-dimension interview script. |
+| `templates/conventions-interview.md.j2` | 8-dimension interview script. |
+| `templates/conventions-interview.md` | 8-dimension interview script. Generated from `templates/conventions-interview.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

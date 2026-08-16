@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/playbook-step-skeleton.md` | Churn Prevention skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Churn Prevention. |
+| `templates/playbook-step-skeleton.md.j2` | Churn Prevention skeleton — fill per artefact, do not commit free-form output. |
+| `templates/playbook-step-skeleton.md` | Churn Prevention skeleton — fill per artefact, do not commit free-form output. Generated from `templates/playbook-step-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Churn Prevention. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Churn Prevention. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

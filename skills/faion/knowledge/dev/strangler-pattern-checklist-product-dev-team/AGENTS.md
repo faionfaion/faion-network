@@ -59,11 +59,16 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/migration-checklist.md` | Five-gate checkbox checklist with owners/dates. |
-| `templates/acl-coverage-matrix.md` | Op-by-op ACL coverage table. |
-| `templates/shadow-read-divergence-log.md` | Per-day shadow-read divergence record. |
-| `templates/sunset-plan.md` | Sunset criteria + named deletion-PR owner. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/migration-checklist.md.j2` | Five-gate checkbox checklist with owners/dates. |
+| `templates/migration-checklist.md` | Five-gate checkbox checklist with owners/dates. Generated from `templates/migration-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/acl-coverage-matrix.md.j2` | Op-by-op ACL coverage table. |
+| `templates/acl-coverage-matrix.md` | Op-by-op ACL coverage table. Generated from `templates/acl-coverage-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/shadow-read-divergence-log.md.j2` | Per-day shadow-read divergence record. |
+| `templates/shadow-read-divergence-log.md` | Per-day shadow-read divergence record. Generated from `templates/shadow-read-divergence-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sunset-plan.md.j2` | Sunset criteria + named deletion-PR owner. |
+| `templates/sunset-plan.md` | Sunset criteria + named deletion-PR owner. Generated from `templates/sunset-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

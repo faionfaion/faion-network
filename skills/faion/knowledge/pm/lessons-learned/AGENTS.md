@@ -66,9 +66,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/observation-log.md` | In-flight observation row: date, observer, signal, hypothesis. |
-| `templates/retro-notes.md` | Per-milestone retro: went-well, went-wrong, decisions, action items. |
-| `templates/post-mortem.md` | Blameless post-mortem: timeline, root cause, contributing factors, actions. |
+| `templates/observation-log.md.j2` | In-flight observation row: date, observer, signal, hypothesis. |
+| `templates/observation-log.md` | In-flight observation row: date, observer, signal, hypothesis. Generated from `templates/observation-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retro-notes.md.j2` | Per-milestone retro: went-well, went-wrong, decisions, action items. |
+| `templates/retro-notes.md` | Per-milestone retro: went-well, went-wrong, decisions, action items. Generated from `templates/retro-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/post-mortem.md.j2` | Blameless post-mortem: timeline, root cause, contributing factors, actions. |
+| `templates/post-mortem.md` | Blameless post-mortem: timeline, root cause, contributing factors, actions. Generated from `templates/post-mortem.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

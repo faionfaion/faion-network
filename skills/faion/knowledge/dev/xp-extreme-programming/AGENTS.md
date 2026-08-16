@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/adoption-plan.md` | Markdown 4-week XP adoption plan with metrics gates. |
+| `templates/adoption-plan.md.j2` | Markdown 4-week XP adoption plan with metrics gates. |
+| `templates/adoption-plan.md` | Markdown 4-week XP adoption plan with metrics gates. Generated from `templates/adoption-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ci-config-snippet.yaml` | Example GitHub Actions snippet sharding tests to keep CI <10min. |
 | `templates/pre-commit-xp.yaml` | Pre-commit hooks enforcing TDD-friendly gates. |
 | `templates/_smoke-test.json` | Minimum viable XP adoption plan for validator smoke-test. |

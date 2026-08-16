@@ -64,8 +64,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the GitLab Boards configuration artefact. |
-| `templates/issue-template-bug.md` | Bug report issue template (steps, expected, actual, environment). |
-| `templates/issue-template-feature.md` | Feature request issue template (user need, acceptance criteria). |
+| `templates/issue-template-bug.md.j2` | Bug report issue template (steps, expected, actual, environment). |
+| `templates/issue-template-bug.md` | Bug report issue template (steps, expected, actual, environment). Generated from `templates/issue-template-bug.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/issue-template-feature.md.j2` | Feature request issue template (user need, acceptance criteria). |
+| `templates/issue-template-feature.md` | Feature request issue template (user need, acceptance criteria). Generated from `templates/issue-template-feature.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scoped-labels.py` | Reference script listing the canonical scoped-label scheme. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

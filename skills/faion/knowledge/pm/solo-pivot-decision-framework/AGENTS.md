@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pivot-decision-record.md` | DR skeleton with type + triggers + sunk-cost + runway. |
+| `templates/pivot-decision-record.md.j2` | DR skeleton with type + triggers + sunk-cost + runway. |
+| `templates/pivot-decision-record.md` | DR skeleton with type + triggers + sunk-cost + runway. Generated from `templates/pivot-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

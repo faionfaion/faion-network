@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/pnl-monthly.md` | Monthly P&L template. |
-| `templates/utilisation-weekly.md` | Weekly utilisation sub-tracker. |
+| `templates/utilisation-weekly.md.j2` | Weekly utilisation sub-tracker. |
+| `templates/utilisation-weekly.md` | Weekly utilisation sub-tracker. Generated from `templates/utilisation-weekly.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

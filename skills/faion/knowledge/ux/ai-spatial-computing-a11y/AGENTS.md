@@ -60,9 +60,11 @@
 
 | File | Purpose |
 |---|---|
-| `templates/interaction-fallback-spec.md` | Markdown skeleton: surface + primary modality + tier-2 + tier-3 + dwell + retention + consent. |
+| `templates/interaction-fallback-spec.md.j2` | Markdown skeleton: surface + primary modality + tier-2 + tier-3 + dwell + retention + consent. |
+| `templates/interaction-fallback-spec.md` | Markdown skeleton: surface + primary modality + tier-2 + tier-3 + dwell + retention + consent. Generated from `templates/interaction-fallback-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-xaur-gap-analysis.txt` | Prompt asking agent for clause-by-clause XAUR gap analysis with confidence labels. |
-| `templates/_smoke-test.md` | Filled minimum-viable spec for a single gaze→voice→controller surface. |
+| `templates/_smoke-test.md.j2` | Filled minimum-viable spec for a single gaze→voice→controller surface. |
+| `templates/_smoke-test.md` | Filled minimum-viable spec for a single gaze→voice→controller surface. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

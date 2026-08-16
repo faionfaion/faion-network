@@ -68,7 +68,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/parity-report.md` | Markdown skeleton for the per-stage parity report (scope, observables, ramp window, diff metrics, sign-off). |
+| `templates/parity-report.md.j2` | Markdown skeleton for the per-stage parity report (scope, observables, ramp window, diff metrics, sign-off). |
+| `templates/parity-report.md` | Markdown skeleton for the per-stage parity report (scope, observables, ramp window, diff metrics, sign-off). Generated from `templates/parity-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/parity-report.json` | JSON Schema for the parity-report artefact (canonical contract). |
 | `templates/diff-store-schema.sql` | Postgres DDL for the `parity_diffs` table the sampler writes to. |
 | `templates/normalizer-skeleton.py` | Python skeleton of a deterministic diff normalizer (timestamp/UUID/list rules). |

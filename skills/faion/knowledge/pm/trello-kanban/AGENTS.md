@@ -68,8 +68,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/card-feature.md` | Feature card description template |
-| `templates/card-bug.md` | Bug card description template |
+| `templates/card-feature.md.j2` | Feature card description template |
+| `templates/card-feature.md` | Feature card description template Generated from `templates/card-feature.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/card-bug.md.j2` | Bug card description template |
+| `templates/card-bug.md` | Bug card description template Generated from `templates/card-bug.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/discussion-guide.md` | Focus group discussion guide skeleton with probe ladders + reveal timing |
+| `templates/discussion-guide.md.j2` | Focus group discussion guide skeleton with probe ladders + reveal timing |
+| `templates/discussion-guide.md` | Focus group discussion guide skeleton with probe ladders + reveal timing Generated from `templates/discussion-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/note-taking.md` | Per-group note-taking template with quote capture + dominance tracking |
 | `templates/transcript-themer.py` | Python clustering helper grouping verbatim quotes into candidate themes across groups |
 

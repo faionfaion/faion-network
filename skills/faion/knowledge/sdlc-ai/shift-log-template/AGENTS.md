@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/shift-log.md` | Markdown skeleton with required sections. |
+| `templates/shift-log.md.j2` | Markdown skeleton with required sections. |
+| `templates/shift-log.md` | Markdown skeleton with required sections. Generated from `templates/shift-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/shift-log.json` | JSON skeleton matching the schema. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

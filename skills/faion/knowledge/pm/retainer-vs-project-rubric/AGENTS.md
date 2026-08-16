@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | EngagementRubric skeleton with default dimensions |
+| `templates/skeleton.md.j2` | EngagementRubric skeleton with default dimensions |
+| `templates/skeleton.md` | EngagementRubric skeleton with default dimensions Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `EngagementRubric` |
 

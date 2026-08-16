@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# User Story <STORY-ID>
+# User Story <story_id>
 
 **As a** <persona>  **I want** <capability>  **so that** <value>.
 
 ## Acceptance Criteria
-- AC-<STORY>-01: <Given/When/Then>
+- AC-<story>-01: <given_when_then>

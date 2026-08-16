@@ -68,7 +68,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ha-decision-record.md` | ADR skeleton: SLA → topology → failure modes → mitigations |
+| `templates/ha-decision-record.md.j2` | ADR skeleton: SLA → topology → failure modes → mitigations |
+| `templates/ha-decision-record.md` | ADR skeleton: SLA → topology → failure modes → mitigations Generated from `templates/ha-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sigterm-drain.py` | FastAPI graceful-shutdown handler |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

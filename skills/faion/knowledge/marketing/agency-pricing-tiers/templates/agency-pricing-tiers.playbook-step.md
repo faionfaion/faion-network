@@ -6,7 +6,7 @@
 # Agency Pricing Tiers — Playbook step
 
 ## Owner
-[name]
+<name>
 
 ## Steps
 1. id=s1 input=brief owner=lead exit_criterion="..." output_location=docs/...
@@ -18,4 +18,4 @@
 - when: signal_X < threshold then: loop back to s2
 
 ## Deviation log reference
-[path / link]
+<path_link>

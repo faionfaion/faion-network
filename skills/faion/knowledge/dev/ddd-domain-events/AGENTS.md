@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/DomainEvent.py` | Frozen event record skeleton |
 | `templates/Outbox.py` | Outbox publisher + DB row spec |
-| `templates/dispatch.md` | Application-service dispatch sequence |
+| `templates/dispatch.md.j2` | Application-service dispatch sequence |
+| `templates/dispatch.md` | Application-service dispatch sequence Generated from `templates/dispatch.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

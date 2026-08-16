@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ledger-skeleton.md` | Canonical ledger header + first-row example with all required columns. |
+| `templates/ledger-skeleton.md.j2` | Canonical ledger header + first-row example with all required columns. |
+| `templates/ledger-skeleton.md` | Canonical ledger header + first-row example with all required columns. Generated from `templates/ledger-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/review-digest.md` | Weekly review digest skeleton (SLO compliance %, overdue items, archived this period). |
 
 ## Scripts

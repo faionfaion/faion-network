@@ -4,17 +4,17 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-800 tokens -->
 
-# Product Trio — <week N> — <date>
+# Product Trio — <week_n> — <date>
 
-Participants: <PM name>, <design name>, <eng name>
+Participants: <pm_name>, <design_name>, <eng_name>
 Duration: 60 min
 Budget per agenda item: 10 min (max)
 
 ## Last-week outcomes
-- <decision>: <evidence link>
+- <decision>: <evidence_link>
 
 ## This-week discovery items
-1. <topic> — owner: <name> — desired outcome: <decision needed>
+1. <topic> — owner: <name> — desired outcome: <decision_needed>
 
 ## Parking lot
 - <bullets>

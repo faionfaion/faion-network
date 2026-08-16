@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/checklist.md` | Operating checklist skeleton with rows + owner + cadence |
-| `templates/_smoke-test.md` | Minimum viable filled-in checklist |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in checklist |
+| `templates/_smoke-test.md` | Minimum viable filled-in checklist Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

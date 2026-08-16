@@ -6,7 +6,7 @@ depends-on: content/02-output-contract.xml schema for eu-ai-act-compliance
 token-budget-impact: ≤500 tokens to fill
 -->
 
-# Model Card: [Model Name]
+# Model Card: <model_name>
 
 ## Model Details
 

@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/rag-architecture.md.tmpl` | Decision record skeleton with all 7 architecture sections. |
-| `templates/_smoke-test.md` | Filled example for a docs Q&amp;A RAG. |
+| `templates/_smoke-test.md.j2` | Filled example for a docs Q&amp;A RAG. |
+| `templates/_smoke-test.md` | Filled example for a docs Q&amp;A RAG. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/lifecycle-policy.md` | Lifecycle policy document skeleton. |
-| `templates/state-transition-matrix.md` | Matrix of allowed transitions per state. |
+| `templates/lifecycle-policy.md.j2` | Lifecycle policy document skeleton. |
+| `templates/lifecycle-policy.md` | Lifecycle policy document skeleton. Generated from `templates/lifecycle-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/state-transition-matrix.md.j2` | Matrix of allowed transitions per state. |
+| `templates/state-transition-matrix.md` | Matrix of allowed transitions per state. Generated from `templates/state-transition-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

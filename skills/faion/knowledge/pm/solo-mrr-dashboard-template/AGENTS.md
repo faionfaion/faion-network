@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/dashboard-spec.json` | One-month dashboard skeleton |
-| `templates/formula-card.md` | One-pager: 5 canonical formulas |
+| `templates/formula-card.md.j2` | One-pager: 5 canonical formulas |
+| `templates/formula-card.md` | One-pager: 5 canonical formulas Generated from `templates/formula-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

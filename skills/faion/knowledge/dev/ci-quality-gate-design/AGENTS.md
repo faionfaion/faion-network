@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ci-quality-gate-design.json` | JSON Schema for the ci-design artefact. |
-| `templates/ci-design.md` | Skeleton with three-tier tables and budget section. |
+| `templates/ci-design.md.j2` | Skeleton with three-tier tables and budget section. |
+| `templates/ci-design.md` | Skeleton with three-tier tables and budget section. Generated from `templates/ci-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rotation-guide.md` | Per-team rotation guide (history + next pick + rationale) |
-| `templates/rotation-rule-card.md` | One-pager: rotation rule + stale-format detector |
+| `templates/rotation-guide.md.j2` | Per-team rotation guide (history + next pick + rationale) |
+| `templates/rotation-guide.md` | Per-team rotation guide (history + next pick + rationale) Generated from `templates/rotation-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rotation-rule-card.md.j2` | One-pager: rotation rule + stale-format detector |
+| `templates/rotation-rule-card.md` | One-pager: rotation rule + stale-format detector Generated from `templates/rotation-rule-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/business-need-spec.md` | Markdown skeleton with problem/evidence/metric/baseline/sponsor. |
 | `templates/evidence-log.csv` | Header for evidence sources with type + retrieved_at. |
-| `templates/_smoke-test.md` | Minimum viable business-need spec. |
+| `templates/_smoke-test.md.j2` | Minimum viable business-need spec. |
+| `templates/_smoke-test.md` | Minimum viable business-need spec. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

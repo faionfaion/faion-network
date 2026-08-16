@@ -64,9 +64,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/observability-spec.md` | Spec skeleton with the four pillars |
+| `templates/observability-spec.md.j2` | Spec skeleton with the four pillars |
+| `templates/observability-spec.md` | Spec skeleton with the four pillars Generated from `templates/observability-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/dashboard-config.json` | Dashboard config JSON schema |
-| `templates/_smoke-test.md` | Minimum viable filled-in observability spec |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in observability spec |
+| `templates/_smoke-test.md` | Minimum viable filled-in observability spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

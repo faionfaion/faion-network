@@ -57,9 +57,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pr-coaching-comment.md` | Delta-format PR coaching comment template (one signal per bullet, one what-without-AI question) |
-| `templates/_smoke-test.md` | Minimal viable filled-in version of pr-coaching-comment.md |
-| `templates/six-signals-checklist.md` | Quick scan checklist mapping diff observations → named signal |
+| `templates/pr-coaching-comment.md.j2` | Delta-format PR coaching comment template (one signal per bullet, one what-without-AI question) |
+| `templates/pr-coaching-comment.md` | Delta-format PR coaching comment template (one signal per bullet, one what-without-AI question) Generated from `templates/pr-coaching-comment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimal viable filled-in version of pr-coaching-comment.md |
+| `templates/_smoke-test.md` | Minimal viable filled-in version of pr-coaching-comment.md Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/six-signals-checklist.md.j2` | Quick scan checklist mapping diff observations → named signal |
+| `templates/six-signals-checklist.md` | Quick scan checklist mapping diff observations → named signal Generated from `templates/six-signals-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

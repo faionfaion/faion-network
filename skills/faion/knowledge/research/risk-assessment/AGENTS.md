@@ -68,7 +68,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/risk-register.md` | 1-page risk register template |
+| `templates/risk-register.md.j2` | 1-page risk register template |
+| `templates/risk-register.md` | 1-page risk register template Generated from `templates/risk-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/risk-register.yaml` | Authoring source (YAML) for risk-register.md |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

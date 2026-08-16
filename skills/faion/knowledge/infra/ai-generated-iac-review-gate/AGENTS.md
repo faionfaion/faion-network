@@ -58,9 +58,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/review-rubric.md` | AI-IaC review rubric with weighted criteria. |
-| `templates/blast-radius-matrix.md` | Classification rubric (low/medium/high). |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/review-rubric.md.j2` | AI-IaC review rubric with weighted criteria. |
+| `templates/review-rubric.md` | AI-IaC review rubric with weighted criteria. Generated from `templates/review-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/blast-radius-matrix.md.j2` | Classification rubric (low/medium/high). |
+| `templates/blast-radius-matrix.md` | Classification rubric (low/medium/high). Generated from `templates/blast-radius-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

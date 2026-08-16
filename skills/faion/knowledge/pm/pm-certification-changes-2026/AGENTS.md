@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/change-report.md` | Side-by-side ECO 2021 vs ECO 2026 with delta column. |
+| `templates/change-report.md.j2` | Side-by-side ECO 2021 vs ECO 2026 with delta column. |
+| `templates/change-report.md` | Side-by-side ECO 2021 vs ECO 2026 with delta column. Generated from `templates/change-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/logging.py` | structlog + LOGGING dict skeleton for `settings/base.py` |
 | `templates/sentry_init.py` | sentry_sdk.init + scrub_sensitive_data scrubber |
-| `templates/audit-report.md` | output skeleton matching `02-output-contract` |
+| `templates/audit-report.md.j2` | output skeleton matching `02-output-contract` |
+| `templates/audit-report.md` | output skeleton matching `02-output-contract` Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

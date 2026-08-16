@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/review-checklist.md` | Per-PR test review checklist |
+| `templates/review-checklist.md.j2` | Per-PR test review checklist |
+| `templates/review-checklist.md` | Per-PR test review checklist Generated from `templates/review-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

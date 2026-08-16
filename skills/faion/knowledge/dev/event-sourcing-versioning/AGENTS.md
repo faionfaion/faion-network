@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/event-catalog.yml` | Versioned event catalog seed |
 | `templates/Upcaster.py` | Upcaster registry + example transform |
-| `templates/gdpr-policy.md` | PII handling decision matrix |
+| `templates/gdpr-policy.md.j2` | PII handling decision matrix |
+| `templates/gdpr-policy.md` | PII handling decision matrix Generated from `templates/gdpr-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

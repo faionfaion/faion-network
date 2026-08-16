@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed |
 | `templates/decision-instance.json` | JSON instance of a filled decision record |
-| `templates/governance.md` | Full governance skeleton — decision-authority + change-control + comms-plan + owners |
+| `templates/governance.md.j2` | Full governance skeleton — decision-authority + change-control + comms-plan + owners |
+| `templates/governance.md` | Full governance skeleton — decision-authority + change-control + comms-plan + owners Generated from `templates/governance.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scaffold-governance.sh` | Bash scaffold that writes `governance.md` into `.aidocs/in-progress/<project>/` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

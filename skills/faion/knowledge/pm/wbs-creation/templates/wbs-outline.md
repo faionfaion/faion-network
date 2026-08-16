@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml#deliverable-orientation, mandatory-overhead-branches -->
 <!-- token-budget-impact: ~150 tokens when loaded as context -->
 
-# WBS: [Project Name]
+# WBS: <project_name>
 
 ## 1 Project Management
 - 1.1 Planning Documentation
@@ -12,13 +12,13 @@
 - 1.3 Risk Management
 - 1.4 Change Control
 
-## 2 [Major Deliverable — noun]
-### 2.1 [Sub-deliverable — noun]
-- 2.1.1 [Work Package — noun]
-- 2.1.2 [Work Package — noun]
+## 2 <major_deliverable_noun>
+### 2.1 <sub_deliverable_noun>
+- 2.1.1 <work_package_noun>
+- 2.1.2 <work_package_noun>
 
-## 3 [Major Deliverable — noun]
-### 3.1 [Sub-deliverable — noun]
+## 3 <major_deliverable_noun>
+### 3.1 <sub_deliverable_noun>
 
 ## 4 Quality Assurance
 ## 5 Deployment

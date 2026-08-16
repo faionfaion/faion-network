@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/confidence-band-spec.md` | Confidence-band-to-UI mapping spec template |
-| `templates/opt-out-ux-pattern.md` | Reference opt-out UX pattern (settings + per-surface toggle) |
+| `templates/confidence-band-spec.md.j2` | Confidence-band-to-UI mapping spec template |
+| `templates/confidence-band-spec.md` | Confidence-band-to-UI mapping spec template Generated from `templates/confidence-band-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/opt-out-ux-pattern.md.j2` | Reference opt-out UX pattern (settings + per-surface toggle) |
+| `templates/opt-out-ux-pattern.md` | Reference opt-out UX pattern (settings + per-surface toggle) Generated from `templates/opt-out-ux-pattern.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cost-worksheet.md` | Bottom-up worksheet: leaf, optimistic, most-likely, pessimistic, PERT, risk. |
-| `templates/quick-estimate.md` | 10-line estimate skeleton for early-phase ballparking. |
+| `templates/cost-worksheet.md.j2` | Bottom-up worksheet: leaf, optimistic, most-likely, pessimistic, PERT, risk. |
+| `templates/cost-worksheet.md` | Bottom-up worksheet: leaf, optimistic, most-likely, pessimistic, PERT, risk. Generated from `templates/cost-worksheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/quick-estimate.md.j2` | 10-line estimate skeleton for early-phase ballparking. |
+| `templates/quick-estimate.md` | 10-line estimate skeleton for early-phase ballparking. Generated from `templates/quick-estimate.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

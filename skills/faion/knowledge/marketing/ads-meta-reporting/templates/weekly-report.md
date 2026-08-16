@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-# Meta Weekly Report: [date range]
+# Meta Weekly Report: <date_range>
 
 ## Headline
 | Metric | This | Last | vs target | Δ |

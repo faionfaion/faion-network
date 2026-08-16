@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/catalog.md` | Catalog Markdown template (per-category sections) |
-| `templates/scorecard.md` | Per-server scorecard template |
+| `templates/catalog.md.j2` | Catalog Markdown template (per-category sections) |
+| `templates/catalog.md` | Catalog Markdown template (per-category sections) Generated from `templates/catalog.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scorecard.md.j2` | Per-server scorecard template |
+| `templates/scorecard.md` | Per-server scorecard template Generated from `templates/scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

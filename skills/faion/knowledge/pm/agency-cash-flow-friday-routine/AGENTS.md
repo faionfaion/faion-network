@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/friday-checklist.md` | 5-item checklist with green/amber/red triggers. |
-| `templates/ledger.md` | Weekly ledger row template. |
+| `templates/friday-checklist.md.j2` | 5-item checklist with green/amber/red triggers. |
+| `templates/friday-checklist.md` | 5-item checklist with green/amber/red triggers. Generated from `templates/friday-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ledger.md.j2` | Weekly ledger row template. |
+| `templates/ledger.md` | Weekly ledger row template. Generated from `templates/ledger.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

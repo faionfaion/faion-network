@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200 tokens when loaded -->
 
-# Starbursting Worksheet: [IDEA/CONCEPT]
+# Starbursting Worksheet: <idea_concept>
 
 Generate at least 5 questions per category before answering any of them.
 

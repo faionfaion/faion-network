@@ -53,7 +53,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/incident-form.md` | Per-incident triage form. |
+| `templates/incident-form.md.j2` | Per-incident triage form. |
+| `templates/incident-form.md` | Per-incident triage form. Generated from `templates/incident-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

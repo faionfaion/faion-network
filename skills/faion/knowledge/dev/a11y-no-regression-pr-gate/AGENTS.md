@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/a11y-no-regression-pr-gate.md` | Markdown skeleton for the A11y No-Regression PR Gate artefact. |
+| `templates/a11y-no-regression-pr-gate.md.j2` | Markdown skeleton for the A11y No-Regression PR Gate artefact. |
+| `templates/a11y-no-regression-pr-gate.md` | Markdown skeleton for the A11y No-Regression PR Gate artefact. Generated from `templates/a11y-no-regression-pr-gate.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable a11y-no-regression-pr-gate record for validator smoke-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

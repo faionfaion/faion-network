@@ -74,7 +74,8 @@
 | `templates/session-agenda.md` | Segmented review session agenda. |
 | `templates/sign-off-form.md` | Sign-off form with dissent block. |
 | `templates/req-validate.sh` | Run validation pipeline locally. |
-| `templates/_smoke-test.md` | Minimum filled-in sign-off pack. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in sign-off pack. |
+| `templates/_smoke-test.md` | Minimum filled-in sign-off pack. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

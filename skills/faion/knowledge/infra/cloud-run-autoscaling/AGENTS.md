@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
-| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
+| `templates/skeleton.md.j2` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in instance. |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Migration wave 1: 1,124 templates converted.** Each now carries
+  `<name>.md.j2` + `<name>.vars.schema.json` as source, with `<name>.html.j2`
+  and a regenerated `<name>.md` as outputs, its `## Templates` rows updated and
+  its inline body regenerated where one existed.
+
+  Of the 1,151 attempted: **1,113 clean**, 9 partial (converted what they could,
+  the rest carried into wave 2), and **29 refused writing nothing** — 18 already
+  containing raw `{{audit_log_path}}`-style tokens with no declaration behind
+  them, 11 containing braces that are not identifiers at all (`{{1-sentence}}`,
+  `{{N}}`).
+
+  **The set definition was mine and it was wrong.** I derived wave 1 from
+  `tpl-migrate.build_plan()`'s `unclear` list, but the gate that actually decides
+  is `tpl-jinja.convert()`, which is stricter — hence 38 non-clean exits in a
+  wave defined as decision-free. The refusals cost nothing (atomic, nothing
+  written); the definition is corrected for waves 2 and 3 to use the tool's own
+  dry-run exit code.
+
+  Verified by execution, not by report: `--check` **drift=0 across all 1,124**;
+  `validate-methodology-templates.py --all` **2521 pass / 0 fail**, unchanged;
+  tools 0 findings; dictionary validator clean; gate clean. Every regenerated
+  `.md` was compared against its pre-migration content — **1,111 byte-identical
+  after normalising placeholder spelling**, 13 differing, and every one of the
+  11 with fewer lines was a `variables:` block correctly moving out of the header
+  into the schema, not lost prose.
+
 - **A hand-authored description now outranks the dictionary's.** Found by
   verifying wave 1 rather than by reading the report: three variables silently
   lost their specific wording because their names resolved to dictionary

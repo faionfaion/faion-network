@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300-1200 tokens when loaded as context -->
 
-# Google Ads Optimization Plan: [month]
+# Google Ads Optimization Plan: <month>
 
 ## Bidding strategy
 [manual_cpc | maximize_conversions | target_cpa $X | target_roas X | maximize_conversion_value]
-Rationale: [conv volume bucket]
+Rationale: <conv_volume_bucket>
 
 ## Weekly actions
 | Lever | Trigger | Owner |

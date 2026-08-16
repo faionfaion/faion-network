@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | fail2ban audit report listing jail + port + backend + escalation + whitelist + alert. |
-| `templates/_smoke-test.md` | Minimum viable filled-in fail2ban audit. |
+| `templates/skeleton.md.j2` | fail2ban audit report listing jail + port + backend + escalation + whitelist + alert. |
+| `templates/skeleton.md` | fail2ban audit report listing jail + port + backend + escalation + whitelist + alert. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in fail2ban audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in fail2ban audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/jail.local` | fail2ban jail.local with sshd on non-standard port + escalating ban. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

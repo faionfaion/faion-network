@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/qodo-merge.yml` | Qodo Merge workflow with auto_describe + auto_review on, auto_improve off. |
-| `templates/pr-description-block.md` | PR body skeleton with AUTO-DESCRIBE-START/END markers. |
+| `templates/pr-description-block.md.j2` | PR body skeleton with AUTO-DESCRIBE-START/END markers. |
+| `templates/pr-description-block.md` | PR body skeleton with AUTO-DESCRIBE-START/END markers. Generated from `templates/pr-description-block.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

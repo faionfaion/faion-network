@@ -64,9 +64,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rollout-plan.md` | Rollout playbook-step skeleton |
+| `templates/rollout-plan.md.j2` | Rollout playbook-step skeleton |
+| `templates/rollout-plan.md` | Rollout playbook-step skeleton Generated from `templates/rollout-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ring-config.json` | Ring config JSON schema |
-| `templates/_smoke-test.md` | Minimum viable filled-in rollout plan |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in rollout plan |
+| `templates/_smoke-test.md` | Minimum viable filled-in rollout plan Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

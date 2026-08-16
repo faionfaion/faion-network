@@ -1,0 +1,37 @@
+<!-- purpose: Markdown DNS plan with per-record proxy justification. -->
+<!-- consumes: see content/02-output-contract.xml inputs -->
+<!-- produces: artefact conforming to content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
+
+# Cloudflare DNS Plan — {zone}
+
+## Zone
+
+- domain:
+- origin_ipv4:
+- origin_ipv6: (or none)
+- canonical: apex | www
+- ssl_mode: full_strict
+
+## Records
+
+| type | name | content | proxied | rationale |
+|------|------|---------|---------|-----------|
+| A | @ | {ipv4} | ON | HTTPS origin behind proxy |
+| AAAA | @ | {ipv6} | ON | dual-stack origin |
+| CNAME | www | @ | ON | mirror canonical |
+| MX | @ | {mx_host} | n/a | mail delivered off-origin (provider or separate mail host) |
+| TXT | @ | v=spf1 include:{mail_provider} -all | n/a | SPF scoped to the mail path |
+
+Do NOT add `A mail -> {ipv4}`. An unproxied record pointing at the web origin publishes
+the origin address and lets an attacker bypass Cloudflare for the whole zone. If you self-host
+mail, give it its own host with its own address and list that host in MX.
+
+## Verify
+
+- `dig NS {zone} +short @1.1.1.1` matches assigned NS
+- `dig {zone} +short @1.1.1.1` returns Cloudflare anycast IPs
+- `curl -I https://{zone}` returns server: cloudflare
+
+**Owner:** @handle (role)  •  **Reviewed:** YYYY-MM-DD

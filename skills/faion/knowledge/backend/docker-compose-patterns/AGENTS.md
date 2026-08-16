@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Compose audit report listing bind / healthcheck / depends_on / volumes. |
-| `templates/_smoke-test.md` | Minimum viable filled-in compose audit. |
+| `templates/skeleton.md.j2` | Compose audit report listing bind / healthcheck / depends_on / volumes. |
+| `templates/skeleton.md` | Compose audit report listing bind / healthcheck / depends_on / volumes. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in compose audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in compose audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/docker-compose.yml` | Compose template with 127.0.0.1 binds + healthchecks + named volumes. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

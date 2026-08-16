@@ -8,7 +8,7 @@ token-budget-impact: ≤500 tokens to fill
 
 # EU AI Act Conformity Self-Assessment
 
-**System:** [Name]
+**System:** <name>
 **Date:**
 **Assessor:**
 

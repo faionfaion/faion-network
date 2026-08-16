@@ -57,9 +57,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/monolith-layout-vertical.md` | Vertical-slice layout reference (Django/FastAPI-style). |
+| `templates/monolith-layout-vertical.md.j2` | Vertical-slice layout reference (Django/FastAPI-style). |
+| `templates/monolith-layout-vertical.md` | Vertical-slice layout reference (Django/FastAPI-style). Generated from `templates/monolith-layout-vertical.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/deploy-pipeline.yaml` | Single deploy pipeline skeleton (GitHub Actions-style). |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

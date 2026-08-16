@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the approach-selection ADR artefact. |
 | `templates/sprint-plan.md` | Sprint planning template: goal, capacity, backlog, dependencies, risks. |
-| `templates/kanban-board.md` | Kanban board template with WIP limits and explicit policies. |
+| `templates/kanban-board.md.j2` | Kanban board template with WIP limits and explicit policies. |
+| `templates/kanban-board.md` | Kanban board template with WIP limits and explicit policies. Generated from `templates/kanban-board.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pick_approach.py` | YAML decision script that reads factor scores and recommends Predictive / Agile / Hybrid. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

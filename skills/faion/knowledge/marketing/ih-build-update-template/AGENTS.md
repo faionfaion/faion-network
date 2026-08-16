@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ih-post.md` | IH post skeleton with required sections |
+| `templates/ih-post.md.j2` | IH post skeleton with required sections |
+| `templates/ih-post.md` | IH post skeleton with required sections Generated from `templates/ih-post.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/reply-triage.csv` | Reply outcome log for the bank |
 | `templates/_smoke-test.json` | Minimum viable IH post bundle for validator self-test |
 

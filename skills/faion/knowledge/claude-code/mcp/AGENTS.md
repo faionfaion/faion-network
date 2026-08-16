@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/install-cmd.md` | claude mcp add command with env-var passing template |
+| `templates/install-cmd.md.j2` | claude mcp add command with env-var passing template |
+| `templates/install-cmd.md` | claude mcp add command with env-var passing template Generated from `templates/install-cmd.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

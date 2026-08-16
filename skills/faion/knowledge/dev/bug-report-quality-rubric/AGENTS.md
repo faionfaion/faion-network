@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/bug-report-quality-rubric.json` | JSON Schema for the rubric output |
-| `templates/bug-report-quality-rubric.md` | Markdown skeleton issue body the reporter fills in |
+| `templates/bug-report-quality-rubric.md.j2` | Markdown skeleton issue body the reporter fills in |
+| `templates/bug-report-quality-rubric.md` | Markdown skeleton issue body the reporter fills in Generated from `templates/bug-report-quality-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

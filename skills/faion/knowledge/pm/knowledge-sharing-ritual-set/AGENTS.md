@@ -64,8 +64,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the ritual instance artefact. |
-| `templates/ritual-notes.md` | Markdown skeleton for tech-talk / demo / arch-review notes. |
-| `templates/skip-level-themes.md` | Markdown skeleton for anonymised skip-level theme aggregation. |
+| `templates/ritual-notes.md.j2` | Markdown skeleton for tech-talk / demo / arch-review notes. |
+| `templates/ritual-notes.md` | Markdown skeleton for tech-talk / demo / arch-review notes. Generated from `templates/ritual-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/skip-level-themes.md.j2` | Markdown skeleton for anonymised skip-level theme aggregation. |
+| `templates/skip-level-themes.md` | Markdown skeleton for anonymised skip-level theme aggregation. Generated from `templates/skip-level-themes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

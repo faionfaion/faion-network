@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/service-selection.md` | Markdown skeleton for the AWS service-selection decision-record |
+| `templates/service-selection.md.j2` | Markdown skeleton for the AWS service-selection decision-record |
+| `templates/service-selection.md` | Markdown skeleton for the AWS service-selection decision-record Generated from `templates/service-selection.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/service-selection.json` | JSON decision-record artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum decision-record used by validate-devops-aws-service-selection.py --self-test |
 

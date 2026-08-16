@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/activity-list.md` | Activity list template with PERT + dependency columns. |
+| `templates/activity-list.md.j2` | Activity list template with PERT + dependency columns. |
+| `templates/activity-list.md` | Activity list template with PERT + dependency columns. Generated from `templates/activity-list.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

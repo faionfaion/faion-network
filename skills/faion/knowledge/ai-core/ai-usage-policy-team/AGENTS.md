@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-policy.md` | 1-page policy Markdown template (owner, review, three lists, IR runbook) |
-| `templates/ir-runbook.md` | 4-step incident-response runbook template |
+| `templates/ai-policy.md.j2` | 1-page policy Markdown template (owner, review, three lists, IR runbook) |
+| `templates/ai-policy.md` | 1-page policy Markdown template (owner, review, three lists, IR runbook) Generated from `templates/ai-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ir-runbook.md.j2` | 4-step incident-response runbook template |
+| `templates/ir-runbook.md` | 4-step incident-response runbook template Generated from `templates/ir-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

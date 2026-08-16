@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/stakeholder-disagree-and-commit-protocol.md` | Filled artefact skeleton conforming to 02-output-contract.xml |
 | `templates/stakeholder-disagree-and-commit-protocol.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
-| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-stakeholder-disagree-and-commit-protocol.py --self-test |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in version exercised by scripts/validate-stakeholder-disagree-and-commit-protocol.py --self-test |
+| `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-stakeholder-disagree-and-commit-protocol.py --self-test Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

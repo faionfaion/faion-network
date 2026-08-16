@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agenda.md` | Weekly trio agenda with time-box + outcomes. |
-| `templates/scorecard.md` | Weekly scorecard tracking decisions + carryover. |
+| `templates/agenda.md.j2` | Weekly trio agenda with time-box + outcomes. |
+| `templates/agenda.md` | Weekly trio agenda with time-box + outcomes. Generated from `templates/agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scorecard.md.j2` | Weekly scorecard tracking decisions + carryover. |
+| `templates/scorecard.md` | Weekly scorecard tracking decisions + carryover. Generated from `templates/scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

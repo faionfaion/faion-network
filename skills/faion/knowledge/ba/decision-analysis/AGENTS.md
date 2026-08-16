@@ -74,7 +74,8 @@
 | `templates/decision-analysis-document.md` | Full decision record: statement, options, weights, scores, sensitivity, rationale, sign-off. |
 | `templates/decision-matrix.md` | Weighted-score matrix skeleton (criteria × options). |
 | `templates/weight-reconcile.py` | Reconcile per-stakeholder weight vectors; emits group weights + dispersion warning. |
-| `templates/_smoke-test.md` | Minimum viable filled-in decision record. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in decision record. |
+| `templates/_smoke-test.md` | Minimum viable filled-in decision record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

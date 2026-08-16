@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/clean-layout.md` | Clean Architecture module layout spec. |
+| `templates/clean-layout.md.j2` | Clean Architecture module layout spec. |
+| `templates/clean-layout.md` | Clean Architecture module layout spec. Generated from `templates/clean-layout.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

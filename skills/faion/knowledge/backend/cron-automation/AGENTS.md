@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Cron audit report listing jobs + lock + alert routing. |
-| `templates/_smoke-test.md` | Minimum viable filled-in cron audit. |
+| `templates/skeleton.md.j2` | Cron audit report listing jobs + lock + alert routing. |
+| `templates/skeleton.md` | Cron audit report listing jobs + lock + alert routing. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in cron audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in cron audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/cron-job.sh` | Cron script template with flock + strict mode + log + Telegram-on-fail. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

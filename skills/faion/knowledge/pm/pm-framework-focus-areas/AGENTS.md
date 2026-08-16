@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/focus-area-rubric.md` | 5×7 matrix: Focus Area × Domain, populated with artefact references. |
+| `templates/focus-area-rubric.md.j2` | 5×7 matrix: Focus Area × Domain, populated with artefact references. |
+| `templates/focus-area-rubric.md` | 5×7 matrix: Focus Area × Domain, populated with artefact references. Generated from `templates/focus-area-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/drift-report.md` | Markdown skeleton: scan date, adoption %, drift count, top-10 hardcoded findings, signoff verdict. |
+| `templates/drift-report.md.j2` | Markdown skeleton: scan date, adoption %, drift count, top-10 hardcoded findings, signoff verdict. |
+| `templates/drift-report.md` | Markdown skeleton: scan date, adoption %, drift count, top-10 hardcoded findings, signoff verdict. Generated from `templates/drift-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/drift-report.json` | JSON template matching the output contract. |
 | `templates/_smoke-test.json` | Filled minimum-viable drift report. |
 

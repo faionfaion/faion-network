@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-spec.md` | Markdown skeleton for accessibility-first design spec. |
+| `templates/design-spec.md.j2` | Markdown skeleton for accessibility-first design spec. |
+| `templates/design-spec.md` | Markdown skeleton for accessibility-first design spec. Generated from `templates/design-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/focus-order.json` | JSON list of focus stops + return-focus targets. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

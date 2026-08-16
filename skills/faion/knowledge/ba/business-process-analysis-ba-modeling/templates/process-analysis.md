@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
 <!-- token-budget-impact: ~400 tokens loaded as template context -->
 
-# Process Analysis: [Process Name]
+# Process Analysis: <process_name>
 
-**Date:** [Date]
-**Analyst:** [Name]
+**Date:** <date>
+**Analyst:** <name>
 **Stage:** 3 / 5 — Analysis
 
 ## Value Classification
@@ -19,24 +19,24 @@ VA/BN/NVA rubric:
 
 | Step | Activity | Value Type | Time (cite or "Data not available") | Notes |
 |------|----------|------------|--------------------------------------|-------|
-| 1 | [Activity] | VA/BN/NVA | [Value + source] | |
+| 1 | <activity> | VA/BN/NVA | <value_source> | |
 
 **Summary:**
-- Value-Adding: [X%]
-- Business Necessary: [X%]
-- Non-Value-Adding: [X%]
+- Value-Adding: <x>
+- Business Necessary: <x>
+- Non-Value-Adding: <x>
 
 ## Pain Points
 
 | Issue | Impact | Frequency (cite or "Data not available") | Root Cause |
 |-------|--------|------------------------------------------|------------|
-| [Issue] | [Impact] | [Frequency] | [Cause] |
+| <issue> | [Impact] | <frequency> | [Cause] |
 
 ## Bottlenecks
 
 | Location | Wait Time (cite or "Data not available") | Cause | Impact |
 |----------|------------------------------------------|-------|--------|
-| [Step] | [Time] | [Cause] | [Impact] |
+| [Step] | <time> | [Cause] | [Impact] |
 
 ## Top-3 Candidates for Elimination
 
@@ -52,4 +52,4 @@ Ranked by NVA-minutes × frequency:
 
 | Opportunity | Change Type | NVA×freq saved | Effort (H/M/L) | Benefit (H/M/L) |
 |-------------|-------------|----------------|----------------|-----------------|
-| [Opportunity] | eliminate/automate/simplify/integrate/parallelize | [Score] | H/M/L | H/M/L |
+| <opportunity> | eliminate/automate/simplify/integrate/parallelize | <score> | H/M/L | H/M/L |

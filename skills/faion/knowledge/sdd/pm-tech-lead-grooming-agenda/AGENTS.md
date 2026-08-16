@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/grooming-agenda.md` | Markdown agenda with 3 fixed blocks + decision column |
+| `templates/grooming-agenda.md.j2` | Markdown agenda with 3 fixed blocks + decision column |
+| `templates/grooming-agenda.md` | Markdown agenda with 3 fixed blocks + decision column Generated from `templates/grooming-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

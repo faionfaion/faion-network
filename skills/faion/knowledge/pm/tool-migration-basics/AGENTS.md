@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/field-mapping.md` | Field-mapping template with source × target × transform × default-on-miss |
+| `templates/field-mapping.md.j2` | Field-mapping template with source × target × transform × default-on-miss |
+| `templates/field-mapping.md` | Field-mapping template with source × target × transform × default-on-miss Generated from `templates/field-mapping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/count-check.py` | Pre/post count-check script to verify no rows lost |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

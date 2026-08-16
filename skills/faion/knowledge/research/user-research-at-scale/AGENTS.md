@@ -73,7 +73,8 @@
 |------|---------|
 | `templates/codebook.yaml` | Frozen codebook with proposed_codes overflow channel |
 | `templates/code-batch.sh` | Bash launcher: coding-frozen-book agent over a batch of transcripts |
-| `templates/research-ops-report.md` | Weekly research-ops report skeleton |
+| `templates/research-ops-report.md.j2` | Weekly research-ops report skeleton |
+| `templates/research-ops-report.md` | Weekly research-ops report skeleton Generated from `templates/research-ops-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

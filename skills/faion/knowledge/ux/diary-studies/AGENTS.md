@@ -64,9 +64,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/study-plan.md` | Diary study plan template covering recruitment, prompts, cadence, analysis |
+| `templates/study-plan.md.j2` | Diary study plan template covering recruitment, prompts, cadence, analysis |
+| `templates/study-plan.md` | Diary study plan template covering recruitment, prompts, cadence, analysis Generated from `templates/study-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/entry-daily.md` | Daily reflection entry template |
-| `templates/entry-event.md` | Event-triggered entry template |
+| `templates/entry-event.md.j2` | Event-triggered entry template |
+| `templates/entry-event.md` | Event-triggered entry template Generated from `templates/entry-event.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/diary-reminders.py` | Python reminder scheduler emitting push + SMS based on participant timezone |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/Button.stories.tsx` | Storybook story covering all required states for a Button primitive. |
-| `templates/changeset.md` | Changeset entry template for a UI library release. |
+| `templates/changeset.md.j2` | Changeset entry template for a UI library release. |
+| `templates/changeset.md` | Changeset entry template for a UI library release. Generated from `templates/changeset.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/new-component.sh` | Bash scaffolder: new library component (story + spec + changeset stub). |
 | `templates/_smoke-test.json` | Minimum viable UI-library spec for validator smoke-test. |
 

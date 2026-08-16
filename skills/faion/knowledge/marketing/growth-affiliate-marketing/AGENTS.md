@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-skeleton.md` | Growth Affiliate Marketing skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Growth Affiliate Marketing. |
+| `templates/spec-skeleton.md.j2` | Growth Affiliate Marketing skeleton — fill per artefact, do not commit free-form output. |
+| `templates/spec-skeleton.md` | Growth Affiliate Marketing skeleton — fill per artefact, do not commit free-form output. Generated from `templates/spec-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Growth Affiliate Marketing. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Growth Affiliate Marketing. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

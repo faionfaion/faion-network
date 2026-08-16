@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/RFC-template.md` | Markdown RFC skeleton with required sections + frontmatter |
+| `templates/RFC-template.md.j2` | Markdown RFC skeleton with required sections + frontmatter |
+| `templates/RFC-template.md` | Markdown RFC skeleton with required sections + frontmatter Generated from `templates/RFC-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

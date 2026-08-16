@@ -57,10 +57,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agenda.md` | Five-item agenda template with empty-state defaults. |
-| `templates/decision-log-entry.md` | Shape of one decision-log entry. |
-| `templates/prebrief.md` | 1-page brief sent 24h pre-meeting. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/agenda.md.j2` | Five-item agenda template with empty-state defaults. |
+| `templates/agenda.md` | Five-item agenda template with empty-state defaults. Generated from `templates/agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-log-entry.md.j2` | Shape of one decision-log entry. |
+| `templates/decision-log-entry.md` | Shape of one decision-log entry. Generated from `templates/decision-log-entry.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/prebrief.md.j2` | 1-page brief sent 24h pre-meeting. |
+| `templates/prebrief.md` | 1-page brief sent 24h pre-meeting. Generated from `templates/prebrief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

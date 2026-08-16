@@ -54,8 +54,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/serverless-foundations-checklist.md` | Markdown checklist mirroring the rule set. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/serverless-foundations-checklist.md.j2` | Markdown checklist mirroring the rule set. |
+| `templates/serverless-foundations-checklist.md` | Markdown checklist mirroring the rule set. Generated from `templates/serverless-foundations-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

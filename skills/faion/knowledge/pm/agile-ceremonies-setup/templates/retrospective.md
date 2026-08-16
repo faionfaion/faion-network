@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300-700 tokens -->
 
-# Retrospective — Sprint <N>
+# Retrospective — Sprint <retrospective_sprint>
 
 ## Liked
 - <bullets>

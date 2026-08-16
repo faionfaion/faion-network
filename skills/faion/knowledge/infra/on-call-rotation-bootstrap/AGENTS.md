@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/on-call-charter.md` | One-page charter posted to team wiki |
+| `templates/on-call-charter.md.j2` | One-page charter posted to team wiki |
+| `templates/on-call-charter.md` | One-page charter posted to team wiki Generated from `templates/on-call-charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pagerduty-schedule.yaml` | PagerDuty schedule config skeleton |
 | `templates/comp-time-policy.md` | HR-handbook-ready comp-time policy document |
 

@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/acceptance-form.md` | Acceptance form template: deliverable, criteria, evidence, sign-off |
 | `templates/closeout-archive.sh` | Archive walker: copies artefacts to long-term store with manifest |
-| `templates/closure-checklist.md` | Closure checklist template: acceptance, resources, contracts, lessons, archive, handover |
+| `templates/closure-checklist.md.j2` | Closure checklist template: acceptance, resources, contracts, lessons, archive, handover |
+| `templates/closure-checklist.md` | Closure checklist template: acceptance, resources, contracts, lessons, archive, handover Generated from `templates/closure-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/final-report.md` | Final report template: scope delivered vs baseline, schedule + cost variance, lessons highlights |
 | `templates/handover-doc.md` | Handover doc template: operating procedures, runbooks, support contacts |
 

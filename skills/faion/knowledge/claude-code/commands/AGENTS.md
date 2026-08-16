@@ -61,9 +61,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/command.md` | Command Markdown template (frontmatter + arguments + body) |
-| `templates/command-deploy.md` | Worked example: /deploy command |
-| `templates/command-commit.md` | Worked example: /commit command with bash-prefix context |
+| `templates/command.md.j2` | Command Markdown template (frontmatter + arguments + body) |
+| `templates/command.md` | Command Markdown template (frontmatter + arguments + body) Generated from `templates/command.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/command-deploy.md.j2` | Worked example: /deploy command |
+| `templates/command-deploy.md` | Worked example: /deploy command Generated from `templates/command-deploy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/command-commit.md.j2` | Worked example: /commit command with bash-prefix context |
+| `templates/command-commit.md` | Worked example: /commit command with bash-prefix context Generated from `templates/command-commit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

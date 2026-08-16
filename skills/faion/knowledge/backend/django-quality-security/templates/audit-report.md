@@ -7,7 +7,7 @@ token-budget-impact: ~200 tokens
 -->
 ---
 methodology: django-quality-security
-target_repo: <owner/repo>
+target_repo: <owner_repo>
 django_version: "5.2"
 https_baseline:
   debug_false: true

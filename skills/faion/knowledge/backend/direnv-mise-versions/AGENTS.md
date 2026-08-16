@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Per-project env audit listing .mise.toml + .envrc + verify steps. |
-| `templates/_smoke-test.md` | Minimum viable filled-in env audit. |
+| `templates/skeleton.md.j2` | Per-project env audit listing .mise.toml + .envrc + verify steps. |
+| `templates/skeleton.md` | Per-project env audit listing .mise.toml + .envrc + verify steps. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in env audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in env audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/.mise.toml` | mise.toml manifest pinning languages for the repo. |
 | `templates/.envrc` | direnv envrc that activates mise + repo-local venv. |
 

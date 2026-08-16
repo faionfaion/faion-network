@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/name-rewrite-prompt.md` | Prompt template for the naming-rewrite subagent |
+| `templates/name-rewrite-prompt.md.j2` | Prompt template for the naming-rewrite subagent |
+| `templates/name-rewrite-prompt.md` | Prompt template for the naming-rewrite subagent Generated from `templates/name-rewrite-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

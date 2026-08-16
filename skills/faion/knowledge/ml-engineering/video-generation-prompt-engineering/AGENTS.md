@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sasscl-template.md` | Filled-in SASSCL example |
+| `templates/sasscl-template.md.j2` | Filled-in SASSCL example |
+| `templates/sasscl-template.md` | Filled-in SASSCL example Generated from `templates/sasscl-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-template.schema.yaml` | Schema |
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
 

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown bash-aliases audit report. |
-| `templates/_smoke-test.md` | Minimum viable filled-in audit. |
+| `templates/skeleton.md.j2` | Markdown bash-aliases audit report. |
+| `templates/skeleton.md` | Markdown bash-aliases audit report. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/bash_aliases` | Categorized ~/.bash_aliases template with safety + gating + completion. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

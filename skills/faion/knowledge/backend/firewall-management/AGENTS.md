@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | UFW audit report with deny defaults + SSH limit + Docker bind inventory. |
-| `templates/_smoke-test.md` | Minimum viable filled-in UFW audit. |
+| `templates/skeleton.md.j2` | UFW audit report with deny defaults + SSH limit + Docker bind inventory. |
+| `templates/skeleton.md` | UFW audit report with deny defaults + SSH limit + Docker bind inventory. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in UFW audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in UFW audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

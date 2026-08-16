@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/contract-skeleton.md` | Canonical contract sections (trigger / reversal / evidence / owner / review) |
+| `templates/contract-skeleton.md.j2` | Canonical contract sections (trigger / reversal / evidence / owner / review) |
+| `templates/contract-skeleton.md` | Canonical contract sections (trigger / reversal / evidence / owner / review) Generated from `templates/contract-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

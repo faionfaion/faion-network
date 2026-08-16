@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/bootstrap_checklist.json` | JSON template scaffolding the artefact contract. |
-| `templates/runbook.md` | Markdown skeleton for the artefact. |
+| `templates/runbook.md.j2` | Markdown skeleton for the artefact. |
+| `templates/runbook.md` | Markdown skeleton for the artefact. Generated from `templates/runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/dashboards.json` | JSON template scaffolding the artefact contract. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 

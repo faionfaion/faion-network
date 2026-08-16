@@ -58,8 +58,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/star-question-bank.md` | Question bank skeleton: competency → question → calibration anchor |
-| `templates/interviewer-training-agenda.md` | Agenda for the 60-minute interviewer-onboarding session |
-| `templates/scorecard-qa-checklist.md` | Pre-debrief QA checklist for completed scorecards |
+| `templates/interviewer-training-agenda.md.j2` | Agenda for the 60-minute interviewer-onboarding session |
+| `templates/interviewer-training-agenda.md` | Agenda for the 60-minute interviewer-onboarding session Generated from `templates/interviewer-training-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scorecard-qa-checklist.md.j2` | Pre-debrief QA checklist for completed scorecards |
+| `templates/scorecard-qa-checklist.md` | Pre-debrief QA checklist for completed scorecards Generated from `templates/scorecard-qa-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md` | Filled-in question bank for 'communication' competency |
 
 ## Scripts

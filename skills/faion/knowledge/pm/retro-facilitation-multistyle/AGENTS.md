@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/retro-instance.md` | Per-retro instance template (format / actions / owner / review) |
-| `templates/format-card.md` | One-pager listing the 5 supported formats + selection criteria |
+| `templates/retro-instance.md.j2` | Per-retro instance template (format / actions / owner / review) |
+| `templates/retro-instance.md` | Per-retro instance template (format / actions / owner / review) Generated from `templates/retro-instance.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/format-card.md.j2` | One-pager listing the 5 supported formats + selection criteria |
+| `templates/format-card.md` | One-pager listing the 5 supported formats + selection criteria Generated from `templates/format-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

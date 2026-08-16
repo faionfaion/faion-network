@@ -67,8 +67,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/leverage-estimate.json` | JSON skeleton conforming to the output contract |
-| `templates/task-class-taxonomy.md` | The 6 task-classes with definition + example boundary cases |
-| `templates/retro-log.md` | Per-engagement deviation log with planned-vs-actual per task-class |
+| `templates/task-class-taxonomy.md.j2` | The 6 task-classes with definition + example boundary cases |
+| `templates/task-class-taxonomy.md` | The 6 task-classes with definition + example boundary cases Generated from `templates/task-class-taxonomy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retro-log.md.j2` | Per-engagement deviation log with planned-vs-actual per task-class |
+| `templates/retro-log.md` | Per-engagement deviation log with planned-vs-actual per task-class Generated from `templates/retro-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

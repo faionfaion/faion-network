@@ -16,7 +16,7 @@ The chosen path. (>=20 chars)
 - consequence 2
 
 ## Owner
-[name]
+<name>
 
 ## Date
 YYYY-MM-DD

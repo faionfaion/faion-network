@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/prototype-plan.md` | Prototype plan skeleton. |
-| `templates/testing-notes.md` | Session notes template. |
+| `templates/testing-notes.md.j2` | Session notes template. |
+| `templates/testing-notes.md` | Session notes template. Generated from `templates/testing-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scaffold-prototype.sh` | CLI scaffold for a code prototype repo. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

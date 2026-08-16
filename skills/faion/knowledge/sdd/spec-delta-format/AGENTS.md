@@ -40,7 +40,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-delta.md` | Fill-in delta, ships valid against its own contract. |
+| `templates/spec-delta.md.j2` | Fill-in delta, ships valid against its own contract. |
+| `templates/spec-delta.md` | Fill-in delta, ships valid against its own contract. Generated from `templates/spec-delta.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

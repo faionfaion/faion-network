@@ -58,9 +58,11 @@
 
 | File | Purpose |
 |---|---|
-| `templates/decision-record.md` | Markdown skeleton: pattern + rationale + trigger + telemetry + fallback. |
+| `templates/decision-record.md.j2` | Markdown skeleton: pattern + rationale + trigger + telemetry + fallback. |
+| `templates/decision-record.md` | Markdown skeleton: pattern + rationale + trigger + telemetry + fallback. Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/score-table.json` | Scoring rubric for sidebar / modal / inline / review. |
-| `templates/_smoke-test.md` | Filled review-mode decision record example. |
+| `templates/_smoke-test.md.j2` | Filled review-mode decision record example. |
+| `templates/_smoke-test.md` | Filled review-mode decision record example. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

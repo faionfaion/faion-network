@@ -56,7 +56,8 @@
 |------|---------|
 | `templates/streaming-response-ux.json` | JSON Schema for the Streaming Response UX output contract |
 | `templates/streaming-response-ux.md` | Markdown skeleton with the required fields |
-| `templates/_smoke-test.md` | Filled-in minimum viable example of a streaming-response-ux record |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a streaming-response-ux record |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a streaming-response-ux record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

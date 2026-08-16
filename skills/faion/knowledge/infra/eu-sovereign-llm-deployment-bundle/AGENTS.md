@@ -59,9 +59,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/deployment-spec.md` | End-to-end deployment with residency + audit + monitoring. |
-| `templates/provider-due-diligence.md` | Vendor sovereignty checklist. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/deployment-spec.md.j2` | End-to-end deployment with residency + audit + monitoring. |
+| `templates/deployment-spec.md` | End-to-end deployment with residency + audit + monitoring. Generated from `templates/deployment-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/provider-due-diligence.md.j2` | Vendor sovereignty checklist. |
+| `templates/provider-due-diligence.md` | Vendor sovereignty checklist. Generated from `templates/provider-due-diligence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

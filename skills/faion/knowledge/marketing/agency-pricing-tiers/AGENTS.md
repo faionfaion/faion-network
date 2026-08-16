@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agency-pricing-tiers.playbook-step.md` | Markdown playbook-step skeleton with 5-line header |
+| `templates/agency-pricing-tiers.playbook-step.md.j2` | Markdown playbook-step skeleton with 5-line header |
+| `templates/agency-pricing-tiers.playbook-step.md` | Markdown playbook-step skeleton with 5-line header Generated from `templates/agency-pricing-tiers.playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/agency-pricing-tiers.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

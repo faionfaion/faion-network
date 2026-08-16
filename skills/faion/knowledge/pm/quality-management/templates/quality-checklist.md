@@ -8,4 +8,4 @@
 
 | ID | Item | Status | Evidence | Owner |
 |----|------|--------|----------|-------|
-| C1 | [item] | pass / fail / na | [quote + link] | [role] |
+| C1 | <item> | pass / fail / na | <quote_link> | <role> |

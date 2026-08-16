@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cost-savings-report.md` | Markdown skeleton for the cost-savings audit report |
+| `templates/cost-savings-report.md.j2` | Markdown skeleton for the cost-savings audit report |
+| `templates/cost-savings-report.md` | Markdown skeleton for the cost-savings audit report Generated from `templates/cost-savings-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

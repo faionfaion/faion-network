@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/rollup-sheet.csv` | Weekly columns: channel, gross spend, attributed conversions, CPA, view-through count, 90d cohort retention. |
-| `templates/attribution-policy.md` | Pinned attribution model + view-through window + appeal process. |
+| `templates/attribution-policy.md.j2` | Pinned attribution model + view-through window + appeal process. |
+| `templates/attribution-policy.md` | Pinned attribution model + view-through window + appeal process. Generated from `templates/attribution-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rollup-row.json` | JSON example matching the output contract. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

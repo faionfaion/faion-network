@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/discovery-call-script.md` | 45-min call script with 4 phases. |
-| `templates/post-call-writeup.md` | Writeup template: budget, decision-maker, fit, next step. |
+| `templates/discovery-call-script.md.j2` | 45-min call script with 4 phases. |
+| `templates/discovery-call-script.md` | 45-min call script with 4 phases. Generated from `templates/discovery-call-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/post-call-writeup.md.j2` | Writeup template: budget, decision-maker, fit, next step. |
+| `templates/post-call-writeup.md` | Writeup template: budget, decision-maker, fit, next step. Generated from `templates/post-call-writeup.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

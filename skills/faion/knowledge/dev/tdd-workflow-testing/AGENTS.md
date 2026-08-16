@@ -63,7 +63,8 @@
 | File | Purpose |
 |---|---|
 | `templates/tdd-cycle.sh` | Shell script: run failing test → implement → run passing test → prompt refactor. |
-| `templates/claude-md-snippet.md` | TDD-discipline reminder block to append to CLAUDE.md. |
+| `templates/claude-md-snippet.md.j2` | TDD-discipline reminder block to append to CLAUDE.md. |
+| `templates/claude-md-snippet.md` | TDD-discipline reminder block to append to CLAUDE.md. Generated from `templates/claude-md-snippet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/posttool-hook.json` | Settings.json fragment that runs pytest after Write/Edit on test_*.py. |
 | `templates/_smoke-test.yaml` | Minimum behavior list (one happy path). |
 

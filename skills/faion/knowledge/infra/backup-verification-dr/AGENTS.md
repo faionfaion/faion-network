@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dr-runbook.md` | DR runbook skeleton with tagged steps |
+| `templates/dr-runbook.md.j2` | DR runbook skeleton with tagged steps |
+| `templates/dr-runbook.md` | DR runbook skeleton with tagged steps Generated from `templates/dr-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/backup-config.example.json` | Filled report artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

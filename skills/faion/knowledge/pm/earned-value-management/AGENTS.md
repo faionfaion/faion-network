@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/evm-report.md` | Period report: PV, EV, AC, CPI, SPI, EAC, TCPI table + variance narrative. |
+| `templates/evm-report.md.j2` | Period report: PV, EV, AC, CPI, SPI, EAC, TCPI table + variance narrative. |
+| `templates/evm-report.md` | Period report: PV, EV, AC, CPI, SPI, EAC, TCPI table + variance narrative. Generated from `templates/evm-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -68,7 +68,8 @@
 |------|---------|
 | `templates/hypothesis-doc.yaml` | Experiment hypothesis YAML skeleton with primary/secondary/guardrails/MDE. |
 | `templates/triage-idea.py` | Triage script: rank ideas by ev/effort, dedup against historic experiments. |
-| `templates/readout.md` | Readout markdown skeleton with SRM check, primary result, decision. |
+| `templates/readout.md.j2` | Readout markdown skeleton with SRM check, primary result, decision. |
+| `templates/readout.md` | Readout markdown skeleton with SRM check, primary result, decision. Generated from `templates/readout.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/comms-tree.md` | Customer + internal comms tree template. |
+| `templates/comms-tree.md.j2` | Customer + internal comms tree template. |
+| `templates/comms-tree.md` | Customer + internal comms tree template. Generated from `templates/comms-tree.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

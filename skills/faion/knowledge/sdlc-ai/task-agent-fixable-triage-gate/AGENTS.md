@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/agent-pickup.yml` | GitHub Actions workflow dispatching an agent only on `agent-fixable` label-add. |
-| `templates/triage-checklist.md` | Pre-label checklist a human or read-only triage bot must satisfy before applying agent-fixable. |
+| `templates/triage-checklist.md.j2` | Pre-label checklist a human or read-only triage bot must satisfy before applying agent-fixable. |
+| `templates/triage-checklist.md` | Pre-label checklist a human or read-only triage bot must satisfy before applying agent-fixable. Generated from `templates/triage-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

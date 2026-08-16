@@ -67,7 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/tech-debt-management.json` | JSON Schema for the management-plan artefact. |
-| `templates/strategy-fit-table.md` | Per-strategy fit profile + exit criteria. |
+| `templates/strategy-fit-table.md.j2` | Per-strategy fit profile + exit criteria. |
+| `templates/strategy-fit-table.md` | Per-strategy fit profile + exit criteria. Generated from `templates/strategy-fit-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

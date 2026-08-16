@@ -56,7 +56,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/AGENTS-universal.md` | Canonical AGENTS.md skeleton (20-80 lines, file table, key types, commands, gotchas). |
+| `templates/AGENTS-universal.md.j2` | Canonical AGENTS.md skeleton (20-80 lines, file table, key types, commands, gotchas). |
+| `templates/AGENTS-universal.md` | Canonical AGENTS.md skeleton (20-80 lines, file table, key types, commands, gotchas). Generated from `templates/AGENTS-universal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audit-agents-md.sh` | Sweep the repo and report directories missing CLAUDE.md / AGENTS.md. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

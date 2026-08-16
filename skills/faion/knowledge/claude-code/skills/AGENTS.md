@@ -62,9 +62,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/SKILL.md` | SKILL.md skeleton with required frontmatter + body sections |
-| `templates/reference.md` | On-demand reference.md template |
-| `templates/keyword-test.md` | 10-phrasing keyword test fixture template |
+| `templates/SKILL.md.j2` | SKILL.md skeleton with required frontmatter + body sections |
+| `templates/SKILL.md` | SKILL.md skeleton with required frontmatter + body sections Generated from `templates/SKILL.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/reference.md.j2` | On-demand reference.md template |
+| `templates/reference.md` | On-demand reference.md template Generated from `templates/reference.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/keyword-test.md.j2` | 10-phrasing keyword test fixture template |
+| `templates/keyword-test.md` | 10-phrasing keyword test fixture template Generated from `templates/keyword-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

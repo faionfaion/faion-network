@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/account-spec.md` | Google Ads account setup spec Markdown skeleton. |
-| `templates/extensions-checklist.md` | Extensions checklist before launch. |
+| `templates/account-spec.md.j2` | Google Ads account setup spec Markdown skeleton. |
+| `templates/account-spec.md` | Google Ads account setup spec Markdown skeleton. Generated from `templates/account-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/extensions-checklist.md.j2` | Extensions checklist before launch. |
+| `templates/extensions-checklist.md` | Extensions checklist before launch. Generated from `templates/extensions-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/account-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

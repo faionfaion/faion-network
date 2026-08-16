@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Health-check audit report listing endpoints + retries + escalation. |
-| `templates/_smoke-test.md` | Minimum viable filled-in health audit. |
+| `templates/skeleton.md.j2` | Health-check audit report listing endpoints + retries + escalation. |
+| `templates/skeleton.md` | Health-check audit report listing endpoints + retries + escalation. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in health audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in health audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/health-check.sh` | Per-service health-check loop with retry + silent-OK + TG-on-fail. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

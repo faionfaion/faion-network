@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/gumroad-listing.yaml` | Listing field skeleton ready to fill |
-| `templates/affiliate-invite.md` | Affiliate recruitment email template |
+| `templates/affiliate-invite.md.j2` | Affiliate recruitment email template |
+| `templates/affiliate-invite.md` | Affiliate recruitment email template Generated from `templates/affiliate-invite.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable listing config for validator self-test |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

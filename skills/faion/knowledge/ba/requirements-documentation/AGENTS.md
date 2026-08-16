@@ -73,7 +73,8 @@
 | `templates/br-record.md` | Business requirement record. |
 | `templates/sh-record.md` | Stakeholder requirement record. |
 | `templates/sr-record.md` | Solution requirement record (FR/NFR). |
-| `templates/_smoke-test.md` | Minimum filled-in BR/SH/SR triple. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in BR/SH/SR triple. |
+| `templates/_smoke-test.md` | Minimum filled-in BR/SH/SR triple. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -73,7 +73,8 @@
 | `templates/change-request.md` | Change request template with impact analysis. |
 | `templates/requirements-status-log.md` | Per-requirement status log. |
 | `templates/version-history.md` | Immutable version history block. |
-| `templates/_smoke-test.md` | Minimum filled-in lifecycle record. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in lifecycle record. |
+| `templates/_smoke-test.md` | Minimum filled-in lifecycle record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

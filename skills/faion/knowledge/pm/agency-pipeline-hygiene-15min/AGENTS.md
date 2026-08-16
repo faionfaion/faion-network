@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/monday-checklist.md` | 5-item pipeline hygiene checklist. |
-| `templates/ledger.md` | Weekly pipeline ledger row. |
+| `templates/monday-checklist.md.j2` | 5-item pipeline hygiene checklist. |
+| `templates/monday-checklist.md` | 5-item pipeline hygiene checklist. Generated from `templates/monday-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ledger.md.j2` | Weekly pipeline ledger row. |
+| `templates/ledger.md` | Weekly pipeline ledger row. Generated from `templates/ledger.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

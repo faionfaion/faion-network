@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/moscow-template.md` | MoSCoW prioritisation table with criteria. |
-| `templates/rice-template.md` | RICE scoring matrix. |
+| `templates/moscow-template.md.j2` | MoSCoW prioritisation table with criteria. |
+| `templates/moscow-template.md` | MoSCoW prioritisation table with criteria. Generated from `templates/moscow-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rice-template.md.j2` | RICE scoring matrix. |
+| `templates/rice-template.md` | RICE scoring matrix. Generated from `templates/rice-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prio_method_and_wsjf.py` | Stdlib calculator for RICE + WSJF + MoSCoW. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

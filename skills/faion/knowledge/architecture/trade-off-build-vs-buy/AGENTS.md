@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/build-vs-buy-adr.md` | ADR skeleton scoring build / buy / hybrid. |
 | `templates/tco-model.json` | TCO model inputs and computation shape. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

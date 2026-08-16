@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~600-1500 tokens -->
 
-# Annual Plan — <agency name> — <year>
+# Annual Plan — <agency_name> — <year>
 
 ## Revenue target
 - Q1 / Q2 / Q3 / Q4: <numbers> with mix (project / retainer / productised)

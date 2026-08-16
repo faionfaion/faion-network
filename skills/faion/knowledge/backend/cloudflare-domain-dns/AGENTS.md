@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown DNS plan with per-record proxy justification. |
-| `templates/_smoke-test.md` | Minimum viable filled-in DNS plan. |
+| `templates/skeleton.md.j2` | Markdown DNS plan with per-record proxy justification. |
+| `templates/skeleton.md` | Markdown DNS plan with per-record proxy justification. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in DNS plan. |
+| `templates/_smoke-test.md` | Minimum viable filled-in DNS plan. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

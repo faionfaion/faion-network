@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ADR-evidence-template.md` | MADR-shape ADR template with evidence-binding section |
+| `templates/ADR-evidence-template.md.j2` | MADR-shape ADR template with evidence-binding section |
+| `templates/ADR-evidence-template.md` | MADR-shape ADR template with evidence-binding section Generated from `templates/ADR-evidence-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

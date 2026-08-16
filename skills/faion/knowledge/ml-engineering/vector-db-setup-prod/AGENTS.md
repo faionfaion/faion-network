@@ -69,7 +69,8 @@
 | `templates/backup-cronjob.yaml` | K8s CronJob for snapshot |
 | `templates/prod-deploy.schema.yaml` | Schema |
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
-| `templates/deploy-checklist.md` | Pre+post deploy checklist |
+| `templates/deploy-checklist.md.j2` | Pre+post deploy checklist |
+| `templates/deploy-checklist.md` | Pre+post deploy checklist Generated from `templates/deploy-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

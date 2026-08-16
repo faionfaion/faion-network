@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/use-case.md` | Markdown skeleton with all required sections. |
 | `templates/exception-flows.csv` | Header for exception-flow rows. |
-| `templates/_smoke-test.md` | Minimum viable use case. |
+| `templates/_smoke-test.md.j2` | Minimum viable use case. |
+| `templates/_smoke-test.md` | Minimum viable use case. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

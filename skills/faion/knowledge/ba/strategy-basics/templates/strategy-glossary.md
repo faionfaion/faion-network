@@ -8,4 +8,4 @@
 
 | term | definition | example | anti_example |
 |---|---|---|---|
-| mission | Why we exist beyond profit. | <example> | <anti-example> |
+| mission | Why we exist beyond profit. | <example> | <anti_example> |

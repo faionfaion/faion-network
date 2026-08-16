@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dashboard-spec.md` | Dashboard spec Markdown skeleton with 3 views + alerts. |
+| `templates/dashboard-spec.md.j2` | Dashboard spec Markdown skeleton with 3 views + alerts. |
+| `templates/dashboard-spec.md` | Dashboard spec Markdown skeleton with 3 views + alerts. Generated from `templates/dashboard-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/alerts-spec.json` | Alerts spec JSON. |
 | `templates/dashboard-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 

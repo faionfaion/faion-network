@@ -8,6 +8,6 @@
 
 | Trend | Source | Decision |
 |-------|--------|----------|
-| <title> | <url + date> | adopt | trial | hold | drop |
+| <title> | <url_date> | adopt | trial | hold | drop |
 
 **Next review:** <date>

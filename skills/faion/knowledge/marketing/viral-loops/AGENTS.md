@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record-skeleton.md` | Viral Loops and Types skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Viral Loops and Types. |
+| `templates/decision-record-skeleton.md.j2` | Viral Loops and Types skeleton — fill per artefact, do not commit free-form output. |
+| `templates/decision-record-skeleton.md` | Viral Loops and Types skeleton — fill per artefact, do not commit free-form output. Generated from `templates/decision-record-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Viral Loops and Types. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Viral Loops and Types. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

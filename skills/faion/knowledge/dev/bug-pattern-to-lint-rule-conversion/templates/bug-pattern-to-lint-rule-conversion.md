@@ -9,7 +9,7 @@ token-budget-impact: ~180 tokens when copied.
 # Decision-record — <pattern_id>
 
 ## Identity
-- artefact_id: bplrc-<slug>
+- artefact_id: bplrc-<artefact_slug>
 - pattern_id (kebab-case):
 - owner_email (named human):
 

@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/expand_contract_migration.sql` | Expand–contract migration: phase 1 (add nullable column) + phase 2 (backfill) + phase 3 (drop old) |
-| `templates/release_checklist.md` | Per-commit release checklist: green CI + flag-default-off + DB migration phase |
+| `templates/release_checklist.md.j2` | Per-commit release checklist: green CI + flag-default-off + DB migration phase |
+| `templates/release_checklist.md` | Per-commit release checklist: green CI + flag-default-off + DB migration phase Generated from `templates/release_checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

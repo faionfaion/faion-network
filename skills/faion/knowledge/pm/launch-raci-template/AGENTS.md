@@ -65,8 +65,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the launch RACI artefact. |
-| `templates/raci-grid.md` | Markdown skeleton for the workstream-by-RACI grid with pre/day/post phases. |
-| `templates/rehearsal-walkthrough.md` | Rehearsal script that walks each row T-14 -> T+14. |
+| `templates/raci-grid.md.j2` | Markdown skeleton for the workstream-by-RACI grid with pre/day/post phases. |
+| `templates/raci-grid.md` | Markdown skeleton for the workstream-by-RACI grid with pre/day/post phases. Generated from `templates/raci-grid.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rehearsal-walkthrough.md.j2` | Rehearsal script that walks each row T-14 -> T+14. |
+| `templates/rehearsal-walkthrough.md` | Rehearsal script that walks each row T-14 -> T+14. Generated from `templates/rehearsal-walkthrough.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

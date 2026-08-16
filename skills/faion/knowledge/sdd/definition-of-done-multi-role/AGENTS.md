@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dod-multi-role.md` | Markdown checklist with per-role rows + evidence column |
+| `templates/dod-multi-role.md.j2` | Markdown checklist with per-role rows + evidence column |
+| `templates/dod-multi-role.md` | Markdown checklist with per-role rows + evidence column Generated from `templates/dod-multi-role.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

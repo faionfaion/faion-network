@@ -73,7 +73,8 @@
 | `templates/watchlist.yaml` | Input config: competitor + URLs + signal types |
 | `templates/ci-collector.py` | Minimal collector: fetches watchlist URLs and emits NDJSON delta events |
 | `templates/battlecard.md` | Per-competitor battlecard skeleton with 14-day TTL stamp |
-| `templates/weekly-digest.md` | Weekly digest skeleton with event-id provenance |
+| `templates/weekly-digest.md.j2` | Weekly digest skeleton with event-id provenance |
+| `templates/weekly-digest.md` | Weekly digest skeleton with event-id provenance Generated from `templates/weekly-digest.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

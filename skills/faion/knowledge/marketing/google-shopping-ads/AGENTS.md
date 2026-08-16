@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/shopping-spec.md` | Shopping campaign spec Markdown skeleton. |
-| `templates/feed-health-checklist.md` | Feed health audit checklist. |
+| `templates/shopping-spec.md.j2` | Shopping campaign spec Markdown skeleton. |
+| `templates/shopping-spec.md` | Shopping campaign spec Markdown skeleton. Generated from `templates/shopping-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/feed-health-checklist.md.j2` | Feed health audit checklist. |
+| `templates/feed-health-checklist.md` | Feed health audit checklist. Generated from `templates/feed-health-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/shopping-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

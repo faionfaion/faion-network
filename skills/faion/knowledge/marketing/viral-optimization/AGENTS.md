@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/playbook-step-skeleton.md` | Viral Loop Optimization skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Viral Loop Optimization. |
+| `templates/playbook-step-skeleton.md.j2` | Viral Loop Optimization skeleton — fill per artefact, do not commit free-form output. |
+| `templates/playbook-step-skeleton.md` | Viral Loop Optimization skeleton — fill per artefact, do not commit free-form output. Generated from `templates/playbook-step-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Viral Loop Optimization. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Viral Loop Optimization. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

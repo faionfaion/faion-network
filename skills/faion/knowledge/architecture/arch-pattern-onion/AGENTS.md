@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/onion-layout.md` | Onion Architecture layout spec with four layers and lint contract. |
+| `templates/onion-layout.md.j2` | Onion Architecture layout spec with four layers and lint contract. |
+| `templates/onion-layout.md` | Onion Architecture layout spec with four layers and lint contract. Generated from `templates/onion-layout.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

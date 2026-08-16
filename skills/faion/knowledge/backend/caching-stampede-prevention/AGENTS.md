@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/caching-stampede-prevention.json` | JSON Schema for the Cache Stampede Prevention (Distributed Lock, Probabilistic Refresh, Coalescing) output contract |
 | `templates/caching-stampede-prevention.md` | Markdown skeleton with the required fields |
-| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-stampede-prevention record |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a caching-stampede-prevention record |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a caching-stampede-prevention record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

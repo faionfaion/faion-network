@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/vlm-matrix.md` | Capability matrix scoring sheet |
-| `templates/decision-record.md` | Filled-in decision record |
+| `templates/vlm-matrix.md.j2` | Capability matrix scoring sheet |
+| `templates/vlm-matrix.md` | Capability matrix scoring sheet Generated from `templates/vlm-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-record.md.j2` | Filled-in decision record |
+| `templates/decision-record.md` | Filled-in decision record Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

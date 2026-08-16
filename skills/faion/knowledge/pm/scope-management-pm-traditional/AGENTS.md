@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scope-statement.md` | Scope statement skeleton with exclusions + AC + RTM. |
-| `templates/requirements-doc.md` | Numbered requirements with source + acceptance tests. |
+| `templates/scope-statement.md.j2` | Scope statement skeleton with exclusions + AC + RTM. |
+| `templates/scope-statement.md` | Scope statement skeleton with exclusions + AC + RTM. Generated from `templates/scope-statement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/requirements-doc.md.j2` | Numbered requirements with source + acceptance tests. |
+| `templates/requirements-doc.md` | Numbered requirements with source + acceptance tests. Generated from `templates/requirements-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

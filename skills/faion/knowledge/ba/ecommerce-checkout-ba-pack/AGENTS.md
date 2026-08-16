@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ecommerce-checkout-ba-pack.md` | Markdown spec skeleton with required sections + placeholders |
+| `templates/ecommerce-checkout-ba-pack.md.j2` | Markdown spec skeleton with required sections + placeholders |
+| `templates/ecommerce-checkout-ba-pack.md` | Markdown spec skeleton with required sections + placeholders Generated from `templates/ecommerce-checkout-ba-pack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ecommerce-checkout-ba-pack.schema.json` | JSON Schema for the structured spec output |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/rotation-calendar.yaml` | Quarterly calendar with bi-weekly slots |
-| `templates/audit-log.md` | Per-cluster 60-min audit log template |
+| `templates/audit-log.md.j2` | Per-cluster 60-min audit log template |
+| `templates/audit-log.md` | Per-cluster 60-min audit log template Generated from `templates/audit-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable rotation + audit-log bundle for validator self-test |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

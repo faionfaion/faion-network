@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | Markdown skeleton (decision, options, criteria, scores, sensitivity, signoff) |
+| `templates/decision-record.md.j2` | Markdown skeleton (decision, options, criteria, scores, sensitivity, signoff) |
+| `templates/decision-record.md` | Markdown skeleton (decision, options, criteria, scores, sensitivity, signoff) Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable decision-record JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

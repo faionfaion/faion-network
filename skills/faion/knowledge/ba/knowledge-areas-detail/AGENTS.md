@@ -71,7 +71,8 @@
 | `templates/ka-route.sh` | Shell helper to print KA → method list for a situation. |
 | `templates/ka-detail.md` | Per-KA detail page skeleton. |
 | `templates/workflow-sequence.md` | Workflow sequence table for greenfield/change/transformation. |
-| `templates/_smoke-test.md` | Minimum filled-in routing record. |
+| `templates/_smoke-test.md.j2` | Minimum filled-in routing record. |
+| `templates/_smoke-test.md` | Minimum filled-in routing record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

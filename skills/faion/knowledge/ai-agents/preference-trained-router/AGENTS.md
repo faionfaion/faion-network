@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |---|---|
-| `templates/router-spec.md` | Markdown wrapper. |
+| `templates/router-spec.md.j2` | Markdown wrapper. |
+| `templates/router-spec.md` | Markdown wrapper. Generated from `templates/router-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum preference set. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

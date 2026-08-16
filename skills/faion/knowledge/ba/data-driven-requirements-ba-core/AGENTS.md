@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/evidence-trail.md` | Per-requirement evidence trail: signal → metric → requirement. |
-| `templates/data-driven-spec.md` | Full spec.md skeleton with evidence column per requirement. |
+| `templates/evidence-trail.md.j2` | Per-requirement evidence trail: signal → metric → requirement. |
+| `templates/evidence-trail.md` | Per-requirement evidence trail: signal → metric → requirement. Generated from `templates/evidence-trail.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/data-driven-spec.md.j2` | Full spec.md skeleton with evidence column per requirement. |
+| `templates/data-driven-spec.md` | Full spec.md skeleton with evidence column per requirement. Generated from `templates/data-driven-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

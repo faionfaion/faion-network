@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/changelog-entry.md` | CHANGELOG entry skeleton (heading, summary, scope, migration link). |
-| `templates/migration-plan.md` | Migration plan template for MAJOR bumps. |
+| `templates/changelog-entry.md.j2` | CHANGELOG entry skeleton (heading, summary, scope, migration link). |
+| `templates/changelog-entry.md` | CHANGELOG entry skeleton (heading, summary, scope, migration link). Generated from `templates/changelog-entry.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/migration-plan.md.j2` | Migration plan template for MAJOR bumps. |
+| `templates/migration-plan.md` | Migration plan template for MAJOR bumps. Generated from `templates/migration-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

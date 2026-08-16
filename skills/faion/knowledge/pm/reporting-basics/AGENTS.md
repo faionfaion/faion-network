@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the weekly/monthly report artefact. |
-| `templates/report.md` | Markdown skeleton for the report with KPI table + narrative + escalation flags. |
+| `templates/report.md.j2` | Markdown skeleton for the report with KPI table + narrative + escalation flags. |
+| `templates/report.md` | Markdown skeleton for the report with KPI table + narrative + escalation flags. Generated from `templates/report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

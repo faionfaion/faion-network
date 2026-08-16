@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/onboarding-schedule.md` | 8-hour wall-clock schedule template. |
+| `templates/onboarding-schedule.md.j2` | 8-hour wall-clock schedule template. |
+| `templates/onboarding-schedule.md` | 8-hour wall-clock schedule template. Generated from `templates/onboarding-schedule.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/decision-record.md` | 1-page decision record skeleton. |
 
 ## Scripts

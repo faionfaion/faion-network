@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/change-request.md` | CR form skeleton with classification, impact, approval. |
-| `templates/requirements-register.md` | Master register linking each requirement to its CR history. |
+| `templates/requirements-register.md.j2` | Master register linking each requirement to its CR history. |
+| `templates/requirements-register.md` | Master register linking each requirement to its CR history. Generated from `templates/requirements-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

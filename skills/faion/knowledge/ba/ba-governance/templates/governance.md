@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
 <!-- token-budget-impact: ~500-1500 tokens when loaded as context -->
 
-# Governance — <Project>
+# Governance — <project>
 
 _Last reviewed: <date> — re-validate every 30 days._
 
@@ -35,7 +35,7 @@ _Last reviewed: <date> — re-validate every 30 days._
 
 ## Owners
 
-- Artifact owner: <named person>
-- Decision-log owner: <named person>
+- Artifact owner: <named_person>
+- Decision-log owner: <named_person>
 - Re-validation cadence: 30 days
 - Stakeholder contact data: 1Password vault (NOT in this file)

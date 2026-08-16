@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/interview-template.md` | Pre-filled Mom-Test interview script with question slots |
+| `templates/interview-template.md.j2` | Pre-filled Mom-Test interview script with question slots |
+| `templates/interview-template.md` | Pre-filled Mom-Test interview script with question slots Generated from `templates/interview-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/prompt-question-gen.txt` | Prompt to generate past-tense, current-spend questions for a hypothesis |
 | `templates/prompt-transcript-analysis.txt` | Prompt to classify a transcript on the commitment ladder |
 | `templates/signal-classifier.py` | Python classifier: tags utterances as compliment / fact / commitment |

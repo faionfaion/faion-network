@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/commitment-plan.md` | Decision record: workload + baseline + commitment shape + utilization plan |
+| `templates/commitment-plan.md.j2` | Decision record: workload + baseline + commitment shape + utilization plan |
+| `templates/commitment-plan.md` | Decision record: workload + baseline + commitment shape + utilization plan Generated from `templates/commitment-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/backup-config.example.json` | Filled decision-record artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

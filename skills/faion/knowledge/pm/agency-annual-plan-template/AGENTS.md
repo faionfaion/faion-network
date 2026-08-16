@@ -61,8 +61,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/annual-plan.md` | One-page annual plan skeleton. |
-| `templates/quarterly-checkpoint.md` | Quarterly variance checkpoint template. |
+| `templates/annual-plan.md.j2` | One-page annual plan skeleton. |
+| `templates/annual-plan.md` | One-page annual plan skeleton. Generated from `templates/annual-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/quarterly-checkpoint.md.j2` | Quarterly variance checkpoint template. |
+| `templates/quarterly-checkpoint.md` | Quarterly variance checkpoint template. Generated from `templates/quarterly-checkpoint.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

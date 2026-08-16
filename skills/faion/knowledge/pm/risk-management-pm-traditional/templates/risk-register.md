@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~600-1500 tokens when fully populated -->
 
-# Risk Register — <project name>
+# Risk Register — <project_name>
 
 > Owner: <name>  •  Review cadence: weekly  •  Last review: YYYY-MM-DD
 

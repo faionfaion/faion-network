@@ -64,10 +64,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/threat-model-stride.md` | STRIDE threat-model skeleton + asset-attacker-control table. |
+| `templates/threat-model-stride.md.j2` | STRIDE threat-model skeleton + asset-attacker-control table. |
+| `templates/threat-model-stride.md` | STRIDE threat-model skeleton + asset-attacker-control table. Generated from `templates/threat-model-stride.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/authz-matrix.json` | Authorisation matrix (role × resource × operation). |
 | `templates/security-spec.md` | Spec skeleton tying threat-model + controls + ASVS coverage. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

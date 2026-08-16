@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/selector.py` | selector function skeleton centralising query optimisation |
 | `templates/test_query_count.py` | pytest skeleton using assertNumQueries to lock counts |
-| `templates/audit-report.md` | output skeleton matching `02-output-contract` |
+| `templates/audit-report.md.j2` | output skeleton matching `02-output-contract` |
+| `templates/audit-report.md` | output skeleton matching `02-output-contract` Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

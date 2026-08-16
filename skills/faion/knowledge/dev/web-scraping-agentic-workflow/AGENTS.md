@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/web-scraping-agentic-workflow.json` | JSON Schema for the scrape-run report artefact. |
-| `templates/scrape-run-report.md` | Markdown skeleton authors fill at end-of-run. |
+| `templates/scrape-run-report.md.j2` | Markdown skeleton authors fill at end-of-run. |
+| `templates/scrape-run-report.md` | Markdown skeleton authors fill at end-of-run. Generated from `templates/scrape-run-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/agent-prompt.md` | Prompt skeleton for an LLM scrape agent (forces robots.txt + tool order). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

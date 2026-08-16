@@ -66,9 +66,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ga-checklist.md` | Checklist artefact skeleton |
+| `templates/ga-checklist.md.j2` | Checklist artefact skeleton |
+| `templates/ga-checklist.md` | Checklist artefact skeleton Generated from `templates/ga-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/evidence-table.json` | Evidence table JSON schema |
-| `templates/_smoke-test.md` | Minimum viable filled-in GA checklist |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in GA checklist |
+| `templates/_smoke-test.md` | Minimum viable filled-in GA checklist Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

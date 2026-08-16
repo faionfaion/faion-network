@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/DomainInterface.py` | Domain-layer interface skeleton |
 | `templates/AclAdapter.py` | Infrastructure-layer ACL skeleton |
-| `templates/contract-test.md` | Outline of contract test cases |
+| `templates/contract-test.md.j2` | Outline of contract test cases |
+| `templates/contract-test.md` | Outline of contract test cases Generated from `templates/contract-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

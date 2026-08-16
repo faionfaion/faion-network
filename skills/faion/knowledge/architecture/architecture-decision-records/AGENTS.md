@@ -71,10 +71,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/adr-nygard.md` | Nygard-format ADR template (Title, Status, Context, Decision, Consequences). |
+| `templates/adr-nygard.md.j2` | Nygard-format ADR template (Title, Status, Context, Decision, Consequences). |
+| `templates/adr-nygard.md` | Nygard-format ADR template (Title, Status, Context, Decision, Consequences). Generated from `templates/adr-nygard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/adr-madr.md` | MADR-format ADR template (with Considered Options and Pros/Cons of the Decision). |
 | `templates/adr-lint.sh` | CI lint script — filename/status/sections/superseded-ref checks across `docs/adr/`. |
-| `templates/adr-authoring-template.md` | Fill-in ADR with inline guidance, a "Do nothing" baseline option, and split Positive/Negative/Risks consequences. |
+| `templates/adr-authoring-template.md.j2` | Fill-in ADR with inline guidance, a "Do nothing" baseline option, and split Positive/Negative/Risks consequences. |
+| `templates/adr-authoring-template.md` | Fill-in ADR with inline guidance, a "Do nothing" baseline option, and split Positive/Negative/Risks consequences. Generated from `templates/adr-authoring-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/new-adr.sh` | Scaffold the next-numbered ADR into `docs/adr/` from the authoring template. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

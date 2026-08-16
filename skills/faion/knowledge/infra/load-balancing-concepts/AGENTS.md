@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/lb-decision-record.md` | Markdown skeleton for the decision record (sections + rationale prompts) |
+| `templates/lb-decision-record.md.j2` | Markdown skeleton for the decision record (sections + rationale prompts) |
+| `templates/lb-decision-record.md` | Markdown skeleton for the decision record (sections + rationale prompts) Generated from `templates/lb-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/lb-decision-record.json` | JSON template for the decision-record artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum filled artefact used by validate-load-balancing-concepts.py --self-test |
 

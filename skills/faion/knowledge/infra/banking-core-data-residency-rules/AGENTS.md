@@ -59,10 +59,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/residency-spec.md` | Per-jurisdiction residency table + transfer locks. |
-| `templates/transfer-impact-assessment.md` | TIA template per Schrems II. |
-| `templates/supervisor-notification.md` | Pre-fill for EBA / FCA notification. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/residency-spec.md.j2` | Per-jurisdiction residency table + transfer locks. |
+| `templates/residency-spec.md` | Per-jurisdiction residency table + transfer locks. Generated from `templates/residency-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/transfer-impact-assessment.md.j2` | TIA template per Schrems II. |
+| `templates/transfer-impact-assessment.md` | TIA template per Schrems II. Generated from `templates/transfer-impact-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/supervisor-notification.md.j2` | Pre-fill for EBA / FCA notification. |
+| `templates/supervisor-notification.md` | Pre-fill for EBA / FCA notification. Generated from `templates/supervisor-notification.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

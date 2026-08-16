@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HA Decision: {{ service_name }}</title>
+<style>:root{color-scheme:light dark}
+body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+color:#1b1b1b;background:#fff}
+h1,h2,h3,h4,h5,h6{line-height:1.25;margin:2rem 0 .6rem}
+h1{font-size:1.9rem} h2{font-size:1.45rem} h3{font-size:1.15rem}
+p,ul,ol,blockquote,table,pre{margin:0 0 1rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+background:#f2f2f2;padding:.1em .3em;border-radius:3px}
+pre{background:#f6f6f6;padding:.9rem 1rem;border-radius:5px;overflow-x:auto}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #d0d0d0;margin-left:0;padding-left:1rem;
+color:#4a4a4a}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:left}
+th{background:#f6f6f6}
+hr{border:0;border-top:1px solid #ddd;margin:2rem 0}
+a{color:#0b57d0}
+@media(prefers-color-scheme:dark){
+body{color:#e6e6e6;background:#151515}
+code{background:#242424} pre{background:#1d1d1d}
+th{background:#1d1d1d} th,td{border-color:#333}
+blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
+<body>
+<h1>HA Decision: {{ service_name }}</h1>
+<h2>Context</h2>
+<ul><li><strong>Service:</strong> {{ service_name }}</li><li><strong>SLA target:</strong> 99.99% (~52 min/year)</li><li><strong>Customer geography:</strong> US + EU</li><li><strong>Current state:</strong> {{ describe }}</li></ul>
+<h2>Decision</h2>
+<table><thead><tr><th>Tier</th><th>Choice</th><th>Rationale</th></tr></thead><tbody><tr><td>LB instances</td><td>2 (managed ALB in each region)</td><td>rule two-lb-min</td></tr><tr><td>AZs used per region</td><td>3</td><td>rule two-az-min</td></tr><tr><td>Backends per AZ</td><td>2</td><td>rule two-az-min</td></tr><tr><td>GSLB</td><td>AWS Global Accelerator (anycast)</td><td>rule anycast-over-dns-for-9999</td></tr><tr><td>Drain on SIGTERM</td><td>yes, deregistration_delay = 30 s</td><td>rule drain-on-sigterm</td></tr></tbody></table>
+<h2>Failure-domain analysis</h2>
+<table><thead><tr><th>Failure</th><th>Blast radius</th><th>Mitigation</th></tr></thead><tbody><tr><td>Process crash</td><td>1 instance</td><td>managed LB removes via health-check</td></tr><tr><td>Host failure</td><td>1 instance</td><td>AZ-level spread absorbs</td></tr><tr><td>AZ failure</td><td>1/3 of one region</td><td>2 AZ remain with capacity</td></tr><tr><td>Region failure</td><td>1 region</td><td>Global Accelerator fails over to peer region</td></tr><tr><td>BGP route flap</td><td>edge PoP</td><td>client retry; anycast reroutes within ~30 s</td></tr></tbody></table>
+<h2>Operational requirements</h2>
+<ul><li>Chaos drill: monthly LB-instance kill + quarterly region failover.</li><li>SIGTERM handler: see sigterm-drain.py (sigterm-drain.py).</li><li>Alert on healthy-target-count &lt; 2 in any AZ.</li></ul>
+<h2>Status</h2>
+<ul><li>[ ] Approved</li><li>[ ] Deployed</li><li>[ ] Drill passed</li></ul>
+</body></html>

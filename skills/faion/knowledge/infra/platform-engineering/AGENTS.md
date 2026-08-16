@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/idp-spec.md` | Markdown skeleton for the IDP spec |
+| `templates/idp-spec.md.j2` | Markdown skeleton for the IDP spec |
+| `templates/idp-spec.md` | Markdown skeleton for the IDP spec Generated from `templates/idp-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/golden-path-go-microservice.yaml` | Backstage scaffolder template for a Go microservice golden path |
 | `templates/idp-spec.json` | JSON template for the IDP spec artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum filled IDP spec used by validate-platform-engineering.py --self-test |

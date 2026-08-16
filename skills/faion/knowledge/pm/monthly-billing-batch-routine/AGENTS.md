@@ -64,8 +64,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the monthly billing batch artefact. |
-| `templates/invoice-row.md` | Per-customer invoice line skeleton with evidence + reason. |
-| `templates/payout-row.md` | Per-contractor payout line skeleton with evidence + rate-card link. |
+| `templates/invoice-row.md.j2` | Per-customer invoice line skeleton with evidence + reason. |
+| `templates/invoice-row.md` | Per-customer invoice line skeleton with evidence + reason. Generated from `templates/invoice-row.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/payout-row.md.j2` | Per-contractor payout line skeleton with evidence + rate-card link. |
+| `templates/payout-row.md` | Per-contractor payout line skeleton with evidence + rate-card link. Generated from `templates/payout-row.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

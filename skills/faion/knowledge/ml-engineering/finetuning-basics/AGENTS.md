@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/finetune-config.yaml` | Framework-agnostic finetune config skeleton |
-| `templates/decision-record.md` | Technique + framework choice rationale |
+| `templates/decision-record.md.j2` | Technique + framework choice rationale |
+| `templates/decision-record.md` | Technique + framework choice rationale Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

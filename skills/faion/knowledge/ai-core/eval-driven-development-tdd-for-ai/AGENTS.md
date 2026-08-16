@@ -62,9 +62,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/eval-spec.md` | Eval suite spec skeleton |
-| `templates/eval-delta.md` | PR description eval-delta template |
-| `templates/_smoke-test.md` | Minimum viable filled-in eval spec |
+| `templates/eval-spec.md.j2` | Eval suite spec skeleton |
+| `templates/eval-spec.md` | Eval suite spec skeleton Generated from `templates/eval-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/eval-delta.md.j2` | PR description eval-delta template |
+| `templates/eval-delta.md` | PR description eval-delta template Generated from `templates/eval-delta.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in eval spec |
+| `templates/_smoke-test.md` | Minimum viable filled-in eval spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

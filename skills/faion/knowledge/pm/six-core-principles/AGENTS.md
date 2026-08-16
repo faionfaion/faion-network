@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/principle-audit.md` | Six-row audit table: principle / evidence / pass-fail / fix |
+| `templates/principle-audit.md.j2` | Six-row audit table: principle / evidence / pass-fail / fix |
+| `templates/principle-audit.md` | Six-row audit table: principle / evidence / pass-fail / fix Generated from `templates/principle-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

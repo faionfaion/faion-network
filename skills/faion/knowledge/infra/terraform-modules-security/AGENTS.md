@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/checklist.md` | working skeleton matching the `produces=checklist` shape |
-| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
+| `templates/checklist.md.j2` | working skeleton matching the `produces=checklist` shape |
+| `templates/checklist.md` | working skeleton matching the `produces=checklist` shape Generated from `templates/checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | minimum-viable filled-in smoke-test fixture |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

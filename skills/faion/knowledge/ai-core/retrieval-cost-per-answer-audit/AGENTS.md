@@ -40,7 +40,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/retrieval-cost-ledger.yaml` | Fill-in ledger with ten rows; ships valid against the contract. |
-| `templates/measure-lookup.md` | Instrumentation recipe: where to put the counter for the four common retrieval shapes. |
+| `templates/measure-lookup.md.j2` | Instrumentation recipe: where to put the counter for the four common retrieval shapes. |
+| `templates/measure-lookup.md` | Instrumentation recipe: where to put the counter for the four common retrieval shapes. Generated from `templates/measure-lookup.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

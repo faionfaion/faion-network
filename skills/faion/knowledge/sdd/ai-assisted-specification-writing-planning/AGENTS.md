@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/implementation-plan.md` | Implementation-plan skeleton with task table + DAG section |
-| `templates/plan-prompt.md` | LLM prompt template for task decomposition |
+| `templates/implementation-plan.md.j2` | Implementation-plan skeleton with task table + DAG section |
+| `templates/implementation-plan.md` | Implementation-plan skeleton with task table + DAG section Generated from `templates/implementation-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/plan-prompt.md.j2` | LLM prompt template for task decomposition |
+| `templates/plan-prompt.md` | LLM prompt template for task decomposition Generated from `templates/plan-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/vui-record.json` | JSON skeleton for VUI accessibility record. |
-| `templates/vui-grammar-help.md` | 'What can I say' help-text template. |
+| `templates/vui-grammar-help.md.j2` | 'What can I say' help-text template. |
+| `templates/vui-grammar-help.md` | 'What can I say' help-text template. Generated from `templates/vui-grammar-help.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

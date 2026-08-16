@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the focus-areas ADR artefact. |
 | `templates/scaffold_focus_areas.sh` | Shell helper that scaffolds an empty ADR markdown for the 5 focus areas. |
-| `templates/adr-skeleton.md` | Markdown skeleton ADR listing the 5 focus areas with practice tables. |
+| `templates/adr-skeleton.md.j2` | Markdown skeleton ADR listing the 5 focus areas with practice tables. |
+| `templates/adr-skeleton.md` | Markdown skeleton ADR listing the 5 focus areas with practice tables. Generated from `templates/adr-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

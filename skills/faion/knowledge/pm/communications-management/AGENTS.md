@@ -65,9 +65,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/comms-plan.md` | Comms-matrix: stakeholder, artefact, channel, owner, cadence, format. |
-| `templates/status-report.md` | Weekly / biweekly status: progress, risks, decisions, next steps. |
-| `templates/meeting-notes.md` | Notes template: attendees, decisions, action items with owners + due dates. |
+| `templates/comms-plan.md.j2` | Comms-matrix: stakeholder, artefact, channel, owner, cadence, format. |
+| `templates/comms-plan.md` | Comms-matrix: stakeholder, artefact, channel, owner, cadence, format. Generated from `templates/comms-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/status-report.md.j2` | Weekly / biweekly status: progress, risks, decisions, next steps. |
+| `templates/status-report.md` | Weekly / biweekly status: progress, risks, decisions, next steps. Generated from `templates/status-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/meeting-notes.md.j2` | Notes template: attendees, decisions, action items with owners + due dates. |
+| `templates/meeting-notes.md` | Notes template: attendees, decisions, action items with owners + due dates. Generated from `templates/meeting-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

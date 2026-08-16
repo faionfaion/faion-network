@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/strategy-glossary.md` | Glossary template with term + canonical-def + example + anti-example. |
+| `templates/strategy-glossary.md.j2` | Glossary template with term + canonical-def + example + anti-example. |
+| `templates/strategy-glossary.md` | Glossary template with term + canonical-def + example + anti-example. Generated from `templates/strategy-glossary.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -71,7 +71,8 @@
 |------|---------|
 | `templates/data-driven-req.md` | BR/SR record with business question + baseline + target + instrumentation + post-launch window. |
 | `templates/instrumentation-plan.md` | Event + property + dashboard plan tied to the success target. |
-| `templates/_smoke-test.md` | Minimum viable filled-in record. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in record. |
+| `templates/_smoke-test.md` | Minimum viable filled-in record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

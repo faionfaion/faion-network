@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/corpus-discovery-report.json` | JSON skeleton matching 02-output-contract. |
-| `templates/corpus-discovery-report.md` | Narrative interview-bundle template. |
+| `templates/corpus-discovery-report.md.j2` | Narrative interview-bundle template. |
+| `templates/corpus-discovery-report.md` | Narrative interview-bundle template. Generated from `templates/corpus-discovery-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

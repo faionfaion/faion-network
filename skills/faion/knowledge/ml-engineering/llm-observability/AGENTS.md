@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/observability-spec.md` | Spec skeleton with vendor / traces / eval / alerts. |
+| `templates/observability-spec.md.j2` | Spec skeleton with vendor / traces / eval / alerts. |
+| `templates/observability-spec.md` | Spec skeleton with vendor / traces / eval / alerts. Generated from `templates/observability-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/langfuse-init.py` | Langfuse client init. |
 | `templates/eval-probe-runner.py` | Periodic eval-probe runner. |
 

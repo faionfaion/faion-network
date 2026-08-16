@@ -6,9 +6,9 @@
 
 # Immersive Spec — <experience>
 
-- Audience: <consumer|enterprise|education|training>
-- Locomotion: <teleport|smooth-with-vignette|comfort-toggle|none-stationary>
-- Session length: max <N> min; break cadence <details>
-- Spatial audio: enabled <true/false>; fallback <details>
+- Audience: <audience>
+- Locomotion: <locomotion>
+- Session length: max <session_length> min; break cadence <details>
+- Spatial audio: enabled <true_false>; fallback <details>
 - Accessibility paths: seated / single-handed / mono-vision / low-vision-large-text
 - FOV budget: 90-110° primary zone

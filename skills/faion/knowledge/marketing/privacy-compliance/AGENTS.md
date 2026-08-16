@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config-skeleton.md` | Privacy-Compliant Analytics skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Privacy-Compliant Analytics. |
+| `templates/config-skeleton.md.j2` | Privacy-Compliant Analytics skeleton — fill per artefact, do not commit free-form output. |
+| `templates/config-skeleton.md` | Privacy-Compliant Analytics skeleton — fill per artefact, do not commit free-form output. Generated from `templates/config-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Privacy-Compliant Analytics. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Privacy-Compliant Analytics. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

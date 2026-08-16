@@ -60,7 +60,8 @@
 |------|---------|
 | `templates/database-design.json` | JSON Schema for the Database Design (PostgreSQL) output contract |
 | `templates/database-design.md` | Markdown skeleton with the required fields |
-| `templates/_smoke-test.md` | Filled-in minimum viable example of a database-design record |
+| `templates/_smoke-test.md.j2` | Filled-in minimum viable example of a database-design record |
+| `templates/_smoke-test.md` | Filled-in minimum viable example of a database-design record Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ecommerce_schema.sql` | Reference PostgreSQL schema: UUID PKs, TIMESTAMPTZ, named constraints, partial indexes, soft-delete view, audit trigger |
 | `templates/audit_trigger.sql` | Audit-log table + trigger function — the one legitimate use of a trigger |
 | `templates/alembic_migration.py` | Alembic expand-then-contract migration with explicit revision ids and a real `downgrade` |

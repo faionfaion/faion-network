@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/squad-okr.md` | Per-squad OKR doc with O + 3-5 KRs + dependencies + check-in cadence. |
-| `templates/checkin.md` | Weekly check-in template with confidence + blocker. |
+| `templates/squad-okr.md.j2` | Per-squad OKR doc with O + 3-5 KRs + dependencies + check-in cadence. |
+| `templates/squad-okr.md` | Per-squad OKR doc with O + 3-5 KRs + dependencies + check-in cadence. Generated from `templates/squad-okr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/checkin.md.j2` | Weekly check-in template with confidence + blocker. |
+| `templates/checkin.md` | Weekly check-in template with confidence + blocker. Generated from `templates/checkin.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

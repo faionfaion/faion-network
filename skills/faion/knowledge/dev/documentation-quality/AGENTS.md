@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agents-md-universal.md` | Universal AGENTS.md skeleton with placeholders |
+| `templates/agents-md-universal.md.j2` | Universal AGENTS.md skeleton with placeholders |
+| `templates/agents-md-universal.md` | Universal AGENTS.md skeleton with placeholders Generated from `templates/agents-md-universal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/doc-outline.sh` | Shell that scans a dir and prints draft AGENTS.md sections |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

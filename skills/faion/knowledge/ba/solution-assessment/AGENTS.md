@@ -74,7 +74,8 @@
 | `templates/solution-assessment-report.md` | Markdown skeleton with all assessment-report sections. |
 | `templates/requirement-compliance-table.csv` | Header row for per-requirement compliance table. |
 | `templates/business-value-rows.csv` | Header row for business-value metric rows. |
-| `templates/_smoke-test.md` | Minimum viable filled-in assessment. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in assessment. |
+| `templates/_smoke-test.md` | Minimum viable filled-in assessment. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

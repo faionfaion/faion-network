@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-800 tokens -->
 
-# Sprint Planning — <team> — Sprint <N>
+# Sprint Planning — <team> — Sprint <sprint_planning_sprint>
 
 - Goal (1 sentence):
 - Capacity (FTE × points/dev):

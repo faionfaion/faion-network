@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/install-readme.md` | README install-command template |
+| `templates/install-readme.md.j2` | README install-command template |
+| `templates/install-readme.md` | README install-command template Generated from `templates/install-readme.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

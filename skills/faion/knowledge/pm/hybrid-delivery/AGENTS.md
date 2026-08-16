@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/hybrid-plan.md` | Program plan: workstream table with mode + handoff contracts. |
-| `templates/interface-contract.md` | Handoff contract template: inputs, outputs, SLA, escalation. |
+| `templates/hybrid-plan.md.j2` | Program plan: workstream table with mode + handoff contracts. |
+| `templates/hybrid-plan.md` | Program plan: workstream table with mode + handoff contracts. Generated from `templates/hybrid-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/interface-contract.md.j2` | Handoff contract template: inputs, outputs, SLA, escalation. |
+| `templates/interface-contract.md` | Handoff contract template: inputs, outputs, SLA, escalation. Generated from `templates/interface-contract.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

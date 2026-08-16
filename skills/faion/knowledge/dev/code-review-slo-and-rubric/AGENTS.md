@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/code-review-slo.md` | Markdown skeleton naming SLO + rubric + AI-pre-review pattern. |
+| `templates/code-review-slo.md.j2` | Markdown skeleton naming SLO + rubric + AI-pre-review pattern. |
+| `templates/code-review-slo.md` | Markdown skeleton naming SLO + rubric + AI-pre-review pattern. Generated from `templates/code-review-slo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/code-review-slo.schema.json` | JSON skeleton matching the output contract. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

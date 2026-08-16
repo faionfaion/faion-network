@@ -70,10 +70,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/launch-runbook.md` | Hour-by-hour template |
-| `templates/smoke-tests.md` | Pre-launch verification checklist |
-| `templates/rollback-runbook.md` | Step-by-step rollback procedure |
-| `templates/support-canned-responses.md` | First-day FAQ responses |
+| `templates/launch-runbook.md.j2` | Hour-by-hour template |
+| `templates/launch-runbook.md` | Hour-by-hour template Generated from `templates/launch-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/smoke-tests.md.j2` | Pre-launch verification checklist |
+| `templates/smoke-tests.md` | Pre-launch verification checklist Generated from `templates/smoke-tests.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rollback-runbook.md.j2` | Step-by-step rollback procedure |
+| `templates/rollback-runbook.md` | Step-by-step rollback procedure Generated from `templates/rollback-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/support-canned-responses.md.j2` | First-day FAQ responses |
+| `templates/support-canned-responses.md` | First-day FAQ responses Generated from `templates/support-canned-responses.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

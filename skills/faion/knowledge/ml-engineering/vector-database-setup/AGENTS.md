@@ -57,7 +57,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/vector-store-base.py` | VectorStoreBase abstraction with cosine / dot / l2 dispatch. |
-| `templates/vector-db-decision.md` | Decision record skeleton. |
+| `templates/vector-db-decision.md.j2` | Decision record skeleton. |
+| `templates/vector-db-decision.md` | Decision record skeleton. Generated from `templates/vector-db-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

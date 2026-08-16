@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ar-screen-spec.md` | Per-screen AR interaction spec with anchoring/occlusion/lighting/grammar |
+| `templates/ar-screen-spec.md.j2` | Per-screen AR interaction spec with anchoring/occlusion/lighting/grammar |
+| `templates/ar-screen-spec.md` | Per-screen AR interaction spec with anchoring/occlusion/lighting/grammar Generated from `templates/ar-screen-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

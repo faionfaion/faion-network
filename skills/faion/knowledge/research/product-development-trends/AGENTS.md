@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/trend-brief.md` | Quarterly trend brief skeleton with bet/monitor/ignore tables |
+| `templates/trend-brief.md.j2` | Quarterly trend brief skeleton with bet/monitor/ignore tables |
+| `templates/trend-brief.md` | Quarterly trend brief skeleton with bet/monitor/ignore tables Generated from `templates/trend-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/score-signals.py` | Score a candidate trend across 4 axes; print JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

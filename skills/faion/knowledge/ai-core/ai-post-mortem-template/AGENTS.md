@@ -63,9 +63,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/post-mortem.md` | Post-mortem report skeleton with AI-specific sections |
+| `templates/post-mortem.md.j2` | Post-mortem report skeleton with AI-specific sections |
+| `templates/post-mortem.md` | Post-mortem report skeleton with AI-specific sections Generated from `templates/post-mortem.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/action-items.json` | Action items JSON schema |
-| `templates/_smoke-test.md` | Minimum viable filled-in post-mortem |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in post-mortem |
+| `templates/_smoke-test.md` | Minimum viable filled-in post-mortem Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -9,7 +9,7 @@ token-budget-impact: ~150 tokens when copied.
 # Scrape run — <source> — <run_id>
 
 ## Identity
-- artefact_id: wsr-<slug>
+- artefact_id: wsr-<artefact_slug>
 - source:
 - run_id: YYYY-MM-DDTHHMMZ-<random>
 - user_agent: faion-network/1.0 (+mailto:contact@domain)

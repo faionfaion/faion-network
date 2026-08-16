@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/research-report.md` | Final research report skeleton |
+| `templates/research-report.md.j2` | Final research report skeleton |
+| `templates/research-report.md` | Final research report skeleton Generated from `templates/research-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/perplexity_research.py` | Runnable Perplexity batch caller |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

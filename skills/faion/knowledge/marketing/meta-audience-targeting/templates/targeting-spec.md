@@ -16,8 +16,8 @@
 - engaged_shoppers
 
 ## Advantage+ Audience
-enabled: [yes/no]
-rationale: [broad / niche]
+enabled: <yes_no>
+rationale: <broad_niche>
 
 ## Exclusion matrix
 | Stage | Excludes |
@@ -27,4 +27,4 @@ rationale: [broad / niche]
 | BOFU | converters_7d |
 
 ## Dynamic creative
-enabled: [yes/no — only on broad / Advantage+]
+enabled: <enabled>

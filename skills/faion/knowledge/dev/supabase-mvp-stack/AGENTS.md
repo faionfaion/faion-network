@@ -69,7 +69,8 @@
 |------|---------|
 | `templates/rls-audit.sql` | SQL query: list tables with RLS off + their owner. |
 | `templates/policy-template.sql` | Policy templates scoped to auth.uid() and role. |
-| `templates/supabase-stack.md` | Markdown spec listing posture per surface. |
+| `templates/supabase-stack.md.j2` | Markdown spec listing posture per surface. |
+| `templates/supabase-stack.md` | Markdown spec listing posture per surface. Generated from `templates/supabase-stack.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled-in minimum viable stack spec for validator smoke-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

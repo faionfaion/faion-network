@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/targeting-spec.md` | Granular targeting spec Markdown skeleton. |
+| `templates/targeting-spec.md.j2` | Granular targeting spec Markdown skeleton. |
+| `templates/targeting-spec.md` | Granular targeting spec Markdown skeleton. Generated from `templates/targeting-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/exclusion-matrix.csv` | Per-stage exclusion matrix seed. |
 | `templates/targeting-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 

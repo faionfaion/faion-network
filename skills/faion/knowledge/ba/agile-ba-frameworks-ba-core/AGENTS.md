@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/decision-record.md` | Markdown decision record — context + options + decision + owner + last_reviewed |
 | `templates/decision-instance.json` | JSON instance of a filled decision record |
-| `templates/framework-fit.md` | Framework-fit report — IIBA AE / DA / SAFe comparison + recommendation + 7-principle gap table |
+| `templates/framework-fit.md.j2` | Framework-fit report — IIBA AE / DA / SAFe comparison + recommendation + 7-principle gap table |
+| `templates/framework-fit.md` | Framework-fit report — IIBA AE / DA / SAFe comparison + recommendation + 7-principle gap table Generated from `templates/framework-fit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sprint-ba-activities.md` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

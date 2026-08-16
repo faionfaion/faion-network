@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/report-skeleton.md` | Statistical Significance: Application skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Statistical Significance: Application. |
+| `templates/report-skeleton.md.j2` | Statistical Significance: Application skeleton — fill per artefact, do not commit free-form output. |
+| `templates/report-skeleton.md` | Statistical Significance: Application skeleton — fill per artefact, do not commit free-form output. Generated from `templates/report-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Statistical Significance: Application. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Statistical Significance: Application. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

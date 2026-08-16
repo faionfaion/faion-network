@@ -63,9 +63,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/hitl-spec.md` | HITL spec skeleton |
+| `templates/hitl-spec.md.j2` | HITL spec skeleton |
+| `templates/hitl-spec.md` | HITL spec skeleton Generated from `templates/hitl-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/review-decision.json` | Review decision JSON schema |
-| `templates/_smoke-test.md` | Minimum viable filled-in HITL spec |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in HITL spec |
+| `templates/_smoke-test.md` | Minimum viable filled-in HITL spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

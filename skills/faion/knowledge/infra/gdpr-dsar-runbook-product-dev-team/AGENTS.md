@@ -59,11 +59,16 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/dsar-intake.md` | Intake form + initial reply template. |
-| `templates/extract-orchestration.md` | Per-system extraction checklist. |
-| `templates/redaction-policy.md` | Redaction policy and pass criteria. |
-| `templates/delivery-letter.md` | Final delivery cover letter template. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/dsar-intake.md.j2` | Intake form + initial reply template. |
+| `templates/dsar-intake.md` | Intake form + initial reply template. Generated from `templates/dsar-intake.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/extract-orchestration.md.j2` | Per-system extraction checklist. |
+| `templates/extract-orchestration.md` | Per-system extraction checklist. Generated from `templates/extract-orchestration.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/redaction-policy.md.j2` | Redaction policy and pass criteria. |
+| `templates/redaction-policy.md` | Redaction policy and pass criteria. Generated from `templates/redaction-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/delivery-letter.md.j2` | Final delivery cover letter template. |
+| `templates/delivery-letter.md` | Final delivery cover letter template. Generated from `templates/delivery-letter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

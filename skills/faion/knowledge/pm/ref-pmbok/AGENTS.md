@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/evm-table.md` | EVM constants table for system prompt injection |
+| `templates/evm-table.md.j2` | EVM constants table for system prompt injection |
+| `templates/evm-table.md` | EVM constants table for system prompt injection Generated from `templates/evm-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

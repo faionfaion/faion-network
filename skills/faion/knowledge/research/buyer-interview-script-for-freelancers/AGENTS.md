@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/interview-script.md` | Mom-Test buyer interview script with hiring triggers |
+| `templates/interview-script.md.j2` | Mom-Test buyer interview script with hiring triggers |
+| `templates/interview-script.md` | Mom-Test buyer interview script with hiring triggers Generated from `templates/interview-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

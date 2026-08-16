@@ -70,7 +70,8 @@
 |------|---------|
 | `templates/ost.yaml` | Canonical OST YAML structure (outcome -> opportunities -> solutions -> assumptions) |
 | `templates/ost-render.sh` | Render OST YAML to a Markdown tree visualisation |
-| `templates/ost-audit-checklist.md` | OST hygiene audit (8 binary checks) |
+| `templates/ost-audit-checklist.md.j2` | OST hygiene audit (8 binary checks) |
+| `templates/ost-audit-checklist.md` | OST hygiene audit (8 binary checks) Generated from `templates/ost-audit-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

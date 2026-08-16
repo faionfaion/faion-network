@@ -7,7 +7,7 @@ token-budget-impact: ~180 tokens
 -->
 ---
 methodology: django-quality-queries
-target_repo: <owner/repo>
+target_repo: <owner_repo>
 endpoints_audited: 0
 n_plus_one_count: 0
 indexes_recommended: 0

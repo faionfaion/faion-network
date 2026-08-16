@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/wa-checklist.md` | Markdown skeleton of the 6-pillar checklist |
+| `templates/wa-checklist.md.j2` | Markdown skeleton of the 6-pillar checklist |
+| `templates/wa-checklist.md` | Markdown skeleton of the 6-pillar checklist Generated from `templates/wa-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/wa-checklist.json` | JSON checklist artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum checklist artefact used by validate-aws-well-architected-checklists.py --self-test |
 

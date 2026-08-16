@@ -67,7 +67,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/logging-spec.md` | Markdown skeleton for the logging spec (fields + redaction + levels). |
+| `templates/logging-spec.md.j2` | Markdown skeleton for the logging spec (fields + redaction + levels). |
+| `templates/logging-spec.md` | Markdown skeleton for the logging spec (fields + redaction + levels). Generated from `templates/logging-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/redaction-config.yaml` | YAML denylist + regex rules for the redaction layer. |
 | `templates/logger.py` | Python structured logger with OTel + redaction adapter. |
 | `templates/_smoke-test.json` | Filled-in minimum viable logging spec for validator smoke-test. |

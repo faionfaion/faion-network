@@ -8,10 +8,10 @@ token-budget-impact: ~400 tokens when filled
 
 # 60-90 Day Onboarding Checklist
 
-**Hire:** [Name]
-**Role:** [Title]
-**Manager:** [Name]
-**Day-30 review date:** [Date]
+**Hire:** <name>
+**Role:** <title>
+**Manager:** <name>
+**Day-30 review date:** <date>
 
 ---
 

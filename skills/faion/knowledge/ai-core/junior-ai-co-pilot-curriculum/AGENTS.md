@@ -62,8 +62,10 @@
 |---|---|
 | `templates/curriculum.schema.json` | JSON Schema for curriculum.json. |
 | `templates/curriculum-skeleton.md` | 6-week skeleton with module headers. |
-| `templates/rubric.md` | Gating rubric (binary pass/fail per item). |
-| `templates/mentor-checklist.md` | Weekly review checklist for mentors. |
+| `templates/rubric.md.j2` | Gating rubric (binary pass/fail per item). |
+| `templates/rubric.md` | Gating rubric (binary pass/fail per item). Generated from `templates/rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/mentor-checklist.md.j2` | Weekly review checklist for mentors. |
+| `templates/mentor-checklist.md` | Weekly review checklist for mentors. Generated from `templates/mentor-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum curriculum.json that passes the validator. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

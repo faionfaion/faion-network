@@ -4,7 +4,7 @@
 <!-- depends-on: personas methodology -->
 <!-- token-budget-impact: ~500 per guide -->
 
-# Contextual Inquiry — <study name>
+# Contextual Inquiry — <study_name>
 
 ## Frame
 You are the apprentice. User is the master. Never suggest.

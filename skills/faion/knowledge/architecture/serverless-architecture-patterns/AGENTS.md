@@ -64,8 +64,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/serverless-pattern-adr.md` | ADR skeleton for serverless pattern selection. |
-| `templates/pattern-fit-matrix.md` | Matrix mapping workload signals to pattern fit. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/pattern-fit-matrix.md.j2` | Matrix mapping workload signals to pattern fit. |
+| `templates/pattern-fit-matrix.md` | Matrix mapping workload signals to pattern fit. Generated from `templates/pattern-fit-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

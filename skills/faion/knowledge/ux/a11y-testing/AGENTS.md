@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/audit-report.md` | Markdown skeleton for the audit narrative. |
+| `templates/audit-report.md.j2` | Markdown skeleton for the audit narrative. |
+| `templates/audit-report.md` | Markdown skeleton for the audit narrative. Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audit-findings.json` | JSON findings skeleton matching the schema. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

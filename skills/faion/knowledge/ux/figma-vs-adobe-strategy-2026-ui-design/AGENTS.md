@@ -59,7 +59,8 @@
 | File | Purpose |
 |---|---|
 | `templates/decision-record.json` | JSON skeleton: recommendation + scores + migration_cost + agent_endpoints + revisit + rationale. |
-| `templates/score-rubric.md` | Five-axis scoring rubric definition. |
+| `templates/score-rubric.md.j2` | Five-axis scoring rubric definition. |
+| `templates/score-rubric.md` | Five-axis scoring rubric definition. Generated from `templates/score-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled figma+firefly recommendation example. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

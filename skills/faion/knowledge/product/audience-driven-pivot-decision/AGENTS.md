@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/audience-driven-pivot-decision.md` | Markdown skeleton for the decision-record artefact, matching content/02-output-contract.xml |
+| `templates/audience-driven-pivot-decision.md.j2` | Markdown skeleton for the decision-record artefact, matching content/02-output-contract.xml |
+| `templates/audience-driven-pivot-decision.md` | Markdown skeleton for the decision-record artefact, matching content/02-output-contract.xml Generated from `templates/audience-driven-pivot-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audience-driven-pivot-decision.schema.json` | JSON Schema seed + filled fixture for the decision-record artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

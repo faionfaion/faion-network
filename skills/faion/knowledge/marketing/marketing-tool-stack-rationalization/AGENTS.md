@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/report.md` | Markdown report skeleton |
-| `templates/_smoke-test.md` | Minimum viable filled report |
+| `templates/report.md.j2` | Markdown report skeleton |
+| `templates/report.md` | Markdown report skeleton Generated from `templates/report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled report |
+| `templates/_smoke-test.md` | Minimum viable filled report Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

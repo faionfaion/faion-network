@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml#mandatory-overhead-branches, deliverable-orientation -->
 <!-- token-budget-impact: ~170 tokens -->
 
-# WBS — [Project Name]
+# WBS — <project_name>
 
 ## 1 Project Management
 - 1.1 Planning Documentation
@@ -14,14 +14,14 @@
 
 ## 2 Requirements
 - 2.1 User Research
-  - 2.1.1 [Work Package — noun]
-  - 2.1.2 [Work Package — noun]
+  - 2.1.1 <work_package_noun>
+  - 2.1.2 <work_package_noun>
 - 2.2 Requirement Documentation
-  - 2.2.1 [Work Package — noun]
+  - 2.2.1 <work_package_noun>
 
-## 3 [Major Deliverable — noun]
-- 3.1 [Sub-deliverable — noun]
-- 3.2 [Sub-deliverable — noun]
+## 3 <major_deliverable_noun>
+- 3.1 <sub_deliverable_noun>
+- 3.2 <sub_deliverable_noun>
 
 ## 4 Quality Assurance
 - 4.1 Unit Test Suite

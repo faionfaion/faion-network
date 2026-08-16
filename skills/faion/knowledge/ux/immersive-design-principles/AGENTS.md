@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/immersive-spec.md` | Immersive experience spec covering locomotion + comfort + a11y + FOV |
+| `templates/immersive-spec.md.j2` | Immersive experience spec covering locomotion + comfort + a11y + FOV |
+| `templates/immersive-spec.md` | Immersive experience spec covering locomotion + comfort + a11y + FOV Generated from `templates/immersive-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

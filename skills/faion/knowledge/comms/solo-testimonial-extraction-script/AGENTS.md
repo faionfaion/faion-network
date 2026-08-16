@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/outreach-email.md` | 3-question testimonial outreach skeleton |
+| `templates/outreach-email.md.j2` | 3-question testimonial outreach skeleton |
+| `templates/outreach-email.md` | 3-question testimonial outreach skeleton Generated from `templates/outreach-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/testimonial.json` | Output JSON skeleton with consent fields |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

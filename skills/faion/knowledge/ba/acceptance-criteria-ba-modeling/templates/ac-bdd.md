@@ -6,8 +6,8 @@
 
 # Acceptance Criterion (BDD)
 
-**ac_id:** AC-<STORY>-<NN>
+**ac_id:** AC-<story>-<ac_id>
 
 **Given** <state>  
 **When** <event>  
-**Then** <observable outcome>
+**Then** <observable_outcome>

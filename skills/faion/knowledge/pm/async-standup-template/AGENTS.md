@@ -63,8 +63,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/post.md` | Three-field daily-post skeleton with @-owner placeholder. |
-| `templates/weekly-digest.md` | PM weekly recap skeleton with shipped / in-progress / blockers / missed-posters / next-week-risk. |
+| `templates/post.md.j2` | Three-field daily-post skeleton with @-owner placeholder. |
+| `templates/post.md` | Three-field daily-post skeleton with @-owner placeholder. Generated from `templates/post.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-digest.md.j2` | PM weekly recap skeleton with shipped / in-progress / blockers / missed-posters / next-week-risk. |
+| `templates/weekly-digest.md` | PM weekly recap skeleton with shipped / in-progress / blockers / missed-posters / next-week-risk. Generated from `templates/weekly-digest.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

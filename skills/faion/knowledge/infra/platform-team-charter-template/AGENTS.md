@@ -58,10 +58,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/charter.md` | Charter sections: mission, customers, scope, anti-scope, services, SLA, metrics. |
-| `templates/anti-charter.md` | What the platform team does NOT do. |
-| `templates/service-catalogue.md` | Paved-road service list with SLAs. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/charter.md.j2` | Charter sections: mission, customers, scope, anti-scope, services, SLA, metrics. |
+| `templates/charter.md` | Charter sections: mission, customers, scope, anti-scope, services, SLA, metrics. Generated from `templates/charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/anti-charter.md.j2` | What the platform team does NOT do. |
+| `templates/anti-charter.md` | What the platform team does NOT do. Generated from `templates/anti-charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/service-catalogue.md.j2` | Paved-road service list with SLAs. |
+| `templates/service-catalogue.md` | Paved-road service list with SLAs. Generated from `templates/service-catalogue.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

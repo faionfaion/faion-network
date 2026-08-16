@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/feedback-loop-customer-reply-templates.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/feedback-loop-customer-reply-templates.md.j2` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/feedback-loop-customer-reply-templates.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml Generated from `templates/feedback-loop-customer-reply-templates.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/feedback-loop-customer-reply-templates.schema.json` | JSON Schema seed + filled fixture for the playbook-step artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

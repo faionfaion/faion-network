@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cognitive-inclusion-spec.md` | Surface-by-surface cognitive inclusion spec with patterns + settings + WCAG mapping |
+| `templates/cognitive-inclusion-spec.md.j2` | Surface-by-surface cognitive inclusion spec with patterns + settings + WCAG mapping |
+| `templates/cognitive-inclusion-spec.md` | Surface-by-surface cognitive inclusion spec with patterns + settings + WCAG mapping Generated from `templates/cognitive-inclusion-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

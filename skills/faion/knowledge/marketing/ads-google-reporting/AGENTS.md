@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/performance-report.md` | Monthly performance report Markdown skeleton. |
-| `templates/weekly-checklist.md` | 30-minute weekly optimization checklist. |
+| `templates/weekly-checklist.md.j2` | 30-minute weekly optimization checklist. |
+| `templates/weekly-checklist.md` | 30-minute weekly optimization checklist. Generated from `templates/weekly-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/report-artefact.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

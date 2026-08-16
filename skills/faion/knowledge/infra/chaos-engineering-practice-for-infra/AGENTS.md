@@ -58,10 +58,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/experiment-card.md` | Single experiment hypothesis + abort criteria + blast radius. |
-| `templates/gameday-agenda.md` | Quarterly GameDay agenda + scoring. |
-| `templates/learning-log.md` | Per-experiment learning + regression test plan. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/experiment-card.md.j2` | Single experiment hypothesis + abort criteria + blast radius. |
+| `templates/experiment-card.md` | Single experiment hypothesis + abort criteria + blast radius. Generated from `templates/experiment-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/gameday-agenda.md.j2` | Quarterly GameDay agenda + scoring. |
+| `templates/gameday-agenda.md` | Quarterly GameDay agenda + scoring. Generated from `templates/gameday-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/learning-log.md.j2` | Per-experiment learning + regression test plan. |
+| `templates/learning-log.md` | Per-experiment learning + regression test plan. Generated from `templates/learning-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

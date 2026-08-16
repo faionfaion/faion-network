@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the PM tools overview report artefact. |
-| `templates/requirements-doc.md` | Markdown skeleton for the MoSCoW requirements table. |
+| `templates/requirements-doc.md.j2` | Markdown skeleton for the MoSCoW requirements table. |
+| `templates/requirements-doc.md` | Markdown skeleton for the MoSCoW requirements table. Generated from `templates/requirements-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/poc-runner.py` | Reference script to scaffold PoC plans per shortlisted tool. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

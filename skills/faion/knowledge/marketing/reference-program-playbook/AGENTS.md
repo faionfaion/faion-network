@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/playbook-step-skeleton.md` | Reference Program Playbook skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in Reference Program Playbook. |
+| `templates/playbook-step-skeleton.md.j2` | Reference Program Playbook skeleton — fill per artefact, do not commit free-form output. |
+| `templates/playbook-step-skeleton.md` | Reference Program Playbook skeleton — fill per artefact, do not commit free-form output. Generated from `templates/playbook-step-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in Reference Program Playbook. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Reference Program Playbook. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

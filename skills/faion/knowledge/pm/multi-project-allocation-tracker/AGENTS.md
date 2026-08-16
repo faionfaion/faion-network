@@ -65,8 +65,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the allocation snapshot artefact. |
-| `templates/allocation-row.md` | Per-person allocation row skeleton. |
-| `templates/rebalance-proposal.md` | Rebalance proposal skeleton. |
+| `templates/allocation-row.md.j2` | Per-person allocation row skeleton. |
+| `templates/allocation-row.md` | Per-person allocation row skeleton. Generated from `templates/allocation-row.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rebalance-proposal.md.j2` | Rebalance proposal skeleton. |
+| `templates/rebalance-proposal.md` | Rebalance proposal skeleton. Generated from `templates/rebalance-proposal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

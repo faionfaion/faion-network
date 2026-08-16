@@ -60,7 +60,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/comms-plan.md` | Comms plan template: segment × channel × cadence × content × owner |
+| `templates/comms-plan.md.j2` | Comms plan template: segment × channel × cadence × content × owner |
+| `templates/comms-plan.md` | Comms plan template: segment × channel × cadence × content × owner Generated from `templates/comms-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/action-extractor.py` | Action extraction from meeting transcript → owner + due + linked issue |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

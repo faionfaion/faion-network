@@ -66,9 +66,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/belief-register.md` | Belief register skeleton (id, statement, confidence, last_update, evidence_type). |
+| `templates/belief-register.md.j2` | Belief register skeleton (id, statement, confidence, last_update, evidence_type). |
+| `templates/belief-register.md` | Belief register skeleton (id, statement, confidence, last_update, evidence_type). Generated from `templates/belief-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pm-learning-velocity.py` | Compute decision-velocity per category; emits JSON. |
-| `templates/quarterly-audit-memo.md` | Quarterly belief-audit memo template. |
+| `templates/quarterly-audit-memo.md.j2` | Quarterly belief-audit memo template. |
+| `templates/quarterly-audit-memo.md` | Quarterly belief-audit memo template. Generated from `templates/quarterly-audit-memo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/backup-spec.md` | Markdown skeleton for the backup spec |
+| `templates/backup-spec.md.j2` | Markdown skeleton for the backup spec |
+| `templates/backup-spec.md` | Markdown skeleton for the backup spec Generated from `templates/backup-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/restic-backup.sh` | Restic backup script — production-ready bash with retention prune |
 | `templates/verify-backup.sh` | Restore-verification script — restores latest snapshot to /tmp + asserts |
 | `templates/_smoke-test.json` | Minimum spec used by validate-backup-strategies.py --self-test |

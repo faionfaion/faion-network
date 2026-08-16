@@ -68,7 +68,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/wbs-outline.md` | Hierarchical WBS outline skeleton with numbered levels |
+| `templates/wbs-outline.md.j2` | Hierarchical WBS outline skeleton with numbered levels |
+| `templates/wbs-outline.md` | Hierarchical WBS outline skeleton with numbered levels Generated from `templates/wbs-outline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/wbs-dictionary-entry.md` | Single work-package Dictionary card with all required fields |
 | `templates/wbs-validate.py` | Helper used by Step 6 to validate weight + 8-80 against wbs.yaml |
 | `templates/_smoke-test.yaml` | Minimum-viable filled `WBS` for validator self-test |

@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/future-state-spec.md` | Markdown skeleton with all to-be sections. |
 | `templates/outcome-traceback.csv` | Outcome → business-need metric mapping table. |
-| `templates/_smoke-test.md` | Minimum viable future-state spec. |
+| `templates/_smoke-test.md.j2` | Minimum viable future-state spec. |
+| `templates/_smoke-test.md` | Minimum viable future-state spec. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Monitoring audit listing journald + digest + alert routing. |
-| `templates/_smoke-test.md` | Minimum viable filled-in monitoring audit. |
+| `templates/skeleton.md.j2` | Monitoring audit listing journald + digest + alert routing. |
+| `templates/skeleton.md` | Monitoring audit listing journald + digest + alert routing. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in monitoring audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in monitoring audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/digest.sh` | Daily digest builder: one line per service, sent to TG at 07:00. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

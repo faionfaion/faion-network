@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/flag_classification.json` | Per-flag classification + retirement plan |
-| `templates/policy.md` | Team flag policy: per-kind window + retirement criteria |
+| `templates/policy.md.j2` | Team flag policy: per-kind window + retirement criteria |
+| `templates/policy.md` | Team flag policy: per-kind window + retirement criteria Generated from `templates/policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

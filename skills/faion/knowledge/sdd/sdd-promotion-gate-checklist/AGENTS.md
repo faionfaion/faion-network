@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/promotion-gate-checklist.md` | Markdown checklist with binary criteria + evidence column |
+| `templates/promotion-gate-checklist.md.j2` | Markdown checklist with binary criteria + evidence column |
+| `templates/promotion-gate-checklist.md` | Markdown checklist with binary criteria + evidence column Generated from `templates/promotion-gate-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

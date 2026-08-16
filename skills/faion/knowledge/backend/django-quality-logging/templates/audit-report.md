@@ -7,7 +7,7 @@ token-budget-impact: ~180 tokens
 -->
 ---
 methodology: django-quality-logging
-target_repo: <owner/repo>
+target_repo: <owner_repo>
 django_version: "5.2"
 python_version: "3.12"
 structlog_status:

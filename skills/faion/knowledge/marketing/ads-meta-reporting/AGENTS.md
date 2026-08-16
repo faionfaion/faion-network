@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-report.md` | Meta weekly report Markdown skeleton with column preset + breakdowns + actions. |
-| `templates/breakdown-checklist.md` | Breakdown checklist for the weekly cadence. |
+| `templates/weekly-report.md.j2` | Meta weekly report Markdown skeleton with column preset + breakdowns + actions. |
+| `templates/weekly-report.md` | Meta weekly report Markdown skeleton with column preset + breakdowns + actions. Generated from `templates/weekly-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/breakdown-checklist.md.j2` | Breakdown checklist for the weekly cadence. |
+| `templates/breakdown-checklist.md` | Breakdown checklist for the weekly cadence. Generated from `templates/breakdown-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/report-artefact.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

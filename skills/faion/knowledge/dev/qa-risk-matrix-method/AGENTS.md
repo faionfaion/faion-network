@@ -70,7 +70,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/risk-matrix.yaml` | Per-area scores with impact / likelihood / quadrant / investment. |
-| `templates/investment-plan.md` | Quarterly investment plan: what each quadrant gets, with rationale and owner. |
+| `templates/investment-plan.md.j2` | Quarterly investment plan: what each quadrant gets, with rationale and owner. |
+| `templates/investment-plan.md` | Quarterly investment plan: what each quadrant gets, with rationale and owner. Generated from `templates/investment-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable risk-matrix artefact for validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

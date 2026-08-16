@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/quick-check-report.md` | Markdown skeleton for a11y quick-check report. |
+| `templates/quick-check-report.md.j2` | Markdown skeleton for a11y quick-check report. |
+| `templates/quick-check-report.md` | Markdown skeleton for a11y quick-check report. Generated from `templates/quick-check-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

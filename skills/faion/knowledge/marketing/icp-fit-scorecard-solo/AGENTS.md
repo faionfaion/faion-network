@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/scorecard.csv` | Per-customer scorecard skeleton (one row per customer) |
-| `templates/sunset-email.md` | Sunset/remove email template |
+| `templates/sunset-email.md.j2` | Sunset/remove email template |
+| `templates/sunset-email.md` | Sunset/remove email template Generated from `templates/sunset-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable scorecard for validator self-test |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

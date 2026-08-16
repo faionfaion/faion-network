@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the PM tools comparison report artefact. |
-| `templates/evaluation-scorecard.md` | Markdown skeleton for the per-tool scorecard with criteria + evidence. |
+| `templates/evaluation-scorecard.md.j2` | Markdown skeleton for the per-tool scorecard with criteria + evidence. |
+| `templates/evaluation-scorecard.md` | Markdown skeleton for the per-tool scorecard with criteria + evidence. Generated from `templates/evaluation-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/tco.yaml` | YAML template for 3-year TCO per tool. |
 | `templates/weighted_score.py` | Reference script computing weighted totals from the scorecard. |
 

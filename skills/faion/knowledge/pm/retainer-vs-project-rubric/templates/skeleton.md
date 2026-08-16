@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml#r1-named-dimensions -->
 <!-- token-budget-impact: ~140 tokens -->
 
-# Engagement Rubric — [opportunity_id]
+# Engagement Rubric — <opportunity_id>
 
-**Owner:** [role] / [person]
-**Version:** [semver]
+**Owner:** <owner_role> / <owner_full_name>
+**Version:** <document_version>
 **Last reviewed:** YYYY-MM-DD
 **Reviewers:** founder, partner
 

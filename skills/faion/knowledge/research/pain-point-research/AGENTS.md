@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pain-point-research.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/pain-point-research.md.j2` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
+| `templates/pain-point-research.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml Generated from `templates/pain-point-research.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pain-point-research.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

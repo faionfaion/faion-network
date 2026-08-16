@@ -72,7 +72,8 @@
 |------|---------|
 | `templates/shadow-report.schema.yaml` | Schema for shadow-report.yaml |
 | `templates/promotion-decision.md` | Go/no-go template with sign-off lines |
-| `templates/rollback-runbook.md` | Step-by-step rollback procedure |
+| `templates/rollback-runbook.md.j2` | Step-by-step rollback procedure |
+| `templates/rollback-runbook.md` | Step-by-step rollback procedure Generated from `templates/rollback-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum-viable shadow-report.yaml that validates clean |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

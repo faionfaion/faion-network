@@ -67,11 +67,15 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/experiment-plan.md` | One-page Plan with all required fields |
-| `templates/stripe-config-checklist.md` | Step-by-step Stripe Dashboard + API checklist |
+| `templates/experiment-plan.md.j2` | One-page Plan with all required fields |
+| `templates/experiment-plan.md` | One-page Plan with all required fields Generated from `templates/experiment-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/stripe-config-checklist.md.j2` | Step-by-step Stripe Dashboard + API checklist |
+| `templates/stripe-config-checklist.md` | Step-by-step Stripe Dashboard + API checklist Generated from `templates/stripe-config-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/grandfather-coupon.json` | Stripe coupon JSON template for grandfathering |
-| `templates/customer-announcement.md` | Email template for the customer-facing announcement |
-| `templates/decision-memo.md` | Post-experiment go/no-go memo skeleton |
+| `templates/customer-announcement.md.j2` | Email template for the customer-facing announcement |
+| `templates/customer-announcement.md` | Email template for the customer-facing announcement Generated from `templates/customer-announcement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-memo.md.j2` | Post-experiment go/no-go memo skeleton |
+| `templates/decision-memo.md` | Post-experiment go/no-go memo skeleton Generated from `templates/decision-memo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable plan+preflight+memo for validator self-test |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

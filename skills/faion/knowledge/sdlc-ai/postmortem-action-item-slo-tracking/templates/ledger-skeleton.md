@@ -8,7 +8,7 @@ token-budget-impact: low — ~200 tokens when loaded as context
 
 # Postmortem Action Item Ledger
 
-owner: <person> (<role>)
+owner: <owner_full_name> (<owner_role>)
 review_cadence: weekly
 retention_months: 24
 

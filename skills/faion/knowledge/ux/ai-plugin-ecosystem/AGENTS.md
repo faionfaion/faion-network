@@ -62,9 +62,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md` | ADR-style decision record skeleton for plugin adoption |
+| `templates/decision-record.md.j2` | ADR-style decision record skeleton for plugin adoption |
+| `templates/decision-record.md` | ADR-style decision record skeleton for plugin adoption Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/plugin-capability-matrix.json` | Capability vs task matrix skeleton |
-| `templates/_smoke-test.md` | Minimum viable filled-in plugin-adoption ADR |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in plugin-adoption ADR |
+| `templates/_smoke-test.md` | Minimum viable filled-in plugin-adoption ADR Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

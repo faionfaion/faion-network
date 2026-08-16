@@ -55,9 +55,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/take-home-rubric.md` | Markdown skeleton with weighted criteria + band anchors. |
-| `templates/calibration-sample-score.md` | Filled-in calibration example. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/take-home-rubric.md.j2` | Markdown skeleton with weighted criteria + band anchors. |
+| `templates/take-home-rubric.md` | Markdown skeleton with weighted criteria + band anchors. Generated from `templates/take-home-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/calibration-sample-score.md.j2` | Filled-in calibration example. |
+| `templates/calibration-sample-score.md` | Filled-in calibration example. Generated from `templates/calibration-sample-score.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

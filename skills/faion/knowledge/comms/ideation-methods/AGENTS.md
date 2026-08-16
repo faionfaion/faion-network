@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scamper-worksheet.md` | 7-lens SCAMPER worksheet skeleton |
-| `templates/starbursting-worksheet.md` | 5W+H matrix worksheet skeleton |
+| `templates/scamper-worksheet.md.j2` | 7-lens SCAMPER worksheet skeleton |
+| `templates/scamper-worksheet.md` | 7-lens SCAMPER worksheet skeleton Generated from `templates/scamper-worksheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/starbursting-worksheet.md.j2` | 5W+H matrix worksheet skeleton |
+| `templates/starbursting-worksheet.md` | 5W+H matrix worksheet skeleton Generated from `templates/starbursting-worksheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

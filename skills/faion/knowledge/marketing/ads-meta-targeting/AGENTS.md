@@ -66,7 +66,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/audience-spec.md` | Three-tier audience spec Markdown skeleton. |
-| `templates/exclusions-checklist.md` | Exclusion audiences checklist before launch. |
+| `templates/exclusions-checklist.md.j2` | Exclusion audiences checklist before launch. |
+| `templates/exclusions-checklist.md` | Exclusion audiences checklist before launch. Generated from `templates/exclusions-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audience-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -56,9 +56,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/call-site-inventory.md` | Inventory report skeleton |
+| `templates/call-site-inventory.md.j2` | Inventory report skeleton |
+| `templates/call-site-inventory.md` | Inventory report skeleton Generated from `templates/call-site-inventory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/output-schema.json` | Inventory JSON schema |
-| `templates/_smoke-test.md` | Minimum viable filled-in inventory |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in inventory |
+| `templates/_smoke-test.md` | Minimum viable filled-in inventory Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

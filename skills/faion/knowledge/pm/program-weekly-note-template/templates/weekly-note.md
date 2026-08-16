@@ -4,22 +4,22 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~600-1500 tokens populated -->
 
-# Program <name> — Week <N>
+# Program <name> — Week <program_week>
 
-Author: <PM name>
+Author: <pm_name>
 Date: YYYY-MM-DD
-Stage: <discovery|delivery|warranty>
+Stage: <discovery_delivery_warranty>
 
 ## Headline (1 sentence)
 
 ## Progress (per workstream)
-- <workstream>: <progress + evidence link>
+- <workstream>: <progress_evidence_link>
 
 ## Risks moved this week (top 3)
-- R-NNN: <new score | reason>
+- R-NNN: <new_score_reason>
 
 ## Decisions taken
-- <decision>: <owner + rationale>
+- <decision>: <owner_rationale>
 
 ## Asks for sponsors (numbered, decision-shaped)
 1. <ask>

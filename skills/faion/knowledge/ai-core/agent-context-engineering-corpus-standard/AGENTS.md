@@ -63,9 +63,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/corpus-policy.md` | Spec skeleton for corpus policy |
+| `templates/corpus-policy.md.j2` | Spec skeleton for corpus policy |
+| `templates/corpus-policy.md` | Spec skeleton for corpus policy Generated from `templates/corpus-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/output-schema.json` | Corpus envelope schema (sources + chunks + ranks + citations) |
-| `templates/_smoke-test.md` | Minimum viable filled-in corpus policy |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in corpus policy |
+| `templates/_smoke-test.md` | Minimum viable filled-in corpus policy Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

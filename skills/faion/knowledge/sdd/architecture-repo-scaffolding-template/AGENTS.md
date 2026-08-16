@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/repo-skeleton.tree` | Tree-format skeleton showing canonical dirs + sentinel files |
 | `templates/cadence.yml` | Review cadence YAML with owner + next-review + evidence sources |
-| `templates/ADR-0000-template.md` | MADR-style ADR template with consequence-evidence section |
+| `templates/ADR-0000-template.md.j2` | MADR-style ADR template with consequence-evidence section |
+| `templates/ADR-0000-template.md` | MADR-style ADR template with consequence-evidence section Generated from `templates/ADR-0000-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

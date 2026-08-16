@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/requirement-quality-scorecard.md` | Markdown rubric template with scoring axes + thresholds |
+| `templates/requirement-quality-scorecard.md.j2` | Markdown rubric template with scoring axes + thresholds |
+| `templates/requirement-quality-scorecard.md` | Markdown rubric template with scoring axes + thresholds Generated from `templates/requirement-quality-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/requirement-quality-scorecard.schema.json` | JSON Schema for the structured rubric output |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -65,8 +65,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/brd-template.md` | Business Requirements Document skeleton. |
-| `templates/srs-template.md` | IEEE 830-aligned SRS skeleton. |
-| `templates/user-story-template.md` | INVEST-compliant user story template with AC slot. |
+| `templates/srs-template.md.j2` | IEEE 830-aligned SRS skeleton. |
+| `templates/srs-template.md` | IEEE 830-aligned SRS skeleton. Generated from `templates/srs-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/user-story-template.md.j2` | INVEST-compliant user story template with AC slot. |
+| `templates/user-story-template.md` | INVEST-compliant user story template with AC slot. Generated from `templates/user-story-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/srs-conformance.yaml` | YAML schema enforced by validator. |
 | `templates/srs_conform.py` | Conformance checker that fails CI when SRS source violates the schema. |
 

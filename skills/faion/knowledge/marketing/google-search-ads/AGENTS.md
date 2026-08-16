@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/search-spec.md` | Search campaign spec Markdown skeleton. |
-| `templates/rsa-template.md` | RSA headline + description template (3 variants). |
+| `templates/search-spec.md.j2` | Search campaign spec Markdown skeleton. |
+| `templates/search-spec.md` | Search campaign spec Markdown skeleton. Generated from `templates/search-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rsa-template.md.j2` | RSA headline + description template (3 variants). |
+| `templates/rsa-template.md` | RSA headline + description template (3 variants). Generated from `templates/rsa-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/search-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config-skeleton.md` | SERP Movement Alert Rules skeleton — fill per artefact, do not commit free-form output. |
-| `templates/_smoke-test.md` | Minimum viable filled-in SERP Movement Alert Rules. |
+| `templates/config-skeleton.md.j2` | SERP Movement Alert Rules skeleton — fill per artefact, do not commit free-form output. |
+| `templates/config-skeleton.md` | SERP Movement Alert Rules skeleton — fill per artefact, do not commit free-form output. Generated from `templates/config-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in SERP Movement Alert Rules. |
+| `templates/_smoke-test.md` | Minimum viable filled-in SERP Movement Alert Rules. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

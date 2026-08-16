@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown report listing applied tuning + verify commands. |
-| `templates/_smoke-test.md` | Minimum viable filled-in tuning report. |
+| `templates/skeleton.md.j2` | Markdown report listing applied tuning + verify commands. |
+| `templates/skeleton.md` | Markdown report listing applied tuning + verify commands. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in tuning report. |
+| `templates/_smoke-test.md` | Minimum viable filled-in tuning report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/60-agent-dev.conf` | sysctl drop-in for agent workloads (inotify + memory + FD). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

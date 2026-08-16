@@ -3,13 +3,13 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1500 tokens when loaded as context -->
-# Business Model Report: [Product Name]
+# Business Model Report: <product_name>
 
 _Version: 1 | Date: YYYY-MM-DD | Canvas hash: {short-sha}_
 
 ## Verdict (P10-based)
 
-- Result: [ viable | viable-with-fixes | not-viable ]
+- Result: <result>
 - One-line reason: ...
 
 ## Business Model Canvas

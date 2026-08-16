@@ -60,9 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/CLAUDE.md` | Single-line CLAUDE.md template: `@AGENTS.md` |
-| `templates/AGENTS.md` | AGENTS.md skeleton with required sections (dir purpose, file table, key types/commands, gotchas) |
-| `templates/.agents-INDEX.md` | Skeleton INDEX.md for `.agents/` directories |
+| `templates/CLAUDE.md.j2` | Single-line CLAUDE.md template: `@AGENTS.md` |
+| `templates/CLAUDE.md` | Single-line CLAUDE.md template: `@AGENTS.md` Generated from `templates/CLAUDE.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/AGENTS.md.j2` | AGENTS.md skeleton with required sections (dir purpose, file table, key types/commands, gotchas) |
+| `templates/AGENTS.md` | AGENTS.md skeleton with required sections (dir purpose, file table, key types/commands, gotchas) Generated from `templates/AGENTS.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/.agents-INDEX.md.j2` | Skeleton INDEX.md for `.agents/` directories |
+| `templates/.agents-INDEX.md` | Skeleton INDEX.md for `.agents/` directories Generated from `templates/.agents-INDEX.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

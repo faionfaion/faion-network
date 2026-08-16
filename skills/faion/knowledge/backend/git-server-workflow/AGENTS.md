@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Workspace/runtime separation audit report. |
-| `templates/_smoke-test.md` | Minimum viable filled-in workflow audit. |
+| `templates/skeleton.md.j2` | Workspace/runtime separation audit report. |
+| `templates/skeleton.md` | Workspace/runtime separation audit report. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in workflow audit. |
+| `templates/_smoke-test.md` | Minimum viable filled-in workflow audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

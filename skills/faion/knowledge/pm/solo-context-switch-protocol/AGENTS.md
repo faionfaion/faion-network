@@ -64,7 +64,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/daily-blocks.yaml` | Daily block schedule skeleton |
-| `templates/handoff-note.md` | 5-minute handoff template |
+| `templates/handoff-note.md.j2` | 5-minute handoff template |
+| `templates/handoff-note.md` | 5-minute handoff template Generated from `templates/handoff-note.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

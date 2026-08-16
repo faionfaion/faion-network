@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/gdpr-for-solo-saas.md` | Markdown skeleton for the checklist artefact, matching content/02-output-contract.xml |
+| `templates/gdpr-for-solo-saas.md.j2` | Markdown skeleton for the checklist artefact, matching content/02-output-contract.xml |
+| `templates/gdpr-for-solo-saas.md` | Markdown skeleton for the checklist artefact, matching content/02-output-contract.xml Generated from `templates/gdpr-for-solo-saas.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/gdpr-for-solo-saas.schema.json` | JSON Schema seed + filled fixture for the checklist artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

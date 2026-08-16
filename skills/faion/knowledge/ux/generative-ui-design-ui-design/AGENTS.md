@@ -60,7 +60,8 @@
 | File | Purpose |
 |---|---|
 | `templates/ideation-spec.json` | JSON skeleton: brief_id + variants + selection + rationale + refinement list. |
-| `templates/generator-prompt.md` | Prompt skeleton with brand-token + must-not-have injection slots. |
+| `templates/generator-prompt.md.j2` | Prompt skeleton with brand-token + must-not-have injection slots. |
+| `templates/generator-prompt.md` | Prompt skeleton with brand-token + must-not-have injection slots. Generated from `templates/generator-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled checkout-redesign ideation spec. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

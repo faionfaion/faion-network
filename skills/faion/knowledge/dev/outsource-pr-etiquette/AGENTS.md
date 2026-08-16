@@ -60,9 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pr_body.md` | Markdown skeleton for the artefact. |
-| `templates/checklist.md` | Markdown checklist scaffolding the artefact items. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/pr_body.md.j2` | Markdown skeleton for the artefact. |
+| `templates/pr_body.md` | Markdown skeleton for the artefact. Generated from `templates/pr_body.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/checklist.md.j2` | Markdown checklist scaffolding the artefact items. |
+| `templates/checklist.md` | Markdown checklist scaffolding the artefact items. Generated from `templates/checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

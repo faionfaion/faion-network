@@ -59,7 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rightsize-decision.md` | Decision record: workload + baseline + recommended size + Graviton evaluation + rollout plan |
+| `templates/rightsize-decision.md.j2` | Decision record: workload + baseline + recommended size + Graviton evaluation + rollout plan |
+| `templates/rightsize-decision.md` | Decision record: workload + baseline + recommended size + Graviton evaluation + rollout plan Generated from `templates/rightsize-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/backup-config.example.json` | Filled decision-record artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

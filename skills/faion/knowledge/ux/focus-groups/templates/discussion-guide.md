@@ -4,20 +4,20 @@
 <!-- depends-on: personas methodology -->
 <!-- token-budget-impact: ~600 -->
 
-# Discussion Guide — <segment> — <iso date>
+# Discussion Guide — <segment> — <iso_date>
 
 ## Warm-up (10 min)
 - Introductions + 60-sec written: 'In one sentence, what brings you here?'
 
-## Topic 1 — <vocabulary mapping> (15-20 min)
+## Topic 1 — <vocabulary_mapping> (15-20 min)
 - 60-sec written: <prompt>
 - Discussion + probes: ladder of 3 follow-ups
 
-## Topic 2 — <needs surfacing> (15-20 min)
+## Topic 2 — <needs_surfacing> (15-20 min)
 - 60-sec written: <prompt>
 - Discussion + probes
 
-## Topic 3 — <reaction prep> (10-15 min)
+## Topic 3 — <reaction_prep> (10-15 min)
 - 60-sec written: <prompt>
 - Discussion + probes
 

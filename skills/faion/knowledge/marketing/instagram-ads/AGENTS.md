@@ -65,8 +65,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/instagram-spec.md` | Instagram campaign spec Markdown skeleton. |
-| `templates/ugc-brief.md` | UGC / creator content brief Markdown skeleton. |
+| `templates/instagram-spec.md.j2` | Instagram campaign spec Markdown skeleton. |
+| `templates/instagram-spec.md` | Instagram campaign spec Markdown skeleton. Generated from `templates/instagram-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ugc-brief.md.j2` | UGC / creator content brief Markdown skeleton. |
+| `templates/ugc-brief.md` | UGC / creator content brief Markdown skeleton. Generated from `templates/ugc-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/instagram-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

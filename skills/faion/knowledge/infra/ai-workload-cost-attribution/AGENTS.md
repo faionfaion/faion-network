@@ -59,8 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/attribution-report.md` | Monthly per-tenant cost report skeleton. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/attribution-report.md.j2` | Monthly per-tenant cost report skeleton. |
+| `templates/attribution-report.md` | Monthly per-tenant cost report skeleton. Generated from `templates/attribution-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

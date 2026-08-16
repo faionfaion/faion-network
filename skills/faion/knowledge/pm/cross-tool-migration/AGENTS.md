@@ -66,9 +66,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/migration-plan.md` | Six-phase plan: discover, map, dry-run, cutover, verify, decommission. |
+| `templates/migration-plan.md.j2` | Six-phase plan: discover, map, dry-run, cutover, verify, decommission. |
+| `templates/migration-plan.md` | Six-phase plan: discover, map, dry-run, cutover, verify, decommission. Generated from `templates/migration-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/field-map.yaml` | Source → target field map with type coercions and defaults. |
-| `templates/cutover-runbook.md` | Hour-by-hour runbook with rollback decision points. |
+| `templates/cutover-runbook.md.j2` | Hour-by-hour runbook with rollback decision points. |
+| `templates/cutover-runbook.md` | Hour-by-hour runbook with rollback decision points. Generated from `templates/cutover-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

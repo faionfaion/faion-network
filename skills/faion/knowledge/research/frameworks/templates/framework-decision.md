@@ -26,4 +26,4 @@ _Date: YYYY-MM-DD | Author: agent | Stage: ideation|pre-PMF|post-PMF|scale_
 |---|---|
 
 ## Next methodology to load
-- [[slug]]
+- [<slug>]

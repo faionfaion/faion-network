@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/playbook-step.md` | working skeleton matching the `produces=playbook-step` shape |
-| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
+| `templates/playbook-step.md.j2` | working skeleton matching the `produces=playbook-step` shape |
+| `templates/playbook-step.md` | working skeleton matching the `produces=playbook-step` shape Generated from `templates/playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | minimum-viable filled-in smoke-test fixture |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

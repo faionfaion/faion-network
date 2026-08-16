@@ -67,9 +67,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/retro-agenda.md` | 4-block agenda with time-boxes and facilitator prompts |
+| `templates/retro-agenda.md.j2` | 4-block agenda with time-boxes and facilitator prompts |
+| `templates/retro-agenda.md` | 4-block agenda with time-boxes and facilitator prompts Generated from `templates/retro-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/retro-record.json` | JSON Schema-conforming template for the retro output |
-| `templates/language-rules-card.md` | Printable card with do / do-not phrasing examples |
+| `templates/language-rules-card.md.j2` | Printable card with do / do-not phrasing examples |
+| `templates/language-rules-card.md` | Printable card with do / do-not phrasing examples Generated from `templates/language-rules-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/action-item.json` | Schema for one action item |
 | `templates/_smoke-test.json` | Minimum retro-record used by validate-blameless-retro-template.py --self-test |
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/live-ticket-drafting-shared-screen-pattern.md` | Markdown playbook-step template with required sections |
+| `templates/live-ticket-drafting-shared-screen-pattern.md.j2` | Markdown playbook-step template with required sections |
+| `templates/live-ticket-drafting-shared-screen-pattern.md` | Markdown playbook-step template with required sections Generated from `templates/live-ticket-drafting-shared-screen-pattern.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/live-ticket-drafting-shared-screen-pattern.schema.json` | JSON Schema for the structured playbook-step record |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

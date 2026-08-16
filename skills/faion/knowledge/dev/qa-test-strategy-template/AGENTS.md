@@ -63,9 +63,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/strategy.md` | Markdown skeleton for the artefact. |
+| `templates/strategy.md.j2` | Markdown skeleton for the artefact. |
+| `templates/strategy.md` | Markdown skeleton for the artefact. Generated from `templates/strategy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/risks_table.csv` | CSV template for tabular artefacts. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

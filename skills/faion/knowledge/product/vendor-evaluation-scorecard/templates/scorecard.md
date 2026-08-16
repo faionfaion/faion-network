@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~150-400 tokens when loaded as context -->
 
-# Vendor Scorecard — <vector-db>
+# Vendor Scorecard — <vector_db>
 
 ## Weights (sum = 1.0)
 

@@ -6,7 +6,7 @@
 
 # Closure Report — <project>
 
-Sponsor: <name>   Date: YYYY-MM-DD   Outcome: <success|partial|abandoned>
+Sponsor: <name>   Date: YYYY-MM-DD   Outcome: <success_partial_abandoned>
 
 ## Outcome vs charter
 - Charter goal:

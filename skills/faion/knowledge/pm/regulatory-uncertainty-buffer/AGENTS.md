@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | RegulatoryBuffer skeleton with default jurisdictions |
+| `templates/skeleton.md.j2` | RegulatoryBuffer skeleton with default jurisdictions |
+| `templates/skeleton.md` | RegulatoryBuffer skeleton with default jurisdictions Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `RegulatoryBuffer` |
 

@@ -65,7 +65,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/interview-guide.md` | Interview guide skeleton with neutrality checklist. |
-| `templates/session-notes.md` | Per-session notes skeleton (observation vs inference). |
+| `templates/session-notes.md.j2` | Per-session notes skeleton (observation vs inference). |
+| `templates/session-notes.md` | Per-session notes skeleton (observation vs inference). Generated from `templates/session-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/transcribe-sessions.sh` | Local whisper-based transcription + redaction. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

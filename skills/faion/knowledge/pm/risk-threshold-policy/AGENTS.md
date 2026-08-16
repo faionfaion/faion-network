@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/risk-threshold-policy.schema.yaml` | Schema for the policy document |
 | `templates/escalation-message.md` | Pre-formatted message templates per channel (Slack, email, memo) |
-| `templates/quarterly-refresh-checklist.md` | Cadence checklist for policy review |
+| `templates/quarterly-refresh-checklist.md.j2` | Cadence checklist for policy review |
+| `templates/quarterly-refresh-checklist.md` | Cadence checklist for policy review Generated from `templates/quarterly-refresh-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -69,7 +69,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/debt-register.md` | Debt register skeleton with type + interest + contagion + effort. |
-| `templates/debt-prioritization-matrix.md` | Prioritization matrix template. |
+| `templates/debt-prioritization-matrix.md.j2` | Prioritization matrix template. |
+| `templates/debt-prioritization-matrix.md` | Prioritization matrix template. Generated from `templates/debt-prioritization-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/debt-hotspots.sh` | Compute hotspots from churn + bug density. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

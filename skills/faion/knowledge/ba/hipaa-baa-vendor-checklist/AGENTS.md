@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/hipaa-baa-vendor-checklist.md` | Markdown checklist skeleton matching the 8-item shape pinned in content/01-core-rules.xml |
+| `templates/hipaa-baa-vendor-checklist.md.j2` | Markdown checklist skeleton matching the 8-item shape pinned in content/01-core-rules.xml |
+| `templates/hipaa-baa-vendor-checklist.md` | Markdown checklist skeleton matching the 8-item shape pinned in content/01-core-rules.xml Generated from `templates/hipaa-baa-vendor-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/hipaa-baa-vendor-checklist.schema.json` | JSON Schema for the structured checklist output |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -40,7 +40,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/constitution.md` | Deliberately empty. Every rule slot is a `TODO(...)` placeholder and the examples live in HTML comments, so the template can never pre-load somebody else's opinions into your project. |
+| `templates/constitution.md.j2` | Deliberately empty. Every rule slot is a `TODO(...)` placeholder and the examples live in HTML comments, so the template can never pre-load somebody else's opinions into your project. |
+| `templates/constitution.md` | Deliberately empty. Every rule slot is a `TODO(...)` placeholder and the examples live in HTML comments, so the template can never pre-load somebody else's opinions into your project. Generated from `templates/constitution.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

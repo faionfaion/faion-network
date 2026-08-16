@@ -68,7 +68,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/ba-approach-document.md` | T1 plan-BA-approach skeleton with stakeholders, elicitation plan, deliverables, governance. |
-| `templates/ka1-bundle-skeleton.md` | Bundle index linking T1-T5 artefacts in dependency order. |
+| `templates/ka1-bundle-skeleton.md.j2` | Bundle index linking T1-T5 artefacts in dependency order. |
+| `templates/ka1-bundle-skeleton.md` | Bundle index linking T1-T5 artefacts in dependency order. Generated from `templates/ka1-bundle-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ka1_check.py` | Helper that verifies the 5 KA1 artefacts exist and are within review cadence; emits JSON. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

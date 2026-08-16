@@ -4,7 +4,7 @@
 <!-- depends-on: content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-500 tokens when loaded as context -->
 
-## Debt Prioritization: [Quarter]
+## Debt Prioritization: <quarter>
 
 ### Scoring
 
@@ -17,7 +17,7 @@ Score formula: (Interest × 0.4 + Contagion × 0.2) × Alignment / max(Effort, 1
 
 ### This Quarter's Plan
 
-**Capacity allocated:** [X]% = [Y] days
+**Capacity allocated:** [X]% = <y> days
 
 | ID | Debt | Effort | Sprint | Owner |
 |----|------|--------|--------|-------|
@@ -38,5 +38,5 @@ Score formula: (Interest × 0.4 + Contagion × 0.2) × Alignment / max(Effort, 1
 
 | Item | Description | Effort | Owner | Status |
 |------|-------------|--------|-------|--------|
-| [TD-X] | [Description] | 1d | [Name] | Done |
+| <td_x> | <description> | 1d | [Name] | Done |
 | Boy Scout | Ad-hoc improvements during feature work | 0.5d | Team | Ongoing |

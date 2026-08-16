@@ -65,8 +65,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/ui-grammar.json` | JSON Schema skeleton for generated UI tree |
-| `templates/generative-spec.md` | Spec document skeleton |
-| `templates/_smoke-test.md` | Minimum viable filled-in generative-UI spec |
+| `templates/generative-spec.md.j2` | Spec document skeleton |
+| `templates/generative-spec.md` | Spec document skeleton Generated from `templates/generative-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in generative-UI spec |
+| `templates/_smoke-test.md` | Minimum viable filled-in generative-UI spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

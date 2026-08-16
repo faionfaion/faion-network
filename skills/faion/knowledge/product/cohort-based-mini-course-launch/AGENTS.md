@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cohort-based-mini-course-launch.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/cohort-based-mini-course-launch.md.j2` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml |
+| `templates/cohort-based-mini-course-launch.md` | Markdown skeleton for the playbook-step artefact, matching content/02-output-contract.xml Generated from `templates/cohort-based-mini-course-launch.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/cohort-based-mini-course-launch.schema.json` | JSON Schema seed + filled fixture for the playbook-step artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

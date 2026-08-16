@@ -8,11 +8,11 @@
 
 ## Context
 
-- Team size: <n>
-- Regulatory profile: <none|GDPR|HIPAA|SOC2|FDA>
-- Scaling: <single team|2-10 teams|10+ teams|portfolio>
-- Discovery maturity: <pre|in-flight|post>
-- DevOps maturity: <manual|CI|CD|continuous-deployment>
+- Team size: <team_size>
+- Regulatory profile: <regulatory_profile>
+- Scaling: <scaling>
+- Discovery maturity: <discovery_maturity>
+- DevOps maturity: <dev_ops_maturity>
 
 ## Comparison
 

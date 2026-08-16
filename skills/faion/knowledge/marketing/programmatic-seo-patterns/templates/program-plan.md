@@ -7,8 +7,8 @@
 # Programmatic SEO Program
 
 ## Data source
-- Provider: [internal_db / API / feed]
-- Refresh cadence: [days]
+- Provider: <provider>
+- Refresh cadence: <days>
 - Quality %: ≥80
 
 ## Intent → Template map
@@ -33,4 +33,4 @@
 - parent: 1 category-parent per page
 
 ## Owner
-[email]
+<email>

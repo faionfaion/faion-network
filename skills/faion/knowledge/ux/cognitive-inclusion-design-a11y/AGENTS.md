@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cognitive-spec.md` | Markdown skeleton for cognitive-inclusion design spec. |
+| `templates/cognitive-spec.md.j2` | Markdown skeleton for cognitive-inclusion design spec. |
+| `templates/cognitive-spec.md` | Markdown skeleton for cognitive-inclusion design spec. Generated from `templates/cognitive-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

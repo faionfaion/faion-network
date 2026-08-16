@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/retrospective.md` | Retro structure with metrics, formats (Start-Stop-Continue, 4Ls, Mad-Sad-Glad, Sailboat) and action table |
+| `templates/retrospective.md.j2` | Retro structure with metrics, formats (Start-Stop-Continue, 4Ls, Mad-Sad-Glad, Sailboat) and action table |
+| `templates/retrospective.md` | Retro structure with metrics, formats (Start-Stop-Continue, 4Ls, Mad-Sad-Glad, Sailboat) and action table Generated from `templates/retrospective.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sprint-planning.md` | Sprint Planning notes template with sprint goal box, top items, capacity, and Part-1/Part-2 split |
 | `templates/sprint-review-readiness.py` | Pre-review gate script: completion ratio, demoable items, environment, invited stakeholders |
 | `templates/standup-bot.yaml` | Geekbot async standup configuration with 3-question template and blocker SLA |

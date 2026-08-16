@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Markdown backup-and-recovery report with verified dumps + restic snapshots. |
-| `templates/_smoke-test.md` | Minimum viable filled-in backup report. |
+| `templates/skeleton.md.j2` | Markdown backup-and-recovery report with verified dumps + restic snapshots. |
+| `templates/skeleton.md` | Markdown backup-and-recovery report with verified dumps + restic snapshots. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in backup report. |
+| `templates/_smoke-test.md` | Minimum viable filled-in backup report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/backup.sh` | Daily backup orchestrator: pg_dump + verify + Redis + configs + restic + retention. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Project Closure Checklist: [Project Name]
+# Project Closure Checklist: <project_name>
 
-**Project Manager:** [Name]
-**Close Date:** [Date]
+**Project Manager:** <name>
+**Close Date:** <date>
 
 ## Deliverable Acceptance
 - [ ] All deliverables complete

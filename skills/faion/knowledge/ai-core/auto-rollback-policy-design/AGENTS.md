@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/post-rollback-runbook.md` | 4-step post-rollback runbook |
+| `templates/post-rollback-runbook.md.j2` | 4-step post-rollback runbook |
+| `templates/post-rollback-runbook.md` | 4-step post-rollback runbook Generated from `templates/post-rollback-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -63,8 +63,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/structural-pattern-adr.md` | ADR skeleton for structural pattern selection. |
-| `templates/decorator-cap-rule.md` | Lint / convention enforcing decorator stack depth ≤ 2. |
-| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/decorator-cap-rule.md.j2` | Lint / convention enforcing decorator stack depth ≤ 2. |
+| `templates/decorator-cap-rule.md` | Lint / convention enforcing decorator stack depth ≤ 2. Generated from `templates/decorator-cap-rule.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
+| `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

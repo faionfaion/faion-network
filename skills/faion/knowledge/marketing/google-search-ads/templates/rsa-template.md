@@ -7,15 +7,15 @@
 # RSA Template (1 of 3 per ad group)
 
 ## Headlines (3-15 chars each, up to 15 total)
-1. [intent-keyword]
-2. [unique value prop]
-3. [proof point]
-4. [CTA verb-led]
-5. [brand]
+1. <intent_keyword>
+2. <unique_value_prop>
+3. <proof_point>
+4. <cta_verb_led>
+5. <brand>
 
 ## Descriptions (3-90 chars each, up to 4)
-1. [problem + solution]
-2. [social proof]
+1. <problem_solution>
+2. <social_proof>
 
 ## Path
 - /path1

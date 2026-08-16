@@ -72,7 +72,8 @@
 |------|---------|
 | `templates/business-model-canvas.md` | 9-block Canvas skeleton with Hard/Soft tagging |
 | `templates/unit-econ-scenarios.sh` | P10/P50/P90 LTV:CAC + payback calculator from CLI arguments |
-| `templates/business-model-report.md` | Final report skeleton: Canvas + unit economics + stress tests + verdict |
+| `templates/business-model-report.md.j2` | Final report skeleton: Canvas + unit economics + stress tests + verdict |
+| `templates/business-model-report.md` | Final report skeleton: Canvas + unit economics + stress tests + verdict Generated from `templates/business-model-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

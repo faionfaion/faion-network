@@ -66,8 +66,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec.md` | working skeleton matching the `produces=spec` shape |
-| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
+| `templates/spec.md.j2` | working skeleton matching the `produces=spec` shape |
+| `templates/spec.md` | working skeleton matching the `produces=spec` shape Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | minimum-viable filled-in smoke-test fixture |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

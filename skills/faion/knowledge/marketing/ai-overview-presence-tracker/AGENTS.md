@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-overview-presence-tracker.report.md` | Markdown report skeleton with 5-line header |
+| `templates/ai-overview-presence-tracker.report.md.j2` | Markdown report skeleton with 5-line header |
+| `templates/ai-overview-presence-tracker.report.md` | Markdown report skeleton with 5-line header Generated from `templates/ai-overview-presence-tracker.report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ai-overview-presence-tracker.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

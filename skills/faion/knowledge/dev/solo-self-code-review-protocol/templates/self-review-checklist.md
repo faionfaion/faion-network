@@ -17,7 +17,7 @@
 - [ ] types are explicit (no `any`, no `_=...`)
 - [ ] logging is structured (key=value)
 - [ ] new dependencies pass supply-chain checklist
-- [ ] CHANGELOG.md entry under [Unreleased]
+- [ ] CHANGELOG.md entry under <unreleased>
 
 ## Risk flags (mark RISKY if any apply)
 

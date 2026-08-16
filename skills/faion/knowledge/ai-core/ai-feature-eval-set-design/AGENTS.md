@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/eval-spec.md` | Markdown spec template (eval_set_id, version, rows, judge, ci_gate) |
+| `templates/eval-spec.md.j2` | Markdown spec template (eval_set_id, version, rows, judge, ci_gate) |
+| `templates/eval-spec.md` | Markdown spec template (eval_set_id, version, rows, judge, ci_gate) Generated from `templates/eval-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

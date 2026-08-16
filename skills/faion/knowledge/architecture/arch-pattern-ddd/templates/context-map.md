@@ -5,7 +5,7 @@
 # token-budget-impact: ~400-1500 tokens once filled
 ---
 artefact_id: ddd-context-map-<system>-2026-05-23
-owner: <Full Name> <email>
+owner: <owner_full_name> <owner_email>
 version: 1.0.0
 last_reviewed: 2026-05-23
 ---

@@ -66,9 +66,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sop.md` | Runbook: frontmatter + 15-step skeleton with input/action/decision/output/gate. |
+| `templates/sop.md.j2` | Runbook: frontmatter + 15-step skeleton with input/action/decision/output/gate. |
+| `templates/sop.md` | Runbook: frontmatter + 15-step skeleton with input/action/decision/output/gate. Generated from `templates/sop.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/step-record.json` | JSON for one SOP step. |
-| `templates/escalation-map.md` | Edge-case branch → named escalation owner map. |
+| `templates/escalation-map.md.j2` | Edge-case branch → named escalation owner map. |
+| `templates/escalation-map.md` | Edge-case branch → named escalation owner map. Generated from `templates/escalation-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

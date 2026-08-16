@@ -4,17 +4,17 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Communication Plan: [Project Name]
+# Communication Plan: <project_name>
 
 **Version:** 1.0
-**Date:** [YYYY-MM-DD]
-**Owner:** [PM Name]
+**Date:** <date>
+**Owner:** <pm_name>
 
 ## Stakeholder Communication Matrix
 
 | Stakeholder | Role | Information Need | Format | Frequency | Owner |
 |-------------|------|-----------------|--------|-----------|-------|
-| [Name/Group] | [Role] | [What info] | [Report/Meeting/Chat] | [Weekly/Monthly] | [Who sends] |
+| <name_group> | <role> | <what_info> | <report_meeting_chat> | <weekly_monthly> | <who_sends> |
 
 ## Meeting Schedule
 

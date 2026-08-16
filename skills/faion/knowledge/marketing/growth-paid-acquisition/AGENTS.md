@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-plan.md` | Paid acquisition growth plan Markdown skeleton. |
+| `templates/growth-plan.md.j2` | Paid acquisition growth plan Markdown skeleton. |
+| `templates/growth-plan.md` | Paid acquisition growth plan Markdown skeleton. Generated from `templates/growth-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/unit-economics.csv` | Unit economics CSV header. |
 | `templates/growth-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 

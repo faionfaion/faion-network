@@ -61,7 +61,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/trends-checklist.md` | One-page quarterly trends checklist with adoption decisions. |
+| `templates/trends-checklist.md.j2` | One-page quarterly trends checklist with adoption decisions. |
+| `templates/trends-checklist.md` | One-page quarterly trends checklist with adoption decisions. Generated from `templates/trends-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

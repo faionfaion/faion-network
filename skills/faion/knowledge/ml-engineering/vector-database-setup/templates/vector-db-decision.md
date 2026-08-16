@@ -6,7 +6,7 @@
 
 # Vector DB Decision Record
 
-Owner: <name>
+Owner: <owner_full_name>
 Date: YYYY-MM-DD
 
 ## Choice

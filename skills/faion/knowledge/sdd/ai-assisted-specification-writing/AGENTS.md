@@ -62,8 +62,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec.md` | SDD spec.md skeleton with all required sections |
-| `templates/spec-prompt.md` | LLM prompt template + reviewer checklist |
+| `templates/spec.md.j2` | SDD spec.md skeleton with all required sections |
+| `templates/spec.md` | SDD spec.md skeleton with all required sections Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec-prompt.md.j2` | LLM prompt template + reviewer checklist |
+| `templates/spec-prompt.md` | LLM prompt template + reviewer checklist Generated from `templates/spec-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

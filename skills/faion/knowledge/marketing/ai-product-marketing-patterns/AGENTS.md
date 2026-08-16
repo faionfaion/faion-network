@@ -58,10 +58,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pattern-library.md` | Inventory of patterns with examples. |
-| `templates/claim-discipline-checklist.md` | Copy review checklist. |
-| `templates/eval-asset.md` | Eval-as-marketing-asset template. |
-| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
+| `templates/pattern-library.md.j2` | Inventory of patterns with examples. |
+| `templates/pattern-library.md` | Inventory of patterns with examples. Generated from `templates/pattern-library.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/claim-discipline-checklist.md.j2` | Copy review checklist. |
+| `templates/claim-discipline-checklist.md` | Copy review checklist. Generated from `templates/claim-discipline-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/eval-asset.md.j2` | Eval-as-marketing-asset template. |
+| `templates/eval-asset.md` | Eval-as-marketing-asset template. Generated from `templates/eval-asset.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/_smoke-test.md.j2` | Minimum-viable filled-in example (smoke test). |
+| `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -63,10 +63,14 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decisions.md` | Decisions log template. |
-| `templates/patterns.md` | Patterns library template. |
-| `templates/mistakes.md` | Mistakes log template. |
-| `templates/session.md` | Session state template. |
+| `templates/decisions.md.j2` | Decisions log template. |
+| `templates/decisions.md` | Decisions log template. Generated from `templates/decisions.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/patterns.md.j2` | Patterns library template. |
+| `templates/patterns.md` | Patterns library template. Generated from `templates/patterns.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/mistakes.md.j2` | Mistakes log template. |
+| `templates/mistakes.md` | Mistakes log template. Generated from `templates/mistakes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/session.md.j2` | Session state template. |
+| `templates/session.md` | Session state template. Generated from `templates/session.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 
