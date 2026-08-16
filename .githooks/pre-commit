@@ -45,7 +45,7 @@ bad()  { printf 'pre-commit: FAIL %s\n' "$1" >&2; FAIL=1; }
 # on a commit whose CHANGELOG entry is already in HEAD. git exports no
 # flag for this, so the parent process is asked what it was invoked as.
 BASE=HEAD
-if ps -o args= -p "$PPID" 2>/dev/null | grep -qE '(^|[[:space:]])--amend([[:space:]]|$)' \
+if grep -qE '(^|[[:space:]])--amend([[:space:]]|$)' <<<"$(ps -o args= -p "$PPID" 2>/dev/null)" \
    && git rev-parse --verify -q HEAD~1 >/dev/null; then
   BASE=HEAD~1
 fi
@@ -58,7 +58,15 @@ unreleased_section() {
   awk '/^## \[Unreleased\]/{f=1;next} /^## /{f=0} f' 2>/dev/null
 }
 step "CHANGELOG"
-if ! printf '%s\n' "$STAGED" | grep -qx CHANGELOG.md; then
+# Herestring, NOT `printf | grep -q` — the same SIGPIPE-plus-pipefail trap
+# documented at the path gate below, and this call site had it too. `grep -q`
+# exits at its FIRST match; with a long $STAGED the producer is still writing,
+# takes SIGPIPE (141), and `pipefail` promotes that over grep's 0. Here the
+# test is NEGATED, so instead of skipping the gate it FIRES it: a wave-1
+# migration commit staging 4,265 paths was rejected for "no CHANGELOG.md"
+# while CHANGELOG.md was sitting in the index. Invisible on small commits,
+# because printf finishes before grep exits.
+if ! grep -qx CHANGELOG.md <<<"$STAGED"; then
   bad "no CHANGELOG.md in this commit — every commit adds a '## [Unreleased]' entry"
 else
   NOW=$(git show :CHANGELOG.md | unreleased_section)

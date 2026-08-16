@@ -44,8 +44,7 @@ if (( TITLE_LEN > 50 )); then
   say "  $TITLE"
 fi
 
-if ! printf '%s' "$TITLE" \
-  | grep -Eq '^(feat|fix|docs|test|chore|refactor|perf|build|ci|style|revert)(\([a-z0-9._/-]+\))?: [^[:space:]].*$'
+if ! grep -Eq '^(feat|fix|docs|test|chore|refactor|perf|build|ci|style|revert)(\([a-z0-9._/-]+\))?: [^[:space:]].*$' <<<"$TITLE"
 then
   say "title must be 'type: short description'"
   say "  types: feat fix docs test chore refactor perf build ci style revert"
@@ -58,14 +57,20 @@ fi
 
 # --- trailers and emojis ---------------------------------------------
 
-if printf '%s\n' "$BODY" | grep -Eiq '^[[:space:]]*co-authored-by:'; then
+# Herestring, NOT `printf | grep -q`. `grep -q` exits at its FIRST match, and
+# with `set -o pipefail` a producer still writing takes SIGPIPE (141), which is
+# promoted over grep's 0 — so an UNNEGATED test reads as "no match" and the gate
+# waves the commit through. Measured threshold: the 64 KiB pipe buffer. A body
+# of 32 KiB was rejected correctly; at 64 KiB and above, with the trailer early
+# enough that grep exits before the producer finishes, both this gate and the
+# emoji gate below PASSED a message that violates them.
+if grep -Eiq '^[[:space:]]*co-authored-by:' <<<"$BODY"; then
   say "Co-Authored-By is not used in this repo — remove the trailer"
 fi
 
 # Emoji ranges only. Typographic marks the docs rule allows — arrows,
 # en/em dashes, quotes — are deliberately NOT in this set.
-if printf '%s\n' "$BODY" \
-  | grep -qP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{2B00}-\x{2BFF}\x{1F1E6}-\x{1F1FF}\x{2190}\x{2934}\x{2935}]'
+if grep -qP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{2B00}-\x{2BFF}\x{1F1E6}-\x{1F1FF}\x{2190}\x{2934}\x{2935}]' <<<"$BODY"
 then
   say "no emojis in commit messages"
 fi

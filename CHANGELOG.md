@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The SIGPIPE-plus-pipefail trap had three more call sites, and two of them
+  were silently vacuous.** Found because wave 1 staged 4,265 paths and the
+  pre-commit CHANGELOG gate rejected the commit while `CHANGELOG.md` sat in the
+  index. Same root cause as the path gate fixed earlier: `grep -q` exits at its
+  FIRST match, the producer is still writing, takes SIGPIPE (141), and
+  `set -o pipefail` promotes that over grep's 0.
+
+  **The direction of the bug depends on whether the test is negated**, and that
+  is what made two of these invisible:
+
+  | Site | Negated | Effect |
+  |---|---|---|
+  | `pre-commit` CHANGELOG gate | yes | **false rejection** — loud, is how this was found |
+  | `commit-msg` Co-Authored-By | no | **silently passes** a banned trailer |
+  | `commit-msg` emoji check | no | **silently passes** emojis |
+  | `pre-commit` `--amend` detection | no | misreads the diff base |
+
+  Measured threshold: the **64 KiB pipe buffer**. A 32 KiB body was rejected
+  correctly; at 64 KiB and above, with the violation early enough that `grep -q`
+  exits before the producer finishes, both `commit-msg` gates **passed a message
+  that violates them**. Small commits never showed it because `printf` finishes
+  before `grep` exits.
+
+  All four now use herestrings. Verified in both directions at 1 / 32 / 64 /
+  256 KiB: every gate fires on a violation at every size, a clean 256 KiB
+  message still passes, a bad title is still rejected, and the CHANGELOG gate
+  still rejects a commit that genuinely lacks one.
+
 - **Migration wave 1: 1,124 templates converted.** Each now carries
   `<name>.md.j2` + `<name>.vars.schema.json` as source, with `<name>.html.j2`
   and a regenerated `<name>.md` as outputs, its `## Templates` rows updated and
