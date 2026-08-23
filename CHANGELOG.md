@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Jinja migration backlog recorded** in
+  `.aidocs/improvements/jinja-migration-backlog.md`, so the remaining work outlives
+  the session that measured it. Every figure was re-measured on disk and each one
+  ships with the command that reproduces it.
+
+  The CR-013 §1 residual is **161 templates / 1,055 tokens**, not the 105 / 939 an
+  earlier narrower regex reported: that regex demanded a bare identifier between
+  the braces, and so missed placeholders like
+  `{one-line decision the artefact records}` — the most obviously unfillable of the
+  set. Recording a scope figure without the query that produced it is how the
+  smaller number would have become the repair target.
+
 - **New hook `peer-nick-check.py`: a peer signature is now compared against
   something.** On 2026-08-21 a tmux rename broke the client author's signing
   script — it derived the nick from the session name, so messages arrived signed
