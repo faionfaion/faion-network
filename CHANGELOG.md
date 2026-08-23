@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **New hook `peer-nick-check.py`: a peer signature is now compared against
+  something.** On 2026-08-21 a tmux rename broke the client author's signing
+  script — it derived the nick from the session name, so messages arrived signed
+  `[budget/budget]` instead of `[Diablo/budget]`. Nothing failed: routing holds on
+  the project suffix, not on the sender. Half a day of messages therefore carried
+  an identity shared with any session of that name, and the malformed shape sat in
+  every line of the transcript unread. **A signal that exists and is compared
+  against nothing is not a check, it is a trace.**
+
+  It warns and never blocks, on the same asymmetry the resolver uses: a false
+  alarm costs one line in a delivery note, a silent acceptance costs a day of
+  attributing one agent's words to another. `budget` is deliberately absent from
+  `KNOWN` — a session name is shared by every session of that name, and accepting
+  it is precisely what merged two correspondents into one.
+
+  Two failures found while building it, both by reading the convention beside it
+  rather than by it firing: the first version read *every* `[x/y]` group, so it
+  shouted at correct traffic (a peer line carries the routing marker before the
+  signature — the **last** group is the signature); and it wrote to stderr, where a
+  `UserPromptSubmit` hook's output on exit 0 reaches nobody. A check built because
+  a signal compared against nothing is a trace would itself have been a trace.
+
 - **Validator 5 now requires the header to be COMMENTED, which it never checked.**
   A bare `purpose: …` at the top of a Markdown template passed: the key regex
   tolerated any leading punctuation but never required a comment marker. That is
