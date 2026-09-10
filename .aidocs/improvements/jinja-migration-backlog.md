@@ -166,6 +166,42 @@ Undeclared on purpose: they are filled worked examples, not templates a user fil
 them would offer a "template" that is actually a sample. Their delivery is a content-taxonomy
 question, not a migration one.
 
+## Recommendations on A, B, C — 2026-09-10, for the owner to accept or reject
+
+Written after every other open item in this repo was closed. Each is one decision with one
+recommended answer; none is executed.
+
+**A. Split `sensitive` into two flags — recommend YES, as two booleans, not one enum.**
+`x-faion-no-transit` (the value never leaves the client; server emits the placeholder) and
+`x-faion-no-cache` (the client does not persist it in the project store). Today's single flag is
+the conjunction, so `owner_full_name` — a field of 814 templates — is refused by both surfaces
+when only the first one has a threat model. Two flags default to "both true" for every entry
+currently marked sensitive, so the change is additive and no template gets weaker. Cost: one
+line in `retrieval-content-contracts.md` §5a, a `tpl-params.py` / `tpl-render.py` branch each,
+and re-marking `owner_full_name` (and its 10 person-naming siblings from CR-013) as no-transit
+only. The monorepo file is the owner's to change; this repo carries the two-flag reader either
+way, because reading a flag that is not yet written is harmless.
+
+**B. The §2.3 ban on loops — recommend LIFT it for `{% for %}` over a declared array variable,
+and keep everything else banned.** The SSTI argument died with §0: the renderer never treats a
+rendered result or a user-supplied value as template source, so a loop over data the schema
+declares (`type: array`, `items: {…}`) adds no injection surface. What it buys is real:
+5,543 placeholders in 731 templates sit in repeating table rows and are literal today. What
+stays banned is what SSTI actually needs — expressions, filters, `include`, `import`, attribute
+access on anything but the declared item shape. `SandboxedEnvironment` already refuses the
+rest. The change is to the rendering contract, so it is the owner's call; the implementation is
+one allow-list entry in `tpl-render.py` and a `validate-methodology-templates.py` check that a
+`{% for %}` iterates a declared array and nothing else.
+
+**C. The 38 `_smoke-test*.md` filled examples — recommend DECLARE them under a new column
+value, not as templates.** They are what the row says they are — a filled artefact — and a user
+who follows a `## Templates` row into one gets a sample, not a skeleton. Today they are
+undeclared, so they ship (everything under `templates/` ships) and nobody is pointed at them.
+Add `| File | Purpose | Kind |` with `Kind ∈ {template, example}` to the `## Templates` table,
+declare the 38 as `example`, and have validator 5 skip the `variables:` and placeholder checks
+for that kind. Deleting them loses 38 worked examples; leaving them undeclared keeps 38 files
+nobody can find. This is a content-taxonomy decision and one column is its whole cost.
+
 ## Backend, not this repo
 
 The render/search endpoint does not exist yet. Two properties it must have, both established by

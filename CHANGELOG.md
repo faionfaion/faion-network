@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Jinja backlog A/B/C: one recommended answer each, none executed.** Split
+  `sensitive` into `no-transit` and `no-cache` (additive, defaults to both, frees
+  `owner_full_name` across 814 templates); lift the loop ban only for `{% for %}`
+  over a declared array (the SSTI argument died with §0; 5,543 placeholders in
+  731 templates are literal because of it); declare the 38 `_smoke-test*.md` as
+  `Kind: example` rather than delete or hide them. All three change a contract
+  the owner ratified, so they are written as decisions to accept or reject, in
+  the backlog file beside the questions they answer.
+
 - **Counts and one stale path refreshed.** Root `AGENTS.md`: 2,520 → 2,519
   methodology dirs and manifest 2,988 → 2,987 entries after CR-006. The
   `ai-sdlc-landscape-2026` placement note pointed at
