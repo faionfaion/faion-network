@@ -48,6 +48,8 @@
 | `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
+| `content/01-principles.xml` | recommended | Rules for treating documentation as code: co-location, auto-generation boundaries, and CI enforcement. | ~600 |
+| `content/02-toolchain.xml` | recommended | Generator selection criteria, linting tools, and CI pipeline steps for Docs-as-Code. | ~600 |
 
 ## Task Routing
 

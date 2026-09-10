@@ -53,6 +53,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
 | `content/05-examples.xml` | essential | End-to-end worked example | 700 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
+| `content/01-wcag-principles.xml` | recommended | POUR framework, A/AA/AAA conformance requirements, four evaluation types and their coverage, and a five-minute quick-check protocol. | 950 |
+| `content/02-common-issues.xml` | recommended | Common Accessibility Issues with Code Examples | 1000 |
 
 ## Task Routing
 

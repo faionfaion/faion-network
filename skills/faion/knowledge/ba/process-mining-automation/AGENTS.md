@@ -57,6 +57,9 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
+| `content/01-process-mining.xml` | recommended | Process mining definition, BA competencies required, four-step workflow, and tool landscape. | ~700 |
+| `content/02-automation-assessment.xml` | recommended | Six-criterion scoring matrix for automation readiness, RPA vs. intelligent automation comparison, and key vendor landscape. | ~700 |
+| `content/03-examples.xml` | recommended | Scored automation assessment example and recommendation threshold interpretation. | ~650 |
 
 ## Task Routing
 

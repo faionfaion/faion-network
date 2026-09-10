@@ -55,6 +55,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
 | `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
 | `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
+| `content/01-process.xml` | recommended | Structured procedure for examining competitor products across predefined criteria and converting observations into prioritized design recommendations. | ~1100 |
+| `content/02-examples.xml` | recommended | Concrete e-commerce and SaaS examples of finding-to-insight conversion and analysis anti-patterns. | ~850 |
 
 ## Task Routing
 

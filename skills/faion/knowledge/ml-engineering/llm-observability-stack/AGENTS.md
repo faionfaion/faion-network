@@ -50,6 +50,8 @@
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix. | ~800 |
 | `content/04-procedure.xml` | essential | 6-step procedure: deploy-otel → deploy-langfuse → deploy-prom → wire-instrumentation → wire-pricing → wire-alerts. | ~800 |
 | `content/06-decision-tree.xml` | essential | Branch by deployment topology + integration matrix. | ~400 |
+| `content/01-stack-components.xml` | recommended | LLM Observability Stack Components and Platform Comparison | ~1100 |
+| `content/02-instrumentation-rules.xml` | recommended | Instrumentation rules, production alert thresholds, cost tracking patterns, agent tracing gotchas, and antipatterns. | ~1250 |
 
 ## Task Routing
 

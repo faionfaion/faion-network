@@ -48,6 +48,9 @@
 | `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
+| `content/01-capture-rules.xml` | recommended | When to capture a mistake, minimum required fields, and quality standards for entries. | ~900 |
+| `content/02-error-categories.xml` | recommended | Taxonomy of LLM agent failure modes used to classify MIS-NNN entries and select prevention strategies. | ~750 |
+| `content/03-prevention-layers.xml` | recommended | Four-layer defense against recurring mistakes: pre-task warnings, quality gates, CI automation, and multi-model review. | ~700 |
 
 ## Task Routing
 

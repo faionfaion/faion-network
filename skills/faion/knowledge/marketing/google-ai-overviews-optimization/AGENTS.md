@@ -50,6 +50,9 @@
 | `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
 | `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
+| `content/01-extraction-rules.xml` | recommended | AI Overview Extraction Rules | ~1000 |
+| `content/02-schema-and-freshness.xml` | recommended | Schema Markup and Freshness Signals | ~1000 |
+| `content/03-tracking-and-antipatterns.xml` | recommended | Tools and workflow for tracking AI Overview citation performance, and antipatterns that agents commonly introduce during optimization work. | ~900 |
 
 ## Task Routing
 

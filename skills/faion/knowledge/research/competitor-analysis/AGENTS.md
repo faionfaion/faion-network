@@ -56,6 +56,9 @@
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
 | `content/05-examples.xml` | essential | Worked example trace | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
+| `content/01-framework.xml` | recommended | Five-step systematic framework: identify competitor types, map positioning, analyse across 8 dimensions, find gaps, define differentiation. | ~1100 |
+| `content/02-examples.xml` | recommended | Two worked examples (note-taking app, email marketing) and a common-mistakes table showing the correct fix for each failure mode. | ~850 |
+| `content/03-gotchas.xml` | recommended | Critical agent failure modes: hallucinated numbers, pricing-page footnotes, geography drift, context overflow on 10+ competitors. | ~850 |
 
 ## Task Routing
 

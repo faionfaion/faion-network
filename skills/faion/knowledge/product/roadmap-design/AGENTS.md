@@ -56,6 +56,10 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
 | `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+| `content/01-formats.xml` | recommended | Four roadmap types with a selection matrix based on uncertainty, external-sharing needs, commitment level, and team maturity. | 600 |
+| `content/02-process.xml` | recommended | Five-step process from strategy input through stakeholder communication, including theme definition and confidence levels. | 900 |
+| `content/03-rules.xml` | recommended | Concrete rules for roadmap maintenance, audience publishing, and agent-specific gotchas. | 950 |
+| `content/04-examples.xml` | recommended | B2B SaaS and solo product Now-Next-Later roadmap examples, and common roadmap antipatterns with fixes. | 650 |
 
 ## Task Routing
 

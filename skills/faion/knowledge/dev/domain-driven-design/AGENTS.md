@@ -53,6 +53,8 @@
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
 | `content/04-procedure.xml` | essential | 6-step end-to-end procedure | ~800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
+| `content/01-core-patterns.xml` | recommended | Rules and definitions for entities, value objects, aggregates, bounded contexts, and domain services. | ~1300 |
+| `content/02-examples.xml` | recommended | Concrete Python examples: Order aggregate, Money/Address value objects, domain events, repository interface, anti-corruption layer. | ~1200 |
 
 ## Task Routing
 

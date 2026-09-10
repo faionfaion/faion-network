@@ -52,6 +52,9 @@
 | `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
 | `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
+| `content/01-models.xml` | recommended | Defines the six attribution models, explains the cross-platform overlap problem, and provides lookback window guidelines by sales cycle length. | ~950 |
+| `content/02-strategy.xml` | recommended | Choosing a unified source of truth, configuring GA4 and platform attribution settings, and running geo-holdout incrementality tests. | ~1000 |
+| `content/03-agent-rules.xml` | recommended | Agent Rules and AI Gotchas for Attribution Models | ~950 |
 
 ## Task Routing
 

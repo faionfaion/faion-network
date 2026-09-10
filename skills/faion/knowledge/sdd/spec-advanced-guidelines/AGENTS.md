@@ -55,6 +55,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
 | `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+| `content/01-section-rules.xml` | recommended | Required 14 sections, persona rules, user story format, and FR traceability chain requirements. | 900 |
+| `content/02-nfr-and-ac.xml` | recommended | NFR measurability rules, acceptance criteria coverage matrix, and agent-specific antipatterns for both. | 850 |
 
 ## Task Routing
 

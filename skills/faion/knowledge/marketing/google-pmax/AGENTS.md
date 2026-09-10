@@ -55,6 +55,9 @@
 | `content/04-procedure.xml` | essential | 5-step procedure | 950 |
 | `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
+| `content/01-campaign-asset-groups.xml` | recommended | Creating a Performance Max campaign via the Google Ads API, setting up asset groups, and meeting minimum asset count requirements before submission. | 900 |
+| `content/02-audience-signals-bidding.xml` | recommended | Adding audience signals, bidding strategy progression from Maximize Conversions to Target CPA/ROAS, learning phase rules, and asset refresh cadence. | 850 |
+| `content/03-agent-rules.xml` | recommended | Google Ads API-specific failure modes for Performance Max campaigns, including enums, customer_id format, and multi-account considerations. | 800 |
 
 ## Task Routing
 

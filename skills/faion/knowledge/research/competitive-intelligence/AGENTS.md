@@ -56,6 +56,9 @@
 | `content/04-procedure.xml` | essential | 7-step procedure end-to-end | ~900 |
 | `content/05-examples.xml` | essential | Worked example trace | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
+| `content/01-monitoring-framework.xml` | recommended | Signal sources, monitoring frequencies, platform landscape, and CI evolution from reactive to predictive. | ~950 |
+| `content/02-agentic-pipeline.xml` | recommended | Six-subagent pipeline separating mechanical collection from strategic synthesis, with fact-checker and prompt patterns. | ~1150 |
+| `content/03-tools-and-services.xml` | recommended | CLI tools, agent-friendly services, limitations, and operational best practices for a production CI pipeline. | ~950 |
 
 ## Task Routing
 

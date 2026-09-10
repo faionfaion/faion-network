@@ -49,6 +49,8 @@
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
+| `content/01-format-selection.xml` | recommended | When to write a design document, how to choose between lightweight and heavyweight formats, and how the doc maps to the SDD lifecycle phases. | ~1400 |
+| `content/02-writing-rules.xml` | recommended | Required sections, the non-goals rule, alternatives quality bar, ADR extraction, and agent-specific gotchas for LLM-assisted design doc writing. | ~2000 |
 
 ## Task Routing
 

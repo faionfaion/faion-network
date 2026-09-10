@@ -50,6 +50,7 @@
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+| `content/01-naming-rule.xml` | recommended | verb_object names with namespace prefix | 850 |
 
 ## Task Routing
 

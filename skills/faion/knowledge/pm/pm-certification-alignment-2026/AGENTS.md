@@ -53,6 +53,8 @@
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
 | `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
+| `content/01-domain-weights.xml` | recommended | 2026 PMP ECO domain weight deltas versus PMBOK 7, five exam themes, the anchor-citation requirement, and study-allocation rule. | 750 |
+| `content/02-coverage-gaps.xml` | recommended | Coverage Gap Analysis and Alignment Matrix Rules | 800 |
 
 ## Task Routing
 

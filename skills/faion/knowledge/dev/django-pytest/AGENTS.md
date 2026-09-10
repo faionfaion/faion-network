@@ -48,6 +48,9 @@
 | `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
 | `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
+| `content/01-configuration.xml` | recommended | pyproject.toml settings, directory layout, shared conftest fixtures, and factory_boy pattern. | ~700 |
+| `content/02-test-patterns.xml` | recommended | Unit tests, API integration tests, parametrize, and mocking external services. | ~1000 |
+| `content/03-antipatterns.xml` | recommended | Common test mistakes and LLM-specific failure modes in Django/pytest projects. | ~600 |
 
 ## Task Routing
 

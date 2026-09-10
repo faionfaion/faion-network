@@ -54,6 +54,8 @@
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
 | `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+| `content/01-full-spec.xml` | recommended | E-commerce Cart: Complete Spec Example | 2100 |
+| `content/02-usage-guide.xml` | recommended | Using the Cart Example as a Few-Shot Reference | 850 |
 
 ## Task Routing
 

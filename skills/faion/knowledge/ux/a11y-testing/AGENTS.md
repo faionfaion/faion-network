@@ -51,6 +51,8 @@
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
+| `content/01-testing-process.xml` | recommended | Five-Step Accessibility Testing Process | 1200 |
+| `content/02-issue-prioritization.xml` | recommended | Priority rubric for a11y issues, CI integration patterns, false-positive management, and the agentic testing pipeline. | 950 |
 
 ## Task Routing
 

@@ -49,6 +49,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
 | `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+| `content/01-rice-formula.xml` | recommended | RICE formula definition, scale for each of the four factors, scoring process, and constraints for valid scores. | 1000 |
+| `content/02-rice-examples.xml` | recommended | Two complete worked examples with scored tables and insights, plus concrete antipatterns and agent-specific failure modes. | 750 |
 
 ## Task Routing
 

@@ -52,6 +52,10 @@
 | `content/03-failure-modes.xml` | essential | >=4 antipatterns (symptom/root-cause/fix) | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
 | `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
+| `content/01-conversion-definition.xml` | recommended | Macro vs micro conversion taxonomy, value assignment methods, and event name mapping across Meta, Google, and LinkedIn. | ~550 |
+| `content/02-pixel-installation.xml` | recommended | Meta Pixel and Google Ads tag installation snippets with standard event JavaScript calls. | ~450 |
+| `content/03-server-side.xml` | recommended | Meta Conversions API Node.js implementation, deduplication with browser events, and Google offline conversion flow. | ~600 |
+| `content/04-verification.xml` | recommended | Verification tools per platform, testing process, and attribution window configuration. | ~600 |
 
 ## Task Routing
 

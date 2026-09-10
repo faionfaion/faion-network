@@ -57,6 +57,9 @@
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
 | `content/05-examples.xml` | essential | Worked example trace | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
+| `content/01-cadence-and-agents.xml` | recommended | Teresa Torres weekly cadence table, eight-subagent pipeline with model assignments, and scheduling via cron/systemd. | ~950 |
+| `content/02-prompt-pattern.xml` | recommended | Continuous Discovery Prompt Pattern and Key Rules | ~1000 |
+| `content/03-gotchas-and-tools.xml` | recommended | CLI tools, service landscape, best practices for OST hygiene, and agent failure modes specific to continuous discovery pipelines. | ~1150 |
 
 ## Task Routing
 

@@ -52,6 +52,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
 | `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+| `content/01-measurement.xml` | recommended | Canonical churn metric definitions, benchmarks, health score model, and common mistakes that invalidate churn analysis. | 1200 |
+| `content/02-checklist.xml` | recommended | Ordered steps for establishing churn definitions, measuring baseline, segmenting causes, and setting up monitoring. | 750 |
 
 ## Task Routing
 

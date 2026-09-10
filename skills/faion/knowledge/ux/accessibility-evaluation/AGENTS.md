@@ -53,6 +53,8 @@
 | `content/04-procedure.xml` | essential | 5 steps: scan → triage → keyboard → screen-reader → report | 900 |
 | `content/05-examples.xml` | essential | Worked example: triage of 3 axe findings into POUR report rows | 700 |
 | `content/06-decision-tree.xml` | essential | Decision tree: finding source → priority + stage | 500 |
+| `content/01-process.xml` | recommended | Accessibility Evaluation Five-Stage Process | 1050 |
+| `content/02-agent-patterns.xml` | recommended | Accessibility Evaluation: Agent Pipeline Roles and Gotchas | 950 |
 
 ## Task Routing
 

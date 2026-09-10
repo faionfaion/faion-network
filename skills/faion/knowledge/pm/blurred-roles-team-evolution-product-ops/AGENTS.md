@@ -54,6 +54,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
 | `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
+| `content/01-model.xml` | recommended | Overlapping Venn diagram team structure where each role holds fluency in adjacent disciplines, replacing relay-race handoffs. | ~1050 |
+| `content/02-agent-usage.xml` | recommended | How to use role-persona subagents, audit patterns, and key gotchas when AI agents operate in overlapping-role zones. | ~900 |
 
 ## Task Routing
 

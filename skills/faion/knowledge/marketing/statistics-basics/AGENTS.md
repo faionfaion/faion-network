@@ -51,6 +51,9 @@
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+| `content/01-concepts.xml` | recommended | Null hypothesis, p-value, alpha, power, confidence intervals, and the Type I/II error trade-off. | 850 |
+| `content/02-formulas.xml` | recommended | Two-proportion z-test formula and sample size calculation with a worked numerical example. | 550 |
+| `content/03-antipatterns.xml` | recommended | Six common mistakes that invalidate A/B test results and how to avoid them. | 550 |
 
 ## Task Routing
 

@@ -44,6 +44,7 @@
 | `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
 | `content/05-examples.xml` | recommended | Worked example. | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
+| `content/01-rule.xml` | recommended | Declare nullable refusal first so safety declines parse cleanly into a typed branch instead of breaking strict-mode JSON. | ~750 |
 
 ## Task Routing
 

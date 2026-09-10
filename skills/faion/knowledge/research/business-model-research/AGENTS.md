@@ -57,6 +57,9 @@
 | `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
 | `content/05-examples.xml` | essential | Worked example trace | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
+| `content/01-canvas-and-revenue-models.xml` | recommended | Nine-block Business Model Canvas with Hard/Soft cell tagging and five revenue archetypes with variant tables and best-fit signals. | ~1000 |
+| `content/02-unit-economics.xml` | recommended | CAC/LTV/payback formulas, P10/P50/P90 scenario model, churn floor rules, and five stress tests that define model viability. | ~1000 |
+| `content/03-agentic-pipeline.xml` | recommended | Eight-step workflow, subagents, prompt patterns for build and validate passes, SDD integration, and agent gotchas. | ~1050 |
 
 ## Task Routing
 

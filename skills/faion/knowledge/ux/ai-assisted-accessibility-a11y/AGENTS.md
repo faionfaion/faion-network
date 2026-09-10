@@ -51,6 +51,9 @@
 | `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 800 |
 | `content/05-examples.xml` | essential | Full worked example end-to-end | 900 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
+| `content/01-tool-landscape.xml` | recommended | AI-powered accessibility tools by category, integration points across the development lifecycle, and capability comparison for 2026. | 700 |
+| `content/02-workflow.xml` | recommended | 5-stage pipeline from automated scan to user validation, including the human-AI responsibility split and ROI data. | 700 |
+| `content/03-anti-patterns.xml` | recommended | Critical failure modes: AI overlays, alt text limitations, caption accuracy traps, automated compliance claims, and agent gotchas. | 650 |
 
 ## Task Routing
 

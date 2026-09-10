@@ -54,6 +54,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
 | `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
+| `content/01-framework.xml` | recommended | Learning Velocity Framework | ~1150 |
+| `content/02-agent-usage.xml` | recommended | Daily/weekly agent pipeline for maintaining versioned beliefs.yaml, prompt patterns with XML structure, and critical gotchas. | ~1100 |
 
 ## Task Routing
 

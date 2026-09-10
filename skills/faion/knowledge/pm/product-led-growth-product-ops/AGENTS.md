@@ -54,6 +54,9 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
 | `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
+| `content/01-plg-principles.xml` | recommended | Product-Led Growth: Core Principles and Metrics | ~900 |
+| `content/02-onboarding-and-experiments.xml` | recommended | Product-Led Growth: Experiment Design and PQL Scoring | ~950 |
+| `content/03-rules-and-gotchas.xml` | recommended | Hard rules for agent-safe PLG work, limitations of PLG in specific contexts, and AI-agent failure modes with mitigations. | ~1050 |
 
 ## Task Routing
 

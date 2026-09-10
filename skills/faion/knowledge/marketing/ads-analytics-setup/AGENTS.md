@@ -52,6 +52,9 @@
 | `content/03-failure-modes.xml` | essential | >=4 antipatterns (symptom/root-cause/fix) | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
 | `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
+| `content/01-ga4-setup.xml` | recommended | GA4 property creation, tag installation via GTM or direct, enhanced measurement settings, and standard event schema for common business types. | ~1050 |
+| `content/02-conversions-utm.xml` | recommended | Conversion designation in GA4 and ad platforms, UTM parameter schema, naming conventions, and Consent Mode v2 requirements. | ~850 |
+| `content/03-agent-rules.xml` | recommended | Agent-specific rules for analytics install, GTM, Measurement Protocol, and common LLM failure modes in analytics implementation. | ~800 |
 
 ## Task Routing
 

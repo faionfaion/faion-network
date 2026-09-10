@@ -54,6 +54,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
 | `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
+| `content/01-responsibilities.xml` | recommended | The five areas Product Ops owns, the three-level maturity model, AI-native ops patterns, and 2026 adoption stats. | ~1000 |
+| `content/02-agent-usage.xml` | recommended | Three-layer agent architecture for Product Ops, prompt patterns for the most common use cases, and critical gotchas. | ~1000 |
 
 ## Task Routing
 

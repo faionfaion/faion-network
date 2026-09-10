@@ -53,6 +53,8 @@
 | `content/04-procedure.xml` | essential | 5 steps: tokens → archetypes → patterns → annotations → spec | 800 |
 | `content/05-examples.xml` | essential | Worked example: button + form-field tokens + archetype spec | 700 |
 | `content/06-decision-tree.xml` | essential | Decision tree: design phase → prevention vs remediation | 500 |
+| `content/01-rules.xml` | recommended | Accessibility-First Design Rules | 850 |
+| `content/02-agent-patterns.xml` | recommended | Accessibility-First Design: Figma Audit Workflow and Gotchas | 850 |
 
 ## Task Routing
 

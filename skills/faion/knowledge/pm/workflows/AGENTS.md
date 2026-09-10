@@ -54,6 +54,9 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
 | `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
+| `content/01-bootstrap-pipeline.xml` | recommended | Seven-phase pipeline from idea to TASK_000, with mandatory Phase 4 user confirmation and the output artifact structure under .aidocs/. | ~800 |
+| `content/02-mlp-planning.xml` | recommended | MLP Planning Workflow | ~750 |
+| `content/03-numbering-conventions.xml` | recommended | Standard numbering patterns for features, tasks, requirements, and acceptance criteria used across the PM workflow artifacts. | ~550 |
 
 ## Task Routing
 

@@ -48,6 +48,8 @@
 | `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
+| `content/01-company-practices.xml` | recommended | Design Doc Practices by Company | ~1100 |
+| `content/02-when-and-patterns.xml` | recommended | Decision table for when a design doc is required; LLM assistance effectiveness by task type; common mistakes; and agent-specific gotchas. | ~1050 |
 
 ## Task Routing
 

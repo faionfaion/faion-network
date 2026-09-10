@@ -50,6 +50,7 @@
 | `content/03-failure-modes.xml` | essential | 3 antipatterns: summary-without-id, silent-truncation, format-full-default-creep | 700 |
 | `content/04-procedure.xml` | essential | 4-step retrofit procedure measure → design → implement → wire-eval | 700 |
 | `content/06-decision-tree.xml` | essential | Branches on p95-tokens + tool-role + primary-key-availability | 500 |
+| `content/01-terse-default.xml` | recommended | Default to one-line-per-result summary; expose a `format` parameter so the agent opts into the full payload only when needed. | 850 |
 
 ## Task Routing
 

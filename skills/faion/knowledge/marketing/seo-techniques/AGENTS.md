@@ -54,6 +54,9 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
 | `content/05-examples.xml` | essential | One full worked example end-to-end | 700 |
 | `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
+| `content/01-schema-markup.xml` | recommended | JSON-LD schema patterns for Article, FAQ, Organization, and Breadcrumb types with validation workflow. | 800 |
+| `content/02-ai-optimization.xml` | recommended | llms.txt standard for AI crawler guidance, entity optimization, and content structure for AI citation. | 700 |
+| `content/03-social-meta-and-linking.xml` | recommended | Open Graph and Twitter Card meta tag requirements, pillar-cluster internal linking structure, and keyword cannibalization fixes. | 900 |
 
 ## Task Routing
 

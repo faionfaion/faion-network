@@ -55,6 +55,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
 | `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
 | `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
+| `content/01-process.xml` | recommended | Structured procedure for inventorying, evaluating, and assigning actions to all content assets. | ~950 |
+| `content/02-examples.xml` | recommended | Concrete audit findings for blog and help center content, demonstrating action assignment logic. | ~600 |
 
 ## Task Routing
 

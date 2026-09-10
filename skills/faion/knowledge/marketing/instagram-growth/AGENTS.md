@@ -48,6 +48,8 @@
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
+| `content/01-reel-strategy.xml` | recommended | Reel optimization rules, weekly content schedule, DM trigger funnel, and engagement routine for Instagram growth. | ~850 |
+| `content/02-growth-metrics.xml` | recommended | KPI benchmarks by growth stage, engagement rate targets, and the most common Instagram growth failure modes. | ~800 |
 
 ## Task Routing
 

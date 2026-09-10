@@ -54,6 +54,9 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
 | `content/05-examples.xml` | essential | One worked example from inputs to validated artefact | 700 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+| `content/01-framework.xml` | recommended | Customer Success Basics — Framework | 850 |
+| `content/02-playbooks.xml` | recommended | Onboarding playbook, at-risk intervention, expansion path, and worked examples for SaaS and course products. | 650 |
+| `content/03-agent-rules.xml` | recommended | Safety rules for CS agents: re-engagement caps, billing autonomy prohibition, sentiment brittleness, PII handling. | 900 |
 
 ## Task Routing
 

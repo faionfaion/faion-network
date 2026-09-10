@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010's stopgap landed: 177 rows over 69 slugs, and a gate.** Every
+  `content/*.xml` in the corpus now has a row in its envelope's `## Content`
+  table, and `scripts/list-unlisted-content.py --check` is in `FAST_IDS`, so a
+  file added without its row fails the commit that adds it.
+
+  The rows write no prose. Each description is the file's own `<summary>` — first
+  sentence, falling back to its `<text title=…>` when that sentence runs past 150
+  characters — because a mechanical pass that invented descriptions would be
+  putting words in a methodology's mouth. All 177 files had a `<summary>`, so the
+  fallback fired rarely. Sentence splitting had to learn one thing the hard way:
+  splitting on any `.` cut *"RPA vs. intelligent automation"* after `vs.` and
+  shipped a row ending mid-phrase; a full stop only ends a sentence when the next
+  word capitalises.
+
+  Depth is `recommended` on every added row, deliberately: `essential` means an
+  agent should load the file before deciding, which is an editorial judgement and
+  not a script's to make. Raising rows is CR-010's option 1, still open. The token
+  estimate mirrors whichever style the table being edited already uses — the
+  corpus is split 7,397 plain to 6,174 tilde, so there is no house style, only
+  per-table consistency.
+
+  What this does not do: `--parts` still cannot name a non-canonical file, and
+  that remains CR-008's to settle.
+
 - **CR-010's central claim was wrong, and the correction is now on the record.**
   It asserted that a `content/*.xml` file absent from its `## Content` table is
   *"packed, shipped to the client, cached, and never returned"*. Nothing anywhere

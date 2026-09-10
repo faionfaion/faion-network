@@ -50,6 +50,8 @@
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+| `content/01-rule.xml` | recommended | Run hard reasoning in free text on the strong model, then extract into the strict schema with a cheap model. | 1300 |
+| `content/02-cost-model.xml` | recommended | Cost trade-offs: when two-pass beats single-pass and how to size the extraction prompt. | 750 |
 
 ## Task Routing
 

@@ -55,6 +55,9 @@
 | `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
 | `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
 | `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
+| `content/01-project-structure.xml` | recommended | Directory layout patterns, file naming conventions, workspace strategies, and their isolation trade-offs. | ~800 |
+| `content/02-cicd-patterns.xml` | recommended | Pipeline stages, saved plan rule, security scanning, OIDC authentication, and Atlantis configuration. | ~850 |
+| `content/03-checklist.xml` | recommended | State architecture, module quality, CI/CD pipeline, security hardening, and production deployment checklists. | ~900 |
 
 ## Task Routing
 

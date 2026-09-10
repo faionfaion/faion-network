@@ -54,6 +54,9 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
 | `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
+| `content/01-framework.xml` | recommended | Stakeholder types, Power/Interest grid with mandatory attitude dimension, engagement levels, and the four-step identification-to-execution process. | ~800 |
+| `content/02-templates-and-examples.xml` | recommended | Stakeholder Management: Register, Communication Plan, and Examples | ~1000 |
+| `content/03-rules-and-gotchas.xml` | recommended | Register-rot prevention rules, decision-log pairing requirement, agent safety constraints, and AI-agent failure modes with mitigations. | ~1350 |
 
 ## Task Routing
 

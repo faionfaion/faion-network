@@ -53,6 +53,8 @@
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
 | `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
+| `content/01-kb-structure.xml` | recommended | The product-kb.json canonical structure, explainability components for humans and AI, and the dominant failure mode of KB drift. | ~1200 |
+| `content/02-agent-usage.xml` | recommended | Extractor → generator → probe → drift agent pipeline, prompt patterns for KB extraction and AI-answer probing, and critical gotchas. | ~1200 |
 
 ## Task Routing
 

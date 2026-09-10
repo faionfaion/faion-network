@@ -49,6 +49,8 @@
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
+| `content/01-principles.xml` | recommended | Review type taxonomy, three AI assistance levels, multi-model strategy, and AI tool landscape for 2026. | ~900 |
+| `content/02-workflow.xml` | recommended | Review Workflow and SDD Integration | ~900 |
 
 ## Task Routing
 

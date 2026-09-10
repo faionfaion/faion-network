@@ -49,6 +49,9 @@
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
 | `content/05-examples.xml` | essential | One worked end-to-end example | ~700 |
 | `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
+| `content/01-concepts.xml` | recommended | The four DORA metrics, their performance tiers, data sources, and 2025 evolution including a fifth reliability metric and AI code generation impact. | ~850 |
+| `content/02-implementation.xml` | recommended | Rules for setting up DORA metric collection, tool integrations, and dashboard requirements. | ~900 |
+| `content/03-examples.xml` | recommended | Concrete examples of deployment event emission, PromQL queries for DORA metrics, and lead time calculation in Python. | ~900 |
 
 ## Task Routing
 

@@ -53,6 +53,10 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
 | `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
 | `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
+| `content/01-framework.xml` | recommended | Target CPA calculation, efficiency ratio formula, and the 70-20-10 budget allocation rule. | ~600 |
+| `content/02-reallocation.xml` | recommended | Decision matrix by CPA vs target, scaling increment rules, and diminishing returns model. | ~650 |
+| `content/03-cross-channel.xml` | recommended | Comparing efficiency across Meta, Google, and LinkedIn; incrementality consideration; reallocation examples. | ~550 |
+| `content/04-antipatterns.xml` | recommended | Common budget allocation mistakes and their fixes. | ~450 |
 
 ## Task Routing
 

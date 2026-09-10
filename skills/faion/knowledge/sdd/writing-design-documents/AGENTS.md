@@ -51,6 +51,8 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
 | `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+| `content/01-structure.xml` | recommended | Document hierarchy in SDD, when to write a design doc, SDD-optimized structure, AD-X decision format, and Y-statement concise form. | 1100 |
+| `content/02-for-llm.xml` | recommended | Design Documents for LLM Code Generation | 1400 |
 
 ## Task Routing
 

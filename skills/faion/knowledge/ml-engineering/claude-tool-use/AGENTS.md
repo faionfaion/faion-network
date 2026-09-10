@@ -49,6 +49,10 @@
 | `content/03-failure-modes.xml` | essential | 7 antipatterns: deep nesting, append-text-only, blind indexing, infinite loop, strict additionalProperties, MCP-in-server, thinking-blocks-in-tool_result | ~800 |
 | `content/04-procedure.xml` | medium | 6-step procedure: design tool schemas → write executor → write agent loop → set max-turns → handle errors → add forced-tool extraction | ~900 |
 | `content/06-decision-tree.xml` | essential | Root: "is the model Claude AND ≥1 tool call required?" | ~400 |
+| `content/01-tool-definition.xml` | recommended | Claude tools require a name, description, and JSON Schema input_schema; tool_choice controls whether Claude must call a tool and which one. | ~900 |
+| `content/02-agent-loop.xml` | recommended | Canonical Agentic Loop | ~950 |
+| `content/03-structured-output.xml` | recommended | Structured Output via Tool Forcing | ~700 |
+| `content/04-mcp.xml` | recommended | Model Context Protocol (MCP) | ~550 |
 
 ## Task Routing
 

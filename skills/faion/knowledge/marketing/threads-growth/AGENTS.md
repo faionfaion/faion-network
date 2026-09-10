@@ -48,6 +48,8 @@
 | `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
+| `content/01-conversation-strategy.xml` | recommended | Reply formula, conversation-starter types, cross-platform synergy rules, and what makes content perform on Threads. | ~950 |
+| `content/02-growth-patterns.xml` | recommended | Metrics benchmarks by growth stage, scaling milestones, and the most common Threads growth mistakes. | ~750 |
 
 ## Task Routing
 

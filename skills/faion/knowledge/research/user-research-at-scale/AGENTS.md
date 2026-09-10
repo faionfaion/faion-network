@@ -57,6 +57,9 @@
 | `content/04-procedure.xml` | essential | 8-step procedure end-to-end | ~900 |
 | `content/05-examples.xml` | essential | Worked example trace | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
+| `content/01-pipeline-and-subagents.xml` | recommended | Nine-stage pipeline, ten-subagent table with model assignments, and the frozen-codebook pattern for preventing theme drift. | ~1250 |
+| `content/02-tools-and-services.xml` | recommended | CLI tools for transcription and analysis, platform service landscape, and operational best practices for large-scale research pipelines. | ~1050 |
+| `content/03-gotchas.xml` | recommended | Research at Scale Agent Gotchas and Limitations | ~1000 |
 
 ## Task Routing
 

@@ -52,6 +52,9 @@
 | `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
 | `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
+| `content/01-setup-steps.xml` | recommended | Google Ads Campaign Setup Steps | ~1150 |
+| `content/02-checklist.xml` | recommended | Pre-launch, campaign setup, ad creation, and go-live checklist items for a Google Ads Search campaign. | ~650 |
+| `content/03-agent-rules.xml` | recommended | API-specific rules and LLM failure modes when creating Google Ads campaigns programmatically. | ~800 |
 
 ## Task Routing
 

@@ -48,6 +48,9 @@
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
 | `content/04-procedure.xml` | medium | 6-step procedure with input/action/output per step | ~850 |
 | `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~550 |
+| `content/01-messages-api.xml` | recommended | Basic request structure, parameters table, response object fields, content block types, and multi-turn conversation pattern. | ~950 |
+| `content/02-vision.xml` | recommended | Image input from base64 and URL, multiple images in one message, PDF document type; supported formats and size limits. | ~800 |
+| `content/03-streaming.xml` | recommended | Streaming: text_stream, Events, Async | ~850 |
 
 ## Task Routing
 

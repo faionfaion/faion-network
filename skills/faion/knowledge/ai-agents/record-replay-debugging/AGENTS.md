@@ -45,6 +45,8 @@
 | `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
 | `content/05-examples.xml` | recommended | Worked example. | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
+| `content/01-modes-contract.xml` | recommended | Record captures every nondeterministic boundary; replay serves them back from disk so the agent's decision path is bit-for-bit reproducible. | ~1000 |
+| `content/02-mutation-replay.xml` | recommended | Mutation-replay: verifying a fix by changing one variable | ~900 |
 
 ## Task Routing
 

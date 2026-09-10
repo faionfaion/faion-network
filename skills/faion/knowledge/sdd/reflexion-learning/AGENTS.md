@@ -51,6 +51,9 @@
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
 | `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+| `content/01-pdca-cycle.xml` | recommended | The four phases of the Reflexion learning loop mapped to SDD task execution. | 850 |
+| `content/02-memory-architecture.xml` | recommended | Structure and update rules for the four memory files in .aidocs/memory/. | 700 |
+| `content/03-confidence-calibration.xml` | recommended | Confidence scoring levels, update formula, decay rules, and common calibration errors. | 650 |
 
 ## Task Routing
 

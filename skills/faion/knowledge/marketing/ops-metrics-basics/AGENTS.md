@@ -51,6 +51,9 @@
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
+| `content/01-metric-selection.xml` | recommended | Metric categories, the rule for choosing the right metrics, and an essential metrics table for solo operators. | 500 |
+| `content/02-tracking-and-review.xml` | recommended | Data sources, lean tracking stack options, target-setting approach, alert thresholds, and review cadence for operators. | 600 |
+| `content/03-formulas-and-antipatterns.xml` | recommended | Precise formulas for all essential SaaS metrics and six common tracking mistakes with fixes. | 500 |
 
 ## Task Routing
 

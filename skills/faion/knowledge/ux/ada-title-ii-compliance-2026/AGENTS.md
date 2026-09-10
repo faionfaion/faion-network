@@ -52,6 +52,9 @@
 | `content/04-procedure.xml` | essential | 5 steps: scope → bucket → audit → gap → report | 800 |
 | `content/05-examples.xml` | essential | Worked example: a 75k-pop city portal | 700 |
 | `content/06-decision-tree.xml` | essential | Decision tree: entity type + population → deadline + scope | 500 |
+| `content/01-requirements.xml` | recommended | Legal scope, compliance deadlines, and the full list of digital content types covered by 28 CFR Part 35 (DOJ final rule, April 24 2024). | 800 |
+| `content/02-process.xml` | recommended | Six-step workflow from digital inventory to conformance documentation, with agent responsibilities and human checkpoints. | 700 |
+| `content/03-rules.xml` | recommended | Testable agent rules and known limitation flags that prevent common compliance errors. | 550 |
 
 ## Task Routing
 
