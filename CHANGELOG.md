@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 §0: a gate that can tell when rules say nothing.**
+  `scripts/validate-rules-say-something.py` fails a methodology whose rules are
+  all filler — statements shared verbatim by 10+ slugs, restating Applies If /
+  Skip If, or under 40 characters — and joins `FAST_IDS`. Corpus today: 2,514
+  pass, 0 fail, 1.3 s.
+
+  Its first version passed the exact `google-analytics` rules file it was
+  written to catch. The frequency table was built from the *current* corpus,
+  and after CR-011's rewrite the stamp statements are shared by fewer than 10
+  slugs — the gate lost its teeth the moment the problem it measured was fixed.
+  Conformance to the current corpus is not correctness. So the stamp is now
+  **committed as data**: `scripts/rules-stamp-list.txt`, 70 normalised
+  statements measured at `16aa79dd8`, the last commit before the rewrite. A
+  statement on that list is filler no matter how many slugs carry it today.
+  Re-tested against the pre-rewrite `google-analytics` file: `FAIL — 6 rule(s),
+  none about the subject: 4 shared verbatim by 10+ slugs, 2 restate Applies If
+  / Skip If`.
+
+  Deliberately not gated: the filler *share* in a document that has at least
+  one real rule (167 documents sit at 40%+). Gating a ratio turns a content
+  problem into a threshold argument; gating zero does not.
 - **CR-008 population B executed: the seven `sdd/` documents with no canonical
   part now carry all six.** `cr-bug-tracking`, `plan-md-structure`,
   `project-spec-structure`, `quality-gates`, `readiness-checklist`,

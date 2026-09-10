@@ -4,7 +4,7 @@ cr_id: CR-011
 title: "69 methodologies contain no rule about their own subject, and the gate cannot tell"
 priority: P0
 created: 2026-08-15
-status: executed 2026-09-10 — the 61 zero-subject documents rewritten (rules + failure modes + tree); the §0 gate and the second layer (contracts, procedures, examples) remain open
+status: executed 2026-09-10 — the 61 zero-subject documents rewritten (rules + failure modes + tree); the §0 gate landed the same day as `validate-rules-say-something.py`; the second layer (contracts, procedures, examples, templates in the same 61) remains open
 affected_components: [faion-network/skills/faion/knowledge, scripts/validate-methodology-v2.py]
 blocks: "publication — a pro-tier document whose rules are shared verbatim with sixteen unrelated documents delivers nothing"
 ---
