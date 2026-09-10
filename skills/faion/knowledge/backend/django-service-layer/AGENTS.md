@@ -70,8 +70,6 @@
 |------|---------|
 | `templates/exceptions.py` | `core/exceptions.py` skeleton — `ApplicationError`, `NotFoundError`, `ValidationError`, `PermissionDeniedError`. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,30 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` classifies each write endpoint: trivial single-create with no side effects → keep inline; ≥1 of {multi-model, side effects, multi-entrypoint reuse} → extract into a service; read-only path mistakenly handled here → route to `[[django-selectors]]`. The tree references rule ids from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/exceptions.py`
-
-```python
-class ApplicationError(Exception):
-    """Base class for every domain-level exception."""
-
-
-class NotFoundError(ApplicationError):
-    """Resource does not exist or is not visible to the caller."""
-
-
-class ValidationError(ApplicationError):
-    """Business invariant violated. Distinct from DRF's ValidationError."""
-
-
-class PermissionDeniedError(ApplicationError):
-    """Caller is authenticated but not authorised for this resource."""
-
-
-class ConflictError(ApplicationError):
-    """Resource state conflicts with the requested change (uniqueness, race)."""
-```

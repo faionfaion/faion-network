@@ -60,8 +60,6 @@
 | `templates/pyproject.toml` | PEP 621 + [tool.poetry] config: dependencies, dev-group, build-system. |
 | `templates/Dockerfile` | Multi-stage build — builder runs `poetry export`, final stage runs `pip install`; no Poetry in production. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,30 +76,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides Poetry vs uv migration, library vs app constraint resolution, and dev-group composition. Walk it before any pyproject edit.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/pyproject.toml`
-
-```toml
-[project]
-name = "demo"
-version = "0.1.0"
-requires-python = ">=3.13"
-dependencies = []
-
-[tool.poetry]
-package-mode = false
-virtualenvs = { in-project = true }
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0"
-ruff = "^0.7"
-mypy = "^1.11"
-
-[build-system]
-requires = ["poetry-core>=2.0"]
-build-backend = "poetry.core.masonry.api"
-```

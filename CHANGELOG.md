@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 un-inlined: `backend`, `comms`.** 324 blocks from 141 envelopes. This is
+  also where the reversal stops being bookkeeping: `server-init-bootstrap`'s
+  envelope carried a verbatim copy of the pre-fix `bootstrap.sh` and
+  `verify-bootstrap.sh`, so the CR-012 repairs three commits back reached the file
+  and not the copy an agent actually reads. Fixing a template while its envelope
+  holds the broken twin fixes nothing that ships.
+
 - **F-077 un-inlined: `architecture`, `automation-tooling`, `ba`.** Also fixes the
   guard that stopped the batch: `trailing_heading_after_section` scanned lines
   without tracking fences, so it reported 30 envelopes as carrying a section below

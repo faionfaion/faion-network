@@ -79,8 +79,6 @@
 | `templates/stdlib_handler.go` | stdlib 1.22 App struct with `routes()`, `writeJSON`, `writeProblem` |
 | `templates/server.go` | `Wire(cfg) *http.Server` with all four timeouts + `Run()` graceful shutdown on SIGINT/SIGTERM |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -99,83 +97,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Two-question gate: (1) preconditions present? (2) does an existing artefact already cover this gap? Routes to run / skip / update. Every conclusion references a rule id from `content/01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/go-http-handlers.json`
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://faion.network/schema/go-http-handlers.json",
-  "type": "object",
-  "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
-  ],
-  "properties": {
-    "artefact_id": {
-      "type": "string",
-      "pattern": "^gohh\\-[a-z0-9-]+$"
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^(?!team$|we$|us$|engineering$)"
-    },
-    "decision": {
-      "type": "string",
-      "minLength": 4
-    },
-    "rationale": {
-      "type": "string",
-      "minLength": 60
-    },
-    "inputs_used": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "source"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "source": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "pending",
-        "active",
-        "deprecated"
-      ]
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
-    },
-    "notes": {
-      "type": "string"
-    }
-  }
-}
-```

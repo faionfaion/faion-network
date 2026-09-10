@@ -71,8 +71,6 @@
 | `templates/vercel-deployment-discipline.md.j2` | Human-readable audit trail + go/no-go report. |
 | `templates/vercel-deployment-discipline.md` | Human-readable audit trail + go/no-go report. Generated from `templates/vercel-deployment-discipline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,29 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/vercel-deployment-discipline.json`
-
-```json
-{
-  "artefact_id": "deploy-<project>-<date>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "project_id": "prj_<id>",
-  "commit_sha": "<sha>",
-  "target_env": "production",
-  "env_audit_pass": true,
-  "edge_violations": [],
-  "isr_paths": [],
-  "rollback_plan": {
-    "prior_deployment_id": "dpl_<id>",
-    "verify_url": "/_vercel/info"
-  },
-  "go_no_go": "go",
-  "owner": "<@handle>"
-}
-```

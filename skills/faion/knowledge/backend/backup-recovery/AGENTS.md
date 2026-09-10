@@ -72,8 +72,6 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in backup report. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/backup.sh` | Daily backup orchestrator: pg_dump + verify + Redis + configs + restic + retention. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,38 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/backup.sh`
-
-```bash
-#!/usr/bin/env bash
-# Run daily from cron at 03:00.
-set -euo pipefail
-
-BACKUP_ROOT=/home/nero/backups
-STAMP=$(date +%Y%m%d)
-
-# 1. Postgres
-docker exec -t nero-postgres pg_dump -U nero -Fc nero_db \
-  > "$BACKUP_ROOT/database/nero_db_${STAMP}.dump"
-pg_restore --list "$BACKUP_ROOT/database/nero_db_${STAMP}.dump" >/dev/null \
-  || { echo CORRUPT; exit 1; }
-
-# 2. Redis RDB
-docker cp nero-redis:/data/dump.rdb "$BACKUP_ROOT/redis/dump_${STAMP}.rdb"
-
-# 3. Configs
-tar -czf "$BACKUP_ROOT/configs/configs_${STAMP}.tgz" /etc/nginx /etc/systemd /etc/wireguard
-
-# 4. Restic offsite + retention
-export RESTIC_PASSWORD_FILE=/root/.restic-password
-restic backup "$BACKUP_ROOT" --tag daily --quiet
-restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune --quiet
-
-# 5. Local retention
-find "$BACKUP_ROOT" -mtime +14 -delete
-```

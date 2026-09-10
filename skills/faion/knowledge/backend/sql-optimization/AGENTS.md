@@ -71,8 +71,6 @@
 | `templates/sql-optimization-report.json` | JSON skeleton matching the output contract. |
 | `templates/create_index_concurrently.sql` | Non-blocking index creation + the INVALID-index check + the EXPLAIN that proves the planner uses it. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,42 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree picks between adding an index, rewriting the query, or escalating to caching / materialized view based on plan + workload characteristics.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/sql-optimization-report.json`
-
-```json
-{
-  "report_id": "sql-opt-2026-05-23",
-  "queries": [],
-  "index_changes": {
-    "added": [],
-    "dropped": []
-  },
-  "explain_analyze_present": true,
-  "net_p95_improvement_pct": 0
-}
-```
-
-### `templates/create_index_concurrently.sql`
-
-```sql
-CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_orders_tenant_created_id
-  ON orders (tenant_id, created_at DESC, id);
--- Equality column (tenant_id) first, range/sort column last: reversing this
--- makes the index unusable for the tenant_id predicate.
-
--- A CONCURRENTLY build that fails leaves an INVALID index behind. Check and rebuild:
---   SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid;
---   REINDEX INDEX CONCURRENTLY ix_orders_tenant_created_id;
-
--- Confirm the planner actually picks it up — this output is the report's after_plan:
-EXPLAIN (ANALYZE, BUFFERS)
-  SELECT id, created_at FROM orders
-   WHERE tenant_id = 'X'
-   ORDER BY created_at DESC, id DESC
-   LIMIT 50;
-```

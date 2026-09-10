@@ -72,8 +72,6 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in fail2ban audit. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/jail.local` | fail2ban jail.local with sshd on non-standard port + escalating ban. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,27 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/jail.local`
-
-```text
-[DEFAULT]
-backend = systemd
-banaction = nftables-multiport
-ignoreip = 127.0.0.1/8 10.10.0.0/24
-bantime = 1h
-bantime.increment = true
-bantime.factor = 4
-findtime = 10m
-maxretry = 4
-
-[sshd]
-enabled = true
-port = 2222
-filter = sshd
-logpath = %(sshd_log)s
-```

@@ -74,8 +74,6 @@
 | `templates/user-service.rs` | Reference service: try_join! for parallel queries, spawn_blocking for Argon2. |
 | `templates/runtime-spec-example.json` | Filled-in runtime-level record (flavour, workers, offload, channel policy, timeout, shutdown). |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -92,75 +90,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree maps (workload size, CPU heaviness, dynamic vs static group) to the correct Tokio primitive; each leaf cites one of the 8 core rules.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/buffer_unordered_with_semaphore.rs`
-
-```rust
-use futures::stream::{self, StreamExt};
-use std::sync::Arc;
-use tokio::sync::Semaphore;
-use tokio::time::{timeout, Duration};
-
-pub async fn process_bounded<I, T, F, Fut, E>(
-    inputs: I,
-    concurrency: usize,
-    per_call_timeout: Duration,
-    work: F,
-) -> Vec<Result<T, E>>
-where
-    I: IntoIterator<Item = u64>,
-    F: Fn(u64) -> Fut + Clone + Send + Sync + 'static,
-    Fut: std::future::Future<Output = Result<T, E>> + Send,
-    T: Send + 'static,
-    E: From<tokio::time::error::Elapsed> + Send + 'static,
-{
-    let sem = Arc::new(Semaphore::new(concurrency));
-    stream::iter(inputs)
-        .map(|id| {
-            let sem = sem.clone();
-            let work = work.clone();
-            async move {
-                let _permit = sem.acquire_owned().await.expect("semaphore closed");
-                match timeout(per_call_timeout, work(id)).await {
-                    Ok(res) => res,
-                    Err(elapsed) => Err(elapsed.into()),
-                }
-            }
-        })
-        .buffer_unordered(concurrency)
-        .collect()
-        .await
-}
-```
-
-### `templates/joinset_dynamic.rs`
-
-```rust
-use tokio::task::JoinSet;
-use tokio::time::{timeout, Duration};
-
-pub async fn fan_out<F, T>(work: Vec<F>, per_task_timeout: Duration) -> Vec<Result<T, String>>
-where
-    F: std::future::Future<Output = T> + Send + 'static,
-    T: Send + 'static,
-{
-    let mut set: JoinSet<Result<T, String>> = JoinSet::new();
-    for fut in work {
-        set.spawn(async move {
-            match timeout(per_task_timeout, fut).await {
-                Ok(t) => Ok(t),
-                Err(_) => Err("task timed out".into()),
-            }
-        });
-    }
-    let mut out = Vec::new();
-    while let Some(res) = set.join_next().await {
-        out.push(res.unwrap_or_else(|e| Err(format!("join error: {e}"))));
-    }
-    out
-}
-```

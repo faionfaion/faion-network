@@ -71,8 +71,6 @@
 | `templates/outreach-email.md` | 3-question testimonial outreach skeleton Generated from `templates/outreach-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/testimonial.json` | Output JSON skeleton with consent fields |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,30 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Gates on NPS, recency, and consent; failure at any gate halts. Otherwise emits a complete Testimonial JSON.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/testimonial.json`
-
-```json
-{
-  "customer": {
-    "name": "",
-    "role": "",
-    "company": ""
-  },
-  "hesitation": "",
-  "outcome": "",
-  "anti_recommendation": "",
-  "metric": "",
-  "consent": {
-    "quote": false,
-    "name": false,
-    "logo": false
-  },
-  "verbatim_marker": true,
-  "follow_up_at_iso": ""
-}
-```
