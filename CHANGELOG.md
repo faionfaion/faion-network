@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The HAR scrubber stopped labelling the leak `[REDACTED]`** (CR-012 #5).
+  `automation-tooling/puppeteer-output-capture/templates/scrubber.ts` matched
+  `/Authorization:\s*[^\s]+/gi`, which stops at the first whitespace — so it
+  redacted the **scheme** and kept the credential. Reproduced with node:
+  `Authorization: Basic dXNlcjpzdXBlcnNlY3JldA==` came out as
+  `Authorization: [REDACTED] dXNlcjpzdXBlcnNlY3JldA==`. The marker is what makes
+  it dangerous: a reviewer sees `[REDACTED]` and trusts the file.
+
+  Header patterns now consume the whole value to end of line, over eight header
+  names (`authorization`, `proxy-authorization`, `set-cookie`, `cookie`,
+  `x-api-key`, `x-auth-token`, `x-csrf-token`, `x-amz-security-token`), in both
+  the raw-header and the HAR `{"name":…,"value":…}` spellings, plus secret-ish
+  JSON keys. Card matching was `\b\d{16}\b`, which missed every space- or
+  dash-formatted number and every 15-digit Amex; it is now 13-19 digits with
+  optional separators, **Luhn-checked** — verified on this machine that
+  `378282246310005` and `4111 1111 1111 1111` are redacted while the 16-digit
+  non-Luhn `order 1234567890123456` is left alone, because over-redaction
+  destroys the evidence the capture exists to preserve.
+
 - **A failed deploy reports failure again, and can roll back** (CR-012 #4).
   `backend/deploy-scripts/templates/deploy.sh` ran its health probe as
   `curl -fsS … && break` inside a loop. Under `set -e` the failure of a
