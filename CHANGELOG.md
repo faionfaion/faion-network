@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The bootstrap verifier stopped green-lighting a vulnerable server** (CR-012 #3).
+  `verify-bootstrap.sh` checked SSH hardening with
+  `grep -q 'PermitRootLogin no' /etc/ssh/sshd_config`, which matches the
+  commented-out `#PermitRootLogin no` Debian ships — so a host with
+  `PermitRootLogin yes` two lines below reported `[OK] no root SSH`. Same at the
+  next line for `PasswordAuthentication`. Both now read `sudo sshd -T`, the
+  effective config, which resolves includes, drop-ins and defaults.
+
+  Three more in the same file: the timezone check was `timedatectl | grep -v 'UTC$'`,
+  which passes on any host because some line of that output does not end in `UTC`;
+  the SSH-in-UFW check demanded `2202[0-9]` while the bootstrap opens `2222`, so it
+  could never pass; and the SSH port is now read from `sshd -T` instead of being
+  hardcoded, with a new check that sshd is off port 22 and another that fail2ban
+  watches the same port. Every `| grep -q` became a herestring — `grep -q` exits at
+  its first match and under `pipefail` the producer's SIGPIPE is promoted over
+  grep's 0, the trap this repo's own hooks document.
+
 - **F-077 un-inlined: `ai-agents`, `ai-core`.** 311 fenced template bodies removed
   from 155 envelopes; every file under `templates/` untouched and hash-identical.
   The `## Templates` rows are references again, which is what
