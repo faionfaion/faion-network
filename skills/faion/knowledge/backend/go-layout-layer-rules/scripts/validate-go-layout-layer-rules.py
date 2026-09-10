@@ -33,7 +33,7 @@ def _check(doc: dict[str, Any]) -> list[str]:
     if errs:
         return errs
     if not ID_RE.match(str(doc["artefact_id"])):
-        errs.append(f"artefact_id must match ^goll\-[a-z0-9-]+$, got {doc['artefact_id']!r}")
+        errs.append(f"artefact_id must match {ID_RE.pattern}, got {doc['artefact_id']!r}")
     if str(doc["owner"]).strip().lower() in COLLAPSED:
         errs.append(f"owner is a collapsed plural: {doc['owner']!r}")
     if len(str(doc["decision"])) < 4:

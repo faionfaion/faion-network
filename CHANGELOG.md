@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **20 generated validators stop warning, and stop being able to drift** (found
+  while sweeping CR-012's parse set). Each carried
+  `f"artefact_id must match ^eh\-[a-z0-9-]+$, …"` — an unraw f-string, so `\-` is
+  an invalid escape sequence: a `SyntaxWarning` on Python 3.12 and a
+  `SyntaxError` from 3.14. The message now interpolates `{ID_RE.pattern}`, the
+  compiled regex two dozen lines above it, so it is not merely raw — it cannot
+  disagree with the pattern it describes. Compiling every `scripts/*.py` in the
+  corpus with warnings as errors: **0 findings**, from 20.
+
 - **Every template now parses in its own language** (CR-012, the systemic set).
   Verified by running the real tool, not by reading.
 
