@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010's central claim was wrong, and the correction is now on the record.**
+  It asserted that a `content/*.xml` file absent from its `## Content` table is
+  *"packed, shipped to the client, cached, and never returned"*. Nothing anywhere
+  parses that table — zero consumers across `faion-cli`, `faion-net-be` and this
+  repo's `scripts/`. Delivery resolves by **directory**:
+  `vfs.DocumentPartsForTier` enumerates every entry under `<slug>/content/` and
+  gates each on tier alone, a nil `--parts` selection means the whole document,
+  and `vfs-pack --publish` splits by part-directory segment.
+
+  Measured rather than reasoned: publishing this corpus and reading the resulting
+  `parts.json`, **all 177 unlisted files appear as parts with an id and a tier.
+  Zero are absent.** `marketing/ads-analytics-setup` publishes `01-ga4-setup.xml`
+  beside `01-core-rules.xml`.
+
+  The real cost is smaller and different — the envelope under-describes the
+  document, so 40% of the median affected document is never *chosen* by an agent
+  reading the table to decide what to load; `--parts` cannot name a non-canonical
+  file (that is CR-008's cost, correctly attributed); and an unlisted file carries
+  no depth or token estimate to budget against. The remedy is unchanged in shape:
+  add the rows.
+
+  The claim had propagated into this repo's root `AGENTS.md` as a standing gotcha
+  and into `template-builder.md` §7 as a constraint on an unrelated design; both
+  are corrected. Every *number* in CR-010 was right — 2,528 directories walked, 76
+  found, 621 KB counted. The sentence the numbers were attached to was never
+  checked. **A measurement with an unchecked premise is more dangerous than a
+  guess, because it arrives with evidence.**
+
 - **CR-014 filed: 62 templates deliver nothing, and the header is why the gate
   passes them.** Found while sweeping CR-012's parse set. 37 are empty or `{}`,
   1 has keys with no values, 24 are a single placeholder line; **40 of the 62 are

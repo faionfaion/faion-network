@@ -4,13 +4,64 @@ cr_id: CR-010
 title: "602 KB of hand-written methodology content ships and is never delivered"
 priority: P1
 created: 2026-08-15
-status: proposed
+status: **corrected 2026-09-10 — the delivery claim was wrong; see Correction**
 affected_components: [faion-network/skills/faion/knowledge]
 blocks: "publication — the corpus is paid for by the token, and 40% of the median affected document is unreachable"
 supersedes_context: "CR-008 recorded 251 non-canonical part names as a naming defect. This is what those names are actually costing."
 ---
 
 # Change Request: the corpus ships content it cannot deliver
+
+> ## Correction, 2026-09-10
+>
+> **The central claim of this CR is false, and it was never checked against the code.** The
+> 177 files are delivered. Every one of them.
+>
+> **What was asserted:** *"a `content/*.xml` file not listed in [the `## Content` table] is packed
+> by `vfs-pack`, shipped to the client, cached under `~/.faion/corpus/<cv>/`, and never
+> returned."*
+>
+> **What is true:** nothing anywhere parses the `## Content` table. Grepped across `faion-cli`,
+> `faion-net-be` and this repo's own `scripts/`: **zero consumers.** Delivery resolves by
+> *directory*, not by table —
+>
+> - `faion-cli/internal/getcontent/parts.go` assembles a document from its envelope plus the
+>   tier-visible `content/*.xml` parts of its slug directory, listed by
+>   `vfs.DocumentPartsForTier`, which enumerates every entry under `<slug>/content/` and gates
+>   each one on tier alone (`internal/vfs/parts.go:56`).
+> - With no `--parts` flag the selection is nil, and nil means the whole document.
+> - `vfs-pack --publish` splits by the first part-directory segment (`splitPart`,
+>   `tools/vfs-pack/publish.go:449`), and the backend reads the `parts.json` that produces
+>   (`faion-net-be/apps/cli/corpus_store.py:344`).
+>
+> **Measured, not reasoned.** Publishing this corpus and reading the resulting `parts.json`:
+> all **177** unlisted files appear as parts with an id and a tier, beside the canonical ones.
+> **0** are absent. `marketing/ads-analytics-setup` publishes `01-ga4-setup.xml`,
+> `02-conversions-utm.xml` and `03-agent-rules.xml` exactly like `01-core-rules.xml`.
+>
+> **What the real cost is, and it is smaller and different:**
+>
+> 1. **The envelope under-describes the document.** An agent reads `AGENTS.md` first and loads
+>    from the `## Content` table. 40% of the median affected document is absent from that table,
+>    so it is not *chosen*, even though it would arrive if it were.
+> 2. **`--parts` cannot name them.** The vocabulary is closed at six canonical names
+>    (`getcontent/select.go:45`), so a caller can fetch the whole document and get these files,
+>    but cannot ask for them. **That is CR-008's cost, correctly attributed here.**
+> 3. **No depth or token estimate.** The table carries both; a file absent from it cannot be
+>    budgeted by a caller deciding what to load.
+>
+> **The remedy is unchanged in shape and much cheaper in size:** add the rows, so the table
+> describes the document it is the table of contents for. What changes is the reason and the
+> urgency — this is a routing defect, not a delivery one, and no bytes are being withheld from
+> anyone.
+>
+> **Why the error is worth this much space.** The claim was measured *carefully* — 2,528
+> directories walked, 76 found, 621 KB counted — and every number in it is right. The one thing
+> not measured was the sentence the numbers were attached to. It then propagated into this
+> repo's root `AGENTS.md` as a standing gotcha and into `template-builder.md` §7 as a constraint
+> on an unrelated design. A measurement with an unchecked premise is more dangerous than a guess,
+> because it arrives with evidence.
+
 
 **This document proposes nothing be changed today.** It is the evidence for a decision the repo
 owner makes once, for 69 directories, rather than 69 times.

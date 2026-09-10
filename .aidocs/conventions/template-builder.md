@@ -191,5 +191,8 @@ and they stay gated.
 - **No expressions, loops, filters or nested partials.** §2.3, and the SSTI reason behind it.
 - **No content unification.** See §2 — the block library is for genuinely shared shape.
 - **No rewrite of the 1,670 `<Angle>` templates.** Opt-in, per template, as declarations are authored.
-- **It does not fix CR-010.** A block library adds a delivery path; it does not make the 602 KB of
-  unlisted content reachable. Those are separate, and doing this one first does not excuse that one.
+- **It does not fix CR-010.** A block library does not put the 602 KB of unlisted content into
+  the `## Content` table. Those are separate, and doing this one first does not excuse that one.
+  (CR-010's premise was corrected 2026-09-10: the content is *delivered* — every one of the 177
+  files publishes as a part — it is simply not listed, so an agent reading the envelope never
+  chooses it. The remedy is the same rows; the urgency is lower.)
