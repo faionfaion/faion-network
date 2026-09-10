@@ -1,32 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Inference Cost Unit Economics Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals from inputs to a rule from 01-core-rules.xml for inference-cost-unit-economics.</summary>
+<text id="06-decision-tree" title="Inference Cost Unit Economics Decision Tree" version="1.2.0" est_tokens="800" depth="essential">
+  <summary>Routing tree mapping observable signals in the cost data and draft report to a rule from 01-core-rules.xml for inference-cost-unit-economics.</summary>
 
   <decision-tree>
-      <root-question id="q-root">Is per-feature cost attribution + outcome definition in place?</root-question>
+      <root-question id="q-root">Does the draft report compute cost per successful outcome from provider-reported usage, with prices pinned and the tail shown?</root-question>
 
-      <branch when="attribution_missing == true">
-        <conclusion ref="r1" verdict="BLOCK — fix call→feature attribution first"/>
+      <branch when="feature_has_no_revenue_model == true OR calls_not_attributable_to_feature == true">
+        <conclusion ref="skip-this-methodology" verdict="SKIP: internal-only feature or attribution missing; track raw cost, fix call-to-feature attribution, do not compute unit economics yet"/>
       </branch>
-      <branch when="outcome_definition_missing == true">
-        <conclusion ref="r1" verdict="BLOCK — agree on success metric per feature"/>
+      <branch when="headline_metric == 'cost_per_call' OR outcome_definition_missing == true">
+        <conclusion ref="r-cost-per-successful-outcome" verdict="BLOCK: define the success metric per feature and recompute cost per successful outcome"/>
+      </branch>
+      <branch when="token_source == 'estimated'">
+        <conclusion ref="r-token-counts-from-provider-usage" verdict="BLOCK: log the provider usage object per call and recompute"/>
+      </branch>
+      <branch when="cost_components_count &lt; 4">
+        <conclusion ref="r-four-component-decomposition" verdict="BLOCK: split into input, output, retrieval, tools (plus cached tokens where billed separately)"/>
+      </branch>
+      <branch when="price_sheet_date_missing == true OR model_id_missing == true">
+        <conclusion ref="r-price-sheet-pinned" verdict="BLOCK: pin provider, model id, sheet date and discount per price line"/>
       </branch>
       <branch when="retry_share_of_cost &gt; 0.15">
-        <conclusion ref="r1" verdict="FLAG — investigate retry policy before optimising prompt"/>
+        <conclusion ref="r-retry-share-reported" verdict="FLAG: name the retry cause and fix retry policy before any prompt or model change"/>
       </branch>
-      <branch when="margin &lt; target">
-        <conclusion ref="r1" verdict="ACTION — propose cost-cut or price-up options"/>
+      <branch when="revenue_basis_missing == true">
+        <conclusion ref="r-gross-margin-with-stated-revenue-basis" verdict="BLOCK: state attributed revenue, allocation key or value proxy per feature"/>
+      </branch>
+      <branch when="p95_reported == false OR p95 &gt; 5 * p50">
+        <conclusion ref="r-report-tail-not-only-mean" verdict="FLAG: report p50/p95/mean and name the tail driver"/>
+      </branch>
+      <branch when="cost_per_outcome &gt; ceiling OR ceiling_missing == true">
+        <conclusion ref="r-cost-ceiling-and-runaway-alert" verdict="ACTION: set the ceiling from target margin, wire the spend alert, list features over ceiling with owner"/>
       </branch>
       <branch when="all_checks_pass == true">
-        <conclusion ref="r1" verdict="PUBLISH — record + schedule next refresh"/>
-      </branch>
-
-      <branch when="preconditions_unmet == true">
-        <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+        <conclusion ref="run-the-checklist" verdict="PUBLISH: emit the report, record the price-sheet date, schedule the next refresh"/>
       </branch>
     </decision-tree>
 
     <example trace="inference-cost-unit-economics-happy-path">
-      preconditions met → first branch matches → conclusion ref resolves to a rule in 01-core-rules.xml.
+      support-agent feature: outcome = resolved ticket, usage logged per call, four cost lines, retry share 12%, p95 3.1x p50, margin 90% on attributed revenue, cost per outcome $0.42 under $0.60 ceiling → all_checks_pass → run-the-checklist.
     </example>
 </text>

@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="GovTech FOIA / Records-Retention BA Pack — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `govtech-foia-ba-pack` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="GovTech FOIA / Records-Retention BA Pack Core Rules" version="2.0.0" est_tokens="2450" depth="essential">
+  <summary>8 testable rules every GovTech FOIA / records-retention BA pack MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-retention-schedule-per-record-class" testable="true" depth="essential">
+      <statement>The pack MUST list every record class the system creates or stores (citizen submissions, case notes, uploaded documents, audit logs, chat transcripts, staff email, analytics events) and map each to a retention period, a disposition action (destroy / transfer to archives) and the schedule item it derives from (US federal: NARA General Records Schedule item or agency-specific schedule; UK: the public body's retention schedule under the Public Records Act 1958; US state / CA: the state or provincial archives schedule). "Retain indefinitely" and "delete when storage is full" are both rejected as dispositions.</statement>
+      <rationale source="NARA General Records Schedules; UK Public Records Act 1958; Federal Records Act (44 U.S.C. ch. 31)">A system with no schedule defaults to keeping everything, which turns every FOIA request into a search across years of unstructured data and every breach into a disclosure of records that should have been destroyed. A system that deletes ad hoc destroys records the agency was legally required to keep, which is the incident that ends careers. The schedule is the only thing that makes either outcome defensible.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-request-export-within-statutory-clock" testable="true" depth="essential">
+      <statement>For every data store in scope the pack MUST name the search-and-export path (query, tool, owner) by which records responsive to an access request can be located and produced inside the statutory response window: 20 working days under the US FOIA (5 U.S.C. §552(a)(6)(A)(i)) and under the UK FOIA 2000 (s.10); confirm the clock for other jurisdictions (EU Regulation 1049/2001 for EU institutions, Canada's Access to Information Act). A store with no export path, or one whose export requires engineering time that exceeds the clock, is a blocking finding.</statement>
+      <rationale source="5 U.S.C. §552(a)(6)(A); UK Freedom of Information Act 2000 s.10">The clock starts on receipt of the request, not when engineering gets a ticket. Stores that were never designed for retrieval (message queues, third-party SaaS with no export, blob buckets keyed by UUID) are where agencies blow the deadline and end up in litigation or in front of the Information Commissioner. Naming the path at design time is cheaper than building it under a court order.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-exempt-fields-tagged-in-schema" testable="true" depth="essential">
+      <statement>Every field that would be withheld under a disclosure exemption (personal privacy, law-enforcement material, deliberative or pre-decisional content, commercial confidentiality, security) MUST be tagged with the exemption category at the data-model level so redaction is field-driven. The pack MUST include the exemption map (field, category, statutory basis: e.g. FOIA Exemptions 5 U.S.C. §552(b)(1)-(9); UK FOIA Part II). Free-text fields that mix exempt and non-exempt content MUST be flagged for structural split or manual-review cost estimate.</statement>
+      <rationale source="5 U.S.C. §552(b); UK Freedom of Information Act 2000 Part II">Manual redaction is where personal data leaks: a reviewer misses one name in a 400-page export and the agency has a breach. When exemption is a schema property, the export tool redacts deterministically and the reviewer checks exceptions instead of reading everything. Systems that store citizen PII inside a free-text "notes" column cannot be redacted at any acceptable cost.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-ephemeral-channels-captured" testable="true" depth="essential">
+      <statement>The pack MUST list every channel in which staff conduct business about the system (email, ticketing, chat tools, SMS, personal devices, in-product messaging) and, for each, the mechanism that captures messages into the system of record. Under US federal rules, official business conducted on a non-official account MUST be copied to an official account within 20 days (44 U.S.C. §2911). Auto-deleting or ephemeral messaging for official business is forbidden unless a capture mechanism is in place.</statement>
+      <rationale source="44 U.S.C. §2911 (Presidential and Federal Records Act Amendments of 2014); NARA guidance on electronic messages">The records that end up in litigation are the ones in the channel nobody schedule-mapped: the Slack workspace, the vendor's ticket tool, the caseworker's phone. Missing those in the pack means the agency discovers at request time that responsive records exist in a tool with no export and a 30-day auto-delete.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-wcag-aa-audit-gates-launch" testable="true" depth="essential">
+      <statement>The accessibility audit plan MUST target WCAG 2.1 Level AA at minimum (WCAG 2.2 AA where the jurisdiction has moved to it), as referenced by Section 508 (36 CFR Part 1194), EN 301 549 and the UK Public Sector Bodies Accessibility Regulations 2018. The plan MUST list every public-facing page or flow, the automated tool plus manual assistive-technology test (screen reader, keyboard-only, 200% zoom) per flow, a named remediation owner, and a launch gate: no critical or serious failure ships. A published accessibility statement MUST be part of the launch checklist where the jurisdiction requires one. "Accessibility pass after launch" is rejected.</statement>
+      <rationale source="Section 508 (36 CFR Part 1194, 2017 refresh); EN 301 549; UK Public Sector Bodies (Websites and Mobile Applications) Accessibility Regulations 2018; WCAG 2.1 / 2.2">Public bodies cannot pick their users. A benefits portal a screen-reader user cannot complete is a legal complaint on day one, and retrofitting focus order, labels and contrast onto a shipped design system costs several times the audit that would have caught it in staging. The launch gate exists because "we will fix it in the next sprint" is how the complaint gets filed.</rationale>
     </rule>
+
+    <rule id="r-procurement-clause-review-log" testable="true" depth="essential">
+      <statement>Every contract or solicitation clause with a technical consequence MUST appear in the review log with clause id, the design decision it forces, current status (met / open / waived by whom) and evidence. The minimum clause set to check: data residency and sovereignty, security authorisation (e.g. FedRAMP, StateRAMP, Cyber Essentials), source-code escrow and IP ownership, open-source licence restrictions, subcontractor flow-down, accessibility warranty, records-transfer-on-termination. A clause with status "open" at launch MUST be listed in the pack summary.</statement>
+      <rationale source="Federal Acquisition Regulation (FAR) clause flow-down practice; UK Procurement Act 2023">Public-sector contracts flow obligations down from the framework to the vendor to the subcontractor, and the technical team usually reads none of them. The residency clause that forbids the chosen region, the escrow clause nobody set up, the termination clause requiring records export in a named format: each is discovered at the worst time unless someone logged it against a design decision when the design was still cheap to change.</rationale>
+    </rule>
+
+    <rule id="r-public-notice-buffer-scheduled" testable="true" depth="essential">
+      <statement>The pack MUST state whether the launch requires a public notice, comment or consultation period and, if so, reserve it in the schedule before go-live. In the US, a new or changed collection of information from the public generally requires Paperwork Reduction Act clearance: a 60-day Federal Register notice, a 30-day notice with OMB submission, and OMB review time (44 U.S.C. §3506(c)(2)(A), §3507). Where PRA or an equivalent applies, the launch plan MUST carry a buffer of at least 90 days plus review time; a launch date that ignores the notice period is a blocking finding.</statement>
+      <rationale source="Paperwork Reduction Act, 44 U.S.C. §3506(c)(2)(A) and §3507; 5 CFR Part 1320">A new intake form is a new information collection, and collecting without an OMB control number is a violation the agency cannot cure retroactively. Teams that learn about the PRA at launch readiness review lose a quarter. The buffer is not slack; it is the statutory clock, and it has to be on the plan from the first schedule.</rationale>
+    </rule>
+
+    <rule id="r-named-records-and-access-officers" testable="true" depth="essential">
+      <statement>The pack MUST name, as `role:handle`, the records officer who approves the retention schedule and the access-request officer (Chief FOIA Officer or delegate in US federal agencies, 5 U.S.C. §552(j); the FOI officer or equivalent elsewhere) who signs off the export path and exemption map. A pack whose schedule was approved by the engineering team alone is rejected.</statement>
+      <rationale source="5 U.S.C. §552(j); NARA Senior Agency Official for Records Management guidance">Retention and disclosure are legal determinations with named statutory owners inside the agency. A schedule the records officer has never seen is not a schedule; it is an engineering assumption that the officer will overturn at the first request. Getting the signature at design time is what makes the pack enforceable.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

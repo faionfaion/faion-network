@@ -1,21 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="GovTech FOIA / Records-Retention BA Pack Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="GovTech FOIA / Records-Retention BA Pack Decision Tree" version="1.2.0" est_tokens="900">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-public-sector">Is the system operated by or for a public body subject to access-to-information and records law (US federal or state, UK, EU member, CA federal or provincial)?</root-question>
+    <branch when="public_body == false">
+      <conclusion ref="skip-this-methodology">Skip this methodology. A private-sector system has no FOIA or records-schedule obligation; use the ordinary privacy and accessibility methodologies instead.</conclusion>
+    </branch>
+    <branch when="public_body == true">
+      <question id="q-retention">Is every record class in the data model mapped to a retention period, disposition and schedule item signed by the records officer?</question>
+      <branch when="retention_schedule_complete == false">
+        <conclusion ref="r-retention-schedule-per-record-class">Block. Build the record-class inventory and schedule map, then obtain the records officer's signature per r-named-records-and-access-officers, before any other section of the pack.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="retention_schedule_complete == true">
+        <question id="q-export-and-launch-gates">Does every store have an export path inside the statutory clock with exempt fields tagged, and are the WCAG AA gate, clause log and public-notice buffer in place?</question>
+        <branch when="export_path_missing == true">
+          <conclusion ref="r-request-export-within-statutory-clock">Block. Name or build the export path per store; remove any store that cannot produce records within 20 working days.</conclusion>
+        </branch>
+        <branch when="exempt_fields_untagged == true">
+          <conclusion ref="r-exempt-fields-tagged-in-schema">Block. Produce the exemption map and tag fields at schema level; estimate manual-review cost for mixed free text.</conclusion>
+        </branch>
+        <branch when="wcag_gate_missing == true">
+          <conclusion ref="r-wcag-aa-audit-gates-launch">Block. Add per-flow assistive-technology tests and the no-critical-failure gate to the launch checklist.</conclusion>
+        </branch>
+        <branch when="open_clauses_unlogged == true">
+          <conclusion ref="r-procurement-clause-review-log">Block. Log every technical-consequence clause with decision, status and evidence.</conclusion>
+        </branch>
+        <branch when="notice_period_required == true AND buffer_scheduled == false">
+          <conclusion ref="r-public-notice-buffer-scheduled">Block. Reserve the notice and clearance window (at least 90 days plus review time under PRA) and re-baseline launch.</conclusion>
+        </branch>
+        <branch when="export_path_missing == false AND exempt_fields_untagged == false AND wcag_gate_missing == false AND open_clauses_unlogged == false AND (notice_period_required == false OR buffer_scheduled == true)">
+          <conclusion ref="run-the-checklist">Produce the full pack: retention schedule, export paths and exemption map, channel capture inventory, accessibility audit plan, clause review log, notice buffer, with both officers named.</conclusion>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="state-benefits-intake-portal">
+      <p>State agency portal, so public_body true. Record classes mapped to the state archives schedule and signed. Case-note free text held applicant SSNs, so exempt_fields_untagged true → r-exempt-fields-tagged-in-schema: notes split into structured fields before continuing.</p>
     </example>
   </decision-tree>
 </text>

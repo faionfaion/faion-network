@@ -1,34 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Graceful Offboard Script Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion that references a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Graceful Offboard Script Decision Tree" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Routing tree mapping observable signals from the QBR data, the contract and the draft script to the rule from 01-core-rules.xml that governs the next action.</summary>
 
   <decision-tree>
 
-    <root-question id="q-applies">Do ALL Applies-If conditions hold AND NO Skip-If condition triggers?</root-question>
+    <root-question id="q-evidence">Does the QBR source of record show at least two quantified bad-fit signals against stated targets for this client?</root-question>
 
-    <branch when="applies_if == true AND skip_if == false">
-      <question id="q-owner">Is a named single accountable owner present (not 'team' / 'we' / 'us')?</question>
-      <branch when="owner == named_individual">
-        <question id="q-inputs">Is the source-of-truth for required inputs reachable and citable?</question>
-        <branch when="inputs_reachable == true">
-          <conclusion ref="r1" verdict="apply the methodology; produce the versioned spec artefact and validate it."/>
-        </branch>
-        <branch when="inputs_reachable == false">
-          <conclusion ref="skip-this-methodology" verdict="defer until source-of-truth is reachable; paraphrased substitutes are worse than skipping."/>
-        </branch>
-      </branch>
-      <branch when="owner == plural_or_empty">
-        <conclusion ref="r2" verdict="block; require a single named owner before any further work."/>
-      </branch>
+    <branch when="qbr_source_unreachable == true">
+      <conclusion ref="skip-this-methodology" verdict="do not draft an offboard; without the QBR data the decision cannot be evidenced; fetch the data or wait for the next QBR cycle."/>
     </branch>
 
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="skip-this-methodology" verdict="do not apply this methodology in this context; route to the correct one or skip."/>
+    <branch when="bad_fit_signals &lt; 2">
+      <conclusion ref="r-bad-fit-evidenced-by-qbr-data" verdict="do not offboard yet; one signal is an intervention (repricing, scope reset), not an exit; revisit at the next QBR."/>
+    </branch>
+
+    <branch when="bad_fit_signals &gt;= 2">
+      <question id="q-contract">Does the intended last service date honour the termination clause, and are prepaid or committed periods accounted for?</question>
+      <branch when="exit_date_before_clause_allows == true OR prepaid_period_unaccounted == true">
+        <conclusion ref="r-exit-date-honours-termination-clause" verdict="move the last service date to what the clause allows; state delivery or refund of any prepaid period; quote the clause id."/>
+      </branch>
+      <branch when="exit_date_before_clause_allows == false AND prepaid_period_unaccounted == false">
+        <question id="q-script-checks">Do the script, handover plan, alternative and delivery plan pass the checks?</question>
+        <branch when="banned_phrase_found == true OR client_criticised == true">
+          <conclusion ref="r-frame-as-fit-not-confession" verdict="rewrite in the fit and alignment framing; remove every confession and every criticism of the client."/>
+        </branch>
+        <branch when="asset_inventory_complete == false OR transfer_conditioned_on_payment_without_clause == true">
+          <conclusion ref="r-handover-plan-with-asset-inventory" verdict="complete the per-asset inventory with owner, method and date; transfer client-owned assets on schedule."/>
+        </branch>
+        <branch when="alternative_named == false OR alternative_confirmed == false">
+          <conclusion ref="r-recommended-alternative-confirmed-first" verdict="confirm a matched alternative provider first; record the confirmation; offer the warm introduction."/>
+        </branch>
+        <branch when="delivery_channel == 'email_only' OR live_conversation_scheduled == false">
+          <conclusion ref="r-delivered-live-then-written" verdict="schedule the live conversation with the named account owner; send the written script within one business day after it."/>
+        </branch>
+        <branch when="t_plus_30_feedback_scheduled == false">
+          <conclusion ref="r-post-offboard-feedback-at-t-plus-30" verdict="schedule the T+30 NPS or feedback request before the offboard is delivered."/>
+        </branch>
+        <branch when="root_cause_category_missing == true OR intake_change_missing == true">
+          <conclusion ref="r-root-cause-changes-intake-criteria" verdict="assign the primary root-cause category and state the intake or qualification change it triggers."/>
+        </branch>
+        <branch when="all_script_checks_pass == true">
+          <conclusion ref="run-the-checklist" verdict="deliver the offboard: live conversation, written script and handover plan within one business day, T+30 feedback scheduled, internal record filed."/>
+        </branch>
+      </branch>
     </branch>
 
   </decision-tree>
 
-  <example trace="happy-path">
-    Applies-If holds, Skip-If clear → owner is named human → inputs are pinned to engagement files → produce + validate the artefact.
+  <example trace="qbr-bad-fit-happy-path">
+    QBR shows margin 11% against 30% target for three quarters and 14 out-of-scope requests against a cap of 4 → two signals. Contract allows exit on 30 days' notice; last service date set 35 days out. Script passes the banned-phrase check, asset inventory has 9 items with dates, partner agency confirmed on 2026-06-02, call booked, written follow-up drafted, T+30 request scheduled, root cause = scope and expectations, intake now asks for a scope-change budget → run-the-checklist.
   </example>
 </text>

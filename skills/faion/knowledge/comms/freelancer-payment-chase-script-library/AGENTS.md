@@ -47,7 +47,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: three rungs clocked from due date, invoice facts on every rung, fees only from contract or statute, polite rung assumes oversight, firm rung deadline, formal letter before action, stop on payment or dispute, send log feeds renewal terms | 2100 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the checklist artefact + valid/invalid/forbidden examples | 900 |
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |

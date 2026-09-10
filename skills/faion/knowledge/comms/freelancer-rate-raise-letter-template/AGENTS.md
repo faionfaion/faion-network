@@ -47,7 +47,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: 30-day grace period, value delta not CPI, single new rate, signed work honoured, no concession in letter, churn-risk classified, T+7 follow-up, business-notice tone | 2100 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |

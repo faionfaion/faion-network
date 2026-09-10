@@ -1,51 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Inference Cost Unit Economics Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Inference Cost Unit Economics must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Inference Cost Unit Economics Core Rules" version="2.0.0" est_tokens="1950" depth="essential">
+  <summary>8 testable rules every inference cost unit economics report MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r-cost-per-successful-outcome" testable="true" depth="essential">
+      <statement>The headline metric per feature MUST be cost per successful outcome: the sum of every call made in service of that outcome (including retries, fallbacks, validation failures and abandoned sessions) divided by the count of outcomes that met the feature's success definition from step 1 of the procedure. Cost per call and cost per token MAY appear only as supporting lines, never as the headline.</statement>
+      <rationale source="SaaS unit-economics practice (cost per unit of value delivered); widely established in AI product finance">A support bot that costs $0.04 per call and needs eleven calls plus two retries per resolved ticket costs $0.52 per resolution, not $0.04. Reports that lead with cost per call systematically understate the number finance will later find in the invoice, and every pricing decision built on them is wrong in the same direction.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="r-four-component-decomposition" testable="true" depth="essential">
+      <statement>Every per-call cost MUST be decomposed into at least four separately priced lines: input tokens x input price, output tokens x output price, retrieval (embedding calls plus vector-store queries), and tool or function calls (external API cost). Where the provider bills cached or batch input at a different rate, cached tokens MUST be a fifth line. A single undifferentiated "LLM cost" figure is rejected.</statement>
+      <rationale source="Provider price sheets (OpenAI, Anthropic, Google) bill input, output and cached tokens at distinct rates">Output tokens typically cost several times input tokens, and cached input a fraction of uncached. A blended number hides which lever matters: a feature whose cost is 80% output tokens is fixed by shortening the answer format, one whose cost is 80% retrieval is fixed by cutting top-k. Without the split the team optimises the prompt when the problem was the reranker.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="r-token-counts-from-provider-usage" testable="true" depth="essential">
+      <statement>Token counts MUST be taken from the provider-reported usage object on each API response (for example `usage.input_tokens` / `usage.output_tokens` or `usage.prompt_tokens` / `usage.completion_tokens`), logged per call with the model id. Estimating tokens from character or word counts, or sampling a subset and extrapolating, is forbidden for the report figures.</statement>
+      <rationale source="OpenAI and Anthropic API responses carry a per-request `usage` object; provider documentation">Character-based estimates miss system prompts, tool schemas, injected retrieval context and provider-side formatting, which together are usually the majority of input tokens. Teams that estimate routinely report a third of the tokens the invoice shows and then cannot explain the gap to finance.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for LLM-agent design, evals, safety, cost">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="r-retry-share-reported" testable="true" depth="essential">
+      <statement>The report MUST state, per feature, the share of total cost caused by retries, fallbacks to a larger model, and calls whose output failed validation, as a percentage. When that share exceeds 15% the report MUST flag retry policy as the first action and MUST NOT recommend prompt or model changes for that feature until the retry cause is named.</statement>
+      <rationale source="Methodology decision gate (04-procedure step 3); widely established practice in LLM operations">Retries are invisible in per-call dashboards because each retry is its own successful-looking call. One team cut their prompt by 30% and saw no cost change because 40% of spend was an exponential-backoff loop on a rate-limited tool call. The 15% gate makes that visible before anyone touches the prompt.</rationale>
     </rule>
-  
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>Skip this methodology when the Applies-If preconditions are not met OR any Skip-If disqualifier holds.</statement>
-      <rationale source="F-066 v3 B5.6 — mandatory skip leaf">Decision-tree leaves must reference a rule id. The skip leaf needs a real rule so non-applicable inputs route cleanly out instead of producing false-positive verdicts.</rationale>
+
+    <rule id="r-price-sheet-pinned" testable="true" depth="essential">
+      <statement>Every unit price used MUST cite the provider, the exact model id (including the dated snapshot where the provider publishes one), the price-sheet date or URL it was read from, and any negotiated, committed-use or batch discount applied. List prices without a date, or a "blended" rate without its derivation, are rejected.</statement>
+      <rationale source="Provider pricing pages change without notice; provider documentation">Providers reprice models, retire snapshots and introduce cheaper tiers on a cadence of weeks. A margin report computed on last quarter's price sheet can be off by a factor of two in either direction, and nobody can tell which without the date. Pinning the sheet turns "our cost went up" into a diff.</rationale>
     </rule>
+
+    <rule id="r-gross-margin-with-stated-revenue-basis" testable="true" depth="essential">
+      <statement>Gross margin per feature MUST be computed as (revenue or value proxy minus fully loaded inference cost) divided by revenue, and the report MUST name the revenue basis per feature: directly attributed revenue, an allocation rule (with the allocation key), or a value proxy with its derivation. A margin figure whose revenue basis is unstated is rejected.</statement>
+      <rationale source="Standard gross-margin definition; SaaS metrics practice">A feature inside a bundled subscription has no invoice line of its own, so its "revenue" is always a modelling choice. When two reports pick different allocation keys they produce margins of 40% and 85% for the same feature. Stating the basis is what lets a reader compare quarters and challenge the model instead of the arithmetic.</rationale>
+    </rule>
+
+    <rule id="r-report-tail-not-only-mean" testable="true" depth="essential">
+      <statement>Cost per outcome MUST be reported as a distribution: p50, p95 and mean at minimum, computed over a stated window of at least seven days of production traffic. A feature whose p95 exceeds 5x its p50 MUST be flagged as tail-dominated with the tail driver named (long context, agent loops, tool retries).</statement>
+      <rationale source="Google SRE Book, ch. Monitoring Distributed Systems, on percentiles versus averages">Agentic and long-context features have heavy tails: most sessions are cheap and a few percent run twenty tool calls with a full document in context. The mean sits well above the median and moves with a handful of users. Pricing on the mean overcharges everyone; pricing on the median loses money on the tail. Only the distribution shows which.</rationale>
+    </rule>
+
+    <rule id="r-cost-ceiling-and-runaway-alert" testable="true" depth="essential">
+      <statement>Every feature in the report MUST carry a cost ceiling per outcome derived from its target gross margin and revenue basis, plus an alert threshold on daily spend (absolute amount or percentage over trailing 7-day baseline) wired to the observability pipeline. The report MUST list every feature whose actual cost per outcome exceeds its ceiling with the gap and the owner of the corrective action.</statement>
+      <rationale source="FinOps Foundation framework (budgeting and anomaly management capabilities)">Inference spend has no natural cap: a prompt regression, a looping agent or a viral usage spike can multiply daily cost overnight and the first signal is the monthly invoice. A ceiling turns the margin target into a number an alert can fire on, so the runaway is caught in hours rather than at quarter close.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Ship a new AI feature from spike to GA inside a non-AI product (role: role-ml-engineer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: cost-reduction-strategies and cost-optimization exist as tactical lists. Missing: how to compute cost-per-user-action, cost-per-feature-call, gross-margin-per-AI-feature; how to set a cost ceiling; how to alert on cost runaway. ML engineers</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

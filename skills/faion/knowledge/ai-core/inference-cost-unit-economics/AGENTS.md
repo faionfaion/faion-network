@@ -46,7 +46,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules grounding the methodology with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: cost per successful outcome, four-component decomposition, provider usage counts, retry share, pinned price sheet, revenue basis, p95 tail, cost ceiling | 1950 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |

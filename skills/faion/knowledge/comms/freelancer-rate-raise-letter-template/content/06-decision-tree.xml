@@ -1,34 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Freelancer Rate Raise Letter Template Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion that references a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Freelancer Rate Raise Letter Template Decision Tree" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Routing tree mapping observable signals about the client, the contract and the draft letter to the rule from 01-core-rules.xml that governs the next action.</summary>
 
   <decision-tree>
 
-    <root-question id="q-applies">Do ALL Applies-If conditions hold AND NO Skip-If condition triggers?</root-question>
+    <root-question id="q-inputs">Are the current rate, the contract's rate-change notice clause, the client's revenue share and at least one value delta pinned to the source of record?</root-question>
 
-    <branch when="applies_if == true AND skip_if == false">
-      <question id="q-owner">Is a named single accountable owner present (not 'team' / 'we' / 'us')?</question>
-      <branch when="owner == named_individual">
-        <question id="q-inputs">Is the source-of-truth for required inputs reachable and citable?</question>
-        <branch when="inputs_reachable == true">
-          <conclusion ref="r1" verdict="apply the methodology; produce the versioned spec artefact and validate it."/>
-        </branch>
-        <branch when="inputs_reachable == false">
-          <conclusion ref="skip-this-methodology" verdict="defer until source-of-truth is reachable; paraphrased substitutes are worse than skipping."/>
-        </branch>
-      </branch>
-      <branch when="owner == plural_or_empty">
-        <conclusion ref="r2" verdict="block; require a single named owner before any further work."/>
-      </branch>
+    <branch when="rate_or_clause_unreachable == true OR value_delta_evidence == none">
+      <conclusion ref="skip-this-methodology" verdict="do not draft; without the contract clause and a value delta the letter will be either unenforceable or a CPI note; gather the inputs first."/>
     </branch>
 
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="skip-this-methodology" verdict="do not apply this methodology in this context; route to the correct one or skip."/>
+    <branch when="inputs_pinned == true">
+      <question id="q-churn">Is the client classified stay / negotiate / churn with evidence, and is the concentration risk covered?</question>
+      <branch when="churn_class_missing == true">
+        <conclusion ref="r-churn-risk-classified-before-send" verdict="block the send; classify the client with revenue share, alternatives, feedback and payment behaviour first."/>
+      </branch>
+      <branch when="churn_class == 'churn' AND revenue_share &gt; 0.30 AND replacement_plan_exists == false">
+        <conclusion ref="r-churn-risk-classified-before-send" verdict="defer the raise; write the replacement-revenue plan with named pipeline before this client receives a letter."/>
+      </branch>
+      <branch when="churn_class_missing == false AND (churn_class != 'churn' OR revenue_share &lt;= 0.30 OR replacement_plan_exists == true)">
+        <question id="q-letter-checks">Does the draft letter pass the content checks?</question>
+        <branch when="days_to_effective_date &lt; 30 OR days_to_effective_date &lt; contract_notice_days OR raises_in_last_12_months &gt;= 1">
+          <conclusion ref="r-grace-period-at-least-30-days" verdict="move the effective date out to the longest of 30 days, one billing cycle and the contract notice period; hold if a raise already happened this year without a scope change."/>
+        </branch>
+        <branch when="justification_is_only_cpi_or_costs == true">
+          <conclusion ref="r-justify-with-value-delta-not-cpi" verdict="rewrite the opening around the value delta from inputs_used; demote inflation to a secondary sentence."/>
+        </branch>
+        <branch when="new_rate_is_range_or_open == true">
+          <conclusion ref="r-single-new-rate-stated" verdict="state one number with currency, unit, the current rate and the percentage change."/>
+        </branch>
+        <branch when="inflight_work_listed == false">
+          <conclusion ref="r-signed-work-honoured-at-old-rate" verdict="list every signed SOW, quote and prepaid period and state that each completes at the current rate."/>
+        </branch>
+        <branch when="concession_in_letter == true">
+          <conclusion ref="r-no-concession-in-the-letter" verdict="remove the fallback from the letter; record one prepared concession in the artefact for T+7."/>
+        </branch>
+        <branch when="banned_phrase_found == true OR word_count &gt; 250">
+          <conclusion ref="r-business-notice-tone-no-apology" verdict="strip apology and personal-cost language; cut to under 250 words in the business-notice shape."/>
+        </branch>
+        <branch when="followup_scheduled == false">
+          <conclusion ref="r-follow-up-at-t-plus-7-with-path" verdict="schedule the T+7 follow-up with a path per response state before sending; new rate applies only on written acknowledgement."/>
+        </branch>
+        <branch when="all_letter_checks_pass == true">
+          <conclusion ref="run-the-checklist" verdict="send the letter; log send date, effective date, follow-up date, churn class and the prepared concession in the artefact."/>
+        </branch>
+      </branch>
     </branch>
 
   </decision-tree>
 
-  <example trace="happy-path">
-    Applies-If holds, Skip-If clear → owner is named human → inputs are pinned to engagement files → produce + validate the artefact.
+  <example trace="quarterly-review-happy-path">
+    Retainer client at 18% of revenue, classified negotiate, value delta = release pipeline ownership since March → effective date 45 days out, one number stated (+12%), two in-flight SOWs protected, no concession in the letter, T+7 follow-up scheduled → run-the-checklist.
   </example>
 </text>

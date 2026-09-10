@@ -1,34 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Freelancer Payment Chase Script Library Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion that references a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Freelancer Payment Chase Script Library Decision Tree" version="1.2.0" est_tokens="950" depth="essential">
+  <summary>Routing tree mapping the invoice's observable state (days overdue, payment status, dispute status, rungs already sent) to the rule from 01-core-rules.xml that governs the next action.</summary>
 
   <decision-tree>
 
-    <root-question id="q-applies">Do ALL Applies-If conditions hold AND NO Skip-If condition triggers?</root-question>
+    <root-question id="q-invoice-facts">Is the invoice past its due date, with invoice number, amount, due date and the contract payment-terms clause pinned to the source of record?</root-question>
 
-    <branch when="applies_if == true AND skip_if == false">
-      <question id="q-owner">Is a named single accountable owner present (not 'team' / 'we' / 'us')?</question>
-      <branch when="owner == named_individual">
-        <question id="q-inputs">Is the source-of-truth for required inputs reachable and citable?</question>
-        <branch when="inputs_reachable == true">
-          <conclusion ref="r1" verdict="apply the methodology; produce the versioned checklist artefact and validate it."/>
-        </branch>
-        <branch when="inputs_reachable == false">
-          <conclusion ref="skip-this-methodology" verdict="defer until source-of-truth is reachable; paraphrased substitutes are worse than skipping."/>
-        </branch>
-      </branch>
-      <branch when="owner == plural_or_empty">
-        <conclusion ref="r2" verdict="block; require a single named owner before any further work."/>
-      </branch>
+    <branch when="invoice_facts_pinned == false OR contract_unreachable == true">
+      <conclusion ref="skip-this-methodology" verdict="do not send anything; fetch the invoice and contract from the system of record first; a chase without the facts is worse than silence."/>
     </branch>
 
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="skip-this-methodology" verdict="do not apply this methodology in this context; route to the correct one or skip."/>
+    <branch when="invoice_facts_pinned == true AND days_overdue &gt;= 0">
+      <question id="q-stop-conditions">Has the client paid in full, paid partially, or raised a written dispute since the last rung?</question>
+      <branch when="paid_in_full == true OR dispute_raised == true">
+        <conclusion ref="r-stop-on-payment-dispute-or-exhaustion" verdict="halt the ladder; log the outcome; route a dispute to dispute handling, not to the next rung."/>
+      </branch>
+      <branch when="partial_payment == true">
+        <conclusion ref="r-stop-on-payment-dispute-or-exhaustion" verdict="recompute the outstanding balance and restate it on every later rung before continuing the ladder."/>
+      </branch>
+      <branch when="paid_in_full == false AND dispute_raised == false AND partial_payment == false">
+        <question id="q-rung">Which rung does the clock and the send log call for?</question>
+        <branch when="days_overdue &lt; 3">
+          <conclusion ref="r-three-rungs-clocked-from-due-date" verdict="no send yet; wait for T+3."/>
+        </branch>
+        <branch when="days_overdue &gt;= 3 AND days_overdue &lt; 10 AND polite_sent == false">
+          <conclusion ref="r-polite-rung-assumes-oversight" verdict="send the polite rung: invoice attached, one question, under 120 words, no consequences; log the send."/>
+        </branch>
+        <branch when="days_overdue &gt;= 10 AND days_overdue &lt; 30 AND firm_sent == false">
+          <conclusion ref="r-firm-rung-deadline-and-named-consequence" verdict="send the firm rung: pay-by date within 7 days, one contract-backed consequence, finance contact added; log the send."/>
+        </branch>
+        <branch when="days_overdue &gt;= 30 AND legal_sent == false">
+          <conclusion ref="r-legal-rung-is-formal-letter-before-action" verdict="send the formal notice: ledger with interest per clause or statute, 7 to 14 day final deadline, named next step, via email and the contract's written-notice channel; log the send."/>
+        </branch>
+        <branch when="legal_sent == true AND final_deadline_passed == true">
+          <conclusion ref="r-stop-on-payment-dispute-or-exhaustion" verdict="ladder exhausted; hand off to the named legal or collections contact with the full send log; record days-to-pay for renewal."/>
+        </branch>
+        <branch when="consequence_mentioned == true AND clause_or_statute_cited == false">
+          <conclusion ref="r-fees-and-leverage-only-from-contract-or-statute" verdict="block the draft; remove or source every fee, interest rate or suspension claim before sending."/>
+        </branch>
+      </branch>
     </branch>
 
   </decision-tree>
 
-  <example trace="happy-path">
-    Applies-If holds, Skip-If clear → owner is named human → inputs are pinned to engagement files → produce + validate the artefact.
+  <example trace="net-15-invoice-happy-path">
+    Invoice 2026-041, due 2026-06-15, facts pinned → day 3, no payment, no dispute → polite rung sent 2026-06-18 and logged → client pays 2026-06-20 → paid_in_full → halt, log days-to-pay = 5.
   </example>
 </text>

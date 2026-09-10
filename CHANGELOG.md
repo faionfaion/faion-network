@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011, batch 1 of 4: `ai-core`, `ba`, `comms` — six methodologies get rules
+  about their own subject.** Each carried a governance stamp shared verbatim
+  with dozens of documents (name an owner, validate the schema, log deviations,
+  human sign-off) and not one rule about the thing it is named for. Each now has
+  7-9 subject-specific, testable rules with a named source, subject-specific
+  failure modes, and a decision tree that routes on subject signals to those
+  rule ids. `healthtech-fhir-ba-pack` cites 45 CFR §164.502/§164.512/§164.312
+  and HL7 FHIR R4 / US Core; `govtech-foia-ba-pack` cites 5 U.S.C. §552 and the
+  PRA; `inference-cost-unit-economics` measures cost per *successful* outcome
+  from provider usage counters. Where no specific source exists (rate-raise
+  letters, offboarding scripts) the rationale says "general practice" rather
+  than inventing a citation — an honest vague source beats a fabricated precise
+  one in a paid document.
+
 - **CR-014 closed: validator 5's B3.2 measures the body, not the file.** It was
   `stat().st_size < 50` over a file whose header alone is 200-300 bytes. It now
   strips the five-key header (comment, docstring or `__faion_header__` forms),

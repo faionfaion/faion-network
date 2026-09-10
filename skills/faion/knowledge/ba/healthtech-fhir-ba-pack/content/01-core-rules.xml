@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="HealthTech FHIR BA Pack — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `healthtech-fhir-ba-pack` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="HealthTech FHIR BA Pack Core Rules" version="2.0.0" est_tokens="2350" depth="essential">
+  <summary>8 testable rules every HealthTech FHIR BA pack MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-clinical-elements-map-to-fhir-resources" testable="true" depth="essential">
+      <statement>Every clinical data element the feature reads or writes MUST be mapped to a named FHIR R4 (or R5, stated) resource and element path, for example `Patient.identifier`, `Encounter.period`, `Observation.value[x]`, `Condition.clinicalStatus`, and to the implementation-guide profile in force for the jurisdiction (US Core, UK Core, or the customer's named profile). Clinical data stored in an application-specific JSON blob or a bespoke table with no FHIR mapping is rejected.</statement>
+      <rationale source="HL7 FHIR R4 specification; US Core Implementation Guide; UK Core Implementation Guide">Every EHR integration, patient-access API and regulator request speaks FHIR. A feature that keeps vitals in a `metrics` JSON column ships fast and then costs a rewrite the first time a hospital asks for an Observation bundle or a patient exercises access rights. Mapping at BA time is a table; mapping after launch is a migration of clinical data.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-coded-terminology-bindings" testable="true" depth="essential">
+      <statement>Coded clinical fields MUST bind to the standard terminology the profile requires: `Observation.code` to LOINC, `Condition.code` to SNOMED CT (ICD-10-CM / ICD-10 where billing or the profile demands it), medications to RxNorm (US) or dm+d (UK), with the code system URI recorded. A free-text-only value in a coded field, or a locally invented code list for a concept a standard terminology covers, is rejected.</statement>
+      <rationale source="US Core Implementation Guide binding requirements; UK Core; LOINC, SNOMED CT, RxNorm documentation">"Blood pressure" typed by a nurse and `85354-9` are the same measurement to a human and different data to every downstream system. Free text cannot be queried for cohorts, de-identified reliably or exchanged with a partner, and local code lists become a permanent translation layer the team maintains forever.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-phi-minimum-necessary-per-flow" testable="true" depth="essential">
+      <statement>The pack MUST contain a data-flow table listing, for every boundary a record crosses (service, vendor, environment, analytics store, model provider), exactly which PHI or special-category elements cross it and the purpose. Elements not needed for that purpose MUST be excluded at the boundary. Analytics and model-training flows MUST use data de-identified under HIPAA Safe Harbor (all 18 identifier classes removed, 45 CFR §164.514(b)(2)) or Expert Determination, and the method MUST be named.</statement>
+      <rationale source="HIPAA Privacy Rule, 45 CFR §164.502(b) (minimum necessary) and §164.514(b) (de-identification); GDPR Art. 5(1)(c) (data minimisation)">Breach impact is proportional to what crossed the boundary. The analytics warehouse that receives full patient names "because the join was easier" is the store that gets exfiltrated, and the notification then covers every patient rather than none. A flow table makes the excess visible before the pipeline is built.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-baa-or-dpa-per-processor" testable="true" depth="essential">
+      <statement>Every third party that stores, processes or transmits PHI or health data on the feature's behalf (cloud host, database or search SaaS, LLM or ML API, email and SMS gateway, analytics, error tracking, support desk) MUST be listed with a signed Business Associate Agreement (HIPAA, 45 CFR §164.502(e) and §164.308(b)) and, where GDPR applies, an Article 28 processor agreement, before any data flows. A processor with no signed agreement MUST be marked blocking; "the vendor says they are HIPAA compliant" is not an agreement.</statement>
+      <rationale source="HIPAA 45 CFR §164.502(e), §164.308(b); GDPR Art. 28">The error tracker that captures request bodies, the LLM API called with a clinical note, the transactional email service with the appointment details: each is a business associate the moment PHI reaches it, and each without a BAA is a reportable violation regardless of how good their security page reads. The list is the control; the pack is where the list lives.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-hipaa-gdpr-overlap-matrix-minimum-rows" testable="true" depth="essential">
+      <statement>Where both regimes are in scope, the overlap matrix MUST contain at least these rows, each with the HIPAA position, the GDPR position and the design decision that satisfies both: lawful basis (GDPR Art. 6 plus Art. 9(2) condition for health data versus HIPAA permitted uses for treatment, payment and operations); breach notification clock (GDPR 72 hours to the supervisory authority, Art. 33; HIPAA without unreasonable delay and no later than 60 days to individuals, 45 CFR §164.404); individual access (GDPR Art. 15, one month; HIPAA right of access, 30 days, 45 CFR §164.524); retention and deletion (GDPR erasure, Art. 17, versus HIPAA documentation retention of six years, 45 CFR §164.316(b)(2)); cross-border transfer. Each row MUST name the stricter clock the system will honour.</statement>
+      <rationale source="GDPR Arts. 6, 9, 15, 17, 33; HIPAA 45 CFR §164.404, §164.524, §164.316">The two regimes disagree on clocks and on whether patients can demand deletion. A team that designs to one and discovers the other after launch ships a 30-day access SLA to EU patients who are entitled to answers faster on some rows and a delete button that HIPAA-era records cannot honour. The matrix forces the stricter-of-both decision per row, once, at design time.</rationale>
     </rule>
+
+    <rule id="r-consent-as-fhir-consent-with-irb-reference" testable="true" depth="essential">
+      <statement>Consent capture MUST be modelled as a FHIR `Consent` resource (or an equivalent record carrying the same fields): scope, provision (permit / deny per data category and purpose), period, the version of the consent text shown, and the capture timestamp and channel. Treatment consent and research consent MUST be separate records. Any research or secondary use MUST reference the IRB or ethics committee protocol number and approval date (Common Rule, 45 CFR Part 46; FDA 21 CFR Part 50 where applicable), and the pack MUST state whether a waiver of consent was granted.</statement>
+      <rationale source="HL7 FHIR Consent resource; 45 CFR Part 46 (Common Rule); 21 CFR Part 50">A single "I agree" checkbox stretched to cover care, marketing and a research dataset is the classic post-launch privacy incident: the study cannot prove which patients consented to what version of what, and the data has to be pulled. Separate, versioned consent records with an IRB reference are what an auditor asks for on day one.</rationale>
+    </rule>
+
+    <rule id="r-audit-trail-append-only-six-years" testable="true" depth="essential">
+      <statement>Every read, write, export and disclosure of PHI MUST produce an audit record with actor, patient or resource id, action, timestamp, source system and purpose, modelled as FHIR `AuditEvent` or an equivalent schema. The log MUST be append-only (no update or delete permission for application roles), retained for at least six years or longer where state or national law requires, and MUST be queryable per patient to answer an accounting-of-disclosures request (45 CFR §164.528).</statement>
+      <rationale source="HIPAA Security Rule 45 CFR §164.312(b) (audit controls) and §164.316(b)(2) (retention); 45 CFR §164.528; HL7 FHIR AuditEvent">When a celebrity's record is opened by forty staff, the audit log is the only thing that separates the hospital from the headline. A log the application can rewrite is not evidence, and a log without patient-level queries cannot answer the accounting-of-disclosures request patients are entitled to. Six years is the documentation retention floor the Security Rule sets.</rationale>
+    </rule>
+
+    <rule id="r-phi-encrypted-transit-and-rest" testable="true" depth="essential">
+      <statement>The pack MUST state, per store and per hop, that PHI is encrypted in transit (TLS 1.2 or higher, no plaintext internal hops) and at rest (database, backups, object storage, logs and search indexes included), with key management separated from the data store. Any store holding PHI unencrypted, including backups and log files, MUST be listed as a blocking finding.</statement>
+      <rationale source="HIPAA Security Rule 45 CFR §164.312(a)(2)(iv) and §164.312(e)(2)(ii); HHS guidance on unsecured PHI under the HITECH breach notification rule">Encryption is the difference between a lost laptop and a reportable breach: under HHS guidance PHI encrypted to the specified standard is not "unsecured", so its loss does not trigger notification. The stores teams forget are the ones that bite: the nightly backup bucket, the search index with clinical notes, the application log that printed a request body.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

@@ -47,7 +47,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: two QBR bad-fit signals, fit framing not confession, exit date honours termination clause, handover asset inventory, confirmed alternative provider, live delivery then written, T+30 feedback request, root cause changes intake | 2100 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |

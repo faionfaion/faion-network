@@ -1,26 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Inference Cost Unit Economics Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed when applying inference-cost-unit-economics. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+<text id="03-failure-modes" title="Inference Cost Unit Economics Failure Modes" version="1.2.0" est_tokens="950" depth="essential">
+  <summary>6 antipatterns observed when computing inference cost unit economics. Each pairs symptom + root cause + concrete fix keyed to a rule in 01-core-rules.xml.</summary>
   <section title="Antipatterns">
-    <antipattern id="fm-shortcut-the-contract" severity="high">
-      <symptom>Agent emits a report that omits required fields the schema enforces (skips citation, leaves rationale blank, drops postconditions).</symptom>
-      <root-cause source="Internal — F-066 v3 review">Author treats the contract as advisory rather than enforceable; no validator wired into the publish step.</root-cause>
-      <fix>Wire `scripts/validate-inference-cost-unit-economics.py` into the publish step (CI / pre-commit / orchestrator gate). Reject the artefact until the schema passes.</fix>
+    <antipattern id="cost-per-call-headline" severity="high">
+      <symptom>Report leads with "$0.03 per request"; finance later finds the feature costs ten times that per resolved ticket; pricing was set on the wrong number.</symptom>
+      <root-cause source="r-cost-per-successful-outcome">Per-call cost is the easiest number to pull from logs, so it becomes the headline. Multi-call flows, retries and abandoned sessions are never summed to the outcome.</root-cause>
+      <fix>Recompute as total cost of all calls attributed to an outcome divided by successful outcomes. Demote cost per call to a supporting line.</fix>
     </antipattern>
-    <antipattern id="fm-skip-decision-tree" severity="high">
-      <symptom>Agent applies the methodology end-to-end on inputs that should have routed to a different methodology (Applies-If unmet, Skip-If hit).</symptom>
-      <root-cause source="Internal — F-066 v3 review">06-decision-tree never walked because the agent jumped straight to the procedure / contract.</root-cause>
-      <fix>Make the decision tree a hard gate at step 1 of the procedure. The validator cross-checks `tree_walked == true` before accepting the artefact.</fix>
+    <antipattern id="retries-hidden-in-average" severity="high">
+      <symptom>Prompt was shortened by a third; cost per outcome did not move. Retry share was never measured.</symptom>
+      <root-cause source="r-retry-share-reported">Each retry logs as its own successful call, so dashboards show volume growth, not waste. Nobody joins calls to the outcome they served.</root-cause>
+      <fix>Tag every call with attempt number and outcome id; report retry share per feature; when above 15%, fix the retry policy before touching the prompt.</fix>
     </antipattern>
-    <antipattern id="fm-stale-context" severity="medium">
-      <symptom>Artefact cites sources / numbers / dependencies that were correct months ago but no longer apply.</symptom>
-      <root-cause source="Internal — F-066 v3 review">Refresh cadence not part of the methodology; nobody owns 'last_reviewed'.</root-cause>
-      <fix>Cap artefact freshness at 30 days for fast-moving topics, 90 days for slow-moving. Add a revisit-trigger field to the schema. The validator rejects artefacts older than the cap.</fix>
+    <antipattern id="estimated-token-counts" severity="high">
+      <symptom>Reported token volume is roughly a third of what the provider invoice bills; the gap cannot be explained.</symptom>
+      <root-cause source="r-token-counts-from-provider-usage">Tokens were estimated from message character counts, which omit the system prompt, tool schemas and injected retrieval context.</root-cause>
+      <fix>Log the provider `usage` object per call, keyed by model id, and compute from it. Reconcile the monthly total against the invoice.</fix>
     </antipattern>
-    <antipattern id="fm-rule-quoting-not-applying" severity="medium">
-      <symptom>Output reads like it follows 01-core-rules.xml but the verdicts on individual rules are not recorded — reviewer cannot verify each rule was checked.</symptom>
-      <root-cause source="Internal — F-066 v3 review">Agent paraphrased the rules instead of consuming them. No per-rule evidence pointer.</root-cause>
-      <fix>Force the artefact to carry a per-rule verdict + evidence_pointer field (already enforced by the schema where applicable). Rejects bypass paraphrase.</fix>
+    <antipattern id="undated-price-sheet" severity="medium">
+      <symptom>Two reports for consecutive quarters show margin moving 20 points with no change in traffic; the difference is a repriced model nobody recorded.</symptom>
+      <root-cause source="r-price-sheet-pinned">Prices were copied from memory or an old spreadsheet without model snapshot id or sheet date.</root-cause>
+      <fix>Pin provider, model id, sheet date and applied discount per price line; diff price sheets between reports before interpreting margin movement.</fix>
+    </antipattern>
+    <antipattern id="mean-hides-tail" severity="medium">
+      <symptom>Average cost per outcome looks healthy; a handful of power users each cost more than their subscription every month.</symptom>
+      <root-cause source="r-report-tail-not-only-mean">Only the mean was reported. Long-context and agent-loop sessions form a heavy tail that the mean blends away.</root-cause>
+      <fix>Report p50, p95 and mean over at least seven days; flag features where p95 exceeds 5x p50 and name the tail driver.</fix>
+    </antipattern>
+    <antipattern id="margin-without-revenue-basis" severity="medium">
+      <symptom>Two analysts compute 40% and 85% margin for the same bundled feature; the argument is about arithmetic when it is about allocation.</symptom>
+      <root-cause source="r-gross-margin-with-stated-revenue-basis">Feature has no direct revenue line; each report silently chose a different allocation key or value proxy.</root-cause>
+      <fix>State the revenue basis per feature (attributed, allocation rule with key, or value proxy with derivation) next to every margin figure.</fix>
     </antipattern>
   </section>
 </text>

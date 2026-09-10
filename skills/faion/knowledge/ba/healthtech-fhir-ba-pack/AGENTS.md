@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: FHIR resource mapping, terminology bindings, minimum-necessary flow table, BAA / Art. 28 per processor, HIPAA-GDPR matrix rows, FHIR Consent with IRB reference, append-only six-year audit trail, encryption in transit and at rest | ~2350 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |

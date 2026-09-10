@@ -1,21 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="HealthTech FHIR BA Pack Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="HealthTech FHIR BA Pack Decision Tree" version="1.2.0" est_tokens="1000">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-phi-in-scope">Does the feature read, write or transmit identifiable health data (PHI under HIPAA, special-category data under GDPR Art. 9, or NHS patient data)?</root-question>
+    <branch when="phi_in_scope == false">
+      <conclusion ref="skip-this-methodology">Skip this methodology. Without identifiable health data there is no FHIR mapping, BAA or consent obligation to pin; use the ordinary privacy BA pack.</conclusion>
+    </branch>
+    <branch when="phi_in_scope == true">
+      <question id="q-fhir-mapping">Is every clinical element mapped to a FHIR resource and profile, with coded fields bound to LOINC / SNOMED CT / RxNorm (or dm+d)?</question>
+      <branch when="fhir_mapping_complete == false">
+        <conclusion ref="r-clinical-elements-map-to-fhir-resources">Block. Produce the element-to-resource mapping table against the named profile before any data-flow or vendor work.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="fhir_mapping_complete == true AND coded_fields_free_text == true">
+        <conclusion ref="r-coded-terminology-bindings">Block. Bind coded fields to the standard terminology with code-system URIs; keep free text only as `.text`.</conclusion>
+      </branch>
+      <branch when="fhir_mapping_complete == true AND coded_fields_free_text == false">
+        <question id="q-boundaries-and-controls">Do every PHI-touching processor, flow, consent and audit control meet the rules?</question>
+        <branch when="processor_without_agreement == true">
+          <conclusion ref="r-baa-or-dpa-per-processor">Block. Sign the BAA / Art. 28 agreement or strip PHI from the payload before data flows.</conclusion>
+        </branch>
+        <branch when="flow_table_missing == true OR analytics_receives_identified_phi == true">
+          <conclusion ref="r-phi-minimum-necessary-per-flow">Block. Build the per-boundary flow table and de-identify analytics and model flows by a named method.</conclusion>
+        </branch>
+        <branch when="research_use == true AND (irb_reference_missing == true OR consent_records_merged == true)">
+          <conclusion ref="r-consent-as-fhir-consent-with-irb-reference">Block. Split treatment and research consent into versioned Consent records with the IRB protocol reference.</conclusion>
+        </branch>
+        <branch when="audit_log_mutable == true OR audit_retention_years &lt; 6">
+          <conclusion ref="r-audit-trail-append-only-six-years">Block. Move the audit trail to append-only storage with six-year retention and per-patient query.</conclusion>
+        </branch>
+        <branch when="gdpr_in_scope == true AND overlap_matrix_rows_complete == false">
+          <conclusion ref="r-hipaa-gdpr-overlap-matrix-minimum-rows">Block. Complete the minimum matrix rows and name the stricter clock per row.</conclusion>
+        </branch>
+        <branch when="unencrypted_phi_store == true">
+          <conclusion ref="r-phi-encrypted-transit-and-rest">Block. Encrypt the listed store, backup, index or log and separate key management before launch.</conclusion>
+        </branch>
+        <branch when="all_controls_met == true">
+          <conclusion ref="run-the-checklist">Produce the full pack: FHIR mapping, terminology bindings, flow table, processor list with agreements, overlap matrix, consent model, audit-trail spec, encryption inventory.</conclusion>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="remote-monitoring-dashboard">
+      <p>Feature ingests home blood-pressure readings, so phi_in_scope true. Readings mapped to Observation with LOINC codes. The error tracker captured request bodies with patient names and had no BAA → processor_without_agreement true → r-baa-or-dpa-per-processor: PHI scrubbed from error payloads and the BAA signed before launch.</p>
     </example>
   </decision-tree>
 </text>
