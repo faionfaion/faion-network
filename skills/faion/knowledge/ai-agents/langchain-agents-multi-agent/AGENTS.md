@@ -61,8 +61,6 @@
 |------|---------|
 | `templates/_smoke-test.json` | Minimum valid Route output for self-test |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,21 +78,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question is whether the work map suits routing (supervisor), consensus (debate), or nested teams (hierarchical).
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "_purpose": "smallest valid Route output for the validator",
-  "_consumes": "nothing",
-  "_produces": "example Route matching content/02-output-contract.xml",
-  "_depends_on": "content/01-core-rules.xml",
-  "_token_budget_impact": "~40 tokens",
-  "agent": "researcher",
-  "reason": "Task asks for fact gathering on a public dataset."
-}
-```

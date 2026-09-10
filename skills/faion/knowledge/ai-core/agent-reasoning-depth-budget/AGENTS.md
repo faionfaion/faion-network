@@ -64,8 +64,6 @@
 | `templates/_smoke-test.md.j2` | Filled example for a 5-class task agent. |
 | `templates/_smoke-test.md` | Filled example for a 5-class task agent. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,25 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether agent-reasoning-depth-budget applies: root question — "Does the agent use extended-thinking / reasoning tokens?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/under-over-detector.py.tmpl`
-
-```python
-Detector skeleton
-"""
-from __future__ import annotations
-
-
-def main() -> None:
-    """Entry point. Fill per methodology procedure."""
-    # TODO: implement per 04-procedure.xml
-    raise NotImplementedError
-
-
-if __name__ == "__main__":
-    main()
-```

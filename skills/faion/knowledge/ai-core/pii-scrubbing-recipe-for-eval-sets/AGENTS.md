@@ -73,8 +73,6 @@
 | `templates/pii-scrub-spec.md.j2` | Markdown skeleton for narrative review draft. |
 | `templates/pii-scrub-spec.md` | Markdown skeleton for narrative review draft. Generated from `templates/pii-scrub-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,39 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree decides between regex-only scrub (low PII density, well-known formats) vs ML-detector + human review (high PII density or free-form). It also routes consent-missing rows out of the eval set entirely. Walk it before drafting the spec; choosing regex on free-form text leaks PII.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/pii-scrub-spec.json`
-
-```json
-{
-  "artefact_id": "eval-set-<project>-<period>",
-  "owner": "<handle-or-role>@faion.net",
-  "scrub_strategy": {
-    "mode": "regex_plus_ml",
-    "rules": [
-      "email",
-      "phone",
-      "credit_card",
-      "ml-ner-person"
-    ]
-  },
-  "consent_label_field": "user.consent.eval_v1",
-  "retention_days": 365,
-  "inputs_used": [
-    {
-      "name": "traffic_sample",
-      "source": "warehouse://<table>#<sample_id>"
-    },
-    {
-      "name": "consent_dict",
-      "source": "git://<repo>/consent.yaml@<sha>"
-    }
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-22"
-}
-```

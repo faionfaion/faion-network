@@ -66,8 +66,6 @@
 | `templates/agent-loop-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/agent-loop-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.yaml` | Minimum task spec (predictable, 5-step). |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,21 +83,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on `adaptability_needed` (true → ReAct), then on `horizon > 10 AND mixed_predictability` (true → Hybrid), default Plan-Execute. Each leaf cites a rule id.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.yaml`
-
-```yaml
-goal: "Deploy a new feature to staging"
-drivers:
-  known_substeps: 5
-  horizon: 5
-  adaptability_needed: false
-  audit_required: true
-  mixed_predictability: false
-
-max_turns_budget: 1
-```

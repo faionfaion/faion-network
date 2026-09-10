@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 un-inlined: `ai-agents`, `ai-core`.** 311 fenced template bodies removed
+  from 155 envelopes; every file under `templates/` untouched and hash-identical.
+  The `## Templates` rows are references again, which is what
+  `docs/skill-authoring.md` asked for all along ("REAL files, not prose") and what
+  the 5k-token envelope budget in the same document requires.
+
 - **F-077 tooling: `scripts/uninline-template-contents.py`.** P0.4 pasted 3,376
   template bodies into their slugs' `AGENTS.md` as fenced blocks under
   `## Template Contents`. The envelope is read during *retrieval*, so those bytes

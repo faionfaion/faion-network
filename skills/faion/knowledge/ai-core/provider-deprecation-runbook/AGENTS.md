@@ -75,8 +75,6 @@
 | `templates/provider-deprecation-runbook.md.j2` | Narrative runbook template. |
 | `templates/provider-deprecation-runbook.md` | Narrative runbook template. Generated from `templates/provider-deprecation-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -94,78 +92,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree picks the current phase (precondition / canary / 5% / 50% / 100%) based on canary-eval delta + error rate. Walk it before every phase transition.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/provider-deprecation-runbook.json`
-
-```json
-{
-  "artefact_id": "deprecate-<model>-<period>",
-  "owner": "<handle>@faion.net",
-  "on_call": "ml-oncall-rotation",
-  "deprecation_date": "2026-09-01",
-  "phases": [
-    {
-      "name": "canary",
-      "budget_min": 60,
-      "steps": [
-        {
-          "id": "s1",
-          "precondition": "replacement config ready",
-          "actor": "ml-engineer:platform",
-          "action": "flip 1% traffic to replacement",
-          "artefact": "ops-dashboard-url",
-          "rollback": "set traffic_share=0; clear cache"
-        }
-      ]
-    },
-    {
-      "name": "5pct",
-      "budget_min": 240,
-      "steps": [
-        {
-          "id": "s2",
-          "precondition": "canary green",
-          "actor": "ml-engineer:platform",
-          "action": "raise to 5%",
-          "artefact": "ops-dashboard-url",
-          "rollback": "rollback to 1%"
-        }
-      ]
-    },
-    {
-      "name": "50pct",
-      "budget_min": 720,
-      "steps": [
-        {
-          "id": "s3",
-          "precondition": "5pct green",
-          "actor": "ml-engineer:platform",
-          "action": "raise to 50%",
-          "artefact": "ops-dashboard-url",
-          "rollback": "rollback to 5%"
-        }
-      ]
-    },
-    {
-      "name": "cutover",
-      "budget_min": 240,
-      "steps": [
-        {
-          "id": "s4",
-          "precondition": "50pct green",
-          "actor": "ml-engineer:platform",
-          "action": "raise to 100% + commit run-record",
-          "artefact": "git://<repo>/run-records/<file>.json",
-          "rollback": "rollback to 50%"
-        }
-      ]
-    }
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-22"
-}
-```

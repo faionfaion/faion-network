@@ -69,8 +69,6 @@
 | `templates/claude-code-and-cursor-at-solo-tier.md.j2` | Markdown checklist for the workflow |
 | `templates/claude-code-and-cursor-at-solo-tier.md` | Markdown checklist for the workflow Generated from `templates/claude-code-and-cursor-at-solo-tier.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,29 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Gates on convention-file presence first; without it the loop produces token-burn. Otherwise routes by task type to model + context-budget rule.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/claude-code-and-cursor-at-solo-tier.json`
-
-```json
-{
-  "repo": "",
-  "primary_tool": "claude-code",
-  "secondary_tool": "cursor",
-  "model_routing": {
-    "design": "opus",
-    "routine": "sonnet",
-    "mechanical": "haiku"
-  },
-  "context_budget_tokens": 1800,
-  "convention_files": [
-    "CLAUDE.md",
-    "AGENTS.md",
-    "CONVENTIONS.md"
-  ],
-  "spec_before_code": true
-}
-```

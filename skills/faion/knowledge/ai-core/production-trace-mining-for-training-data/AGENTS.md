@@ -74,8 +74,6 @@
 | `templates/trace-mining-spec.md.j2` | Narrative skeleton for human review. |
 | `templates/trace-mining-spec.md` | Narrative skeleton for human review. Generated from `templates/trace-mining-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,31 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree decides between high-volume heuristic labeling and low-volume LLM-judge labeling, and routes out if PII-scrub is not yet locked. Walk it before drafting the spec; mining without a scrub recipe leaks PII into the training set.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/trace-mining-spec.json`
-
-```json
-{
-  "artefact_id": "trace-mining-<project>-<period>",
-  "owner": "<handle>@faion.net",
-  "trigger": {
-    "kind": "schedule",
-    "value": "monthly: 1st"
-  },
-  "scrub_spec_ref": "git://<repo>/specs/<scrub-spec>.json",
-  "label_inference": {
-    "mode": "heuristic_plus_judge",
-    "rules_ref": "git://<repo>/labels/<rules>.yaml"
-  },
-  "capabilities": [
-    "intent_classification"
-  ],
-  "retention_days": 365,
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-22"
-}
-```
