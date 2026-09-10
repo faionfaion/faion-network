@@ -70,8 +70,6 @@
 | `templates/skeleton.md.j2` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,34 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "drill_id": "2026-Q3-sc-04",
-  "scenario_id": "sc-04-identity-provider-out",
-  "declaration_time": "2026-08-15T14:22:00Z",
-  "restore_time": "2026-08-15T15:09:00Z",
-  "validation_pass": true,
-  "rto_achieved_minutes": 47,
-  "rpo_achieved_minutes": 0,
-  "rto_target_minutes": 60,
-  "rpo_target_minutes": 5,
-  "runbook_deviations": [
-    "Step 4: secondary IdP creds rotated, used backup credentials from Vault"
-  ],
-  "gaps_found": [
-    "fallback auth path lacked MFA enrollment script"
-  ],
-  "gap_tickets": [
-    "INC-2026-08-15-001"
-  ],
-  "post_mortem_url": "wiki/postmortems/sc-04-2026-q3.md",
-  "post_mortem_published_date": "2026-08-19"
-}
-```

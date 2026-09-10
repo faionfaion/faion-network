@@ -66,8 +66,6 @@
 | `templates/zero-click-search-adaptation.md.j2` | Markdown skeleton with the required fields. |
 | `templates/zero-click-search-adaptation.md` | Markdown skeleton with the required fields. Generated from `templates/zero-click-search-adaptation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,78 +83,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/zero-click-search-adaptation.json`
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://faion.network/schema/zero-click-search-adaptation.json",
-  "title": "Zero-Click Search Adaptation Output Contract",
-  "type": "object",
-  "required": [
-    "page_url",
-    "target_query",
-    "owner",
-    "jsonld_article",
-    "jsonld_faq",
-    "lede_rewrite",
-    "original_data_points",
-    "kpi_set",
-    "version",
-    "last_reviewed"
-  ],
-  "properties": {
-    "page_url": {
-      "type": "string",
-      "description": "the canonical URL receiving the citation spec"
-    },
-    "target_query": {
-      "type": "string",
-      "description": "the head query the page targets"
-    },
-    "owner": {
-      "type": "string",
-      "description": "single named accountable owner (handle/email)"
-    },
-    "jsonld_article": {
-      "type": "object",
-      "description": "valid schema.org Article JSON-LD"
-    },
-    "jsonld_faq": {
-      "type": "object",
-      "description": "valid schema.org FAQPage JSON-LD (\u22654 Q/A pairs)"
-    },
-    "lede_rewrite": {
-      "type": "string",
-      "description": "40-60 word direct answer, first paragraph"
-    },
-    "original_data_points": {
-      "type": "array",
-      "description": "\u22653 stats with value+year+source",
-      "items": {
-        "type": "object"
-      },
-      "minItems": 1
-    },
-    "kpi_set": {
-      "type": "object",
-      "description": "impressions, branded_queries, ai_citation_rate, on_serp_actions"
-    },
-    "version": {
-      "type": "string",
-      "description": "semver"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "description": "ISO-8601 date",
-      "format": "date"
-    }
-  },
-  "additionalProperties": true
-}
-```

@@ -66,8 +66,6 @@
 | `templates/growth-indiehackers-strategy.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/growth-indiehackers-strategy.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/growth-indiehackers-strategy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,23 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/growth-indiehackers-strategy.json`
-
-```json
-{
-  "artefact_id": "growth-indiehackers-strategy-<project>-<period>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "ih_handle": "<ih_handle>",
-  "give_first_weeks": 0,
-  "monthly_update_topics": [],
-  "kpis": {},
-  "stop_condition": "<stop_condition>",
-  "owner": "<@handle>"
-}
-```

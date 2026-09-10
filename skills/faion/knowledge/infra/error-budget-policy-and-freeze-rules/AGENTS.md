@@ -69,8 +69,6 @@
 | `templates/skeleton.md.j2` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,46 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "policy_version": "1.0.0",
-  "doctrine_url": "wiki/policies/error-budget.md",
-  "authorised_declarers": [
-    "sre-on-call",
-    "service-owner",
-    "engineering-leader"
-  ],
-  "freeze_allow_list": [
-    "security_patch",
-    "rollback",
-    "tier0_bugfix"
-  ],
-  "freeze_deny_list": [
-    "new_feature",
-    "experiment",
-    "non_safety_capacity_change"
-  ],
-  "revert_criteria": {
-    "budget_remaining_min_pct": 20,
-    "burn_rate_max": 1.0,
-    "duration_h": 24
-  },
-  "comms_channels": [
-    "#incident",
-    "product-leadership@acme"
-  ],
-  "review_date": "2026-05-01",
-  "signoff": {
-    "engineering_leader": "Alice",
-    "product_vp": "Bob",
-    "date": "2026-04-30"
-  }
-}
-```

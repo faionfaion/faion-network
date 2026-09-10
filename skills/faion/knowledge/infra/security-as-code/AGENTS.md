@@ -70,8 +70,6 @@
 | `templates/skeleton.md.j2` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,25 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "pipeline_stage": "sca",
-  "scanner_or_policy": "trivy@0.48",
-  "block_severity_threshold": "critical",
-  "policy_repo_path": "policies/kyverno/require-non-root.yaml",
-  "enforce_mode": "enforce",
-  "waiver_required_for_exception": true,
-  "audit_destination": "https://siem.acme/ingest/k8s",
-  "signing_attestation": {
-    "tool": "cosign",
-    "key_ref": "k8s://sigstore/cosign-key"
-  }
-}
-```

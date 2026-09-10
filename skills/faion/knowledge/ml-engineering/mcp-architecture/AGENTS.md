@@ -68,8 +68,6 @@
 | `templates/mcp-spec.md` | Spec skeleton: primitives + transport + auth + versions. Generated from `templates/mcp-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/mcp-server-python.py` | Python MCP server skeleton via official SDK. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,15 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` picks transport (stdio for local desktop hosts, HTTP+SSE for remote / multi-tenant) and primitive types per feature.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/mcp-server-python.py`
-
-```python
-"""
-
-# Stub — see methodology AGENTS.md ## Templates table.
-```

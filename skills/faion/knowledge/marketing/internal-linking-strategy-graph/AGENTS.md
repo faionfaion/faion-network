@@ -74,8 +74,6 @@
 | `templates/audit-report.md` | Per-cluster audit findings markdown Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable graph + audit for validator self-test |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,55 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps page count, cluster definitions, hub assignment, and CMS access to a rule from `01-core-rules.xml`, telling the agent whether to publish the audit, block on a missing constraint, or skip the methodology. Walk it on every fresh quarterly audit; do not cache outcomes across audits.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/graph-spec.yaml`
-
-```yaml
-site:
-  domain: REPLACE-blog.example.com
-  indexed_page_count: 0
-  crawl_date: 2026-05-22
-
-clusters:
-  - cluster_id: REPLACE-cluster-slug
-    hub_url: https://REPLACE/hub-page
-    spoke_urls:
-      - https://REPLACE/spoke-1
-      - https://REPLACE/spoke-2
-      - https://REPLACE/spoke-3
-      - https://REPLACE/spoke-4
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "site": {
-    "domain": "blog.example.com",
-    "indexed_page_count": 120,
-    "crawl_date": "2026-05-22"
-  },
-  "clusters": [
-    {
-      "cluster_id": "saas-pricing",
-      "hub_url": "https://blog.example.com/saas-pricing-guide",
-      "spoke_urls": [
-        "https://blog.example.com/pricing-experiment-stripe",
-        "https://blog.example.com/pwyw-tradeoffs",
-        "https://blog.example.com/grandfathering-checklist",
-        "https://blog.example.com/multi-currency-stripe"
-      ]
-    }
-  ],
-  "audit": {
-    "orphans": [],
-    "low_inbound_spokes": [],
-    "exact_match_anchor_targets": [],
-    "missing_hub_link_spokes": []
-  }
-}
-```

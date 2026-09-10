@@ -77,8 +77,6 @@
 | `templates/custom-audience-library.md.j2` | Checklist of Custom audiences (website, engagement, customer, exclusion tiers) to create before launch. |
 | `templates/custom-audience-library.md` | Checklist of Custom audiences (website, engagement, customer, exclusion tiers) to create before launch. Generated from `templates/custom-audience-library.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -97,36 +95,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/audience-spec.json`
-
-```json
-{
-  "tiers": {
-    "core": {
-      "interest": [
-        "SaaS"
-      ],
-      "size_estimate": 1200000
-    },
-    "custom": {
-      "sources": [
-        "site_visitors_30d"
-      ]
-    },
-    "lookalike": {
-      "source": "purchasers_180d",
-      "source_size": 4800,
-      "pct": 1.0
-    }
-  },
-  "exclusions": [
-    "current_customers"
-  ],
-  "advantage_plus_allowed": false
-}
-```

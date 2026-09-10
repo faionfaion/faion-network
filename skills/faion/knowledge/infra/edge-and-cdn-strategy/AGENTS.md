@@ -70,8 +70,6 @@
 | `templates/skeleton.md.j2` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,40 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "platform": "cloudflare",
-  "routes": [
-    {
-      "pattern": "/api/products/*",
-      "cache_ttl": 60,
-      "cache_key": [
-        "path",
-        "accept-language"
-      ],
-      "auth_at_edge": false,
-      "origin_shield": true
-    },
-    {
-      "pattern": "/api/user/*",
-      "cache_ttl": 0,
-      "cache_key": [
-        "path"
-      ],
-      "auth_at_edge": true,
-      "origin_shield": true
-    }
-  ],
-  "fallback_dns_record": "origin.acme.com",
-  "per_request_cost_budget_usd": 0.0001,
-  "cache_hit_ratio_target": 0.8,
-  "auth_handoff_method": "jwt_signed"
-}
-```

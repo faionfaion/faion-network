@@ -73,8 +73,6 @@
 | `templates/creative-brief.md` | Markdown skeleton with every required field labelled Generated from `templates/creative-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/creative-brief.json` | JSON example matching the output contract |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,50 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree decides which brief fields are mandatory by campaign type (lead-gen vs conversion vs retargeting vs brand) and routes the agent to the relevant rule from `01-core-rules.xml`. Use it before filling the template — mandatory-vs-optional differs by campaign shape.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/creative-brief.json`
-
-```json
-{
-  "brief_id": "cb-example-meta-lead-gen",
-  "campaign": {
-    "name": "Example Lead-Gen",
-    "type": "lead-gen",
-    "channel": "meta",
-    "starts_at": "2026-06-01"
-  },
-  "audience": {
-    "definition": "<segment>",
-    "source": "<source>"
-  },
-  "angle": {
-    "text": "<angle>",
-    "source": "<source>"
-  },
-  "hook": {
-    "text": "<hook>",
-    "source": "<source>"
-  },
-  "proof": [
-    {
-      "claim": "<claim>",
-      "source": "<source>"
-    }
-  ],
-  "cta": {
-    "primary": "<primary>",
-    "secondary": "<secondary>"
-  },
-  "format": {
-    "aspect": "1:1",
-    "duration_or_length": "15s + 3 static"
-  },
-  "owner": "@example-owner",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
-}
-```

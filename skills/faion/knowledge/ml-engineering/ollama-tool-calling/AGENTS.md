@@ -63,8 +63,6 @@
 |------|---------|
 | `templates/_smoke-test.py` | Minimum-viable filled-in example used by the validator self-test. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,27 +80,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `ollama-tool-calling` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.py`
-
-```python
-"""ollama-tool-calling smoke-test fixture — minimum viable filled-in instance."""
-from __future__ import annotations
-
-SMOKE = {
-    "slug": "ollama-tool-calling",
-    "version": "1.0.0",
-    "date": "2026-05-22",
-    "produces": "code",
-    "payload": {
-        "language": "python",
-        "entry_point": "skeleton.py",
-        "files": [{"path": "skeleton.py", "purpose": "main module"}],
-    },
-    "forbidden_seen": [],
-}
-```

@@ -67,8 +67,6 @@
 | `templates/decision-record.md.j2` | Technique + framework choice rationale |
 | `templates/decision-record.md` | Technique + framework choice rationale Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,20 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Does available GPU VRAM cover base model + LoRA adapters? Branches route to a rule id from `content/01-core-rules.xml` (lora-default, qlora-when-low-vram, full-ft-only-when-justified, ...) so every leaf is traceable to a testable statement.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/finetune-config.yaml`
-
-```yaml
-# finetuning-basics — config skeleton
-version: 1.0.0
-slug: finetuning-basics
-fields:
-  - name: example-field
-    type: string
-    required: true
-defaults: {}
-```

@@ -62,8 +62,6 @@
 | `templates/single-operator-funnel-rubric.md.j2` | Markdown skeleton with the required fields. |
 | `templates/single-operator-funnel-rubric.md` | Markdown skeleton with the required fields. Generated from `templates/single-operator-funnel-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,68 +78,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/single-operator-funnel-rubric.json`
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://faion.network/schema/single-operator-funnel-rubric.json",
-  "title": "Single Operator Funnel Rubric Output Contract",
-  "type": "object",
-  "required": [
-    "week_iso",
-    "operator",
-    "stages",
-    "broken_stage",
-    "next_action",
-    "time_spent_min",
-    "version",
-    "last_reviewed"
-  ],
-  "properties": {
-    "week_iso": {
-      "type": "string",
-      "description": "ISO week tag (e.g., 2026-W22)"
-    },
-    "operator": {
-      "type": "string",
-      "description": "named single owner of the rubric"
-    },
-    "stages": {
-      "type": "array",
-      "description": "exactly 4 entries: visit, signup, paid, retained",
-      "items": {
-        "type": "object"
-      },
-      "minItems": 1
-    },
-    "broken_stage": {
-      "type": "string",
-      "description": "one of visit|signup|paid|retained"
-    },
-    "next_action": {
-      "type": "string",
-      "description": "single committed investigation for next week"
-    },
-    "time_spent_min": {
-      "type": "integer",
-      "description": "\u226420 minutes"
-    },
-    "version": {
-      "type": "string",
-      "description": "semver"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "description": "ISO date",
-      "format": "date"
-    }
-  },
-  "additionalProperties": true
-}
-```

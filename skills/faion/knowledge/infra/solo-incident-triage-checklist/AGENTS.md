@@ -70,8 +70,6 @@
 | `templates/solo-incident-triage-checklist.md.j2` | Markdown triage checklist for live use. |
 | `templates/solo-incident-triage-checklist.md` | Markdown triage checklist for live use. Generated from `templates/solo-incident-triage-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,28 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/solo-incident-triage-checklist.json`
-
-```json
-{
-  "artefact_id": "incident-<date>-<n>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "incident_id": "INC-<date>-<n>",
-  "detected_at": "<ISO-8601>",
-  "owner": "<@handle>",
-  "impact": "<one-sentence impact>",
-  "containment_action": "rollback|feature-flag|forward-fix|none",
-  "comms_sent_at": "<ISO-8601>",
-  "root_cause": "<post-fix root cause>",
-  "corrective_actions": [
-    "<action 1>"
-  ],
-  "blameless": true
-}
-```

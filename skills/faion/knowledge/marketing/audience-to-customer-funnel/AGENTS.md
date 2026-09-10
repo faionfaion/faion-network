@@ -69,8 +69,6 @@
 | `templates/audience-to-customer-funnel.md.j2` | Per-stage definitions + diagnostic. |
 | `templates/audience-to-customer-funnel.md` | Per-stage definitions + diagnostic. Generated from `templates/audience-to-customer-funnel.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,46 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/audience-to-customer-funnel.json`
-
-```json
-{
-  "artefact_id": "funnel-<project>-<period>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "stages": [
-    {
-      "name": "Awareness",
-      "kpi": "<metric>",
-      "owner": "<@handle>",
-      "drop_off_threshold_pct": 0
-    },
-    {
-      "name": "Interest",
-      "kpi": "<metric>",
-      "owner": "<@handle>",
-      "drop_off_threshold_pct": 0
-    },
-    {
-      "name": "Consideration",
-      "kpi": "<metric>",
-      "owner": "<@handle>",
-      "drop_off_threshold_pct": 0
-    },
-    {
-      "name": "Conversion",
-      "kpi": "<metric>",
-      "owner": "<@handle>",
-      "drop_off_threshold_pct": 0
-    }
-  ],
-  "data_window_days": 30,
-  "provisional": false,
-  "owner": "<@handle>"
-}
-```

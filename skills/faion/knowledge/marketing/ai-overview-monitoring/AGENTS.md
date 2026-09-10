@@ -66,8 +66,6 @@
 | `templates/action-ladder.md.j2` | Documented action mapping for each finding type |
 | `templates/action-ladder.md` | Documented action mapping for each finding type Generated from `templates/action-ladder.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,21 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether ai-overview-monitoring applies: root question — "Is the priority query list ≥10 queries with ≥30 days of retrofit AND the monitoring stack working?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-weekly-cadence, r2-three-sources-required, r3-snapshot-immutability, r4-action-ladder-discipline, r5-human-review, r6-versioned-record.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/queries.yaml`
-
-```yaml
-# AI Overview Monitoring — Priority + watch query lists
-artefact_id: ai-overview-monitoring-YYYY-MM-DD-001
-owner: TODO-handle
-version: 1.0.0
-last_reviewed: '2026-05-22'
-inputs_used: []
-decision: TODO
-rationale: TODO
-forbidden_seen: []
-```

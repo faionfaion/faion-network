@@ -67,8 +67,6 @@
 |------|---------|
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,59 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/config-instance.json`
-
-```json
-{
-  "agents": [
-    {
-      "name": "billing-snapshot",
-      "role": "informer",
-      "schedule": "0 6 * * *",
-      "iam_role_arn": "arn:aws:iam::111:role/agent-billing-ro",
-      "actions": [
-        "read"
-      ]
-    },
-    {
-      "name": "idle-hunter",
-      "role": "optimizer",
-      "schedule": "0 7 * * MON",
-      "iam_role_arn": "arn:aws:iam::111:role/agent-idle",
-      "actions": [
-        "ec2:DescribeVolumes",
-        "ec2:DeleteVolume(with_approval)"
-      ]
-    }
-  ],
-  "approval_channel": {
-    "channel": "slack:#finops-approvals",
-    "approver_registry_ref": "config/approvers.yaml"
-  },
-  "action_budgets": {
-    "per_hour": 25,
-    "per_day": 100
-  },
-  "evidence_store": {
-    "target": "s3://finops-evidence/prod/",
-    "retention_days": 365
-  },
-  "scope": {
-    "accounts": [
-      "aws:111",
-      "aws:222"
-    ],
-    "environments": [
-      "dev",
-      "staging"
-    ]
-  },
-  "owner": "finops@team.io",
-  "last_reviewed": "2026-05-23"
-}
-```

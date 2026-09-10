@@ -65,8 +65,6 @@
 |------|---------|
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,68 +83,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/config-instance.json`
-
-```json
-{
-  "mode": "http",
-  "frontends": [
-    {
-      "name": "http_redirect",
-      "bind": "*:80",
-      "default_backend": "redirect"
-    },
-    {
-      "name": "https_in",
-      "bind": "*:443",
-      "default_backend": "web_backend"
-    }
-  ],
-  "backends": [
-    {
-      "name": "web_backend",
-      "balance": "roundrobin",
-      "servers": [
-        {
-          "name": "web1",
-          "addr": "10.0.0.1:8080"
-        },
-        {
-          "name": "web2",
-          "addr": "10.0.0.2:8080"
-        }
-      ]
-    },
-    {
-      "name": "api_backend",
-      "balance": "leastconn",
-      "servers": [
-        {
-          "name": "api1",
-          "addr": "10.0.1.1:8000"
-        }
-      ]
-    }
-  ],
-  "tls": {
-    "cert_path": "/etc/haproxy/certs/example.com.pem",
-    "min_version": "TLSv1.2"
-  },
-  "rate_limit": {
-    "per_ip_rpm": 600,
-    "deny_status": 429
-  },
-  "healthcheck_policy": {
-    "inter": "10s",
-    "fall": 3,
-    "rise": 2
-  },
-  "owner": "sre@acme.io",
-  "last_reviewed": "2026-05-23"
-}
-```

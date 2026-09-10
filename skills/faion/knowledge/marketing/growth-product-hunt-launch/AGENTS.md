@@ -66,7 +66,6 @@
 | `templates/growth-product-hunt-launch.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/growth-product-hunt-launch.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/growth-product-hunt-launch.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/launch-email.md.j2` | Launch-day email to an existing list, pointing at the Product Hunt listing |
 | `templates/launch-email.md` | Launch-day email to an existing list, pointing at the Product Hunt listing Generated from `templates/launch-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/first-comment.md.j2` | Maker's first-comment post for a Product Hunt launch thread — why-built, differentiators, offer, roadmap. |
@@ -88,24 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/growth-product-hunt-launch.json`
-
-```json
-{
-  "artefact_id": "growth-product-hunt-launch-<project>-<period>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "pre_list_size": 0,
-  "hunter": "<hunter>",
-  "hunter_followers": 0,
-  "launch_datetime_pt": "<launch_datetime_pt>",
-  "assets": {},
-  "engagement_sla_minutes": 0,
-  "owner": "<@handle>"
-}
-```

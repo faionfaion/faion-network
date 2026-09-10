@@ -71,8 +71,6 @@
 | `templates/pilot-spec.md.j2` | Markdown skeleton for pilot agreement appendix |
 | `templates/pilot-spec.md` | Markdown skeleton for pilot agreement appendix Generated from `templates/pilot-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,28 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/pilot-spec.json`
-
-```json
-{
-  "pilot_id": "pp-acme-onboarding-2026q2",
-  "offering": "2-week onboarding rebuild",
-  "customer": "Acme Corp",
-  "price": 3500,
-  "cost_basis": 2800,
-  "standard_price": 6000,
-  "timebox_days": 14,
-  "case_study_consent": {
-    "logo": true,
-    "metrics": true,
-    "captured_at": "2026-05-20"
-  },
-  "transition_clause": "Continuation past 14-day timebox or any renewal billed at standard $6000 rate.",
-  "owner": "@ruslan"
-}
-```

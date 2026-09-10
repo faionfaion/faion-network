@@ -73,8 +73,6 @@
 | `templates/email-sequence.md.j2` | 4-email activation lifecycle sequence for not-yet-activated signups. |
 | `templates/email-sequence.md` | 4-email activation lifecycle sequence for not-yet-activated signups. Generated from `templates/email-sequence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,99 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/activation-tactics.example.json`
-
-```json
-{
-  "slug": "activation-tactics",
-  "owner": "playbook owner",
-  "steps": [
-    {
-      "id": "s1",
-      "input": "brief",
-      "owner": "lead",
-      "exit_criterion": "brief reviewed + scope confirmed",
-      "output_location": "docs/briefs/"
-    },
-    {
-      "id": "s2",
-      "input": "data",
-      "owner": "analyst",
-      "exit_criterion": "dataset >=30 records validated",
-      "output_location": "warehouse:tbl"
-    },
-    {
-      "id": "s3",
-      "input": "draft",
-      "owner": "writer",
-      "exit_criterion": "draft passes editorial check",
-      "output_location": "docs/drafts/"
-    },
-    {
-      "id": "s4",
-      "input": "draft",
-      "owner": "lead",
-      "exit_criterion": "signed off by named reviewer",
-      "output_location": "docs/published/"
-    }
-  ],
-  "decision_branches": [
-    {
-      "when": "data_records < 30",
-      "then": "loop back to s2"
-    }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L101"
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "slug": "activation-tactics",
-  "owner": "playbook owner",
-  "steps": [
-    {
-      "id": "s1",
-      "input": "brief",
-      "owner": "lead",
-      "exit_criterion": "brief reviewed + scope confirmed",
-      "output_location": "docs/briefs/"
-    },
-    {
-      "id": "s2",
-      "input": "data",
-      "owner": "analyst",
-      "exit_criterion": "dataset >=30 records validated",
-      "output_location": "warehouse:tbl"
-    },
-    {
-      "id": "s3",
-      "input": "draft",
-      "owner": "writer",
-      "exit_criterion": "draft passes editorial check",
-      "output_location": "docs/drafts/"
-    },
-    {
-      "id": "s4",
-      "input": "draft",
-      "owner": "lead",
-      "exit_criterion": "signed off by named reviewer",
-      "output_location": "docs/published/"
-    }
-  ],
-  "decision_branches": [
-    {
-      "when": "data_records < 30",
-      "then": "loop back to s2"
-    }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L101"
-}
-```

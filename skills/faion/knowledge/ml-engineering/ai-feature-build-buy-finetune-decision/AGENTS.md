@@ -71,8 +71,6 @@
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in ADR |
 | `templates/_smoke-test.md` | Minimum viable filled-in ADR Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,18 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals from inputs and intermediate artefacts to a rule from `01-core-rules.xml`, telling the agent which variant of the methodology to apply or when to stop. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/scoring-matrix.json`
-
-```json
-{
-  "artefact_id": "ai-feature-build-buy-finetune-decision-template-001",
-  "produced_at": "2026-05-23T10:00:00Z",
-  "validator_passed": false,
-  "fields": "fill per content/02-output-contract.xml schema"
-}
-```

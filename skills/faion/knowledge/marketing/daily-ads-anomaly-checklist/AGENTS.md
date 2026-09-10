@@ -72,8 +72,6 @@
 | `templates/checklist.md.j2` | Human-friendly 6-check Markdown to print or pin. |
 | `templates/checklist.md` | Human-friendly 6-check Markdown to print or pin. Generated from `templates/checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,70 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps the observed anomaly (which threshold tripped) to the action (pause vs reduce vs escalate vs no-op) and pins the rule from `01-core-rules.xml`. Use it during the daily run — bypassing the tree leads to over-pausing or missed anomalies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/daily-run-log.json`
-
-```json
-{
-  "run_date": "2026-05-23",
-  "account_id": "meta-act-123",
-  "owner": "@alex-ppc",
-  "checks": [
-    {
-      "check": "spend_spike",
-      "ad_set_id": "as-901",
-      "threshold": "1.5x_7d_avg",
-      "actual": "1.62x",
-      "tripped": true,
-      "action": "reduce-budget",
-      "auto_resume_at": "2026-05-24T08:00:00Z"
-    },
-    {
-      "check": "cpa_spike",
-      "ad_set_id": "as-901",
-      "threshold": 80,
-      "actual": 142,
-      "tripped": true,
-      "action": "pause",
-      "auto_resume_at": "2026-05-24T08:00:00Z"
-    },
-    {
-      "check": "frequency_spike",
-      "ad_set_id": "as-902",
-      "threshold": 4.0,
-      "actual": 3.1,
-      "tripped": false,
-      "action": "no-op"
-    },
-    {
-      "check": "ctr_drop",
-      "ad_set_id": "as-902",
-      "threshold": "-30%",
-      "actual": "-12%",
-      "tripped": false,
-      "action": "no-op"
-    },
-    {
-      "check": "conversion_drop",
-      "ad_set_id": "as-901",
-      "threshold": "-40%",
-      "actual": "-45%",
-      "tripped": true,
-      "action": "escalate",
-      "escalation_thread": "#paid-ads-2026-05-23"
-    },
-    {
-      "check": "account_health",
-      "threshold": "no_warnings",
-      "actual": "1_warning_payment",
-      "tripped": true,
-      "action": "escalate",
-      "escalation_thread": "#paid-ads-2026-05-23"
-    }
-  ]
-}
-```

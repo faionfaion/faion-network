@@ -66,8 +66,6 @@
 | `templates/langgraph-router-node.py` | Router-node template for branching. |
 | `templates/lcel-chain.py` | LCEL pipe-syntax chain skeleton. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,41 +83,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` decides LCEL vs LangGraph and within LangGraph: supervisor vs router vs single-agent.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/langgraph-router-node.py`
-
-```python
-"""
-
-# LangGraph routing node using structured output
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_anthropic import ChatAnthropic
-from pydantic import BaseModel
-
-class RouteDecision(BaseModel):
-    next_node: str  # "executor" | "critic" | "done"
-    reasoning: str
-
-def router_node(state: dict) -> dict:
-    model = ChatAnthropic(model="claude-sonnet-4-20250514")
-    chain = (
-        ChatPromptTemplate.from_template(
-            "Given state: {state}\nDecide next step. Options: executor, critic, done."
-        )
-        | model.with_structured_output(RouteDecision)
-    )
-    decision = chain.invoke({"state": str(state)})
-    return {"next": decision.next_node}
-```
-
-### `templates/lcel-chain.py`
-
-```python
-"""
-
-# Stub — see methodology AGENTS.md ## Templates table.
-```

@@ -71,8 +71,6 @@
 | `templates/migration-playbook.md.j2` | Dual-index migration runbook |
 | `templates/migration-playbook.md` | Dual-index migration runbook Generated from `templates/migration-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,83 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-slo-defined`, `r2-rate-limit-handling`, `r3-cost-attribution`, `r4-fault-tolerance`, `r5-migration-playbook` from `content/01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/embeddings-ops.yaml`
-
-```yaml
-slug: embeddings-production-ops
-version: "1.1.0"
-owner: "role:person"
-approver: "role:person"
-produced_at: "2026-05-22T00:00:00Z"
-scope:
-  title: "<fill>"
-  context_link: "<https://...>"
-review:
-  cadence: quarterly
-  next_review_at: "2026-08-22"
-```
-
-### `templates/rate-limit-handler.py`
-
-```python
-"""Skeleton for the `embeddings-production-ops` template `rate-limit-handler.py` — fill the placeholders."""
-from __future__ import annotations
-from dataclasses import dataclass
-
-
-@dataclass
-class Skeleton:
-    slug: str = "embeddings-production-ops"
-    version: str = "1.1.0"
-    owner: str = "role:person"
-    approver: str = "role:person"
-
-    def render(self) -> dict:
-        return {
-            "slug": self.slug,
-            "version": self.version,
-            "owner": self.owner,
-            "approver": self.approver,
-        }
-
-
-if __name__ == "__main__":
-    import json
-    import sys
-    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
-```
-
-### `templates/cost-attribution.py`
-
-```python
-"""Skeleton for the `embeddings-production-ops` template `cost-attribution.py` — fill the placeholders."""
-from __future__ import annotations
-from dataclasses import dataclass
-
-
-@dataclass
-class Skeleton:
-    slug: str = "embeddings-production-ops"
-    version: str = "1.1.0"
-    owner: str = "role:person"
-    approver: str = "role:person"
-
-    def render(self) -> dict:
-        return {
-            "slug": self.slug,
-            "version": self.version,
-            "owner": self.owner,
-            "approver": self.approver,
-        }
-
-
-if __name__ == "__main__":
-    import json
-    import sys
-    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
-```

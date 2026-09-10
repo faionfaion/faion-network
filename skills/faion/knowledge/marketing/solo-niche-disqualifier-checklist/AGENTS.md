@@ -63,8 +63,6 @@
 | `templates/solo-niche-disqualifier-checklist.md.j2` | Markdown skeleton with the required fields. |
 | `templates/solo-niche-disqualifier-checklist.md` | Markdown skeleton with the required fields. Generated from `templates/solo-niche-disqualifier-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,77 +79,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/solo-niche-disqualifier-checklist.json`
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://faion.network/schema/solo-niche-disqualifier-checklist.json",
-  "title": "Solo Niche Disqualifier Checklist Output Contract",
-  "type": "object",
-  "required": [
-    "operator",
-    "specialisation_statement",
-    "floor_rate",
-    "hard_no_list",
-    "disqualifier_signals",
-    "rejection_reply_template",
-    "max_eval_minutes",
-    "version",
-    "last_reviewed"
-  ],
-  "properties": {
-    "operator": {
-      "type": "string",
-      "description": "named freelancer"
-    },
-    "specialisation_statement": {
-      "type": "string",
-      "description": "1-line"
-    },
-    "floor_rate": {
-      "type": "object",
-      "description": "{value, unit}"
-    },
-    "hard_no_list": {
-      "type": "array",
-      "description": "\u22655 named industries/project shapes",
-      "items": {
-        "type": "object"
-      },
-      "minItems": 1
-    },
-    "disqualifier_signals": {
-      "type": "array",
-      "description": "exactly 5 signal definitions",
-      "items": {
-        "type": "object"
-      },
-      "minItems": 1
-    },
-    "rejection_reply_template": {
-      "type": "string",
-      "description": "\u226460 words"
-    },
-    "max_eval_minutes": {
-      "type": "integer",
-      "description": "\u22645"
-    },
-    "version": {
-      "type": "string",
-      "description": "semver"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "description": "ISO date",
-      "format": "date"
-    }
-  },
-  "additionalProperties": true
-}
-```

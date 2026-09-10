@@ -68,8 +68,6 @@
 | `templates/skeleton.md.j2` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,25 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "hostname": "api.acme.com",
-  "tls_min_version": "TLSv1.3",
-  "cipher_suites": [
-    "TLS_AES_256_GCM_SHA384",
-    "TLS_CHACHA20_POLY1305_SHA256"
-  ],
-  "cert_source": "lets_encrypt",
-  "auto_renew": true,
-  "hsts_max_age": 31536000,
-  "ocsp_stapling": true,
-  "post_deploy_scan_grade": "A+"
-}
-```

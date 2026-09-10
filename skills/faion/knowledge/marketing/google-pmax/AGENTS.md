@@ -75,8 +75,6 @@
 | `templates/asset-spec.md.j2` | PMax asset-group creation checklist — pre-requisites, text/image/video assets, URLs, audience signals, go-live gate. |
 | `templates/asset-spec.md` | PMax asset-group creation checklist — pre-requisites, text/image/video assets, URLs, audience signals, go-live gate. Generated from `templates/asset-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -95,51 +93,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/brand-negatives.csv`
-
-```csv
-negative_keyword,match_type
-faion,exact
-faion network,exact
-faion.net,exact
-```
-
-### `templates/pmax-spec.json`
-
-```json
-{
-  "monthly_conversions": 95,
-  "asset_groups": [
-    {
-      "name": "ag-saas-tools",
-      "theme": "saas-tools"
-    },
-    {
-      "name": "ag-developers",
-      "theme": "developer-audience"
-    },
-    {
-      "name": "ag-enterprise",
-      "theme": "enterprise-tier"
-    }
-  ],
-  "audience_signals": [
-    "customer_match",
-    "remarketing"
-  ],
-  "brand_negatives": [
-    "faion"
-  ],
-  "value_priority": [
-    {
-      "event": "Purchase",
-      "value": 1.0
-    }
-  ]
-}
-```

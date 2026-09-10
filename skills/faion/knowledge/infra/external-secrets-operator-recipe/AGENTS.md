@@ -68,8 +68,6 @@
 | `templates/skeleton.md.j2` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,35 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "cluster_secret_store": {
-    "name": "vault-prod",
-    "backend": "vault",
-    "auth_method": "kubernetes",
-    "identity_ref": "system:serviceaccount:eso:vault-auth"
-  },
-  "external_secrets": [
-    {
-      "name": "api-db-creds",
-      "namespace": "prod-api",
-      "refresh_interval": "1h",
-      "target_path": "/var/run/secrets/db/",
-      "key_refs": [
-        "prod/api/db-password"
-      ]
-    }
-  ],
-  "rbac_scope": "namespace",
-  "alert_on_sync_failure": true,
-  "rotation_test_runbook_path": "runbooks/secret-rotation.md",
-  "mount_type": "file"
-}
-```

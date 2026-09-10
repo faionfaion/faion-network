@@ -66,8 +66,6 @@
 |------|---------|
 | `templates/extraction-schema.yaml` | Per-doc-type Pydantic schema sketches |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,20 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Was the doc-type classifier confident? Branches route to a rule id from `content/01-core-rules.xml` (doc-type-router, pydantic-required, review-queue-on-fail, ...) so every leaf is traceable to a testable statement.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/extraction-schema.yaml`
-
-```yaml
-# vision-document-extraction — config skeleton
-version: 1.0.0
-slug: vision-document-extraction
-fields:
-  - name: example-field
-    type: string
-    required: true
-defaults: {}
-```

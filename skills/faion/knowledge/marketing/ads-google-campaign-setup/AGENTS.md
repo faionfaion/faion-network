@@ -69,7 +69,6 @@
 | `templates/output.json` | JSON sidecar with __faion_header__ |
 | `templates/_smoke-test.yaml` | Minimum viable filled config |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/ad-copy.md.j2` | legacy template for ads-google-campaign-setup — ad-copy |
 | `templates/ad-copy.md` | legacy template for ads-google-campaign-setup — ad-copy Generated from `templates/ad-copy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/campaign-checklist.md.j2` | legacy template for ads-google-campaign-setup — campaign-checklist |
@@ -92,61 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/config.yaml`
-
-```yaml
-artefact_id: <SLUG-YYYY-Qx>
-template_version: 1.1.0
-owner: <named-owner@example>
-platform: <ga4|google-ads|meta|linkedin>
-settings:
-  # platform-specific keys; reference 02-output-contract.xml for schema
-  example_key: example_value
-verification:
-  verified_at: <ISO-8601>
-  verified_by: <named>
-  evidence: <DebugView screenshot path | CRM cross-check report path>
-```
-
-### `templates/output.json`
-
-```json
-{
-  "artefact_id": "<SLUG-YYYY-Qx>",
-  "template_version": "1.1.0",
-  "owner": "<named-owner@example>",
-  "platform": "<ga4|google-ads|meta|linkedin>",
-  "settings": {
-    "example_key": "example_value"
-  },
-  "verification": {
-    "verified_at": "<ISO-8601>",
-    "verified_by": "<named>",
-    "evidence": "<DebugView screenshot path>"
-  }
-}
-```
-
-### `templates/_smoke-test.yaml`
-
-```yaml
-artefact_id: ads-config-2026-Q2
-template_version: 1.1.0
-owner: analytics-eng@faion.net
-platform: ga4+google-ads+meta
-settings:
-  consent_mode_v2: true
-  bq_link: true
-  attribution_window_days: 30
-  event_id_dedup: true
-  utm_convention: lowercase-controlled-vocab
-verification:
-  verified_at: 2026-05-22T14:00Z
-  verified_by: analytics-eng@faion.net
-  evidence: evidence/ads-config-2026-Q2/debug.png
-```

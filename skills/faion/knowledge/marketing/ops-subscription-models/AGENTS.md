@@ -68,8 +68,6 @@
 | `templates/subscription-model-doc.md.j2` | Subscription model spec -- model type, billing, tiers, metric targets, lifecycle automation, dunning. |
 | `templates/subscription-model-doc.md` | Subscription model spec -- model type, billing, tiers, metric targets, lifecycle automation, dunning. Generated from `templates/subscription-model-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,24 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/ops-subscription-models.json`
-
-```json
-{
-  "artefact_id": "ops-subscription-models-<project>-<period>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "model_type": "saas",
-  "tiers": [],
-  "metrics_instrumented": [],
-  "dunning_config": {},
-  "lifecycle_stages": [],
-  "grandfather_months": 0,
-  "owner": "<@handle>"
-}
-```

@@ -65,8 +65,6 @@
 |------|---------|
 | `templates/qlora-config.yaml` | QLoRA bnb_config + PEFT skeleton |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,20 +81,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is the available GPU Ampere or newer? Branches route to a rule id from `content/01-core-rules.xml` (bf16-on-ampere, nf4-for-qlora, grad-checkpointing-on, ...) so every leaf is traceable to a testable statement.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/qlora-config.yaml`
-
-```yaml
-# lora-qlora — config skeleton
-version: 1.0.0
-slug: lora-qlora
-fields:
-  - name: example-field
-    type: string
-    required: true
-defaults: {}
-```

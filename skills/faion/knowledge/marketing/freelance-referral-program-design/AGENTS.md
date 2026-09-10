@@ -71,8 +71,6 @@
 | `templates/referrer-terms.md.j2` | Written terms template per referrer |
 | `templates/referrer-terms.md` | Written terms template per referrer Generated from `templates/referrer-terms.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,39 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/program-spec.json`
-
-```json
-{
-  "program_id": "frp-2026q2",
-  "incentive": {
-    "type": "flat_cash",
-    "amount_usd": 500
-  },
-  "attribution_window_days": 90,
-  "referrers": [
-    {
-      "handle": "@past-client-acme",
-      "written_terms_date": "2026-05-10"
-    }
-  ],
-  "partners": [
-    {
-      "handle": "@peer-marina",
-      "swap_opt_in_date": "2026-05-12"
-    }
-  ],
-  "testimonial_framing": {
-    "template": "Acme used <NICHE> to ship in 2 weeks vs 3 months estimated.",
-    "approved_by_customers": [
-      "Acme"
-    ]
-  },
-  "owner": "@ruslan"
-}
-```

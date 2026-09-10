@@ -72,8 +72,6 @@
 | `templates/_smoke-test.md.j2` | Minimum viable filled spec |
 | `templates/_smoke-test.md` | Minimum viable filled spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,31 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (inputs available, thresholds, gating prerequisites) to a concrete verdict, each leaf referencing a rule from `01-core-rules.xml`. Use it whenever multiple variants of the methodology look applicable, or when an upstream condition (e.g. positioning undefined, spend below threshold) makes the methodology a misfit.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/output.json`
-
-```json
-{
-  "artefact_id": "<SLUG-YYYY-Qx>",
-  "template_version": "1.1.0",
-  "owner": "<named-owner@example>",
-  "summary": "<one paragraph>",
-  "fields": {},
-  "evidence": [
-    {
-      "source": "<URL>",
-      "citation": "<verbatim quote>"
-    }
-  ],
-  "status": "draft",
-  "next_action": {
-    "label": "<action>",
-    "owner": "<named>",
-    "due_cycle": "<YYYY-Www>"
-  }
-}
-```

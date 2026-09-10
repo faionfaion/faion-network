@@ -65,8 +65,6 @@
 | `templates/stat-power-precheck.md` | Markdown skeleton with all five inputs and the verdict block Generated from `templates/stat-power-precheck.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/power-calc.py` | 10-line Python power calculator using statsmodels |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,24 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether stat-power-precheck applies: root question — "Is the change a measurable CRO experiment AND traffic is stable AND baseline known?". Branches lead to a specific core rule from `01-core-rules.xml` when the methodology fits, or to a `skip-methodology` conclusion when it does not. Rules referenced: r1-required-inputs, r2-no-launch-without-verdict, r3-minimum-conversions, r4-sequential-stop-guard, r5-lift-as-relative, r6-window-frozen.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/power-calc.py`
-
-```python
-# Stat-Power Pre-Check — 10-line Python power calculator using statsmodels
-"""Minimal power-calc.py for stat-power-precheck."""
-from __future__ import annotations
-
-
-def main() -> int:
-    # TODO: replace with the real implementation
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-```

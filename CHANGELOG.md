@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 un-inlined: `infra`, `llm-integration`, `marketing`, `ml-engineering`.**
+  1,002 blocks from 536 envelopes.
+
 - **F-077 un-inlined: `dev`, `frontend`, `hr`.** 599 blocks from 302 envelopes —
   `dev` alone carried 571 of them, the largest concentration in the corpus.
 

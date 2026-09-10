@@ -71,8 +71,6 @@
 | `templates/lb-decision-record.json` | JSON template for the decision-record artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum filled artefact used by validate-load-balancing-concepts.py --self-test |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,49 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it whenever you have to defend the L4-vs-L7 choice, the algorithm choice, or the sticky-vs-externalised choice in a design review.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/lb-decision-record.json`
-
-```json
-{
-  "service": "",
-  "layer": "L7",
-  "algorithm": "round-robin",
-  "health_check": {
-    "type": "http",
-    "path": "/health",
-    "interval_s": 15,
-    "timeout_s": 5,
-    "healthy_threshold": 2,
-    "unhealthy_threshold": 3
-  },
-  "persistence": "externalised-redis",
-  "ha_topology": "active-active",
-  "rationale": ""
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "service": "checkout-api",
-  "layer": "L7",
-  "algorithm": "least-connections",
-  "health_check": {
-    "type": "http",
-    "path": "/health",
-    "interval_s": 15,
-    "timeout_s": 5,
-    "healthy_threshold": 2,
-    "unhealthy_threshold": 3
-  },
-  "persistence": "externalised-redis",
-  "ha_topology": "active-active",
-  "rationale": "WebSocket + REST mix needs L7 routing; session in Redis; checkout traffic bursty so least-connections."
-}
-```

@@ -71,7 +71,6 @@
 | `templates/north-star-metric.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/nsm-definition.md.j2` | North Star Metric definition sheet — calculation, justification, current state, input metrics |
 | `templates/nsm-definition.md` | North Star Metric definition sheet — calculation, justification, current state, input metrics Generated from `templates/nsm-definition.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
@@ -93,39 +92,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/north-star-metric.example.json`
-
-```json
-{
-  "slug": "north-star-metric",
-  "context": "Team operates multiple growth experiments without a shared NSM.",
-  "decision": "Adopt weekly active teams completing >= 1 project as the NSM.",
-  "consequences": [
-    "acquisition optimizes for sticky teams",
-    "marketing campaigns measure projects-per-team"
-  ],
-  "owner": "head of growth",
-  "date": "2026-05-23"
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "slug": "north-star-metric",
-  "context": "Team operates multiple growth experiments without a shared NSM.",
-  "decision": "Adopt weekly active teams completing >= 1 project as the NSM.",
-  "consequences": [
-    "acquisition optimizes for sticky teams",
-    "marketing campaigns measure projects-per-team"
-  ],
-  "owner": "head of growth",
-  "date": "2026-05-23"
-}
-```

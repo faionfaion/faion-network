@@ -65,8 +65,6 @@
 |------|---------|
 | `templates/docker-compose.yml` | Self-host Langfuse + Phoenix compose |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,21 +81,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is data residency required (EU)? Branches route to a rule id from `content/01-core-rules.xml` (self-host-when-residency, one-span-tree, pii-redaction-edge, ...) so every leaf is traceable to a testable statement.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/docker-compose.yml`
-
-```yaml
-# docker-compose for llm-observability-stack-2026 self-host skeleton
-version: '3.8'
-services:
-  app:
-    image: example/llm-observability-stack-2026:latest
-    environment:
-      - LOG_LEVEL=info
-    ports:
-      - '8080:8080'
-```

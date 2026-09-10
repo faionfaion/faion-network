@@ -73,8 +73,6 @@
 | `templates/ugc-brief.md` | UGC / creator content brief Markdown skeleton. Generated from `templates/ugc-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/instagram-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,30 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/instagram-spec.json`
-
-```json
-{
-  "placements": {
-    "reels_pct": 60,
-    "stories_pct": 20,
-    "feed_pct": 20
-  },
-  "creative_strategy": {
-    "primary_format": "9:16",
-    "cold_content_type": "ugc"
-  },
-  "frequency_caps": {
-    "cold_per_week": 3,
-    "retarget_per_week": 5
-  },
-  "shopping_tags": {
-    "enabled": true
-  }
-}
-```

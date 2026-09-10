@@ -62,8 +62,6 @@
 | `templates/serp-intent-classification-rubric.md.j2` | Markdown skeleton with the required fields. |
 | `templates/serp-intent-classification-rubric.md` | Markdown skeleton with the required fields. Generated from `templates/serp-intent-classification-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,68 +78,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/serp-intent-classification-rubric.json`
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://faion.network/schema/serp-intent-classification-rubric.json",
-  "title": "SERP Intent Classification Rubric Output Contract",
-  "type": "object",
-  "required": [
-    "query",
-    "primary_intent",
-    "primary_subtype",
-    "secondary_intent",
-    "serp_evidence",
-    "recommendation",
-    "classifier",
-    "classified_at"
-  ],
-  "properties": {
-    "query": {
-      "type": "string",
-      "description": "verbatim target query"
-    },
-    "primary_intent": {
-      "type": "string",
-      "description": "one of I / C / T / N"
-    },
-    "primary_subtype": {
-      "type": "string",
-      "description": "e.g., I:how-to, C:vs, T:buy, N:brand"
-    },
-    "secondary_intent": {
-      "type": "string",
-      "description": "null unless \u226530% of top-10 serve a different class"
-    },
-    "serp_evidence": {
-      "type": "array",
-      "description": "\u22652 independent signals with type+value",
-      "items": {
-        "type": "object"
-      },
-      "minItems": 1
-    },
-    "recommendation": {
-      "type": "string",
-      "description": "SINGLE_BRIEF | SPLIT | AMBIGUOUS_BLOCK"
-    },
-    "classifier": {
-      "type": "string",
-      "description": "named human / agent"
-    },
-    "classified_at": {
-      "type": "string",
-      "description": "ISO timestamp",
-      "format": "date-time"
-    }
-  },
-  "additionalProperties": true
-}
-```

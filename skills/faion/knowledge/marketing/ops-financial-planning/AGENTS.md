@@ -70,8 +70,6 @@
 | `templates/monthly-review.md.j2` | Monthly financial review -- revenue/expense vs target, profitability, SaaS metrics, cash position, reinvestment split. |
 | `templates/monthly-review.md` | Monthly financial review -- revenue/expense vs target, profitability, SaaS metrics, cash position, reinvestment split. Generated from `templates/monthly-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,28 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/ops-financial-planning.json`
-
-```json
-{
-  "artefact_id": "ops-financial-planning-<project>-<period>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "cash_balance_usd": 0.0,
-  "monthly_burn_usd": 0.0,
-  "runway_months": 0.0,
-  "projection_3m": [],
-  "projection_12m": [],
-  "reserve_pct": 0.0,
-  "reinvestment_pct": 0.0,
-  "founder_pay_pct": 0.0,
-  "tax_rate_pct": 0.0,
-  "next_review": "2026-05-23",
-  "owner": "<@handle>"
-}
-```

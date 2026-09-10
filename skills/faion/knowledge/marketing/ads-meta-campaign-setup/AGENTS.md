@@ -75,8 +75,6 @@
 | `templates/launch-checklist.md.j2` | Pre-launch Meta campaign checklist — pixel, campaign/ad-set/ad settings, launch sign-off. |
 | `templates/launch-checklist.md` | Pre-launch Meta campaign checklist — pixel, campaign/ad-set/ad settings, launch sign-off. Generated from `templates/launch-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -95,26 +93,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/campaign-spec.json`
-
-```json
-{
-  "objective": "sales",
-  "budget_model": "abo",
-  "ad_sets": [
-    {
-      "name": "mofu_pro_director_video_20260523",
-      "audience": "lal_top10_purchasers",
-      "daily_budget": 80
-    }
-  ],
-  "placements": "advantage_plus",
-  "naming": "mofu_pro_director_video_20260523",
-  "conversion_event": "Purchase"
-}
-```

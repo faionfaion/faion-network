@@ -73,8 +73,6 @@
 | `templates/sequence-touches.md.j2` | Markdown skeleton for the 3-touch sequence per segment |
 | `templates/sequence-touches.md` | Markdown skeleton for the 3-touch sequence per segment Generated from `templates/sequence-touches.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,50 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by segment + consent + score to one of three sequence variants and pins the rule from `01-core-rules.xml`. Use it before drafting copy — wrong segment-to-sequence mapping is the most common failure.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/reactivation-spec.json`
-
-```json
-{
-  "spec_id": "dlr-2026q2-past-client",
-  "segment": "past-client",
-  "contacts": [
-    {
-      "contact_id": "c-101",
-      "prior_interaction": "Onboarding rebuild project closed 2025-08",
-      "consent_jurisdiction": "US",
-      "consent_age_months": 10,
-      "outcome": "pending"
-    }
-  ],
-  "touches": [
-    {
-      "n": 1,
-      "channel": "email",
-      "subject": "How's <project> doing one year on?",
-      "body": "Hey <name>, you shipped the onboarding rebuild in August \u2014 curious how the funnel held up. Worth a 15-min sync?",
-      "references_prior_interaction": true
-    },
-    {
-      "n": 2,
-      "channel": "email",
-      "subject": "One small idea for <project>",
-      "body": "Saw <signal> \u2014 would a 2-week pilot to <outcome> make sense for Q3?",
-      "references_prior_interaction": true
-    },
-    {
-      "n": 3,
-      "channel": "email",
-      "subject": "Closing the loop",
-      "body": "Last note from me this quarter \u2014 want me to keep you on the seasonal review list?",
-      "references_prior_interaction": true
-    }
-  ],
-  "owner": "@ruslan",
-  "version": "1.0.0"
-}
-```

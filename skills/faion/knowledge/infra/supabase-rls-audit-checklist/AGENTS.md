@@ -70,8 +70,6 @@
 | `templates/supabase-rls-audit-checklist.md.j2` | Audit trail + per-table verdict table. |
 | `templates/supabase-rls-audit-checklist.md` | Audit trail + per-table verdict table. Generated from `templates/supabase-rls-audit-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,33 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/supabase-rls-audit-checklist.json`
-
-```json
-{
-  "artefact_id": "rls-audit-<date>",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "audit_date": "<YYYY-MM-DD>",
-  "tables": [
-    {
-      "name": "<table>",
-      "rls_enabled": true,
-      "policies": {
-        "select": true,
-        "insert": true,
-        "update": true,
-        "delete": true
-      }
-    }
-  ],
-  "tenant_isolation_test_pass": true,
-  "fixture_path": "tests/fixtures/two-tenants.sql",
-  "owner": "<@handle>"
-}
-```

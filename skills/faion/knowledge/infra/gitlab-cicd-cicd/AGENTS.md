@@ -66,8 +66,6 @@
 |------|---------|
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -79,86 +77,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/config-instance.json`
-
-```json
-{
-  "stages": [
-    "build",
-    "test",
-    "security",
-    "deploy"
-  ],
-  "jobs": [
-    {
-      "name": "build",
-      "stage": "build",
-      "needs": [],
-      "rules": [
-        {
-          "if": "$CI_PIPELINE_SOURCE == 'merge_request_event'"
-        }
-      ]
-    },
-    {
-      "name": "test",
-      "stage": "test",
-      "needs": [
-        "build"
-      ],
-      "rules": [
-        {
-          "if": "$CI_PIPELINE_SOURCE == 'merge_request_event'"
-        }
-      ]
-    },
-    {
-      "name": "sast",
-      "stage": "security",
-      "needs": [],
-      "rules": [
-        {
-          "if": "$CI_PIPELINE_SOURCE == 'merge_request_event'"
-        }
-      ]
-    },
-    {
-      "name": "deploy-prod",
-      "stage": "deploy",
-      "needs": [
-        "test",
-        "sast"
-      ],
-      "rules": [
-        {
-          "if": "$CI_COMMIT_BRANCH == 'main'",
-          "when": "manual"
-        }
-      ]
-    }
-  ],
-  "variables_policy": {
-    "all_protected": true,
-    "all_masked_when_sensitive": true
-  },
-  "security_scanners": [
-    "sast",
-    "secret_detection",
-    "dependency_scanning"
-  ],
-  "environments": [
-    {
-      "name": "production",
-      "url": "https://acme.io",
-      "deployment_tier": "production"
-    }
-  ],
-  "owner": "platform@team.io",
-  "last_reviewed": "2026-05-23"
-}
-```

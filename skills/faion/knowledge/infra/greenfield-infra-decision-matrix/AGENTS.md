@@ -70,8 +70,6 @@
 | `templates/skeleton.md.j2` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,53 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "project_id": "acme-q3-2026-platform",
-  "decision_date": "2026-05-15",
-  "revisit_due_date": "2027-05-15",
-  "axes": [
-    {
-      "axis": "container_orchestrator",
-      "candidates": [
-        "EKS",
-        "ECS",
-        "Cloud Run"
-      ],
-      "red_flags_applied": [
-        "Cloud Run requires GCP \u2014 disqualifies if AWS-only"
-      ],
-      "scores": {
-        "EKS": 4,
-        "ECS": 3,
-        "Cloud Run": 0
-      },
-      "chosen": "EKS",
-      "rationale": "Team familiar with k8s; ECS lacks ecosystem; Cloud Run disqualified by AWS-only constraint."
-    }
-  ],
-  "constraints": {
-    "compliance": "SOC2 + HIPAA",
-    "budget_monthly_usd": 8000,
-    "scale_users": 50000,
-    "team_skills": [
-      "k8s",
-      "aws"
-    ]
-  },
-  "signoffs": [
-    {
-      "role": "engineering_leader",
-      "name": "Alice",
-      "date": "2026-05-15"
-    }
-  ]
-}
-```

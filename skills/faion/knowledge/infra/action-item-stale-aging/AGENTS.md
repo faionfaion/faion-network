@@ -70,8 +70,6 @@
 | `templates/skeleton.md` | Aging report skeleton with escalation matrix Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/skeleton.json` | JSON schema for the aging artefact |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,21 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the Action Item Stale Aging methodology when in doubt about scope or fit.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/skeleton.json`
-
-```json
-{
-  "artefact_id": "<slug-or-uuid>",
-  "owner": "<single-named-handle>",
-  "inputs_used": [],
-  "decision": "<the-answer>",
-  "rationale": "<>=2 sentences referencing at least one input by name>",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
-}
-```
