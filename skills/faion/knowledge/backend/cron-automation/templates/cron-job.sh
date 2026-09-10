@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: Cron script template with flock + strict mode + log + Telegram-on-fail.
 # consumes: see content/02-output-contract.xml inputs
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200-600 tokens when loaded as context
 
-#!/usr/bin/env bash
 # Usage: install in cron with `flock -n /var/lock/<job>.lock /path/to/cron-job.sh`
 set -euo pipefail
 

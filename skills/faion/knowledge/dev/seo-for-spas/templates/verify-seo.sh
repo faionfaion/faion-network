@@ -1,9 +1,9 @@
+#!/usr/bin/env bash
 # purpose: Bash smoke-check: fetch route, assert title/og:image/canonical present.
 # consumes: see content/02-output-contract.xml inputs for seo-for-spas
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml + content/04-procedure.xml
 # token-budget-impact: ~200-700 tokens when loaded as context
-#!/usr/bin/env bash
 # verify-seo.sh — Assert SEO essentials on each route via Googlebot curl
 # Usage: ./verify-seo.sh http://localhost:3000 routes.txt
 # routes.txt: one path per line (e.g. /products/widget-a)

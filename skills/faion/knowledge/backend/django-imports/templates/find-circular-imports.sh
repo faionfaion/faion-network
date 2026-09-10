@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: Shell script that runs python -c "import …" against every app to surface circulars
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml
 # token-budget-impact: small
 
-#!/usr/bin/env bash
 # find-circular-imports.sh — Grep for unaliased cross-app model imports likely to cause circular deps.
 # Run from project root. Adjust APP_PREFIX to your project's apps namespace.
 

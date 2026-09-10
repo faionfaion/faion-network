@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: Pre-commit hook blocking refactor: commits touching >5 files
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml
 # token-budget-impact: small
 
-#!/usr/bin/env bash
 # scripts/refactor-scope-guard.sh — block sprawling refactor commits.
 # Wire as pre-commit hook. Fails if a commit with "refactor:" title touches > 5 files.
 set -euo pipefail

@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: Per-service health-check loop with retry + silent-OK + TG-on-fail.
 # consumes: see content/02-output-contract.xml inputs
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200-600 tokens when loaded as context
 
-#!/usr/bin/env bash
 set -euo pipefail
 
 SVC=${1:?usage: health-check.sh <service> <url>}

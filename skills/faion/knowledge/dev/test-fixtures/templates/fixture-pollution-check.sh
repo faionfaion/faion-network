@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: Runs pytest with random ordering seeds to detect order-dependent failures
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml
 # token-budget-impact: small
 
-#!/usr/bin/env bash
 # fixture-pollution-check.sh — detect order-dependent test failures.
 # Runs pytest multiple times with random ordering seeds.
 # Usage: fixture-pollution-check.sh [PYTEST_ARGS...]

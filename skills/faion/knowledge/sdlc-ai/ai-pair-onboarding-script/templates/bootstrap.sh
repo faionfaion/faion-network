@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: Reference bash bootstrap script
 # consumes: see content/02-output-contract.xml inputs
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200-500 tokens when loaded as context
 
-#!/usr/bin/env bash
 # purpose: 10-minute AI-pair onboarding bootstrap
 # consumes: workstation shell + team repo
 # produces: ~/.faion/onboarding-report.json

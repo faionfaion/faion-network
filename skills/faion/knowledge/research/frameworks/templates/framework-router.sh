@@ -1,9 +1,9 @@
+#!/usr/bin/env bash
 # purpose: CLI router: takes goal + stage and prints the picked framework slug
 # consumes: see content/02-output-contract.xml inputs
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200-1500 tokens when loaded as context
-#!/usr/bin/env bash
 # framework-router.sh — pick frameworks based on the decision being made
 # Usage: ./framework-router.sh <idea|validate|size|position|pivot>
 # Output: space-separated list of framework names to load

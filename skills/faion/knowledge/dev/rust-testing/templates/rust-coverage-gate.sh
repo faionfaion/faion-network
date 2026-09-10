@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: CI script running cargo llvm-cov + diff-cover against base branch
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml
 # token-budget-impact: small
 
-#!/usr/bin/env bash
 # rust-coverage-gate.sh — enforce line + branch coverage thresholds.
 # Usage: rust-coverage-gate.sh LINE_PCT BRANCH_PCT
 # Example: rust-coverage-gate.sh 70 60

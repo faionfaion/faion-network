@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **51 shell templates got their shebang back on line 1** (CR-012). The five-key
+  header sat above it, so `#!/usr/bin/env bash` was on line 6 or 7 — which means
+  the file had no shebang at all. Under `execve` (a systemd `ExecStart`, or
+  Python `subprocess` without a shell) the kernel reads the first two bytes,
+  sees `# `, and raises `Exec format error`. Under cron the interpreter is
+  `/bin/sh`, which on Debian is dash, and the first executable line
+  `set -euo pipefail` aborts with `set: Illegal option -o pipefail`.
+  `backup-recovery/templates/backup.sh` documents itself as *"Run daily from
+  cron at 03:00"* and failed exactly that way.
+
+  Validator 5 stayed green throughout, because it asks whether the first
+  non-blank line is a *comment* — and a shebang is a comment. The header was
+  well-formed; the file was unexecutable. Four more `.sh` templates have no
+  shebang because they have no code either, and are handled separately.
+
 - **Jinja migration backlog recorded** in
   `.aidocs/improvements/jinja-migration-backlog.md`, so the remaining work outlives
   the session that measured it. Every figure was re-measured on disk and each one

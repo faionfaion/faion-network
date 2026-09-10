@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: template for code-coverage (diff-cov-report.sh)
 # consumes: code-coverage methodology inputs (see AGENTS.md Prerequisites)
 # produces: filled-in artefact conforming to content/02-output-contract.xml
 # depends-on: 01-core-rules.xml + tool-runtime in same dir
 # token-budget-impact: ~200-400 tokens when loaded as context
 
-#!/usr/bin/env bash
 # diff-cov-report.sh — enforce diff-coverage and emit uncovered lines for agent.
 # Usage: diff-cov-report.sh [base-branch] [target-percent]
 # Example: diff-cov-report.sh origin/main 90

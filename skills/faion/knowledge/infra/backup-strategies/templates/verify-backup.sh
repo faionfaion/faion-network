@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: Restore-verification script — restores latest snapshot to /tmp + asserts
 # consumes: inputs declared in AGENTS.md `## Prerequisites`
 # produces: artefact conforming to content/02-output-contract.xml (spec)
 # depends-on: content/01-core-rules.xml + content/02-output-contract.xml
 # token-budget-impact: ~350 tokens when loaded
 
-#!/usr/bin/env bash
 set -euo pipefail
 
 export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:?missing}"

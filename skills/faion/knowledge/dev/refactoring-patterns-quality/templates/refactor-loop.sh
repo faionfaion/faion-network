@@ -1,10 +1,10 @@
+#!/usr/bin/env bash
 # purpose: template for refactoring-patterns (refactor-loop.sh)
 # consumes: refactoring-patterns methodology inputs (see AGENTS.md Prerequisites)
 # produces: filled-in artefact conforming to content/02-output-contract.xml
 # depends-on: 01-core-rules.xml + tool-runtime in same dir
 # token-budget-impact: ~200-400 tokens when loaded as context
 
-#!/usr/bin/env bash
 # refactor-loop.sh — apply one refactoring pattern, test, commit, repeat.
 # Usage: refactor-loop.sh <target-file> <test-command> [max-iterations]
 # Example: refactor-loop.sh src/payments.py "pytest tests/test_payments.py" 5
