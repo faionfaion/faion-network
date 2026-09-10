@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-014: 21 declared `.json` stubs now carry the artefact they promised.** Each
+  was `{}` behind a header. The body is now the `<example valid="true">` from the
+  slug's own `02-output-contract.xml` — authored content that already validated
+  against the schema beside it — and all 21 pass their methodology's own
+  `scripts/validate-<slug>.py`. Where the example carried its own
+  `__faion_header__` (methodology / version / rules_satisfied) that shape wins and
+  the five authoring keys are merged in, because the validator checks the former.
+
+  CR-014's own count was wrong and is corrected in the file: the empty-template
+  classifier stripped a JSON header by brace-counting from the line it sat on,
+  and a one-line header sharing that line with the body swallowed the whole
+  file. The `ux/spatial-*` and `vui-*` records it listed were never empty. The
+  honest set is **74 empty, 51 declared** — the ones it missed are
+  `ml-engineering` `.py` and `.md` stubs reading `# Stub — see methodology
+  AGENTS.md ## Templates table.`
+
 - **CR-013 §1 closed: the repair had already landed, and the documented repair
   path would have regressed 55 templates.** The backlog set 161 templates / 1,055
   tokens as an open target and said *"the scanner fix landed; the corpus repair did

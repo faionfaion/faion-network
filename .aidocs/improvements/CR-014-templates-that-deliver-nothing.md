@@ -1,7 +1,7 @@
 ---
 type: change-request
 cr_id: CR-014
-title: "62 templates whose body is empty, and the six-line header that hides them from the gate"
+title: "74 templates whose body is empty, and the six-line header that hides them from the gate"
 priority: P1
 created: 2026-09-10
 status: proposed
@@ -11,6 +11,16 @@ relates_to: ".aidocs/improvements/CR-012-templates-that-fail-when-run.md; .aidoc
 ---
 
 # Change Request: templates that deliver nothing
+
+> **Correction, same day.** The first count (62 / 40 declared) came from a classifier that
+> stripped a JSON `__faion_header__` by brace-counting from the line it appeared on; a
+> one-line header sharing that line with the body swallowed the whole file, so the
+> `ux/spatial-*` and `vui-*` records listed below were never empty. Re-measured by parsing
+> the JSON and dropping the header key: **74 empty, 51 declared.** The ones the first pass
+> missed are `ml-engineering` `.py` / `.md` stubs whose body is `# Stub — see methodology
+> AGENTS.md ## Templates table.` — 21 of them across the `fine-tuning-openai-*`, `mcp-*`,
+> `guardrails-ai-framework`, `llm-observability` and `langchain` slugs. The three-group
+> reading and the gate finding stand; the file list under "Where they are" does not.
 
 CR-012 is about templates that fail when run. This is the adjacent class, found while sweeping it:
 templates that **cannot** fail, because there is nothing in them.
