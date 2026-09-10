@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-012 closed: the ten templates that contradicted their own methodology's
+  rules.** This was the sharpest class in the CR — a document contradicting itself
+  in the file the customer runs — and it is now consistent, verified by parsing
+  every file, `terraform fmt`, validator 5 on all nine slugs, and one live test.
+
+  - `caching-strategy/cache-aside.py` claimed "jittered TTL + single-flight" in its
+    header and had neither; it now has both, with an owner-token lock released
+    by a compare-and-delete Lua script.
+  - `caching-strategy/cache-singleflight.py` released its lock with a bare
+    `DELETE` in `finally`, so a slow winner deleted the lock a faster retry now
+    held. Same Lua release. Proven on a real Redis: a lock holding a foreign token
+    survives a wrong-token release. (The CR's repro of a 1 s lock under a 2 s
+    loader still double-loads, because the lock *expires* — the docstring now
+    says `lock_ttl` must exceed the slowest loader and why.)
+  - `django-celery/task-idempotent.py` sent the email and then claimed the flag;
+    under `acks_late` and five retries that is six emails. It claims first via
+    the atomic `UPDATE … WHERE sent = FALSE`, sends with an `Idempotency-Key`,
+    and releases the claim on failure so a retry can win it.
+  - `django-coding-standards/service-stub.py` advertised `@transaction.atomic`
+    and did not have it, so `select_for_update` was a no-op and `on_commit`
+    fired before the row existed. Decorated, and the docstring says which two
+    calls silently break without it.
+  - `api-gateway-patterns/bff-aggregator.py`: per-upstream deadlines via
+    `asyncio.wait_for`, `gather(return_exceptions=True)` so one refused service
+    degrades its field instead of returning 500, and a real per-request id in
+    place of the literal string `"generated-uuid"`.
+  - `structured-logging-as-code/logger.py`: `REDACT_FIELDS` covered zero of the
+    five PII categories its own rule names and matched keys exactly and
+    case-sensitively. Redaction is now by key substring (case-insensitive) and by
+    value pattern — email, phone, card, IPv4, auth scheme, JWT — in `fields` and
+    in the message body.
+  - `github-actions-cicd` (4 files) and `sec-trivy-pinned-supply-chain-scan`:
+    every `uses:` is a 40-hex commit SHA resolved with `git ls-remote` against the
+    real tag, with the tag kept as a trailing comment. The trivy pin was a
+    41-character string that could never resolve; it is now `v0.36.0`'s commit.
+    28 pins, all exactly 40 hex.
+  - `terraform/versions.tf`: `=` pins for both the provider and terraform, as
+    `r1-provider-pinning` requires; it shipped `~>` and `>=`.
+  - `cd-basics/expand_contract_migration.sql`: phase 3 dropped `email_old`, a
+    column no phase created. The three phases are now consistent, the backfill
+    is idempotent, a `COUNT(*) … IS NULL` gate sits before contract, and contract
+    renames before it drops.
+
 - **CR-014: 21 declared `.json` stubs now carry the artefact they promised.** Each
   was `{}` behind a header. The body is now the `<example valid="true">` from the
   slug's own `02-output-contract.xml` — authored content that already validated

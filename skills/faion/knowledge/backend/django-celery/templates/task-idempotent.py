@@ -6,6 +6,16 @@
 # task-idempotent.py — Canonical idempotent Celery task pattern
 # Input:  user_id (int, primitive)
 # Output: bool — True if action was performed, False if already done
+#
+# The guard is on the CORRECT side of the side effect: claim first, act second.
+# The first version read the flag, sent the email, THEN did the atomic UPDATE.
+# With acks_late=True and max_retries=5, a worker lost after the send but
+# before the UPDATE re-delivers the task, the flag is still False, and the
+# user receives the email again — up to six times. The claim below is the
+# atomic UPDATE ... WHERE welcome_email_sent = FALSE; whoever wins it owns the
+# send, everyone else returns False without touching the provider. If the send
+# then fails, the claim is released so the retry can win it again.
+
 
 import requests
 from celery import shared_task
@@ -26,33 +36,37 @@ from celery import shared_task
 )
 def send_welcome(self, user_id: int) -> bool:
     """
-    Send welcome email to user.
-
-    Idempotent: checks welcome_email_sent before acting.
-    Uses DB-level atomic UPDATE WHERE not_done to prevent race conditions.
+    Send welcome email to user. Idempotent under retries and redelivery.
     """
     from apps.users.models import User
 
-    user = User.objects.only("id", "email", "welcome_email_sent").get(pk=user_id)
-
-    if user.welcome_email_sent:
-        return False  # already sent, safe to return
-
-    # Perform the side effect
-    _send_welcome_email(user.email)
-
-    # Atomic guard: only mark done if it was False (handles concurrent retries)
-    updated = User.objects.filter(pk=user_id, welcome_email_sent=False).update(
+    # 1. Claim. Exactly one execution turns the flag; concurrent retries lose here.
+    claimed = User.objects.filter(pk=user_id, welcome_email_sent=False).update(
         welcome_email_sent=True
     )
-    return bool(updated)
+    if not claimed:
+        return False  # already sent, or being sent by another execution
+
+    user = User.objects.only("id", "email").get(pk=user_id)
+
+    # 2. Act. The provider-side idempotency key is derived from the task, so
+    #    even a network-level duplicate of this POST cannot send twice.
+    try:
+        _send_welcome_email(user.email, idempotency_key=f"welcome:{user_id}")
+    except requests.RequestException:
+        # 3. Release the claim so the retry can win it. Without this the
+        #    first failed attempt would mark the email sent forever.
+        User.objects.filter(pk=user_id).update(welcome_email_sent=False)
+        raise
+    return True
 
 
-def _send_welcome_email(email: str) -> None:
+def _send_welcome_email(email: str, *, idempotency_key: str) -> None:
     """Send the actual email. Raises requests.RequestException on failure."""
     response = requests.post(
         "https://api.email-provider.com/send",
         json={"to": email, "template": "welcome"},
+        headers={"Idempotency-Key": idempotency_key},
         timeout=30,
     )
     response.raise_for_status()
