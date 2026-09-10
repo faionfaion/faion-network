@@ -5,10 +5,8 @@ consumes: see content/02-output-contract.xml inputs for gitlab-boards
 produces: config
 depends-on: content/01-core-rules.xml + content/02-output-contract.xml
 token-budget-impact: ~200-1000 tokens when loaded as context
-"""
 
-
-"""scoped-labels.py — reference template for GitLab scoped label definitions.
+scoped-labels.py — reference template for GitLab scoped label definitions.
 
 Copy this file and adjust LABELS for your project's workflow.
 Run via: GITLAB_URL=... GITLAB_TOKEN=... python3 scoped-labels.py <project_id>

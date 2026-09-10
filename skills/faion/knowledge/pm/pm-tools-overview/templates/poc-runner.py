@@ -5,10 +5,8 @@ consumes: see content/02-output-contract.xml inputs for pm-tools-overview
 produces: report
 depends-on: content/01-core-rules.xml + content/02-output-contract.xml
 token-budget-impact: ~200-1000 tokens when loaded as context
-"""
 
-
-"""poc_runner.py — minimal POC scenario harness for PM tool evaluation.
+poc_runner.py — minimal POC scenario harness for PM tool evaluation.
 
 Vendor adapters live in adapters/<vendor>.py and implement:
     create_issue() -> str (issue ID)

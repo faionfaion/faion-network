@@ -5,10 +5,8 @@ consumes: see content/02-output-contract.xml inputs for hybrid-delivery
 produces: decision-record
 depends-on: content/01-core-rules.xml + content/02-output-contract.xml
 token-budget-impact: ~200-1000 tokens when loaded as context
-"""
 
-
-"""hybrid-alignment.py — flag epics misaligned with their milestone from program.yaml.
+hybrid-alignment.py — flag epics misaligned with their milestone from program.yaml.
 
 Usage: python hybrid-alignment.py program.yaml
 Input: YAML with milestones[]{id, due, epics[]{id, issues_done, issues_total, team}}

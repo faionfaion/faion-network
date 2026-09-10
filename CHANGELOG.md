@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **9 Python templates can be imported again** (CR-012). Each carried two module
+  docstrings — the five-key header, then the original description — and a
+  docstring in second position is an expression *statement*, so
+  `from __future__ import annotations` below it was no longer the first
+  statement in the module. Every one of the nine raised
+  `SyntaxError: from __future__ imports must occur at the beginning of the file`
+  on import: `gemini-client.py`, `gemini-multimodal.py`, `raci-lint.py`,
+  `poc-runner.py`, `scoped-labels.py`, `cycle-stats.py`, `hybrid-alignment.py`,
+  `bulk-transition.py`, `calibration.py`.
+
+  The two docstrings are now one, header keys still on lines 2-6 where validator
+  5 reads them. Nine `.py` templates still fail `compile()` and that is correct:
+  they are Django skeletons whose placeholders are `<Entity>` and `<Model>`,
+  which is a template, not a defect.
+
 - **51 shell templates got their shebang back on line 1** (CR-012). The five-key
   header sat above it, so `#!/usr/bin/env bash` was on line 6 or 7 — which means
   the file had no shebang at all. Under `execve` (a systemd `ExecStart`, or
