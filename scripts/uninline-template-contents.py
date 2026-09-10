@@ -245,12 +245,14 @@ def cmd_check(args) -> int:
     if not copies:
         print(f"no inlined template bodies in {len(paths)} envelope(s)")
         return 0
-    print(f"{len(copies)} inlined template body/bodies still in the envelopes:",
-          file=sys.stderr)
-    for envelope, name, _verdict in copies[:20]:
-        print(f"  {rel(os.path.dirname(envelope))}/{name}", file=sys.stderr)
-    if len(copies) > 20:
-        print(f"  … and {len(copies) - 20} more", file=sys.stderr)
+    # `FAIL <path>` because `check-validators.sh` normalises on that prefix; a
+    # gate that only sets an exit code contributes one opaque row to the failure
+    # set and cannot say which slug regressed.
+    for envelope, name, _verdict in copies:
+        print(f"FAIL {rel(os.path.dirname(envelope))}")
+        print(f"  - inlines the body of {name}; the packer already ships it")
+    print(f"\n{len(copies)} inlined template body/bodies over "
+          f"{len({e for e, _n, _v in copies})} envelope(s)", file=sys.stderr)
     return 1
 
 

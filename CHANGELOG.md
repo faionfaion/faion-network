@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 complete, and the gate that keeps it that way.**
+  `uninline-template-contents.py --check` joins `FAST_IDS`, so re-inlining a body
+  is a new line in the failure set on the commit that does it. The check prints
+  `FAIL <slug>` rather than only setting an exit code — a gate that contributes
+  one opaque row cannot say which slug regressed.
+
+  | | before | after |
+  |---|---|---|
+  | envelope total, 2,969 slugs | 16.48 MB | **12.98 MB** |
+  | worst-case envelope | 28.1 KB (`sdd/ears-requirements`) | **10.5 KB** |
+  | `vfs-pack -check-double-ship` | 2,583 findings | **1** |
+  | `## Templates` rows naming no file | 0 | 0 |
+  | files under `templates/` changed by the reversal | — | **0**, over seven commits |
+
+  **3.50 MB off the surface that retrieval reads**, against the 3.78 MB the
+  feature estimated from the 14.85 MB envelope total it measured in August; the
+  corpus grew to 16.48 MB in between, so the delta is close to the estimate and
+  the ratio is better. The worst case fell by 63%.
+
+  The one remaining double-ship finding is not one:
+  `claude-code/project-docs-convention/templates/agents.md.j2` is reported against
+  `templates/agents.md`, its own generated sibling, because the guard treats any
+  file named `agents.md` as a slug envelope. That is a bug in `nearestEnvelope`,
+  not corpus content, and it belongs to `faion-cli`.
+
 - **F-077 un-inlined: `sdd`, `sdlc-ai`.** 199 blocks from 130 envelopes.
 
 - **F-077 un-inlined: `pm`, `product`, `research`, `security`, `ux`.** 700 blocks
