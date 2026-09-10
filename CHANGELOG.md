@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 tooling: `scripts/uninline-template-contents.py`.** P0.4 pasted 3,376
+  template bodies into their slugs' `AGENTS.md` as fenced blocks under
+  `## Template Contents`. The envelope is read during *retrieval*, so those bytes
+  are paid on every search that surfaces the slug — and `packablePath` now admits
+  anything under a `templates/` segment, so the same bytes already ship as files.
+  `vfs-pack -check-double-ship` reports **2,583 findings over 15,961 packed
+  templates** against this checkout: the corpus half of the ordering never landed
+  while the packer half did.
+
+  Four modes: `--report` classifies every block against the file it names,
+  `--measure` weighs the envelopes and finds `## Templates` rows naming no file,
+  `--write` removes the region, `--check` is the permanent gate. Normalisation and
+  header stripping replicate `faion-cli/tools/vfs-pack/doubleship.go` rather than
+  inventing a second rule — that guard asserts the result, and two rules drift.
+
+  Measured before any edit: envelopes **16.48 MB** over 2,969 slugs, worst case
+  **28.1 KB** (`sdd/ears-requirements`), **0 dangling `## Templates` rows**. The
+  report classifies 3,319 blocks as lossless by one of five mechanical tests; the
+  remaining **57** are recorded case by case in `scripts/uninline-resolutions.tsv`
+  — 42 differ only in header spelling, 8 are files edited after inlining, 7 are
+  this batch's own CR-012 rewrites. `--write` consults that file instead of taking
+  a `--force` flag, because a flag records nothing.
+
 - **The bootstrap no longer locks you out of a fresh VPS** (CR-012 #2).
   `backend/server-init-bootstrap/templates/bootstrap.sh` set `ufw default deny
   incoming`, allowed `${SSH_PORT}` (2222), `80` and `443`, then `ufw --force
