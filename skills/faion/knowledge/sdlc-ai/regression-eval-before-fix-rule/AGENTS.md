@@ -71,8 +71,6 @@
 | `templates/regression-eval-record.md` | Decision-record skeleton (incident → eval case path → fix PR). Generated from `templates/regression-eval-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/eval-case-jsonl.fixture` | Minimal failing eval-case JSONL fixture. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,14 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (incident reproducible? eval-set available? CI check live?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether the rule should fire on a given incident — the tree terminates either on the active rule or on `skip-this-methodology`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/eval-case-jsonl.fixture`
-
-```text
-{"id": "INC-441-1", "input": {"prompt": "Summarise: cat with hat", "tools": []}, "expected_contains": ["cat", "hat"], "expected_not_contains": ["dog"], "temperature": 0, "seed": 42}
-{"id": "INC-441-2", "input": {"prompt": "Summarise: empty string", "tools": []}, "expected_contains": [], "expected_error": "EmptyInput", "temperature": 0, "seed": 42}
-```

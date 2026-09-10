@@ -69,8 +69,6 @@
 | `templates/soc2-cli.md.j2` | CLI usage cheat-sheet: hook install + query commands. |
 | `templates/soc2-cli.md` | CLI usage cheat-sheet: hook install + query commands. Generated from `templates/soc2-cli.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,32 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/evidence-stub.json`
-
-```json
-{
-  "artefact_id": "soc2-evidence-generator-cli-<client>-<YYYY-MM-DD>",
-  "owner": "<Full Name> <email>",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "inputs_used": [
-    {
-      "name": "<input name>",
-      "source": "<path or URL>"
-    }
-  ],
-  "stub_example": {
-    "actor": "<github-handle>",
-    "diff_hash": "<sha>",
-    "controls": [
-      "CC1.1"
-    ],
-    "approval_link": "<PR review URL>"
-  }
-}
-```

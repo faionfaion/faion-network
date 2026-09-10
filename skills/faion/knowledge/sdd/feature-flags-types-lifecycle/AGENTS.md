@@ -67,8 +67,6 @@
 | `templates/policy.md.j2` | Team flag policy: per-kind window + retirement criteria |
 | `templates/policy.md` | Team flag policy: per-kind window + retirement criteria Generated from `templates/policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,20 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the flag a temporary rollout, an experiment, an operational switch, or an entitlement?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/flag_classification.json`
-
-```json
-{
-  "name": "new-checkout-flow",
-  "kind": "release",
-  "created_at": "2026-05-01",
-  "owner": "checkout-team",
-  "retire_by": "2026-06-01",
-  "cleanup_criteria": "100% rollout for 14 days, no rollback"
-}
-```

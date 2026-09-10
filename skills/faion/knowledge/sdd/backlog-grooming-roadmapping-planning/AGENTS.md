@@ -78,8 +78,6 @@
 | `templates/roadmap.md.j2` | 1-3-12 month product roadmap — Now/Next/Later milestones, not-planned items, dependencies, change log. |
 | `templates/roadmap.md` | 1-3-12 month product roadmap — Now/Next/Later milestones, not-planned items, dependencies, change log. Generated from `templates/roadmap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -90,30 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/backlog-grooming-roadmapping.json`
-
-```json
-{
-  "artefact_id": "backlog-grooming-roadmapping-example",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "grooming_date": "2026-05-23",
-  "items_total": 1,
-  "items_promoted": 1,
-  "items_culled": 1,
-  "horizons": {
-    "key": "value"
-  },
-  "theme_orphans": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "owner": "@solo-founder"
-}
-```

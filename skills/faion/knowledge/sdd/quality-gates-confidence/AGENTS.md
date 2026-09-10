@@ -70,8 +70,6 @@
 | `templates/gate-report.md.j2` | Six-level quality-gate report (L1 lint through L6 human review) with per-gate score, overall confidence, decision, and failure detail. |
 | `templates/gate-report.md` | Six-level quality-gate report (L1 lint through L6 human review) with per-gate score, overall confidence, decision, and failure detail. Generated from `templates/gate-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,26 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/quality-gates-confidence.json`
-
-```json
-{
-  "artefact_id": "quality-gates-confidence-example",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "owner": "@solo-founder",
-  "subject": "subject of the report",
-  "findings": [
-    "finding-1",
-    "finding-2",
-    "finding-3"
-  ],
-  "score": 0.82,
-  "verdict": "pass"
-}
-```

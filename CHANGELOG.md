@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 un-inlined: `sdd`, `sdlc-ai`.** 199 blocks from 130 envelopes.
+
 - **F-077 un-inlined: `pm`, `product`, `research`, `security`, `ux`.** 700 blocks
   from 513 envelopes.
 

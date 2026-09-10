@@ -74,8 +74,6 @@
 | `templates/spec-mvs.md.j2` | Minimum viable specification — problem, goals, non-goals, FR-X requirements with Given/When/Then, out-of-scope. |
 | `templates/spec-mvs.md` | Minimum viable specification — problem, goals, non-goals, FR-X requirements with Given/When/Then, out-of-scope. Generated from `templates/spec-mvs.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,29 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/writing-specifications.json`
-
-```json
-{
-  "artefact_id": "writing-specifications-example",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "owner": "@solo-founder",
-  "feature_id": "F-example",
-  "summary": "One-paragraph problem + outcome statement.",
-  "items": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "out_of_scope": [
-    "item-x",
-    "item-y"
-  ]
-}
-```
