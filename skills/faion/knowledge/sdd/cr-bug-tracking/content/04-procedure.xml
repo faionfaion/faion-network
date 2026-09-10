@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="CR / BUG Tracking Procedure" version="1.0.0" est_tokens="1150" depth="essential">
+  <summary>Six steps: classify the work, allocate the next global number, write the one-page file in the CR or BUG shape, move it through its lifecycle, commit with the matching prefix, and — for a BUG that exposed a missing rule — update project-spec in the same PR.</summary>
+
+  <step n="1" name="classify">
+    <input>The requested change; the feature lifecycle's current state.</input>
+    <action>Decide the stream. A defect against current behaviour is a BUG. A small mutation to existing behaviour or contract that needs a record but no task plan is a CR. Anything that affects multiple subsystems or requires a task breakdown is a feature; a one-line documentation tweak is a straight commit.</action>
+    <output>kind ∈ {CR, BUG}, or an exit to the feature lifecycle / straight commit.</output>
+    <decision-gate>Not a CR or BUG — stop here and route accordingly (rule skip-this-methodology).</decision-gate>
+  </step>
+
+  <step n="2" name="allocate-number">
+    <input>The `crs/` or `bugs/` directory tree.</input>
+    <action>The next CR or BUG ID is one higher than the maximum currently on disk in either `todo/` or `done/` (and `in-progress/` for BUGs). Use the shell one-liners in 05-examples. CRs and BUGs have separate counters; never reuse a number.</action>
+    <output>`CR0NN` or `BUG0NN`.</output>
+    <decision-gate>If the computed id already exists anywhere on disk, the counter was corrupted — fix the allocation before writing (rules r-two-global-counters, r-counters-never-reset).</decision-gate>
+  </step>
+
+  <step n="3" name="write-the-file">
+    <input>kind + id + the facts of the change.</input>
+    <action>CR: one page (≤80 lines) with `## Why`, `## What changes`, optional `linked-feature: F0NN` header. BUG: `## Symptom`, `## Repro`, `## Root cause`, `## Fix`, `## Regression test`, optional `linked-feature: F0NN` header. Add the linked-feature header when the change anchors to the feature that introduced the surface in question.</action>
+    <output>`crs/todo/CR0NN-….md` or `bugs/todo/BUG0NN-….md`.</output>
+    <decision-gate>A CR that cannot fit on one page is a feature — go back to step 1 (rule r-cr-one-page-three-sections). A BUG without Repro and Root cause is conjecture — do not proceed (rule r-bug-five-sections).</decision-gate>
+  </step>
+
+  <step n="4" name="move-through-lifecycle">
+    <input>The file in `todo/`.</input>
+    <action>CR: `crs/todo/` → `crs/done/` when the change lands; no in-progress. BUG: `bugs/todo/` → `bugs/in-progress/` while reproducing and fixing → `bugs/done/` once the fix and its regression test are merged.</action>
+    <output>File in the state directory that matches reality.</output>
+    <decision-gate>A BUG does not move to `done/` until the Regression test section names a real test (rules r-cr-two-states, r-bug-three-states).</decision-gate>
+  </step>
+
+  <step n="5" name="commit-with-prefix">
+    <input>The implementing commits.</input>
+    <action>Prefix every implementing commit: `cr(CR0NN): &lt;short title&gt;` for a CR, `fix(BUG0NN): &lt;short title&gt;` for a BUG.</action>
+    <output>Commits that release-notes generators can split into CR / BUG / FEATURE lines without parsing the body.</output>
+    <decision-gate>Wrong or missing prefix blocks merge (rules r-cr-commit-prefix, r-bug-commit-prefix).</decision-gate>
+  </step>
+
+  <step n="6" name="update-spec-if-revealing">
+    <input>BUG root cause; `project-spec/business-rules.md` and `project-spec/invariants.md`.</input>
+    <action>Ask whether the BUG exposed an invariant or business rule the project-spec did not capture. If yes, add the rule (`BR-NNN` / invariant entry) to `project-spec/business-rules.md` and/or `project-spec/invariants.md` in the SAME PR as the fix.</action>
+    <output>Fix PR carrying both the code change and the spec entry.</output>
+    <decision-gate>"Should update spec sometime" is not an option; a revealing BUG without the spec entry blocks merge (rule r-revealing-bug-updates-spec).</decision-gate>
+  </step>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The record validates against the schema in 02-output-contract.xml.</item>
+      <item>The id is unique across every state directory of its kind and the counter is monotonic.</item>
+      <item>Commits carry the correct prefix; a BUG has a named regression test before it reaches `done/`.</item>
+      <item>A revealing BUG's spec update is in the fix PR; the decision tree (06) has been honoured.</item>
+    </list>
+  </section>
+</text>

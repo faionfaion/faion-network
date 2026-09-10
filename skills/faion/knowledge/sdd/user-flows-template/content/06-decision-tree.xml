@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="user-flows.md Template Decision Tree" version="1.0.0" est_tokens="850">
+  <summary>User-facing-flow gate first, then existence and shape checks on the artefact. Routes to produce / a specific rule / skip; every conclusion references a rule id from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-user-facing">Does the feature have any user-facing flow — the user takes a sequence of actions (page navigation, form submission, button click, command invocation)?</root-question>
+
+    <branch when="q-user-facing == false">
+      <conclusion ref="backend-only-must-not">Backend-only: no user-flows.md. Verify through API tests in `tests/api/` (worker → unit + integration; migration → migration test + reversibility check).</conclusion>
+    </branch>
+
+    <branch when="q-user-facing == true">
+      <question id="q-exists">Does `features/in-progress/F0NN-slug/user-flows.md` exist?</question>
+
+      <branch when="q-exists == false">
+        <conclusion ref="required-when-user-facing-flow">Produce it from templates/user-flows.md.tmpl before the feature can be promoted to done/.</conclusion>
+      </branch>
+
+      <branch when="q-exists == true">
+        <question id="q-shape">Does every flow pass the shape checks?</question>
+
+        <branch when="flow_fields_present &lt; 5">
+          <conclusion ref="five-fields-per-flow">Add the missing field(s): Actor, Preconditions, Happy path, Negative paths, Playwright spec path.</conclusion>
+        </branch>
+
+        <branch when="negative_paths == 0">
+          <conclusion ref="pos-and-neg-per-flow">Add at least one negative case from the unsexy-edge list — auth, network, invalid input, race, boundary.</conclusion>
+        </branch>
+
+        <branch when="negative_path_missing_trigger_or_ux == true">
+          <conclusion ref="negative-path-trigger-and-ux">State the trigger and the expected error UX (what the user sees, where).</conclusion>
+        </branch>
+
+        <branch when="happy_step_without_expected == true OR success_criterion_not_last == true">
+          <conclusion ref="happy-path-numbered-with-success-last">Give every step an expected result; put the success criterion in the final step.</conclusion>
+        </branch>
+
+        <branch when="spec_path_missing == true OR spec_shared_between_flows == true">
+          <conclusion ref="spec-path-one-to-one">Name one spec file per flow; the mapping is 1:1.</conclusion>
+        </branch>
+
+        <branch when="all_shape_checks_pass == true">
+          <conclusion ref="run-the-checklist">The artefact passes; the reviewer ticks readiness.md item 6 with the spec results as evidence.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="feature_not_in_in_progress OR no_e2e_harness">
+      <conclusion ref="skip-this-methodology">Outside the SDD feature lifecycle, or the project has no Playwright (or equivalent) for E2E; nothing to map to.</conclusion>
+    </branch>
+  </decision-tree>
+
+  <example trace="checkout-page-positives-only"><![CDATA[
+inputs: {flow=stripe checkout page, in_progress=true, playwright=true, user-flows.md exists, F-01: 3 happy cases, 0 negatives}
+q-user-facing -> true
+q-exists -> true
+q-shape -> negative_paths == 0
+=> conclusion pos-and-neg-per-flow: add card-declined negative (trigger + expected UX), then re-run; all_shape_checks_pass -> run-the-checklist.
+]]></example>
+</text>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="CR / BUG Tracking Decision Tree" version="1.0.0" est_tokens="650" depth="essential">
+  <summary>Defect or mutation first, then size. Routes to BUG (with or without a spec update), CR, or out to the feature lifecycle / a straight commit. Every conclusion references a rule id from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-defect">Is the work a defect against current behaviour (something that worked, or was specified, and now does not)?</root-question>
+
+    <branch when="q-defect == true">
+      <question id="q-reveals-rule">Does the root cause expose an invariant or business rule that project-spec/ did not capture?</question>
+
+      <branch when="reveals_missing_rule == true">
+        <conclusion ref="r-revealing-bug-updates-spec">File a BUG (five sections, three states, `fix(BUG0NN):` prefix) AND add the rule to `project-spec/business-rules.md` / `invariants.md` in the same PR.</conclusion>
+      </branch>
+
+      <branch when="reveals_missing_rule == false">
+        <conclusion ref="r-bug-five-sections">File a BUG: Symptom, Repro, Root cause, Fix, Regression test; `bugs/todo/` → `in-progress/` → `done/`; commit `fix(BUG0NN): …`.</conclusion>
+      </branch>
+    </branch>
+
+    <branch when="q-defect == false AND (subsystems_touched &gt; 1 OR needs_task_breakdown == true)">
+      <conclusion ref="skip-this-methodology">Change affects multiple subsystems or requires a task breakdown — file as a feature instead.</conclusion>
+    </branch>
+
+    <branch when="q-defect == false AND change == 'one-line-doc-tweak'">
+      <conclusion ref="skip-this-methodology">One-line documentation tweak — straight commit, no CR.</conclusion>
+    </branch>
+
+    <branch when="q-defect == false AND subsystems_touched &lt;= 1 AND needs_task_breakdown == false">
+      <conclusion ref="r-cr-one-page-three-sections">Small mutation that needs a record but no task plan — file a CR: Why, What changes, optional linked-feature; `crs/todo/` → `crs/done/`; commit `cr(CR0NN): …`.</conclusion>
+    </branch>
+  </decision-tree>
+
+  <example trace="revealing-bug"><![CDATA[
+inputs: {defect=true, root_cause='length check ran before whitespace trim', spec_has_rule=false}
+q-defect -> true
+q-reveals-rule -> true
+=> conclusion r-revealing-bug-updates-spec: BUG019 in bugs/todo/, moves to in-progress while reproducing,
+   fix PR carries fix(BUG019) commits + BR-051 in project-spec/business-rules.md, then bugs/done/.
+]]></example>
+</text>

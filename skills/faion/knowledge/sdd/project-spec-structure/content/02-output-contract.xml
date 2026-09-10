@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Project-Spec Structure Output Contract" version="1.1.0" est_tokens="1800" depth="essential">
+  <summary>The artefact this methodology produces is the `.aidocs/project-spec/` tree itself plus a rebuild-test record. The JSON Schema below (draft-07) pins the tree's required shape so an agent can validate it before promoting a feature to done/ or deploying after a CR/BUG fix.</summary>
+
+  <output-contract>
+    <required>
+      <field name="location" type="string" required="true">repo-relative path; `.aidocs/project-spec/` unless constitution.md declares otherwise</field>
+      <field name="committed" type="boolean" required="true">the tree is tracked in git, never git-ignored</field>
+      <field name="flat_files" type="list" required="true">the twelve flat files named in 05-examples (AGENTS.md, CLAUDE.md, mission.md, glossary.md, business-rules.md, data-model.md, auth.md, deploy.md, config-secrets.md, non-functional.md, observability.md, invariants.md)</field>
+      <field name="subdirs" type="list" required="true">`domain/`, `api/`, `integrations/`, `decisions/` — each with its AGENTS.md + CLAUDE.md routing pair</field>
+      <field name="rebuild_test" type="object" required="true">the last run: triggering event, pass/fail, and the verbatim assumption list</field>
+      <field name="history_in_tree" type="boolean" required="true">must be false — no `old/`, no `*-v2.md`, no changelog inside the tree</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">location is a single .md file rather than a directory (rule r-directory-not-file)</pattern>
+      <pattern id="f2">any subdirectory without both AGENTS.md and CLAUDE.md (rule r-subdir-routing-pair)</pattern>
+      <pattern id="f3">location under an agent-home directory such as `~/.faion/projects/&lt;name&gt;/` (rule r-canonical-path)</pattern>
+      <pattern id="f4">committed = false while the project is shared with multiple people or agents (rule r-canonical-path)</pattern>
+      <pattern id="f5">history_in_tree = true — `old/` folders, `*-v2.md` copies or a changelog inside the tree (rule r-current-revision-only)</pattern>
+      <pattern id="f6">rebuild_test.event = "calendar" or "quarterly-cron" (rule r-rebuild-at-delivery-events)</pattern>
+      <pattern id="f7">a nested repo of a multi-repo product carrying its own project-spec/ (rule r-one-spec-per-product)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/project-spec-structure.json",
+  "type": "object",
+  "required": ["location", "committed", "flat_files", "subdirs", "rebuild_test", "history_in_tree"],
+  "additionalProperties": false,
+  "properties": {
+    "location": { "type": "string", "pattern": "^\\.aidocs/project-spec/$|^[^~].*/project-spec/$" },
+    "committed": { "type": "boolean", "const": true },
+    "constitution_declares_path": { "type": "boolean" },
+    "flat_files": {
+      "type": "array",
+      "uniqueItems": true,
+      "allOf": [
+        { "contains": { "const": "AGENTS.md" } },
+        { "contains": { "const": "CLAUDE.md" } },
+        { "contains": { "const": "mission.md" } },
+        { "contains": { "const": "glossary.md" } },
+        { "contains": { "const": "business-rules.md" } },
+        { "contains": { "const": "data-model.md" } },
+        { "contains": { "const": "auth.md" } },
+        { "contains": { "const": "deploy.md" } },
+        { "contains": { "const": "config-secrets.md" } },
+        { "contains": { "const": "non-functional.md" } },
+        { "contains": { "const": "observability.md" } },
+        { "contains": { "const": "invariants.md" } }
+      ],
+      "items": { "type": "string", "pattern": "^[a-z0-9-]+\\.md$|^AGENTS\\.md$|^CLAUDE\\.md$" }
+    },
+    "subdirs": {
+      "type": "array",
+      "minItems": 4,
+      "allOf": [
+        { "contains": { "properties": { "name": { "const": "domain" } } } },
+        { "contains": { "properties": { "name": { "const": "api" } } } },
+        { "contains": { "properties": { "name": { "const": "integrations" } } } },
+        { "contains": { "properties": { "name": { "const": "decisions" } } } }
+      ],
+      "items": {
+        "type": "object",
+        "required": ["name", "agents_md", "claude_md"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "agents_md": { "type": "boolean", "const": true },
+          "claude_md": { "type": "boolean", "const": true }
+        }
+      }
+    },
+    "rebuild_test": {
+      "type": "object",
+      "required": ["event", "passed", "assumptions"],
+      "properties": {
+        "event": { "type": "string", "enum": ["end-of-feature", "post-cr-bug-deploy"] },
+        "feature_or_fix": { "type": "string", "pattern": "^(F|CR|BUG)[0-9]{3,}$" },
+        "passed": { "type": "boolean" },
+        "assumptions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "history_in_tree": { "type": "boolean", "const": false }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "location": ".aidocs/project-spec/",
+  "committed": true,
+  "flat_files": ["AGENTS.md", "CLAUDE.md", "mission.md", "glossary.md", "business-rules.md",
+                 "data-model.md", "auth.md", "deploy.md", "config-secrets.md",
+                 "non-functional.md", "observability.md", "invariants.md"],
+  "subdirs": [
+    {"name": "domain",       "agents_md": true, "claude_md": true},
+    {"name": "api",          "agents_md": true, "claude_md": true},
+    {"name": "integrations", "agents_md": true, "claude_md": true},
+    {"name": "decisions",    "agents_md": true, "claude_md": true}
+  ],
+  "rebuild_test": {
+    "event": "end-of-feature",
+    "feature_or_fix": "F042",
+    "passed": true,
+    "assumptions": ["retry back-off for the mail provider is exponential (documented in integrations/mail.md)"]
+  },
+  "history_in_tree": false
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "location": "~/.faion/projects/acme/project-spec.md",
+  "committed": false,
+  "flat_files": ["project-spec.md"],
+  "subdirs": [
+    {"name": "domain", "agents_md": false, "claude_md": false}
+  ],
+  "rebuild_test": {
+    "event": "quarterly-cron",
+    "passed": true,
+    "assumptions": []
+  },
+  "history_in_tree": true
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>The tree lives at `.aidocs/project-spec/` (or the path constitution.md declares) and is committed.</item>
+      <item>Every subdirectory has AGENTS.md + CLAUDE.md before any content file.</item>
+      <item>Only the current revision of each file is in the tree; history is in git and features/done/.</item>
+      <item>The rebuild test ran at a delivery event (end-of-feature or post-CR/BUG deploy), and its assumption list contains nothing that affects user-visible behaviour, public API shape, or invariants.</item>
+      <item>No forbidden pattern matches; the record validates against the schema above.</item>
+    </list>
+  </section>
+</text>

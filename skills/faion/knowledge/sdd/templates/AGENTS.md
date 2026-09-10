@@ -2,25 +2,22 @@
 
 ## Summary
 
-**One-sentence:** Eight copy-paste templates for Specification-Driven Development: constitution (tech stack and constraints), spec (requirements and user stories), design (architecture and decisions), test-plan (verification per acceptance criterion), implementation-plan (task breakdown and order), task (single executable unit), roadmap (feature timeline and metrics), and memory (patterns and lessons).
+**One-sentence:** Copy-paste templates for the SDD artefacts an agent fills: constitution, implementation plan, roadmap, backlog item, confidence check, pattern record, mistake record, and a feature scaffold script.
 
-**One-paragraph:** Eight copy-paste templates for Specification-Driven Development: constitution (tech stack and constraints), spec (requirements and user stories), design (architecture and decisions), test-plan (verification per acceptance criterion), implementation-plan (task breakdown and order), task (single executable unit), roadmap (feature timeline and metrics), and memory (patterns and lessons). All templates use YAML frontmatter for machine-readable metadata and support LLM-assisted workflows.
+**One-paragraph:** A collection of canonical templates for every SDD artifact: Constitution, Spec, Design, Implementation Plan, Task, Roadmap, Backlog Item, Confidence Check, Pattern Record, and Mistake Record. Use these as output schemas — provide a template in the system prompt, instruct the agent to fill each section, and enforce that no non-standard sections are added.
 
 ## Applies If (ALL must hold)
 
-- Starting a new project: generate constitution and roadmap before any code.
-- Adding a feature: scaffold spec, design, test-plan, implementation-plan in one agent pass.
-- When a human provides a rough feature description and wants a fully structured SDD folder immediately.
-- When bootstrapping a project that will be executed by faion-sdd-executor-agent.
-- Onboarding a new team to Specification-Driven Development; templates teach the format by example.
+- Starting any SDD artifact from scratch — always start from the relevant template.
+- Onboarding a new project: the Constitution template captures tech stack and standards before feature work begins.
+- When a subagent must produce a spec, design, task, or implementation plan with consistent structure.
+- Generating backlog items, roadmap entries, or confidence-check reports during planning sessions.
 
 ## Skip If (ANY kills it)
 
-- Single-file bug fixes or one-liner patches: no SDD overhead needed.
-- Vibe-coding or rapid throwaway prototypes where specs will be discarded.
-- When a feature already has complete SDD docs: check .aidocs/ first before re-generating.
-- When constitution.md does not yet exist: create it first; templates depend on it for constraints.
-- Projects where no one will read or maintain documentation: templates create false promise if abandoned.
+- When an SDD artifact already exists and only needs incremental updates — edit in place.
+- For one-off notes or research spikes that do not feed into task execution.
+- Generating freeform documentation not part of the SDD lifecycle.
 
 ## Prerequisites
 
@@ -38,9 +35,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Rules for filling a template: no placeholder survives, no non-standard sections, frontmatter complete | ~800 |
 | `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns: leftover placeholders, one-pass generation without review gates, tasks written without design, freetext dependency graphs, optimistic token estimates, calendar-quarter roadmaps | ~1100 |
 
 ## Task Routing
 
@@ -52,7 +49,19 @@
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/backlog-item.md.j2` | Single backlog item — RICE score, MoSCoW classification, acceptance criteria, dependencies. |
+| `templates/backlog-item.md` | Single backlog item — RICE score, MoSCoW classification, acceptance criteria, dependencies. Generated from `templates/backlog-item.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/confidence-check.md.j2` | Phase-gate confidence check — weighted checklist, verdict (Proceed/Clarify/Stop), open questions, recommended actions. |
+| `templates/confidence-check.md` | Phase-gate confidence check — weighted checklist, verdict (Proceed/Clarify/Stop), open questions, recommended actions. Generated from `templates/confidence-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/constitution.md.j2` | Project constitution — vision, tech stack, architecture patterns, code standards, git workflow, project structure, quality gates, principles. |
+| `templates/constitution.md` | Project constitution — vision, tech stack, architecture patterns, code standards, git workflow, project structure, quality gates, principles. Generated from `templates/constitution.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/implementation-plan.md.j2` | Full implementation plan — task summary, dependency graph, execution waves, per-task detail, quality gates, FR/AD coverage, risks. |
+| `templates/implementation-plan.md` | Full implementation plan — task summary, dependency graph, execution waves, per-task detail, quality gates, FR/AD coverage, risks. Generated from `templates/implementation-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/roadmap.md.j2` | Now/Next/Later product roadmap — milestones, not-planned items, dependencies, change log. |
+| `templates/roadmap.md` | Now/Next/Later product roadmap — milestones, not-planned items, dependencies, change log. Generated from `templates/roadmap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/pattern-record.json` | Pattern record — a reusable solution captured after it worked twice, with context and evidence. |
+| `templates/mistake-record.json` | Mistake record — what went wrong, root cause, the rule that now prevents it. |
+| `templates/new-feature.sh` | Scaffolds a feature folder with the SDD file set from these templates. |
 
 ## Scripts
 

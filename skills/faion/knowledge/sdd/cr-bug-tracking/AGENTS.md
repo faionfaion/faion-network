@@ -25,12 +25,20 @@
 
 ## Content
 
-| File | What's inside |
-|------|---------------|
-| `content/01-cr-flow.xml` | CR shape (why, what changes, optional `linked-feature`), lifecycle `todo → done`, commit format `cr(CR0NN): ...`. |
-| `content/02-bug-flow.xml` | BUG shape (symptom, repro, root cause, fix, regression test), lifecycle `todo → in-progress → done`, commit format `fix(BUG0NN): ...`. |
-| `content/03-numbering.xml` | Global per-repo numbering; separate CR and BUG counters; how to allocate the next number. |
-| `content/04-feature-linkage.xml` | Optional `linked-feature: F0NN` field; rule that BUG exposing missing business rule MUST update business-rules.md same PR. |
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 10 testable rules: CR one page / two states / `cr(CR0NN):`, BUG five sections / three states / `fix(BUG0NN):`, two global counters never reset, optional `linked-feature`, revealing BUG updates project-spec same PR | ~1400 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for a CR / BUG record with kind-conditional sections and states; valid / invalid examples; 6 forbidden patterns | ~1750 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: BUG closed without regression test, counter reset, "update spec sometime", oversized CR, CR in-progress state | ~950 |
+| `content/04-procedure.xml` | essential | 6 steps: classify, allocate the next number, write the file, move through lifecycle, commit with prefix, update project-spec for a revealing BUG | ~1150 |
+| `content/05-examples.xml` | recommended | CR042 and BUG019 files in full, commit subjects, the number-allocation one-liners, the BR-051 spec entry | ~800 |
+| `content/06-decision-tree.xml` | essential | Defect? → reveals missing rule? → BUG with / without spec update; else CR, feature, or straight commit | ~650 |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-cr-bug-tracking.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="user-flows.md Template Output Contract" version="1.0.0" est_tokens="1650" depth="essential">
+  <summary>The test-spec this methodology produces: `features/in-progress/F0NN-slug/user-flows.md`, one block per flow with five required fields, mapping 1:1 to Playwright spec files. The JSON Schema below is the machine-checkable view of that file; the subagent MUST satisfy it before returning to the caller.</summary>
+
+  <output-contract>
+    <required>
+      <field name="feature_id" type="string" required="true">`F0NN` — the feature directory prefix</field>
+      <field name="path" type="string" required="true">`features/in-progress/F0NN-slug/user-flows.md`</field>
+      <field name="flows" type="list" required="true">at least one flow; each with `id` (F-0N), `title`, `actor`, `preconditions`, `happy_path`, `negative_paths`, `playwright_spec`</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a flow missing any of the five fields</pattern>
+      <pattern id="f2">a flow with zero negative paths</pattern>
+      <pattern id="f3">a negative path without a trigger or without the expected error UX</pattern>
+      <pattern id="f4">a happy-path step without an expected result</pattern>
+      <pattern id="f5">two flows pointing at the same Playwright spec, or a flow with none</pattern>
+      <pattern id="f6">user-flows.md present for a backend-only feature (worker, job, cron, migration, API with no UI consumer)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Split one long flow into several F-0N blocks when they map to separate spec files.</transformation>
+      <transformation>Reuse a precondition across flows by restating it; do not reference another flow's block.</transformation>
+      <transformation>Pick the negative case from the unsexy-edge list (auth, network, invalid input, race, boundary) when the spec names none.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sdd/user-flows.json",
+  "title": "user-flows.md (per-feature test spec)",
+  "type": "object",
+  "required": ["feature_id", "path", "flows"],
+  "additionalProperties": false,
+  "properties": {
+    "feature_id": {"type": "string", "pattern": "^F[0-9]{3,}$"},
+    "path": {"type": "string", "pattern": "^features/in-progress/F[0-9]{3,}-[a-z0-9-]+/user-flows\\.md$"},
+    "flows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "actor", "preconditions", "happy_path", "negative_paths", "playwright_spec"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^F-[0-9]{2,}$"},
+          "title": {"type": "string", "minLength": 1},
+          "actor": {"type": "string", "minLength": 1},
+          "preconditions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "happy_path": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["action", "expected"],
+              "properties": {
+                "action": {"type": "string", "minLength": 1},
+                "expected": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "negative_paths": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["name", "trigger", "expected_ux"],
+              "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "trigger": {"type": "string", "minLength": 1},
+                "expected_ux": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "playwright_spec": {"type": "string", "pattern": "\\.spec\\.[jt]s$"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "feature_id": "F021",
+  "path": "features/in-progress/F021-upgrade-page/user-flows.md",
+  "flows": [
+    {
+      "id": "F-01",
+      "title": "Signed-in user upgrades to solo tier",
+      "actor": "signed-in free-tier user with verified email",
+      "preconditions": ["account exists", "Stripe customer record exists", "no active subscription"],
+      "happy_path": [
+        {"action": "Click \"Upgrade\" in nav", "expected": "routed to /upgrade"},
+        {"action": "Select \"Solo $19/mo\"", "expected": "Stripe Elements form appears"},
+        {"action": "Enter test card 4242 4242 4242 4242, submit", "expected": "request sent"},
+        {"action": "Wait for response", "expected": "200 redirect to /account?upgraded=solo; success toast; tier=solo in /api/account"}
+      ],
+      "negative_paths": [
+        {"name": "Card declined (test card 4000 0000 0000 0002)", "trigger": "submit declined card", "expected_ux": "inline error under card field \"Your card was declined.\", form stays editable, no charge created"},
+        {"name": "Network drop mid-submit", "trigger": "throttle network to offline after click submit", "expected_ux": "spinner times out at 30s, toast \"Connection lost. Try again.\" NO partial subscription"}
+      ],
+      "playwright_spec": "faion-net-e2e/tests/upgrade.spec.ts"
+    }
+  ]
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "feature_id": "F021",
+  "path": "features/in-progress/F021-upgrade-page/user-flows.md",
+  "flows": [
+    {
+      "id": "F-01",
+      "title": "Upgrade",
+      "actor": "user",
+      "preconditions": [],
+      "happy_path": [
+        {"action": "Click Upgrade"},
+        {"action": "Pay"},
+        {"action": "Done"}
+      ],
+      "negative_paths": []
+    }
+  ]
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every flow lists Actor, Preconditions, Happy path, Negative paths, Playwright spec path</item>
+      <item>Happy path is numbered, every step has an expected result, the success criterion is in the final step</item>
+      <item>At least one negative path per flow, each with trigger + expected error UX</item>
+      <item>Every flow points at one spec file; every spec file belongs to one flow</item>
+      <item>The feature actually has a user-facing flow — otherwise this file must not exist and the work verifies in tests/api/</item>
+    </list>
+  </section>
+
+  <reference path="templates/user-flows.md.tmpl">Fillable Markdown template with one-flow stub.</reference>
+</text>

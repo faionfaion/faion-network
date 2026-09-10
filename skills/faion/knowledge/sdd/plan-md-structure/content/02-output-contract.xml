@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="plan.md Structure Output Contract" version="1.0.0" est_tokens="1950" depth="essential">
+  <summary>The artefact this methodology produces is a per-feature plan.md with two H2 sections — or an explicit, justified skip for a trivial feature. The JSON Schema below (draft-07) pins both outcomes.</summary>
+
+  <output-contract>
+    <required>
+      <field name="feature" type="string" required="true">`F0NN` id of the feature in `features/todo/` or `features/in-progress/`</field>
+      <field name="skipped" type="boolean" required="true">true only when the feature has ≤3 tasks AND introduces no new contract</field>
+      <field name="skip_reason" type="string" required="false">one sentence; required when skipped = true</field>
+      <field name="design" type="object" required="false">package layout, feature-scoped API contracts, schemas, sequencing, trade-offs; required when skipped = false</field>
+      <field name="execution_plan" type="object" required="false">wave map, task table (`T0N` id, description, deps, token estimate), risks, rollback; required when skipped = false</field>
+      <field name="files" type="list" required="true">the plan file(s) on disk — exactly `plan.md`, never `design.md` + `implementation-plan.md`</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">files contains `design.md` or `implementation-plan.md` (rule r-single-file-only)</pattern>
+      <pattern id="f2">skipped = true with more than 3 tasks or any new contract / schema / sequencing constraint (rule r-skip-when-trivial)</pattern>
+      <pattern id="f3">skipped = true and skip_reason absent or longer than one sentence (rule r-when-in-doubt-write)</pattern>
+      <pattern id="f4">a task without a `T0N` id or without a `deps` entry (rule r-execution-plan-contents)</pattern>
+      <pattern id="f5">design.api_contracts restating a system-wide contract that already lives in project-spec/ (rule r-design-section-contents)</pattern>
+      <pattern id="f6">a cross-reference between Design and Execution Plan that points at another file (rule r-internal-anchors)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/plan-md-structure.json",
+  "type": "object",
+  "required": ["feature", "skipped", "files"],
+  "additionalProperties": false,
+  "properties": {
+    "feature": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+    "skipped": { "type": "boolean" },
+    "skip_reason": { "type": "string", "minLength": 1 },
+    "task_count": { "type": "integer", "minimum": 0 },
+    "new_contract": { "type": "boolean" },
+    "files": {
+      "type": "array",
+      "items": { "type": "string", "not": { "enum": ["design.md", "implementation-plan.md"] } }
+    },
+    "design": {
+      "type": "object",
+      "required": ["package_layout", "api_contracts", "schemas", "sequencing"],
+      "properties": {
+        "package_layout": { "type": "array", "items": { "type": "string" } },
+        "api_contracts": { "type": "array", "items": { "type": "string" } },
+        "schemas": { "type": "array", "items": { "type": "string" } },
+        "sequencing": { "type": "array", "items": { "type": "string" } },
+        "tradeoffs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "execution_plan": {
+      "type": "object",
+      "required": ["waves", "tasks", "risks", "rollback"],
+      "properties": {
+        "waves": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "mode", "tasks"],
+            "properties": {
+              "name": { "type": "string" },
+              "mode": { "type": "string", "enum": ["serial", "parallel"] },
+              "tasks": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{2,}$" } }
+            }
+          }
+        },
+        "tasks": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "description", "deps", "est_tokens"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^T[0-9]{2,}$" },
+              "description": { "type": "string", "minLength": 1 },
+              "deps": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{2,}$" } },
+              "est_tokens": { "type": "string" }
+            }
+          }
+        },
+        "risks": { "type": "array", "items": { "type": "string" } },
+        "rollback": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "skipped": { "const": true } } },
+      "then": {
+        "required": ["skip_reason"],
+        "properties": {
+          "task_count": { "maximum": 3 },
+          "new_contract": { "const": false },
+          "files": { "maxItems": 0 }
+        }
+      },
+      "else": {
+        "required": ["design", "execution_plan"],
+        "properties": {
+          "files": { "minItems": 1, "maxItems": 1, "items": { "const": "plan.md" } }
+        }
+      }
+    }
+  ]
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "feature": "F042",
+  "skipped": false,
+  "task_count": 6,
+  "new_contract": true,
+  "files": ["plan.md"],
+  "design": {
+    "package_layout": ["apps/accounts/verification/", "apps/notifications/email/"],
+    "api_contracts": ["POST /v1/verify {token} -> 204 | 410 token-expired"],
+    "schemas": ["users.verified_at timestamptz null"],
+    "sequencing": ["T02 must run after the T01 migration is deployed"],
+    "tradeoffs": ["Token in URL vs 6-digit code: URL chosen; one click, no second input field."]
+  },
+  "execution_plan": {
+    "waves": [
+      {"name": "A", "mode": "serial",   "tasks": ["T01", "T02"]},
+      {"name": "B", "mode": "parallel", "tasks": ["T03", "T04", "T05"]},
+      {"name": "C", "mode": "serial",   "tasks": ["T06"]}
+    ],
+    "tasks": [
+      {"id": "T01", "description": "Migration: add verified_at",    "deps": [],      "est_tokens": "~3k"},
+      {"id": "T02", "description": "Serializer: expose verified",   "deps": ["T01"], "est_tokens": "~2k"},
+      {"id": "T03", "description": "Email service: send verify mail", "deps": [],    "est_tokens": "~5k"},
+      {"id": "T04", "description": "Verify endpoint",               "deps": [],      "est_tokens": "~4k"},
+      {"id": "T05", "description": "Resend throttle",               "deps": [],      "est_tokens": "~2k"},
+      {"id": "T06", "description": "Integration test T03-T05",      "deps": ["T03", "T04", "T05"], "est_tokens": "~3k"}
+    ],
+    "risks": ["Mail provider rate limit during backfill — mitigate with batched sends."],
+    "rollback": "Revert the migration (column is nullable), feature-flag the verify endpoint off."
+  }
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "feature": "F043",
+  "skipped": true,
+  "task_count": 6,
+  "new_contract": true,
+  "files": ["design.md", "implementation-plan.md"]
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Exactly one file, `plan.md`, with exactly two H2 sections — or no file and a one-sentence skip reason for a ≤3-task, no-new-contract feature.</item>
+      <item>`## Design` covers package layout, feature-scoped contracts, schemas, sequencing (and trade-offs for non-obvious decisions).</item>
+      <item>`## Execution Plan` has a wave map, a task table with `T0N` ids / deps / token estimates, risks, and rollback.</item>
+      <item>No contract in `## Design` duplicates project-spec/; cross-references are in-file anchors.</item>
+      <item>No forbidden pattern matches; the record validates against the schema above.</item>
+    </list>
+  </section>
+</text>

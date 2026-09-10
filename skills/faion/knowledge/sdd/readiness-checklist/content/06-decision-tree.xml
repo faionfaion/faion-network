@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Readiness Checklist Decision Tree" version="1.0.0" est_tokens="850">
+  <summary>Lifecycle-position gate first, then preconditions, then the git diff decides which conditional items apply. Routes to run / a specific item rule / skip; every conclusion references a rule id from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-position">Is the feature in `features/in-progress/F0NN-slug/` and does the developer believe it is done?</root-question>
+
+    <branch when="q-position == true">
+      <question id="q-preconditions">Are the preconditions present? (SDD lifecycle features/{backlog,todo,in-progress,done} in use AND CI configured with lint + typecheck + unit)</question>
+
+      <branch when="q-preconditions == false">
+        <conclusion ref="skip-this-methodology">Skip; surface the missing precondition. Item 4 cannot be evaluated without CI.</conclusion>
+      </branch>
+
+      <branch when="q-preconditions == true">
+        <question id="q-diff">What does the git diff touch? (the diff decides, not the developer's assessment of scope)</question>
+
+        <branch when="backend_source_tree_changed == true">
+          <conclusion ref="i5-api-tests">Item 5 applies: API tests must pass and be linked as evidence.</conclusion>
+        </branch>
+
+        <branch when="user_facing_flow == true">
+          <conclusion ref="i6-playwright">Item 6 applies: at least one positive AND one negative Playwright case per flow.</conclusion>
+        </branch>
+
+        <branch when="visible_ui_changed == true">
+          <conclusion ref="i7-ui-ux-heuristics">Item 7 applies: documented Nielsen 5 + Norman 2 audit in ui-ux-design.md.</conclusion>
+        </branch>
+
+        <branch when="public_surface_added_or_modified == true">
+          <conclusion ref="i9-surface-coupling">Grep sibling surfaces in the same namespace and document the result in readiness.md.</conclusion>
+        </branch>
+
+        <branch when="backend_source_tree_changed == false AND user_facing_flow == false AND visible_ui_changed == false">
+          <conclusion ref="run-the-checklist">Run the procedure; items 5–7 are not-applicable with a reason, items 1–4 and 8–10 always apply.</conclusion>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="q-position == true AND unticked_applicable_items > 0">
+      <conclusion ref="gate-empty-box-blocks">Empty boxes block the transition. Do not move to done/.</conclusion>
+    </branch>
+
+    <branch when="q-position == false">
+      <conclusion ref="skip-this-methodology">Skip: a sibling methodology is the better fit for the lifecycle position — sdd-promotion-gate-checklist for backlog→todo, cr-bug-tracking's lighter flow for a standalone CR; a throwaway prototype has no done/ target.</conclusion>
+    </branch>
+  </decision-tree>
+
+  <example trace="backend-touched-no-ui"><![CDATA[
+inputs: {position=in-progress, developer_claims_done=true, ci=true, diff: apps/billing/views.py}
+q-position -> true
+q-preconditions -> true
+q-diff -> backend_source_tree_changed=true, user_facing_flow=false, visible_ui_changed=false
+=> conclusion i5-api-tests: item 5 applies; items 6, 7 not-applicable with reason.
+items 1-5, 8, 9 ticked with evidence; item 10 empty
+=> conclusion gate-empty-box-blocks: verdict blocked until deployed.
+]]></example>
+</text>

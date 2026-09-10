@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Project-Spec Structure Procedure" version="1.1.0" est_tokens="1350" depth="essential">
+  <summary>Six steps: locate or create the tree at its canonical path, lay out the flat files and routing subdirectories, land every feature's delta in the same PR, have the reviewer diff spec against code, then run the rebuild test at each delivery event as a blocking gate.</summary>
+
+  <step n="1" name="locate-or-create">
+    <input>The project repository; constitution.md if present.</input>
+    <action>Resolve the spec location: `.aidocs/project-spec/` at the repository root unless constitution.md declares another path under a "Project-spec location" heading. For a product spanning several repositories, resolve to the umbrella or monorepo root. Create the directory if absent and make sure `.aidocs/` is committed, not git-ignored.</action>
+    <output>An existing or new `project-spec/` directory, tracked in git, at exactly one location for the product.</output>
+    <decision-gate>Spec found only in an agent-home directory or in a git-ignored `.aidocs/` — move it into the repository and commit before continuing (rules r-canonical-path, r-one-spec-per-product, r-deviation-declared-in-constitution).</decision-gate>
+  </step>
+
+  <step n="2" name="lay-out-flat-files">
+    <input>The flat-file inventory in 05-examples ("Canonical tree").</input>
+    <action>Create `AGENTS.md` (entry routing doc; lists each subdir + flat file with one-line purpose), `CLAUDE.md` (single line: `@AGENTS.md`), and the ten reference files: mission, glossary, business-rules, data-model, auth, deploy, config-secrets, non-functional, observability, invariants. Keep only the current revision of each — no `old/`, no `*-v2.md`, no changelog inside the tree.</action>
+    <output>Twelve flat files at the top of project-spec/.</output>
+    <decision-gate>If the spec is currently a single .md file, split it here — never keep the monolith alongside the tree (rules r-directory-not-file, r-current-revision-only).</decision-gate>
+  </step>
+
+  <step n="3" name="add-routing-subdirectories">
+    <input>The subdirectory inventory in 05-examples.</input>
+    <action>Create `domain/`, `api/`, `integrations/`, `decisions/`. In each, write the AGENTS.md + CLAUDE.md routing pair BEFORE any content file. Then populate: one subdir per aggregate under domain/, per-surface subdirs under api/, one file per integration, one append-only ADR-style file per decision.</action>
+    <output>Four routing subdirectories, each navigable without a bulk load.</output>
+    <decision-gate>A subdirectory with content but no routing pair blocks the step (rule r-subdir-routing-pair).</decision-gate>
+  </step>
+
+  <step n="4" name="land-feature-delta-same-pr">
+    <input>A feature PR in flight; its spec.md delta.</input>
+    <action>Write the project-spec/ changes the feature requires into the SAME PR that ships the feature code. If the feature genuinely has no spec impact (pure perf tweak, copy fix, internal refactor with unchanged contract), write "no spec impact" plus a one-line reason in readiness.md instead.</action>
+    <output>Spec delta inside the feature PR, or a justified "no spec impact" line in readiness.md.</output>
+    <decision-gate>readiness.md carries a checkbox that blocks merge until the delta is drafted or "no spec impact" is justified (rules r-delta-same-pr, r-no-spec-impact-declared).</decision-gate>
+  </step>
+
+  <step n="5" name="reviewer-diffs-spec-against-code">
+    <input>The feature PR: code diff + spec diff.</input>
+    <action>Reviewer checks the spec diff against the code diff. Any behaviour, contract or invariant that changed in code but not in project-spec/ (or vice versa) is a mismatch.</action>
+    <output>Review verdict on spec/code consistency.</output>
+    <decision-gate>Mismatches block merge (rule r-reviewer-checks-spec-diff).</decision-gate>
+  </step>
+
+  <step n="6" name="rebuild-test">
+    <input>Trigger: a feature about to move to done/, OR a deploy about to follow a CR/BUG fix. Documents: project-spec/, ui-ux-design.md, constitution.md.</input>
+    <action>LLM dry-run protocol. Spin up an agent with read access ONLY to project-spec/, ui-ux-design.md, constitution.md. Strip code-repo access. Ask: "rebuild the project from these documents. List every assumption you must invent." Capture the assumption list verbatim. Each assumption that maps to real-code reality is a project-spec gap. File as a CR or fold into the in-flight feature's spec delta.</action>
+    <output>The verbatim assumption list and a pass/fail verdict, recorded per the output contract.</output>
+    <decision-gate>Pass criterion: the assumption list contains nothing that affects user-visible behaviour, public API shape, or invariants. Failing BLOCKS feature promotion to done/ and BLOCKS post-CR/BUG deploy (rules r-rebuild-in-two-weeks, r-rebuild-at-delivery-events, r-rebuild-failure-blocks).</decision-gate>
+  </step>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The tree validates against the schema in 02-output-contract.xml.</item>
+      <item>Every subdirectory has its routing pair; only current revisions are in the tree.</item>
+      <item>The most recent delivery event has a passing rebuild-test record.</item>
+      <item>No forbidden pattern matches; the decision tree (06) has been honoured.</item>
+    </list>
+  </section>
+</text>

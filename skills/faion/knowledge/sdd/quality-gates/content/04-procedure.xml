@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Quality Gates Procedure" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>Five steps: classify the layers from the git diff, look up the required gates in the matrix, pick tools without letting the choice block anything, dispose each gate in readiness.md, and make CI run every gate green before done/.</summary>
+
+  <step n="1" name="classify-layers-from-diff">
+    <input>The git diff of the change (feature, CR or BUG).</input>
+    <action>Identify which stack layers the diff touches: backend, frontend, user-facing flow (any surface where the user takes ordered actions), pure data (migration / ETL with no UI or API contract change), infrastructure / CI / build-system. Use the diff, not the developer's description of scope.</action>
+    <output>layers_touched, with `layers_source = git-diff`.</output>
+    <decision-gate>If the classification came from a self-assessment rather than the diff, redo it (rule r-applicability-from-diff).</decision-gate>
+  </step>
+
+  <step n="2" name="look-up-required-gates">
+    <input>layers_touched; the stack-to-gate matrix in 05-examples.</input>
+    <action>Read the matrix row for each layer touched and take the union: unit, API, Playwright happy path, Playwright pos+neg per flow, UI audit, migration tests, reversibility check, build / deploy smoke check. The lookup is mechanical.</action>
+    <output>required_gates.</output>
+    <decision-gate>Any visible UI element changed means the UI audit is required, even for "cosmetic" changes (rules r-backend-only-gates through r-infra-gates).</decision-gate>
+  </step>
+
+  <step n="3" name="pick-tools">
+    <input>required_gates; the language / stack of the codebase; the tool recommendations in 05-examples.</input>
+    <action>Choose a framework per gate. The recommendations are defaults the team can override per language / stack. API tests live with the code and run in CI — never a Postman collection.</action>
+    <output>tools map, recorded in the applicability record.</output>
+    <decision-gate>A different framework for the same gate is never a blocker; a framework choice worth arguing about is a decision for project-spec/decisions/ (rules r-framework-neutral, r-api-tests-live-with-code).</decision-gate>
+  </step>
+
+  <step n="4" name="dispose-in-readiness">
+    <input>required_gates; readiness.md for the change.</input>
+    <action>For every required gate write a tick with an evidence link (test path, CI job, audit note), OR "n/a + one-line reason" when the matrix says the gate does not apply. Human judgement re: applicability lives here.</action>
+    <output>readiness.md items 4, 5, 6 filled from the matrix.</output>
+    <decision-gate>A tick without evidence or an n/a without a reason is not disposed (rule r-readiness-tick-or-na).</decision-gate>
+  </step>
+
+  <step n="5" name="ci-runs-and-is-green">
+    <input>CI configuration; the required gates.</input>
+    <action>Make CI actually RUN every required gate and fail the build on a non-pass result. Check the run, not the tick: a green CI is mandatory before the feature moves to done/.</action>
+    <output>ci.ran_gates covering required_gates, ci.green = true.</output>
+    <decision-gate>A required gate that CI did not run, or a red run, blocks promotion to done/ (rule r-ci-runs-every-gate).</decision-gate>
+  </step>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The applicability record validates against the schema in 02-output-contract.xml.</item>
+      <item>Every required gate is ticked with evidence or n/a with a reason in readiness.md, and CI ran it green.</item>
+      <item>Both layers agree; neither was used as a substitute for the other.</item>
+      <item>No forbidden pattern matches; the decision tree (06) has been honoured.</item>
+    </list>
+  </section>
+</text>

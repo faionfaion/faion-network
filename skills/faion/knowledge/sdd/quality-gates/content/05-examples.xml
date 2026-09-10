@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Quality Gates — Matrix and Tool Recommendations" version="1.0.0" est_tokens="1100" depth="recommended">
+  <summary>The stack-to-gate matrix as a lookup table, and the recommended (not prescriptive) test tools per layer. The git diff is the input; the matrix is the lookup.</summary>
+
+  <section title="Stack-to-gate matrix">
+    <p>Quality gates are NOT prescriptive about test frameworks. They ARE prescriptive about which kind of test must exist for which kind of change.</p>
+    <list>
+      <item>Backend only → unit tests REQUIRED + API tests REQUIRED. No Playwright. No UI audit.</item>
+      <item>Backend + Frontend (full-stack feature) → unit tests REQUIRED + API tests REQUIRED + Playwright happy path REQUIRED. UI audit REQUIRED if any visible UI changed.</item>
+      <item>User-facing flow (any surface where the user takes ordered actions) → Playwright positive AND negative cases REQUIRED per flow. UI audit REQUIRED if web/mobile/TUI.</item>
+      <item>Frontend only (no backend changes) → unit tests REQUIRED + Playwright pos+neg per flow REQUIRED. No API tests for this feature.</item>
+      <item>Pure data (migration, ETL, no UI / API contract change) → unit tests REQUIRED + migration tests REQUIRED + reversibility check REQUIRED. No Playwright. No UI audit. No API tests.</item>
+      <item>Infrastructure / CI / build-system → unit tests on any logic changed + smoke check that build / deploy still produces a working artefact.</item>
+    </list>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Layer touched        | unit | api | playwright happy | playwright pos+neg | ui audit          | migration | reversibility | smoke
+---------------------|------|-----|------------------|--------------------|-------------------|-----------|---------------|------
+Backend only         | yes  | yes | -                | -                  | -                 | -         | -             | -
+Backend + Frontend   | yes  | yes | yes              | -                  | if visible change | -         | -             | -
+User-facing flow     | -    | -   | -                | yes, per flow      | if web/mobile/TUI | -         | -             | -
+Frontend only        | yes  | -   | -                | yes, per flow      | -                 | -         | -             | -
+Pure data            | yes  | -   | -                | -                  | -                 | yes       | yes           | -
+Infra / CI / build   | logic changed | - | -         | -                  | -                 | -         | -             | yes
+]]></code>
+      <note>Take the union of every row the diff touches. Each gate is then enforced twice: once in readiness.md (human judgement re: applicability) and once in CI (machine actual run).</note>
+    </example>
+  </section>
+
+  <section title="Recommended test tools per layer">
+    <p>The methodology is prescriptive on "must exist", NOT on framework choice. These are recommendations the team can override per language / stack.</p>
+    <list>
+      <item>Unit tests (Python) — pytest. (Alt: unittest if pytest is unavailable.)</item>
+      <item>Unit tests (TypeScript / JavaScript) — vitest or jest.</item>
+      <item>Unit tests (Go) — built-in `go test`.</item>
+      <item>API tests (Python) — pytest + httpx or DRF APIClient.</item>
+      <item>API tests (TypeScript) — supertest.</item>
+      <item>API tests (any language) — direct HTTP calls in the unit-test framework.</item>
+      <item>E2E user-facing — Playwright. (Cypress is an acceptable alternative; Selenium is not.)</item>
+      <item>Visual regression — Playwright screenshot diff + reg-cli or Chromatic.</item>
+      <item>Load / perf — k6 or Locust; outside per-feature scope, governed at project-spec/non-functional.md.</item>
+    </list>
+  </section>
+
+  <section title="Lessons">
+    <list>
+      <item>A reviewer computing readiness item 5 / 6 applicability, or a subagent's close-out logic deciding whether to run API tests, Playwright, both, or neither, both read the same matrix from the same diff.</item>
+      <item>Pin which gates apply at new-project setup, before code is written, so the tools in step 3 are already in CI when the first feature lands.</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="CR / BUG Tracking Output Contract" version="1.0.0" est_tokens="1750" depth="essential">
+  <summary>The artefact this methodology produces is one CR or BUG record: a one-page Markdown file under `crs/` or `bugs/` plus its state, number and commit prefix. The JSON Schema below (draft-07) pins the record's shape; the `kind` field selects which sections and states are mandatory.</summary>
+
+  <output-contract>
+    <required>
+      <field name="kind" type="string" required="true">`CR` or `BUG`</field>
+      <field name="id" type="string" required="true">`CR0NN` or `BUG0NN` from the matching global per-repo counter; never reused</field>
+      <field name="title" type="string" required="true">short title, reused verbatim in the commit subject</field>
+      <field name="state" type="string" required="true">CR: `todo` | `done`; BUG: `todo` | `in-progress` | `done`</field>
+      <field name="sections" type="object" required="true">CR: `why`, `what_changes`; BUG: `symptom`, `repro`, `root_cause`, `fix`, `regression_test`</field>
+      <field name="commit_subject" type="string" required="true">`cr(CR0NN): …` or `fix(BUG0NN): …`</field>
+      <field name="linked_feature" type="string" required="false">optional `F0NN` anchor to the feature that introduced the surface</field>
+      <field name="spec_update" type="object" required="false">BUG only; required when the BUG exposed a missing business rule: the `project-spec/` file and rule id added in the same PR</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a CR file longer than 80 lines (rule r-cr-one-page-three-sections — it is a feature)</pattern>
+      <pattern id="f2">a CR in state `in-progress` (rule r-cr-two-states)</pattern>
+      <pattern id="f3">a BUG in state `done` with an empty `regression_test` (rule r-bug-five-sections)</pattern>
+      <pattern id="f4">commit subject without the `cr(CR0NN):` / `fix(BUG0NN):` prefix, or with the prefix of the other kind (rules r-cr-commit-prefix, r-bug-commit-prefix)</pattern>
+      <pattern id="f5">an id that already exists in `todo/`, `in-progress/` or `done/`, or a counter that restarted at 001 (rules r-two-global-counters, r-counters-never-reset)</pattern>
+      <pattern id="f6">`exposes_missing_rule` = true with no `spec_update` (rule r-revealing-bug-updates-spec)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/cr-bug-tracking.json",
+  "type": "object",
+  "required": ["kind", "id", "title", "state", "sections", "commit_subject"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "type": "string", "enum": ["CR", "BUG"] },
+    "id": { "type": "string", "pattern": "^(CR|BUG)[0-9]{3,}$" },
+    "title": { "type": "string", "minLength": 3 },
+    "linked_feature": { "type": "string", "pattern": "^F[0-9]{3,}$" },
+    "state": { "type": "string", "enum": ["todo", "in-progress", "done"] },
+    "line_count": { "type": "integer", "minimum": 1 },
+    "sections": { "type": "object" },
+    "commit_subject": { "type": "string" },
+    "exposes_missing_rule": { "type": "boolean" },
+    "spec_update": {
+      "type": "object",
+      "required": ["file", "rule_id"],
+      "properties": {
+        "file": { "type": "string", "enum": ["project-spec/business-rules.md", "project-spec/invariants.md"] },
+        "rule_id": { "type": "string", "pattern": "^BR-[0-9]{3,}$|^INV-[0-9]{3,}$" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "CR" } } },
+      "then": {
+        "properties": {
+          "id": { "pattern": "^CR[0-9]{3,}$" },
+          "state": { "enum": ["todo", "done"] },
+          "line_count": { "maximum": 80 },
+          "commit_subject": { "pattern": "^cr\\(CR[0-9]{3,}\\): .+$" },
+          "sections": {
+            "required": ["why", "what_changes"],
+            "properties": {
+              "why": { "type": "string", "minLength": 1 },
+              "what_changes": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "BUG" } } },
+      "then": {
+        "properties": {
+          "id": { "pattern": "^BUG[0-9]{3,}$" },
+          "commit_subject": { "pattern": "^fix\\(BUG[0-9]{3,}\\): .+$" },
+          "sections": {
+            "required": ["symptom", "repro", "root_cause", "fix", "regression_test"],
+            "properties": {
+              "symptom": { "type": "string", "minLength": 1 },
+              "repro": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              "root_cause": { "type": "string", "minLength": 1 },
+              "fix": { "type": "string", "minLength": 1 },
+              "regression_test": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "exposes_missing_rule": { "const": true } }, "required": ["exposes_missing_rule"] },
+      "then": { "required": ["spec_update"] }
+    }
+  ]
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "kind": "BUG",
+  "id": "BUG019",
+  "title": "signup form accepts whitespace-only password",
+  "linked_feature": "F012",
+  "state": "done",
+  "sections": {
+    "symptom": "User submits \"   \" (3 spaces) as password -> account created, login impossible.",
+    "repro": ["Visit /signup", "Email: test@x.com, Password: \"   \"", "Submit -> 201 Created", "Try login with same creds -> 401."],
+    "root_cause": "UserSerializer.validate_password trims whitespace AFTER length check; the length check ran on the un-trimmed string.",
+    "fix": "Trim first, then length-check. Add MIN_LEN_AFTER_TRIM = 8.",
+    "regression_test": "tests/api/test_signup.py::test_password_whitespace_rejected"
+  },
+  "commit_subject": "fix(BUG019): reject whitespace-only passwords",
+  "exposes_missing_rule": true,
+  "spec_update": { "file": "project-spec/business-rules.md", "rule_id": "BR-051" }
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "kind": "CR",
+  "id": "CR001",
+  "title": "rewrite the billing subsystem",
+  "state": "in-progress",
+  "line_count": 240,
+  "sections": { "why": "billing is slow" },
+  "commit_subject": "fix(CR001): billing"
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`kind` matches the directory (`crs/` or `bugs/`), the id prefix, and the commit prefix.</item>
+      <item>The id is one higher than the maximum currently on disk across every state directory of that kind.</item>
+      <item>A CR has Why + What changes and fits on one page; a BUG has all five sections including a named regression test.</item>
+      <item>A BUG that exposed a missing business rule names the `project-spec/` file and rule id it added in the same PR.</item>
+      <item>No forbidden pattern matches; the record validates against the schema above.</item>
+    </list>
+  </section>
+</text>

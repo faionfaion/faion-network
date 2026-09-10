@@ -31,6 +31,7 @@ the path it sits at.
 |---|---|--:|---|---|
 | `playbooks/` | 2026-08-15 | 12 | Duplicate playbook pairs — the redundant side of each | [CR-007](../.aidocs/improvements/CR-007-playbook-duplicate-pairs.md) |
 | `knowledge/` | 2026-08-15 | 81 | Cross-domain slug twins: the redundant side of each, **after its unique content was merged into the survivor** | [CR-009](../.aidocs/improvements/CR-009-cross-domain-slug-ambiguity.md) · [domain-boundaries](../.aidocs/conventions/domain-boundaries.md) |
+| `knowledge/sdd/templates-planning/` | 2026-09-10 | 1 | The `sdd/templates` pair: byte-identical rules and contract, two payloads. Its eight real artefacts and its five distinct failure modes were **merged into `sdd/templates`** first; the seven pre-F-067 five-file subdirectories that made `templates` migration residue were deleted in the same change | [CR-006](../.aidocs/improvements/CR-006-sdd-templates-duplicate-pair.md) |
 
 ## Reading an archived methodology
 

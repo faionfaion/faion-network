@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Quality Gates Decision Tree" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>Preconditions first (readiness-checklist in use, CI exists, a user-facing or API surface exists), then the layers the git diff touches route to the matrix row. Every conclusion references a rule id from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-preconditions">Does the project use readiness-checklist, have CI (lint + typecheck + unit minimum), and expose a user-facing or API surface somewhere in the codebase — and is it neither a throwaway prototype nor a pure-documentation project?</root-question>
+
+    <branch when="q-preconditions == false">
+      <conclusion ref="skip-this-methodology">Throwaway prototype or pure-documentation project; or no readiness-checklist / CI to enforce a gate in. Skip.</conclusion>
+    </branch>
+
+    <branch when="q-preconditions == true AND layers_source != 'git-diff'">
+      <conclusion ref="r-applicability-from-diff">Recompute the layers from the diff before looking anything up; the developer's self-assessment of scope is not an input.</conclusion>
+    </branch>
+
+    <branch when="q-preconditions == true AND layers_source == 'git-diff'">
+      <question id="q-layers">Which stack layers does the diff touch?</question>
+
+      <branch when="layers == ['backend']">
+        <conclusion ref="r-backend-only-gates">Unit + API tests. No Playwright, no UI audit. Tick or n/a each in readiness.md; CI runs them green.</conclusion>
+      </branch>
+
+      <branch when="'backend' in layers AND 'frontend' in layers">
+        <conclusion ref="r-full-stack-gates">Unit + API + Playwright happy path; UI audit if any visible UI changed — "cosmetic" is still visible.</conclusion>
+      </branch>
+
+      <branch when="'user-facing-flow' in layers">
+        <conclusion ref="r-user-facing-flow-gates">Playwright positive AND negative cases per flow; UI audit if web / mobile / TUI.</conclusion>
+      </branch>
+
+      <branch when="layers == ['frontend']">
+        <conclusion ref="r-frontend-only-gates">Unit + Playwright pos+neg per flow. No API tests for this feature.</conclusion>
+      </branch>
+
+      <branch when="layers == ['pure-data']">
+        <conclusion ref="r-pure-data-gates">Unit + migration tests + reversibility check. No Playwright, no UI audit, no API tests.</conclusion>
+      </branch>
+
+      <branch when="layers == ['infra']">
+        <conclusion ref="r-infra-gates">Unit tests on any logic changed + a smoke check that build / deploy still produces a working artefact.</conclusion>
+      </branch>
+
+      <branch when="readiness_ticked == true AND ci_green == false">
+        <conclusion ref="r-ci-runs-every-gate">readiness.md is not proof of execution. CI must run every required gate and be green before the feature moves to done/.</conclusion>
+      </branch>
+
+      <branch when="ci_green == true AND readiness_has_evidence == false">
+        <conclusion ref="r-readiness-tick-or-na">A green run is not proof the assertions still exist. Tick each gate with an evidence link or n/a with a one-line reason.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="full-stack-feature"><![CDATA[
+inputs: {readiness_checklist=true, ci=true, layers_source=git-diff, layers=[backend, frontend, user-facing-flow]}
+q-preconditions -> true
+q-layers -> backend AND frontend; user-facing-flow
+=> conclusions r-full-stack-gates + r-user-facing-flow-gates: unit, api, playwright happy, playwright pos+neg per flow, ui audit.
+readiness.md: five ticks with evidence; CI runs unit/api/playwright green -> move to done/.
+]]></example>
+</text>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="CR / BUG Tracking — Worked Examples" version="1.0.0" est_tokens="800" depth="recommended">
+  <summary>One CR file (CR042), one BUG file (BUG019), the commit subjects for each, the shell one-liners that allocate the next number, and the business-rule entry BUG019 added to project-spec in the same PR.</summary>
+
+  <section title="CR file — one page, three sections">
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+# CR042: lower default rate-limit from 100/min to 60/min
+
+linked-feature: F031
+
+## Why
+Premium tier abuse logs show p95 traffic at 73/min from a single key.
+
+## What changes
+- `apps/api/middleware/ratelimit.py` — default 60.
+- `tests/api/test_ratelimit.py` — adjust expectations.
+- `project-spec/non-functional.md` — update the rate-limit table.
+      ]]></code>
+      <note>Commit subject: `cr(CR042): drop default ratelimit to 60/min`. Lifecycle: `crs/todo/` → `crs/done/`.</note>
+    </example>
+  </section>
+
+  <section title="BUG file — five sections">
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+# BUG019: signup form accepts whitespace-only password
+
+linked-feature: F012
+
+## Symptom
+User submits "   " (3 spaces) as password → account created, login impossible.
+
+## Repro
+1. Visit /signup
+2. Email: test@x.com, Password: "   "
+3. Submit → 201 Created
+4. Try login with same creds → 401.
+
+## Root cause
+`UserSerializer.validate_password` trims whitespace AFTER length check; the length check ran on the un-trimmed string.
+
+## Fix
+Trim first, then length-check. Add `MIN_LEN_AFTER_TRIM = 8`.
+
+## Regression test
+`tests/api/test_signup.py::test_password_whitespace_rejected`.
+      ]]></code>
+      <note>Commit subject: `fix(BUG019): reject whitespace-only passwords`. Lifecycle: `bugs/todo/` → `bugs/in-progress/` → `bugs/done/`.</note>
+    </example>
+  </section>
+
+  <section title="Allocating the next number">
+    <p>The next CR or BUG ID is one higher than the maximum currently on disk in either `todo/` or `done/` (and `in-progress/` for BUGs).</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Next CR
+ls crs/{todo,done}/ 2>/dev/null | grep -oE 'CR[0-9]+' | sort -V | tail -1
+# Next BUG
+ls bugs/{todo,in-progress,done}/ 2>/dev/null | grep -oE 'BUG[0-9]+' | sort -V | tail -1
+      ]]></code>
+      <note>Two separate global counters per repo; the counter is never reset.</note>
+    </example>
+  </section>
+
+  <section title="Revealing BUG — spec update in the same PR">
+    <example type="good">
+      <note>BUG019 (signup accepts whitespace-only password) → same PR adds `BR-051: passwords are length-validated AFTER whitespace trim, minimum 8 chars` to project-spec/business-rules.md.</note>
+    </example>
+  </section>
+
+  <section title="Lessons">
+    <list>
+      <item>Repro and root-cause are what distinguish a BUG from a CR; the regression-test section is what keeps the defect from returning.</item>
+      <item>The `linked-feature: F0NN` header is optional, but it is what answers "what shipped in F0NN — and what came back to bite us afterwards?"</item>
+    </list>
+  </section>
+</text>

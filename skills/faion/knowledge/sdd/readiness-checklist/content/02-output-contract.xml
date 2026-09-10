@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Readiness Checklist Output Contract" version="1.0.0" est_tokens="1700" depth="essential">
+  <summary>The artefact this methodology produces: `features/in-progress/F0NN-slug/readiness.md`, ten binary items each ticked with linked evidence, and the verdict that moves the feature to done/. The JSON Schema below is the machine-checkable view of that file; the subagent MUST satisfy it before returning to the caller.</summary>
+
+  <output-contract>
+    <required>
+      <field name="feature_id" type="string" required="true">`F0NN` — the feature directory prefix</field>
+      <field name="path" type="string" required="true">`features/in-progress/F0NN-slug/readiness.md`; becomes the last artefact in done/</field>
+      <field name="items" type="list" required="true">exactly 10 entries, n=1..10 in order; each with `applies`, `ticked`, and `evidence` when ticked or `reason` when not applicable</field>
+      <field name="verdict" type="string" required="true">`done` only when every applicable item is ticked; otherwise `blocked`</field>
+      <field name="reviewer" type="string" required="true">the reviewer (or main thread acting as reviewer) who ticked the boxes</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">an item ticked with no evidence link next to the checkbox</pattern>
+      <pattern id="f2">item 5, 6 or 7 marked not-applicable without a reason naming what the feature does not touch</pattern>
+      <pattern id="f3">item 8 unticked without a "no spec impact" statement and a one-line reason</pattern>
+      <pattern id="f4">item 9 ticked without naming the surfaces that were grepped</pattern>
+      <pattern id="f5">verdict = done while any applicable item is unticked</pattern>
+      <pattern id="f6">fewer or more than 10 items, or items out of order</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Mark items 5, 6, 7 not-applicable when the git diff activates none of their conditions, recording the reason.</transformation>
+      <transformation>Replace item 8's spec delta with an explicit "no spec impact" statement plus a one-line reason.</transformation>
+      <transformation>Record an intentional, disambiguated surface collision under item 9 instead of "no collision".</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/sdd/readiness-checklist.json",
+  "title": "Readiness Checklist (readiness.md)",
+  "type": "object",
+  "required": ["feature_id", "path", "reviewer", "items", "verdict"],
+  "additionalProperties": false,
+  "properties": {
+    "feature_id": {"type": "string", "pattern": "^F[0-9]{3,}$"},
+    "path": {"type": "string", "pattern": "^features/in-progress/F[0-9]{3,}-[a-z0-9-]+/readiness\\.md$"},
+    "reviewer": {"type": "string", "minLength": 2},
+    "verdict": {"type": "string", "enum": ["done", "blocked"]},
+    "items": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["n", "title", "applies", "ticked"],
+        "additionalProperties": false,
+        "properties": {
+          "n": {"type": "integer", "minimum": 1, "maximum": 10},
+          "title": {"type": "string", "minLength": 1},
+          "applies": {"type": "boolean"},
+          "ticked": {"type": "boolean"},
+          "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uri-reference", "minLength": 1}},
+          "reason": {"type": "string", "minLength": 1}
+        },
+        "allOf": [
+          {"if": {"properties": {"ticked": {"const": true}}}, "then": {"required": ["evidence"]}},
+          {"if": {"properties": {"applies": {"const": false}}}, "then": {"required": ["reason"], "properties": {"ticked": {"const": false}}}}
+        ]
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "feature_id": "F012",
+  "path": "features/in-progress/F012-billing-export/readiness.md",
+  "reviewer": "main-thread",
+  "verdict": "blocked",
+  "items": [
+    {"n": 1, "title": "ACs evidence", "applies": true, "ticked": true, "evidence": ["tests/api/test_export.py::test_csv_columns", "screenshots/F012-export-success.png"]},
+    {"n": 2, "title": "tasks done", "applies": true, "ticked": true, "evidence": ["features/in-progress/F012-billing-export/tasks/done/"]},
+    {"n": 3, "title": "commit hygiene", "applies": true, "ticked": true, "evidence": ["git log --oneline main..F012"]},
+    {"n": 4, "title": "CI green", "applies": true, "ticked": true, "evidence": ["https://ci.example.com/runs/4471"]},
+    {"n": 5, "title": "API tests", "applies": true, "ticked": true, "evidence": ["https://ci.example.com/runs/4471#pytest-apps-billing-tests-api"]},
+    {"n": 6, "title": "Playwright pos+neg", "applies": false, "ticked": false, "reason": "no user-facing flow: export is triggered by an existing button, no new page or form"},
+    {"n": 7, "title": "UI heuristics", "applies": false, "ticked": false, "reason": "no UI impact: no rendered element changed"},
+    {"n": 8, "title": "spec delta", "applies": true, "ticked": true, "evidence": ["project-spec/api.md#billing-export (same PR)"]},
+    {"n": 9, "title": "surface coupling", "applies": true, "ticked": true, "evidence": ["grep 'path: /billing' project-spec/api.md — sibling /billing/invoices, no overlap"]},
+    {"n": 10, "title": "deployed", "applies": true, "ticked": false}
+  ]
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "feature_id": "F012",
+  "path": "features/in-progress/F012-billing-export/readiness.md",
+  "reviewer": "team",
+  "verdict": "done",
+  "items": [
+    {"n": 1, "title": "ACs evidence", "applies": true, "ticked": true},
+    {"n": 5, "title": "API tests", "applies": false, "ticked": false},
+    {"n": 9, "title": "surface coupling", "applies": true, "ticked": true, "evidence": ["no public surface"]}
+  ]
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Ten items, in order, each a binary checkbox with a linked evidence artefact when ticked</item>
+      <item>Items 5, 6, 7: applicability derived from the git diff and stated, never waived silently</item>
+      <item>Item 8 carries the spec delta or the loud "no spec impact" escape hatch with a reason</item>
+      <item>Item 9 names what was grepped, not just the conclusion</item>
+      <item>Verdict is done only when no applicable box is empty; readiness.md is then the last artefact in done/</item>
+    </list>
+  </section>
+
+  <reference path="../quality-gates/AGENTS.md">Stack-to-gate matrix; consumed when computing which items apply.</reference>
+</text>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Quality Gates Output Contract" version="1.0.0" est_tokens="1600" depth="essential">
+  <summary>The artefact this methodology produces is a per-change gate-applicability record: the layers the git diff touched, the gates the matrix requires, how each is disposed in readiness.md, and whether CI actually ran them. The JSON Schema below (draft-07) pins it; readiness-checklist consumes it for items 4, 5 and 6.</summary>
+
+  <output-contract>
+    <required>
+      <field name="change" type="string" required="true">`F0NN`, `CR0NN` or `BUG0NN` the record belongs to</field>
+      <field name="layers_touched" type="list" required="true">computed from the git diff: backend, frontend, user-facing-flow, pure-data, infra</field>
+      <field name="required_gates" type="list" required="true">the matrix lookup for those layers: unit, api, playwright-happy, playwright-pos-neg, ui-audit, migration, reversibility, smoke</field>
+      <field name="readiness" type="list" required="true">one entry per gate in the matrix row: `tick` with an evidence link, or `n/a` with a one-line reason</field>
+      <field name="ci" type="object" required="true">the gates CI actually ran and whether the run is green</field>
+      <field name="tools" type="object" required="false">the framework chosen per gate — recorded, never a blocker</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">layers_touched derived from the author's description instead of the diff (rule r-applicability-from-diff)</pattern>
+      <pattern id="f2">a required gate whose readiness entry is `tick` without an evidence link, or `n/a` without a reason (rule r-readiness-tick-or-na)</pattern>
+      <pattern id="f3">a required gate absent from ci.ran_gates, or ci.green = false while the feature moves to done/ (rule r-ci-runs-every-gate)</pattern>
+      <pattern id="f4">`ui-audit` marked `n/a` with reason "cosmetic" when any visible element changed (rule r-full-stack-gates)</pattern>
+      <pattern id="f5">a gate blocked because of the framework chosen (rule r-framework-neutral)</pattern>
+      <pattern id="f6">tools.api = "postman-collection" (rule r-api-tests-live-with-code)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/quality-gates.json",
+  "type": "object",
+  "required": ["change", "layers_touched", "required_gates", "readiness", "ci"],
+  "additionalProperties": false,
+  "definitions": {
+    "gate": {
+      "type": "string",
+      "enum": ["unit", "api", "playwright-happy", "playwright-pos-neg", "ui-audit", "migration", "reversibility", "smoke"]
+    }
+  },
+  "properties": {
+    "change": { "type": "string", "pattern": "^(F|CR|BUG)[0-9]{3,}$" },
+    "layers_source": { "type": "string", "const": "git-diff" },
+    "layers_touched": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "type": "string", "enum": ["backend", "frontend", "user-facing-flow", "pure-data", "infra"] }
+    },
+    "required_gates": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "$ref": "#/definitions/gate" }
+    },
+    "readiness": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["gate", "status"],
+        "properties": {
+          "gate": { "$ref": "#/definitions/gate" },
+          "status": { "type": "string", "enum": ["tick", "n/a"] },
+          "evidence": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        },
+        "allOf": [
+          { "if": { "properties": { "status": { "const": "tick" } } }, "then": { "required": ["evidence"] } },
+          { "if": { "properties": { "status": { "const": "n/a" } } },  "then": { "required": ["reason"] } }
+        ]
+      }
+    },
+    "ci": {
+      "type": "object",
+      "required": ["ran_gates", "green"],
+      "properties": {
+        "ran_gates": { "type": "array", "items": { "$ref": "#/definitions/gate" } },
+        "green": { "type": "boolean" },
+        "run_url": { "type": "string" }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "not": { "const": "postman-collection" } }
+    }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "change": "F042",
+  "layers_source": "git-diff",
+  "layers_touched": ["backend", "frontend", "user-facing-flow"],
+  "required_gates": ["unit", "api", "playwright-happy", "playwright-pos-neg", "ui-audit"],
+  "readiness": [
+    {"gate": "unit",               "status": "tick", "evidence": "ci/run/8812#unit"},
+    {"gate": "api",                "status": "tick", "evidence": "tests/api/test_verify.py"},
+    {"gate": "playwright-happy",   "status": "tick", "evidence": "e2e/verify.spec.ts::happy"},
+    {"gate": "playwright-pos-neg", "status": "tick", "evidence": "e2e/verify.spec.ts::expired-token"},
+    {"gate": "ui-audit",           "status": "tick", "evidence": "ui-ux-design.md#verify-screen"}
+  ],
+  "ci": {"ran_gates": ["unit", "api", "playwright-happy", "playwright-pos-neg"], "green": true, "run_url": "ci/run/8812"},
+  "tools": {"unit": "pytest", "api": "pytest+httpx", "e2e": "playwright"}
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "change": "F043",
+  "layers_source": "author-says",
+  "layers_touched": ["backend"],
+  "required_gates": ["unit", "api"],
+  "readiness": [
+    {"gate": "unit", "status": "tick"},
+    {"gate": "api",  "status": "n/a"}
+  ],
+  "ci": {"ran_gates": ["unit"], "green": false},
+  "tools": {"api": "postman-collection"}
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>layers_touched came from the diff, and required_gates is exactly the matrix row for those layers.</item>
+      <item>Every required gate has a readiness entry: tick + evidence, or n/a + one-line reason.</item>
+      <item>CI ran every required gate and is green before the feature moves to done/.</item>
+      <item>The chosen frameworks are recorded but never the reason a gate is blocked; no Postman collection stands in for API tests.</item>
+      <item>No forbidden pattern matches; the record validates against the schema above.</item>
+    </list>
+  </section>
+</text>

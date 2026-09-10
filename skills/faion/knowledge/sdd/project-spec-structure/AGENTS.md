@@ -25,12 +25,20 @@
 
 ## Content
 
-| File | What's inside |
-|------|---------------|
-| `content/01-folder-shape.xml` | Directory tree: subdirs `domain/`, `api/`, `integrations/`, `decisions/`; flat files `mission.md`, `glossary.md`, `business-rules.md`, `data-model.md`, `auth.md`, `deploy.md`, `config-secrets.md`, `non-functional.md`, `observability.md`, `invariants.md`. Each subdir has AGENTS.md+CLAUDE.md. |
-| `content/02-rebuild-test.xml` | Definition of the rebuild test as acceptance gate. Run at end-of-feature transition to `done/` AND before each deploy following a CR/BUG fix. LLM dry-run protocol: read only project-spec + ui-ux-design.md + constitution.md; report gaps. |
-| `content/03-delta-update.xml` | Per-feature delta lands in the same PR that ships the feature. Reviewer checks diff matches code. `readiness.md` carries a checkbox that blocks merge until delta is drafted or "no spec impact" is justified. |
-| `content/04-location-decision.xml` | Canonical location: `.aidocs/project-spec/` at repo root, committed to git; ONE spec per product for multi-repo. Current-revision-only rule (history = git + `features/done/`). `constitution.md` declares deviations only. |
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 12 testable rules: directory not file, routing pair per subdir, rebuild test (two-week bar, delivery-event timing, blocking), same-PR delta + "no spec impact" + reviewer diff, canonical `.aidocs/project-spec/` path, current revision only, one spec per product, constitution deviation | ~1800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the project-spec/ tree + rebuild-test record; valid / invalid examples; 7 forbidden patterns | ~1800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: single giant file, subdir without routing pair, rebuild test on cron, "spec PR next week", spec in agent-home, git-ignored .aidocs | ~1150 |
+| `content/04-procedure.xml` | essential | 6 steps: locate/create at canonical path, flat files, routing subdirs, same-PR delta, reviewer diff, rebuild test (LLM dry-run protocol) as blocking gate | ~1350 |
+| `content/05-examples.xml` | recommended | The canonical tree with every file's purpose, subdirectory inventory, F0042 same-PR delta (good / bad) | ~1100 |
+| `content/06-decision-tree.xml` | essential | Applicability gate, location check, then routing by delivery event (PR open / moving to done / post-fix deploy / cron / new project) | ~850 |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-project-spec-structure.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 

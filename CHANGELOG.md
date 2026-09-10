@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-008 population B executed: the seven `sdd/` documents with no canonical
+  part now carry all six.** `cr-bug-tracking`, `plan-md-structure`,
+  `project-spec-structure`, `quality-gates`, `readiness-checklist`,
+  `ui-ux-design-template`, `user-flows-template` were authored to an older
+  topical shape (`01-folder-shape.xml`, `02-rebuild-test.xml`, …), so a caller
+  could not address any part of them through the closed `--parts` vocabulary,
+  and two validators had them in the baseline as known failures. Each was
+  restructured, not rewritten: every `<rule>` collected into `01-core-rules.xml`
+  (7-12 per document), a draft-07 contract with a valid and an invalid example
+  verified with `jsonschema`, subject antipatterns, the procedure, the worked
+  examples, and a decision tree routing to the new rule ids. Two distinctive
+  phrases per topical file were grepped in the new parts before that file was
+  deleted; nothing was left unplaced. `project-spec-structure` is the
+  methodology `faion-cli` cites as the one its own spec directory implements.
+
+  The remaining v2 failure on five of them was one word: `meta.json`
+  `"complexity": "low"`, which is not in the validator's `light | medium |
+  deep`. Fixed. **Twelve lines leave `validator-baseline.txt`** — all seven
+  `decision-tree` entries and all five `methodology-v2` entries for these slugs —
+  and the gate is clean against the smaller baseline. One stale path in
+  `.aidocs/research/ai-sdlc-landscape-2026/placement/03-ears-constitution-delta.md`
+  still names `readiness-checklist/content/01-checklist.xml`; the rule ids it
+  anchors on were kept verbatim so the anchor itself holds.
+
+  Each of the seven also gained `scripts/validate-<slug>.py`, stamped in the
+  `cd-basics` shape with a draft-07 subset (including `allOf` and `if/then/else`,
+  which two of the contracts rely on) and a self-test that runs the contract's own
+  valid and invalid examples — B4.1 requires one once a contract declares a
+  schema, and `regen-methodology-validators.py` only strengthens an existing file.
+- **CR-006 executed: the `sdd/templates` pair is one methodology.** The two
+  shared byte-identical rules and contract and differed only in payload:
+  `templates` carried 40 files of the pre-F-067 five-file Markdown pattern
+  across seven subdirectories — migration residue — while `templates-planning`
+  carried eight real artefacts in the current shape, five of them existing
+  nowhere else. The CR's condition for option 1 held on inspection: all 62
+  inbound `[[templates]]` links are the same bare `- [[templates]]` bullet in a
+  `## Related` block, generated boilerplate rather than 62 decisions.
+
+  So `templates` keeps the slug and the links and receives the payload: the
+  eight artefacts (plus `pattern-record.json`, `mistake-record.json` and
+  `new-feature.sh`, which were on disk and in no `## Templates` row, now
+  declared and headered), the better envelope, and the failure modes merged —
+  eleven after dropping the one antipattern `templates-planning` stated twice.
+  The seven legacy subdirectories are deleted; nothing outside the slug
+  referenced them. `templates-planning` is archived whole under
+  `.archive/knowledge/sdd/`, merge-then-archive as CR-009 set the precedent.
+  Manifest regenerated (2,988 → 2,987 entries), L1 and the `sdd` L2 index
+  regenerated. The 21 other L2 indexes changed only their `generated=` stamp and
+  were reverted. Both envelopes still carry `TBD` Prerequisites, routing and
+  scripts rows and `status: draft`; the merge was mechanical and does not
+  pretend otherwise.
+
 - **CR-011, batch 4 of 4: `pm` and `sdd` — 12 methodologies, and the count is
   zero.** `rag-policy-thresholds`, a document named for thresholds that stated
   none, now requires every threshold numeric with a comparator, worst signal

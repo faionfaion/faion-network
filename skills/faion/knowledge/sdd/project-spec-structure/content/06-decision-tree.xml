@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Project-Spec Structure Decision Tree" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>Applicability gate first (SDD lifecycle, committed .aidocs/, durable domain model), then location, then the delivery event that triggered the call. Every conclusion references a rule id from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-applies">Does the project run the SDD lifecycle with a committed `.aidocs/`, live long enough that a per-feature spec is not enough context, and carry a durable domain model (not a one-off script, throwaway prototype, or pure plumbing)?</root-question>
+
+    <branch when="q-applies == false">
+      <conclusion ref="skip-this-methodology">Skip. One-off script or throwaway prototype — overhead exceeds value; pure plumbing / glue code has no durable domain model to capture.</conclusion>
+    </branch>
+
+    <branch when="q-applies == true AND spec_location != '.aidocs/project-spec/' AND constitution_declares_path == false">
+      <conclusion ref="r-canonical-path">Create or move the tree to `.aidocs/project-spec/` at the repository (or monorepo / umbrella) root and commit it. Agent-home paths and git-ignored `.aidocs/` are not a source of truth.</conclusion>
+    </branch>
+
+    <branch when="q-applies == true AND spec_is_single_file == true">
+      <conclusion ref="r-directory-not-file">Split the monolith into the flat files and routing subdirectories in 05-examples; add the AGENTS.md + CLAUDE.md pair to every subdirectory before content.</conclusion>
+    </branch>
+
+    <branch when="q-applies == true AND spec_location_ok == true">
+      <question id="q-event">Which delivery event triggered this call?</question>
+
+      <branch when="event == 'feature-pr-open'">
+        <conclusion ref="r-delta-same-pr">Land the project-spec/ delta in the same PR, or state "no spec impact" with a one-line reason in readiness.md; the reviewer diffs spec against code before merge.</conclusion>
+      </branch>
+
+      <branch when="event == 'feature-moving-to-done' OR event == 'deploy-after-cr-bug-fix'">
+        <conclusion ref="r-rebuild-at-delivery-events">Run the rebuild test (LLM dry-run, step 6 of 04-procedure). A failing assumption list blocks promotion to done/ and blocks the deploy.</conclusion>
+      </branch>
+
+      <branch when="event == 'calendar' OR event == 'quarterly-cron'">
+        <conclusion ref="r-rebuild-at-delivery-events">Do not run the rebuild test on a calendar. Wait for the next delivery event; a cron-driven test finds drift months deep and becomes a chore.</conclusion>
+      </branch>
+
+      <branch when="event == 'new-project-setup'">
+        <conclusion ref="run-the-checklist">Run steps 1-3 of 04-procedure: locate at the canonical path, lay out the flat files, add the routing subdirectories with their AGENTS.md + CLAUDE.md pairs.</conclusion>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="feature-promotion"><![CDATA[
+inputs: {sdd_lifecycle=true, aidocs_committed=true, domain_model=durable, spec_location='.aidocs/project-spec/', event='feature-moving-to-done'}
+q-applies -> true
+spec_location_ok -> true
+q-event -> feature-moving-to-done
+=> conclusion r-rebuild-at-delivery-events: run the LLM dry-run; assumption list clean of user-visible behaviour, API shape, invariants -> move F042 to done/.
+]]></example>
+</text>

@@ -25,11 +25,20 @@
 
 ## Content
 
-| File | What's inside |
-|------|---------------|
-| `content/01-checklist.xml` | The 10 verbatim items with rationale per item; this is the canonical list. |
-| `content/02-quality-gates.xml` | Conditional rules: API tests required when backend touched; Playwright when user-facing; pos+neg required for every Playwright file. |
-| `content/03-surface-coupling.xml` | The surface-coupling failure mode (F001→F002 split lesson): public surfaces — skill triggers, API paths, CLI flags — need explicit coupling review. |
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 11 testable rules: the 10 verbatim items (i1–i10) with rationale per item, conditional gates for 5/6/7 folded in, plus the empty-box-blocks gate | ~1800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for readiness.md — 10 items, evidence when ticked, reason when not-applicable, verdict — with valid / invalid examples and forbidden patterns | ~1700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: happy-path-only Playwright, the F001→F002 skill-trigger collision, unnamed surface check, scope by self-assessment, merge-equals-done | ~1000 |
+| `content/04-procedure.xml` | essential | 7 steps: locate, derive conditional items from the git diff, tick 1–4, tick 5–7, spec delta, surface-coupling grep, deploy and gate | ~1300 |
+| `content/05-examples.xml` | recommended | A rendered readiness.md, the public-surface inventory, the API-test and surface-coupling grep evidence examples, the F001→F002 anchor | ~900 |
+| `content/06-decision-tree.xml` | essential | Lifecycle position → preconditions → what the git diff touches; routes to item rules, the empty-box gate, run or skip | ~850 |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-readiness-checklist.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 

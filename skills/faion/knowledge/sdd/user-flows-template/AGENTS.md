@@ -26,17 +26,26 @@
 
 ## Content
 
-| File | What's inside |
-|------|---------------|
-| `content/01-when-required.xml` | Required only when feature has user-facing flow; backend-only → API tests in tests/api/, no user-flows.md. |
-| `content/02-shape.xml` | Per-flow shape: Actor, Preconditions, Happy path (numbered steps + expected result), Negative paths (each with trigger + expected error UX), Playwright spec path. |
-| `content/03-positive-negative.xml` | Every flow MUST have AT LEAST 1 positive AND 1 negative case. Negative trumps positive for unsexy edges. |
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 7 testable rules: required when user-facing flow, forbidden for backend-only, five fields per flow, numbered happy path with success last, negative trigger + UX, pos+neg per flow, 1:1 spec path | ~1250 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for user-flows.md — flows with actor, preconditions, happy_path, negative_paths, playwright_spec — with valid / invalid examples and forbidden patterns | ~1650 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: user-flows for a background worker, three positives zero negatives, missing field breaks the 1:1 mapping, undocumented flow is an untested flow | ~850 |
+| `content/04-procedure.xml` | essential | 7 steps: decide applicability, instantiate template, enumerate flows, actor and preconditions, happy path, negative paths, spec path and gate on item 6 | ~950 |
+| `content/05-examples.xml` | recommended | The five fields, the F-01 upgrade worked flow, the stripe-checkout illustration, the unsexy-edge list, skipped cases and what verifies them | ~1000 |
+| `content/06-decision-tree.xml` | essential | User-facing flow? → artefact exists? → per-flow shape checks; routes to produce, a specific rule, run, or backend-only skip | ~850 |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
 | `templates/user-flows.md.tmpl` | Fillable Markdown template with one-flow stub. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-user-flows-template.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 

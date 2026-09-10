@@ -4,7 +4,7 @@ cr_id: CR-006
 title: "sdd/templates and sdd/templates-planning: one content_id, two different payloads"
 priority: P2
 created: 2026-08-15
-status: proposed
+status: executed 2026-09-10 — option 1; the 62 inbound links were verified as one identical boilerplate bullet each
 affected_components: [faion-network/skills/faion/knowledge/sdd, skills/tier-manifest.json]
 ---
 

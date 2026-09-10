@@ -26,18 +26,26 @@
 
 ## Content
 
-| File | What's inside |
-|------|---------------|
-| `content/01-when-required.xml` | Required cases (web, mobile, TUI); skipped cases (backend, API, data migrations); the explicit-skip rule. |
-| `content/02-nielsen-five.xml` | The 5 Nielsen heuristics chosen for per-feature checking: N1 visibility of status, N3 user control & freedom, N4 consistency & standards, N5 error prevention, N6 recognition over recall. Why these five. |
-| `content/03-norman-principles.xml` | Affordance (clickable looks clickable; references `hover-only-on-clickable` memory rule) and feedback (acknowledgment within 100ms). |
-| `content/04-template-sections.xml` | The required sections in `ui-ux-design.md`: Intent, Layout, States (empty/loading/error/success/disabled), Nielsen audit (5 rows), Norman audit (2 rows), Copy & microcopy. |
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 8 testable rules: required when UI touched, explicit skip in readiness item 7, exactly five Nielsen rows, affordance, hover-only-on-clickable, feedback within 100ms, six sections in order, States table all five | ~1500 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for ui-ux-design.md — intent, layout, five states, Nielsen N1/N3/N4/N5/N6, Norman affordance/feedback, copy — with valid / invalid examples and forbidden patterns | ~2150 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: just-in-case design doc, silent skip, auditing all ten, decorative hover, silent submit, success-only States | ~950 |
+| `content/04-procedure.xml` | essential | 8 steps: decide applicability, instantiate template, intent and layout, States table, Nielsen audit, Norman audit, copy, shape check and close on item 7 | ~1100 |
+| `content/05-examples.xml` | recommended | The five Nielsen heuristics with one-line tests and why these five, the feedback good/bad pair, required and skipped surface lists, a rendered ui-ux-design.md | ~1450 |
+| `content/06-decision-tree.xml` | essential | Rendered output? → artefact exists? → shape checks; routes to produce, a specific rule, run, or explicit skip | ~850 |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
 | `templates/ui-ux-design.md.tmpl` | Fillable Markdown template with the six sections and audit-row stubs. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-ui-ux-design-template.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
