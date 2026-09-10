@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **A failed deploy reports failure again, and can roll back** (CR-012 #4).
+  `backend/deploy-scripts/templates/deploy.sh` ran its health probe as
+  `curl -fsS … && break` inside a loop. Under `set -e` the failure of a
+  non-final command in an AND-list is ignored, so ten dead probes simply fell
+  out of the loop into `echo OK` — with the `current` symlink already switched
+  and the service already reloaded. Reproduced here against a closed port:
+  exit 0.
+
+  The probe now sets a flag inside an `if`, a failed check rolls `current` back
+  and exits 1, and the switch step creates the `previous` symlink the
+  methodology's own rule requires ("keep a `previous` symlink; rollback = one
+  mv") and that nothing in the file ever wrote — while line 1 advertised a
+  rollback path. Three of its own core rules were being broken by the template
+  that implements them.
+
 - **`template-jinja-migration.md` §2b corrected.** It described `--migrate` as
   rewriting an inline `## Template Contents` body, and stated the rule for a
   methodology that has no such section. There are none left, so the rule is now

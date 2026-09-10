@@ -23,14 +23,42 @@ echo "[3/5] install editable"
 (cd "$RT/releases/$TS" && python3 -m venv .venv && .venv/bin/pip install -e .)
 
 echo "[4/5] switch symlinks"
+# Keep the outgoing release addressable before replacing it. The methodology's
+# own rule is "keep a `previous` symlink; rollback = one mv", and nothing here
+# used to create one, while line 1 advertised a rollback path.
+if [ -e "$RT/current" ]; then
+  ln -sfn "$(readlink -f "$RT/current")" "$RT/previous.new"
+  mv -T "$RT/previous.new" "$RT/previous"
+fi
 ln -sfn "$RT/releases/$TS" "$RT/current.new"
 mv -T "$RT/current.new" "$RT/current"
 systemctl --user reload "$PROJECT"
 
 echo "[5/5] smoke check"
-for i in $(seq 1 10); do
-  curl -fsS http://127.0.0.1:8000/health && break
+# `curl -fsS … && break` is what made this script lie. Under `set -e` the
+# failure of a non-final command in an AND-list is IGNORED, so ten dead probes
+# fell out of the loop and reached `echo OK` with the symlink already switched.
+# Verified against a closed port: exit 0, every time.
+healthy=0
+for _ in $(seq 1 10); do
+  if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+    healthy=1
+    break
+  fi
   sleep 1
 done
+
+if [ "$healthy" -ne 1 ]; then
+  echo "smoke check FAILED after 10 probes — rolling back" >&2
+  if [ -e "$RT/previous" ]; then
+    ln -sfn "$(readlink -f "$RT/previous")" "$RT/current.new"
+    mv -T "$RT/current.new" "$RT/current"
+    systemctl --user reload "$PROJECT"
+    echo "rolled back to $(readlink -f "$RT/current")" >&2
+  else
+    echo "no previous release to roll back to; $RT/current still points at $TS" >&2
+  fi
+  exit 1
+fi
 
 echo OK
