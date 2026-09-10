@@ -6,4 +6,70 @@ depends-on: content/02-output-contract.xml schema for mcp-security
 token-budget-impact: ≤500 tokens to fill
 -->
 
-# Stub — see methodology AGENTS.md ## Templates table.
+# Consent Flow: {{ rubric_name }}
+
+## Context
+
+- slug: mcp-security
+- owner: <role:person>
+- approver: <role:person>
+- produced_at: <YYYY-MM-DDTHH:MM:SSZ>
+- scope: `<scope>` (local_desktop / remote_single_tenant / remote_multi_tenant)
+- client: <host name and version from the inventory>
+- consent policy: `<consent_policy>` (per_call / per_session / always_allow_listed_only)
+
+## Shared rules (apply to every primitive)
+
+- Rule r1: the consent surface is visually distinct from model output and from tool text; the user cannot mistake it for chat.
+- Rule r1: a decision is cached at most for the session; a new session asks again.
+- Rule r4: a server calling a method it did not declare in `initialize` gets no prompt at all; the call is rejected and logged.
+- Rule r5: consent granted to one server never carries over to another server, even for a same-named tool.
+- Rule r6: every prompt shown and every decision taken is written to the audit log with server_id, tool_name, caller_session, arguments_hash, outcome, timestamp.
+- Rule r7: the prompt names the server by its verified identity (signed manifest / pinned cert); an unverified server is blocked before any prompt.
+
+## Tools (actions)
+
+- trigger: first call to `<server>__<tool>` in this session
+- surface: {{ surface }}
+- shows: verified server name, tool name, the server-supplied description labelled "text from server", the argument summary
+- rule r3: the description and the arguments are displayed as quoted data, never interpreted
+- options: allow once | allow for session | deny
+- cache scope: <per_call: never; per_session: until session end; always_allow_listed_only: only for tools on the allow-list, still per session>
+- deny path: the model receives "user denied tool call" as the tool result; no retry without a new prompt
+
+## Resources (read-only data)
+
+- trigger: first `resources/read` for a URI prefix (e.g. `file://`, `db://`)
+- surface: <same surface as tools, with a "read" badge>
+- shows: verified server name, URI prefix, data class ({{ public_internal_pii }})
+- cache scope: per URI prefix, per session
+- deny path: resource read returns empty; model is told the read was refused
+
+## Prompts (templates)
+
+- trigger: user picks a server prompt from the host's prompt list
+- surface: prompt list entry shows the server label next to the prompt name
+- rule r3: prompt body is rendered for the user to read before it is sent; server text is never auto-inserted into the system prompt
+- cache scope: none; each selection is an explicit user action
+- deny path: user closes the preview; nothing is sent
+
+## Sampling (server asks the host to call the model)
+
+- trigger: `sampling/createMessage` from a server
+- surface: {{ modal }}, blocking; shows the full messages the server wants sent and the model it asks for
+- rule r1: host approval is mandatory each time; no per-session cache for sampling
+- deny path: server receives a JSON-RPC error; the host logs the attempt
+
+## Audit record (rule r6)
+
+```json
+{"ts": "<ISO-8601>", "server_id": "<verified-name>", "primitive": "tool|resource|prompt|sampling",
+ "tool_name": "<name>", "caller_session": "<session-id>", "arguments_hash": "<sha256>",
+ "decision": "allow_once|allow_session|deny", "outcome": "ok|error|denied"}
+```
+
+## Review
+
+- cadence: monthly | quarterly
+- next_review_at: <YYYY-MM-DD>
+- outcome: <filled at next review>

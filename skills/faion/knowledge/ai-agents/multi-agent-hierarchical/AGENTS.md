@@ -63,6 +63,12 @@
 | Trivial workers (classify / format) | haiku | Cost-saver per role-specialized-models. |
 | Cycle-check on plan | code (no LLM) | Plan-time graph check; deterministic. |
 
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/hierarchical_runner.py` | Synchronous manager-worker runner: typed JSON plan with one repair attempt, Kahn cycle check, per-worker timeout, abort/degrade/retry policy, Synthesis envelope with trace. |
+
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->

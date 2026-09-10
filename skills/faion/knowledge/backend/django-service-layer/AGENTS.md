@@ -69,6 +69,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/exceptions.py` | `core/exceptions.py` skeleton — `ApplicationError`, `NotFoundError`, `ValidationError`, `PermissionDeniedError`. |
+| `templates/services.py` | `apps/<app>/services.py` module layout — import order, `__all__`, shared locked-lookup and audit helpers, cancel + transfer services with one atomic boundary and `on_commit` dispatch; create/update bodies live in the sibling templates. |
 
 ## Scripts
 

@@ -6,4 +6,86 @@ depends-on: content/02-output-contract.xml schema for fine-tuning-openai-eval
 token-budget-impact: ≤500 tokens to fill
 -->
 
-# Stub — see methodology AGENTS.md ## Templates table.
+# Eval Report: <ft_model_id> vs <base_model_id>
+
+**Task:** <task_name>
+**Date:** <date>
+**Run by:** <owner>
+**Gate decision:** **<gate_decision>** (pass | fail | hold)
+
+## 1. Eval set (rule r1-held-out-required, r2-min-200-examples)
+
+| Field | Value |
+|-------|-------|
+| `eval_set_path` | <eval_set_path> |
+| `eval_count` | <eval_count> (minimum 200; 500 preferred) |
+| Disjoint from train + val | <eval_disjoint> (hash-disjoint check by `openai-eval-runner.py --train`) |
+| Split origin | <split_origin> (same hash rule as data-prep, different bucket range) |
+
+## 2. Models
+
+| Arm | Model ID | Temperature | Max tokens |
+|-----|----------|-------------|------------|
+| fine-tuned | `<ft_model_id>` | <temperature> | <max_tokens> |
+| base | `<base_model_id>` | <temperature> | <max_tokens> |
+
+Identical system prompt and sampling parameters on both arms; only the model ID differs.
+
+## 3. Judge (rule r4-judge-rubric-stable)
+
+| Field | Value |
+|-------|-------|
+| Judge model | <judge_model> |
+| Rubric file | `templates/judge-prompt.txt` |
+| `rubric_version` | <rubric_version> |
+| Rubric sha256 | `<rubric_sha256>` |
+| Criterion | <criterion> |
+
+The rubric was not edited during the run; both arms were judged with the same hash.
+
+## 4. Metrics (rule r3-two-or-more-metrics, r5-confidence-interval)
+
+At least two task-relevant metrics. CI is a 95% Wilson interval for proportions,
+bootstrap (1000 resamples) for anything else. Overlapping CIs mean no proven gain.
+
+| Metric | ft score | base score | delta | 95% CI (ft) | Threshold | Passed |
+|--------|----------|------------|-------|-------------|-----------|--------|
+| <metric_1_name> | <metric_1_ft_score> | <metric_1_base_score> | <metric_1_delta> | <metric_1_ci> | <metric_1_threshold> | <metric_1_passed> |
+| <metric_2_name> | <metric_2_ft_score> | <metric_2_base_score> | <metric_2_delta> | <metric_2_ci> | <metric_2_threshold> | <metric_2_passed> |
+
+Add one row per further metric (format compliance, safety refusal rate, latency p95, cost per request).
+
+## 5. Gate decision (rule r6-gate-explicit)
+
+Per-metric gate is binary: `passed` = ft score meets the threshold AND the ft CI does
+not overlap the base CI. Overall gate = every metric passed.
+
+| Outcome | Condition | Next step |
+|---------|-----------|-----------|
+| pass | all metrics passed | hand `ft_model_id` + this report to `fine-tuning-openai-deployment` |
+| hold | a metric is within CI overlap of base | grow the eval set or re-run; do not deploy |
+| fail | any metric below threshold | iterate data or hyperparameters; do not deploy |
+
+**Decision:** <gate_decision>
+**Rationale:** <gate_rationale>
+
+## 6. Borderline cases
+
+<borderline_cases>
+
+(Examples where ft and base disagree and the judge scored 3; reviewed by a human.)
+
+## 7. Cost and latency of the eval run
+
+| Arm | Requests | Tokens in / out | USD | p95 latency ms |
+|-----|----------|-----------------|-----|----------------|
+| fine-tuned | <eval_count> | <ft_tokens> | <ft_cost_usd> | <ft_p95_ms> |
+| base | <eval_count> | <base_tokens> | <base_cost_usd> | <base_p95_ms> |
+
+## 8. Self-check
+
+- [ ] `eval_count` >= 200 and disjointness check recorded (r1, r2)
+- [ ] >= 2 metrics with threshold, CI and passed flag (r3, r5)
+- [ ] Rubric hash identical for both arms; no mid-run edit (r4)
+- [ ] `gate_decision` matches the all-pass rule (r6)
+- [ ] `scripts/validate-fine-tuning-openai-eval.py` exits 0

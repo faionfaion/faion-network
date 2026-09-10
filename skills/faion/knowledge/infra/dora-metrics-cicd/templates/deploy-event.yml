@@ -4,4 +4,84 @@
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200 tokens when loaded as context
 
-# Skeleton — replace placeholder values before applying.
+# JSON Schema (draft-07, YAML form) for the deploy event every pipeline emits
+# AFTER a successful or failed production deploy. Shape follows CDEvents
+# dev.cdevents.service.deployed (spec 0.4.x); the DORA-specific fields the
+# rules need (commit_timestamp, success) live in customData.
+# Emit from CI with `curl -X POST "$DORA_EVENTS_URL" -H "Authorization: Bearer $DORA_API_KEY"`.
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://faion.net/schemas/deploy-event.json"
+title: DeployEvent
+type: object
+additionalProperties: false
+required: [context, subject, customData, customDataContentType]
+properties:
+  context:
+    type: object
+    required: [version, id, source, type, timestamp]
+    properties:
+      version: { type: string, pattern: "^0\\.4\\." }
+      id: { type: string, format: uuid }
+      source: { type: string, description: "URI of the emitting CI system, e.g. /ci/github-actions" }
+      type:
+        type: string
+        enum: [dev.cdevents.service.deployed.0.2.0, dev.cdevents.service.rolledback.0.2.0]
+      # ingest-deploy-event-cdevents: the deploy timestamp is the event timestamp.
+      timestamp: { type: string, format: date-time }
+  subject:
+    type: object
+    required: [id, type, content]
+    properties:
+      id: { type: string, description: "Service name; must match the Prometheus `service` label" }
+      source: { type: string }
+      type: { const: service }
+      content:
+        type: object
+        required: [environment, artifactId]
+        properties:
+          environment:
+            type: object
+            required: [id]
+            properties:
+              id: { type: string, enum: [production, staging] }
+              source: { type: string }
+          # Package URL of the deployed image, e.g. pkg:oci/<image>@sha256:<digest>
+          artifactId: { type: string, pattern: "^pkg:" }
+  customDataContentType:
+    const: application/json
+  customData:
+    type: object
+    required: [commit_sha, commit_timestamp, success]
+    properties:
+      commit_sha: { type: string, pattern: "^[0-9a-f]{7,40}$" }
+      # lead-time-from-commit-to-prod: lead time = context.timestamp - commit_timestamp
+      # for the latest commit in the deployed SHA. Merge time is not accepted here.
+      commit_timestamp: { type: string, format: date-time }
+      # change-failure-rate-from-incidents: success=false is a deploy that failed
+      # outright; incidents within 24h are joined by commit_sha in schema.sql.
+      success: { type: boolean }
+      is_rollback: { type: boolean, default: false }
+      is_hotfix: { type: boolean, default: false }
+      pipeline_run_url: { type: string, format: uri }
+examples:
+  - context:
+      version: "0.4.1"
+      id: 2c2f9e0a-6d43-4a6e-9c55-2e5a4b1f8e10
+      source: /ci/github-actions
+      type: dev.cdevents.service.deployed.0.2.0
+      timestamp: "2026-09-10T14:03:22Z"
+    subject:
+      id: <service>
+      source: /ci/github-actions/<org>/<repo>
+      type: service
+      content:
+        environment: { id: production, source: /k8s/<cluster> }
+        artifactId: pkg:oci/<image>@sha256:<digest>
+    customDataContentType: application/json
+    customData:
+      commit_sha: "9f1c2a4d7b3e"
+      commit_timestamp: "2026-09-10T11:41:05Z"
+      success: true
+      is_rollback: false
+      is_hotfix: false
+      pipeline_run_url: https://<ci-host>/<org>/<repo>/actions/runs/<run-id>

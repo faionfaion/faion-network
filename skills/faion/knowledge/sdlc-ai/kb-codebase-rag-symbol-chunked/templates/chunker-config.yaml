@@ -3,4 +3,85 @@
 # produces: config
 # depends-on: content/02-output-contract.xml (schema)
 # token-budget-impact: low — ~100-400 tokens when loaded as context
-example_key: example_value
+#
+# Symbol-boundary chunker config. Top-level keys mirror the schema in
+# content/02-output-contract.xml; validate with
+#   python3 -c "import yaml,json,sys; json.dump(yaml.safe_load(open('chunker-config.yaml')), open('/tmp/c.json','w'))"
+#   python3 scripts/validate-codebase-rag-symbol-chunked.py --file /tmp/c.json
+
+chunker_kind: tree-sitter            # tree-sitter | lsp | ctags | hybrid
+chunk_id_strategy: sha256-content    # sha256(file_path + symbol_kind + symbol_name + content); stable across re-index
+padding_max_pct: 0.25                # padding tokens / chunk tokens; schema caps at 0.3
+
+# Rule metadata-filter: every chunk carries these; the vector store must index them as payload filters.
+metadata_fields:
+  - file_path
+  - language
+  - symbol_kind
+  - symbol_name
+  - line_start
+  - line_end
+
+# Rule pad-context: what is prepended to the symbol body. Trimmed in this order when padding_max_pct is exceeded.
+padding:
+  file_path: true                    # "# file: src/auth/session.py"
+  enclosing_signature: true          # "class SessionStore(Base):" for methods
+  sibling_doc_comments: 2            # preceding doc/comment blocks, 1-2 per rule
+  trim_order: [sibling_doc_comments, enclosing_signature]
+
+# Rule chunk-per-symbol: one chunk per node of these types. Nested symbols become their own chunk
+# and are replaced in the parent by a one-line stub so no body is embedded twice.
+languages:
+  python:
+    grammar: tree-sitter-python
+    extensions: [".py"]
+    symbol_nodes: [function_definition, class_definition]
+    doc_comment_nodes: [expression_statement]      # docstring
+    nested_stub: "    ...  # <symbol_name> chunked separately"
+  typescript:
+    grammar: tree-sitter-typescript
+    extensions: [".ts", ".tsx"]
+    symbol_nodes: [function_declaration, method_definition, class_declaration, interface_declaration, type_alias_declaration]
+    doc_comment_nodes: [comment]                   # /** ... */
+    nested_stub: "  /* <symbol_name> chunked separately */"
+  go:
+    grammar: tree-sitter-go
+    extensions: [".go"]
+    symbol_nodes: [function_declaration, method_declaration, type_declaration]
+    doc_comment_nodes: [comment]
+    nested_stub: "  // <symbol_name> chunked separately"
+  # LSP alternative for a language without a tree-sitter grammar: documentSymbol gives the same ranges.
+  # kotlin:
+  #   lsp_command: ["kotlin-language-server"]
+  #   symbol_kinds: [Function, Method, Class, Interface]   # LSP SymbolKind names
+
+# Rule fallback-line-chunk: prose / config / unknown-DSL files get overlapping line windows.
+fallback_strategy:
+  kind: line-window
+  line_window: 120
+  overlap: 20
+  apply_to_extensions: [".md", ".yaml", ".yml", ".toml", ".sql", ".proto"]
+
+# Symbols above this are split by the fallback window too; a 900-line function is not one chunk.
+max_symbol_lines: 400
+
+exclude_globs:
+  - "**/node_modules/**"
+  - "**/.venv/**"
+  - "**/dist/**"
+  - "**/*.min.js"
+  - "**/*_pb2.py"
+  - "**/testdata/**"
+
+vector_store: qdrant                 # qdrant | weaviate | pgvector | lancedb
+collection: "<repo-name>-symbols"
+embedding:
+  model: voyage-code-3               # or bge-large-en-v1.5 self-hosted
+  api_key_env: VOYAGE_API_KEY        # read from the environment, never inline
+  max_tokens_per_chunk: 1024         # chunks above this are truncated at a line boundary after padding
+
+# Procedure step 4 gate: fail the index build when recall@5 on templates/retrieval-eval-set.jsonl drops below this.
+eval:
+  eval_set: templates/retrieval-eval-set.jsonl
+  recall_at_k: 5
+  min_recall: 0.7

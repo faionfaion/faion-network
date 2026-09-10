@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/ilm-policy.json` | ILM policy skeleton (hot/warm/cold/delete) |
 | `templates/backup-config.example.json` | Filled config artefact |
+| `templates/elasticsearch.yml` | Elasticsearch 8.x node config: security on, mTLS on HTTP + transport, ILM tiers and disk watermarks |
+| `templates/filebeat.yml` | Filebeat 8.x agent config: NDJSON parsing, trace_id backfill tagging, mTLS output bound to the ILM policy |
 
 ## Scripts
 

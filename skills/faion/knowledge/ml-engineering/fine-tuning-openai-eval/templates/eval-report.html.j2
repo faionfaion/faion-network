@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Stub — see methodology AGENTS.md ## Templates table.</title>
+<title>Eval Report: {{ ft_model_id }} vs {{ base_model_id }}</title>
 <style>:root{color-scheme:light dark}
 body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
 font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -25,5 +25,29 @@ code{background:#242424} pre{background:#1d1d1d}
 th{background:#1d1d1d} th,td{border-color:#333}
 blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
 <body>
-<h1>Stub — see methodology AGENTS.md ## Templates table.</h1>
+<h1>Eval Report: {{ ft_model_id }} vs {{ base_model_id }}</h1>
+<p><strong>Task:</strong> {{ task_name }} <strong>Date:</strong> {{ date }} <strong>Run by:</strong> {{ owner }} <strong>Gate decision:</strong> <strong>&lt;gate_decision&gt;</strong> (pass | fail | hold)</p>
+<h2>1. Eval set (rule r1-held-out-required, r2-min-200-examples)</h2>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td><code>eval_set_path</code></td><td>{{ eval_set_path }}</td></tr><tr><td><code>eval_count</code></td><td>&lt;eval_count&gt; (minimum 200; 500 preferred)</td></tr><tr><td>Disjoint from train + val</td><td>{{ eval_disjoint }} (hash-disjoint check by <code>openai-eval-runner.py --train</code>)</td></tr><tr><td>Split origin</td><td>{{ split_origin }} (same hash rule as data-prep, different bucket range)</td></tr></tbody></table>
+<h2>2. Models</h2>
+<table><thead><tr><th>Arm</th><th>Model ID</th><th>Temperature</th><th>Max tokens</th></tr></thead><tbody><tr><td>fine-tuned</td><td><code>&lt;ft_model_id&gt;</code></td><td>&lt;temperature&gt;</td><td>&lt;max_tokens&gt;</td></tr><tr><td>base</td><td><code>&lt;base_model_id&gt;</code></td><td>&lt;temperature&gt;</td><td>&lt;max_tokens&gt;</td></tr></tbody></table>
+<p>Identical system prompt and sampling parameters on both arms; only the model ID differs.</p>
+<h2>3. Judge (rule r4-judge-rubric-stable)</h2>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Judge model</td><td>{{ judge_model }}</td></tr><tr><td>Rubric file</td><td><code>templates/judge-prompt.txt</code></td></tr><tr><td><code>rubric_version</code></td><td>{{ rubric_version }}</td></tr><tr><td>Rubric sha256</td><td><code>&lt;rubric_sha256&gt;</code></td></tr><tr><td>Criterion</td><td>{{ criterion }}</td></tr></tbody></table>
+<p>The rubric was not edited during the run; both arms were judged with the same hash.</p>
+<h2>4. Metrics (rule r3-two-or-more-metrics, r5-confidence-interval)</h2>
+<p>At least two task-relevant metrics. CI is a 95% Wilson interval for proportions, bootstrap (1000 resamples) for anything else. Overlapping CIs mean no proven gain.</p>
+<table><thead><tr><th>Metric</th><th>ft score</th><th>base score</th><th>delta</th><th>95% CI (ft)</th><th>Threshold</th><th>Passed</th></tr></thead><tbody><tr><td>{{ metric_1_name }}</td><td>&lt;metric_1_ft_score&gt;</td><td>&lt;metric_1_base_score&gt;</td><td>{{ metric_1_delta }}</td><td>{{ metric_1_ci }}</td><td>{{ metric_1_threshold }}</td><td>{{ metric_1_passed }}</td></tr><tr><td>{{ metric_2_name }}</td><td>&lt;metric_2_ft_score&gt;</td><td>&lt;metric_2_base_score&gt;</td><td>{{ metric_2_delta }}</td><td>{{ metric_2_ci }}</td><td>{{ metric_2_threshold }}</td><td>{{ metric_2_passed }}</td></tr></tbody></table>
+<p>Add one row per further metric (format compliance, safety refusal rate, latency p95, cost per request).</p>
+<h2>5. Gate decision (rule r6-gate-explicit)</h2>
+<p>Per-metric gate is binary: <code>passed</code> = ft score meets the threshold AND the ft CI does not overlap the base CI. Overall gate = every metric passed.</p>
+<table><thead><tr><th>Outcome</th><th>Condition</th><th>Next step</th></tr></thead><tbody><tr><td>pass</td><td>all metrics passed</td><td>hand <code>ft_model_id</code> + this report to <code>fine-tuning-openai-deployment</code></td></tr><tr><td>hold</td><td>a metric is within CI overlap of base</td><td>grow the eval set or re-run; do not deploy</td></tr><tr><td>fail</td><td>any metric below threshold</td><td>iterate data or hyperparameters; do not deploy</td></tr></tbody></table>
+<p><strong>Decision:</strong> &lt;gate_decision&gt; <strong>Rationale:</strong> {{ gate_rationale }}</p>
+<h2>6. Borderline cases</h2>
+<p>{{ borderline_cases }}</p>
+<p>(Examples where ft and base disagree and the judge scored 3; reviewed by a human.)</p>
+<h2>7. Cost and latency of the eval run</h2>
+<table><thead><tr><th>Arm</th><th>Requests</th><th>Tokens in / out</th><th>USD</th><th>p95 latency ms</th></tr></thead><tbody><tr><td>fine-tuned</td><td>&lt;eval_count&gt;</td><td>{{ ft_tokens }}</td><td>{{ ft_cost_usd }}</td><td>{{ ft_p95_ms }}</td></tr><tr><td>base</td><td>&lt;eval_count&gt;</td><td>{{ base_tokens }}</td><td>{{ base_cost_usd }}</td><td>{{ base_p95_ms }}</td></tr></tbody></table>
+<h2>8. Self-check</h2>
+<ul><li>[ ] <code>eval_count</code> &gt;= 200 and disjointness check recorded (r1, r2)</li><li>[ ] &gt;= 2 metrics with threshold, CI and passed flag (r3, r5)</li><li>[ ] Rubric hash identical for both arms; no mid-run edit (r4)</li><li>[ ] <code>gate_decision</code> matches the all-pass rule (r6)</li><li>[ ] <code>scripts/validate-fine-tuning-openai-eval.py</code> exits 0</li></ul>
 </body></html>

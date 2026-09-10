@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-014: the remaining 53 empty templates have bodies.** After the 21 JSON
+  fills, the corpus still had 30 declared stubs (`.py`, `.md.j2`, `.yaml`,
+  `.txt`, `.xml`) and 23 undeclared ones, all reading `# Stub — see methodology
+  AGENTS.md` or `fill per artefact`. Each now carries a real, parsing body that
+  honours the rule ids of its own methodology, written against the slug's
+  `01-core-rules.xml`, `02-output-contract.xml` and worked examples; the
+  undeclared ones also got their `## Templates` row. Two zero-byte
+  `*.json.header.txt` orphans were deleted rather than filled — their names
+  claimed to be the header of a JSON file that does not exist.
+
+  Highlights of what "real" means here: the OpenAI fine-tuning family
+  (`openai-sft-job.py`, `openai-dpo-job.py`, `openai-eval-runner.py`, builder
+  and validator) uses the current `client.fine_tuning.jobs.create(method=…)`
+  shape, hash-disjoint train/validation splits, Wilson intervals and an explicit
+  gate; the MCP server and client import cleanly against `mcp` 1.26 and register
+  the primitives the spec names; `a11y-scan.sh` was proven end-to-end against
+  shimmed axe/pa11y/lighthouse and exits 1 on blockers; two defects in the new
+  bodies were caught by running them (a `--argjson` map that was not JSON, so
+  every finding silently fell into the `[]` fallback; an XR zone classifier
+  measuring from the floor origin) and fixed before they shipped. The six
+  `.md.j2` families were regenerated through `tpl-jinja --migrate` so the
+  `.md`, `.html.j2` and `.vars.schema.json` siblings cannot drift; `--check` is
+  clean on all six.
+
+  The empty-template classifier is now **0 across the corpus**, down from 74.
+
 - **CR-012 closed: the ten templates that contradicted their own methodology's
   rules.** This was the sharpest class in the CR — a document contradicting itself
   in the file the customer runs — and it is now consistent, verified by parsing

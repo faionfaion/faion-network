@@ -66,6 +66,7 @@
 |------|---------|
 | `templates/at-finding-record.json` | JSON skeleton for AT finding record. |
 | `templates/at-test-case.txt` | Plaintext per-test case template. |
+| `templates/guidepup-nvda-form-error.js` | Guidepup + Playwright script driving NVDA through a required-field submit; writes the spoken-phrase transcript and an AT finding record. |
 
 ## Related
 

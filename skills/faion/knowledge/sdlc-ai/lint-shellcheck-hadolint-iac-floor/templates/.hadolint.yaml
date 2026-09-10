@@ -3,4 +3,42 @@
 # produces: config
 # depends-on: content/02-output-contract.xml (schema)
 # token-budget-impact: low — ~100-400 tokens when loaded as context
-example_key: example_value
+#
+# .hadolint.yaml — committed beside the Dockerfile, explicit rule set.
+# Every exclusion below carries its justification on the line above it; an
+# exclusion without one fails review (rule: excluded rules carry a comment).
+# Run: hadolint --config .hadolint.yaml Dockerfile
+# CI: warnings are errors — `failure-threshold: warning` makes hadolint exit 1
+# on anything at warning or above, which is what the pre-commit + CI tier needs.
+
+failure-threshold: warning
+
+# Registries an image may be pulled FROM. Anything else is a supply-chain
+# finding, not a style one. Add your private registry here.
+trustedRegistries:
+  - docker.io
+  - ghcr.io
+  - public.ecr.aws
+
+# Pin base images. Hadolint enforces `FROM image:tag`, not `FROM image`, and
+# DL3007 (`:latest`) stays on; pin by digest in production images.
+override:
+  error:
+    - DL3006   # FROM without a tag
+    - DL3007   # FROM ...:latest
+    - DL3008   # apt-get install without a pinned version
+    - DL3013   # pip install without a pinned version
+    - DL3018   # apk add without a pinned version
+    - DL3025   # CMD/ENTRYPOINT in shell form — breaks SIGTERM handling
+    - DL4006   # RUN with a pipe and no `set -o pipefail`
+  warning:
+    - DL3009   # apt lists not cleaned in the same layer (image size, not security)
+    - DL3059   # consecutive RUN instructions (layer hygiene)
+
+ignored:
+  # DL3003: `cd` inside RUN. Multi-stage builds that compile in a subdirectory
+  # need it; the alternative (WORKDIR per step) doubles the layer count.
+  - DL3003
+  # SC2086: word splitting in shell inside RUN. The Dockerfiles this covers
+  # quote every variable already; the rule fires on `$BUILD_ARGS` by design.
+  - SC2086

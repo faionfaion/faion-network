@@ -60,6 +60,12 @@
 | Compute 4 scenarios | sonnet | Arithmetic + scenario logic. |
 | Write narrative | opus | Synthesis for human reader. |
 
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/economic-model.py` | Stdlib kernel: inputs JSON -> four scenarios, sensitivity table, monthly delta + 12-month NPV + break-even, recommendation; prints the economic-model.json artefact. |
+
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->

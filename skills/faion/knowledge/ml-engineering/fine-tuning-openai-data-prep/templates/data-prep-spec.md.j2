@@ -6,4 +6,93 @@ depends-on: content/02-output-contract.xml schema for fine-tuning-openai-data-pr
 token-budget-impact: ≤500 tokens to fill
 -->
 
-# Stub — see methodology AGENTS.md ## Templates table.
+# Data-Prep Spec: {{ dataset_name }}
+
+**Format:** {{ format }} (chat | completion | dpo)
+**Target base model:** {{ base_model }}
+**Owner:** {{ owner }}
+**Date:** {{ date }}
+
+## 1. Source
+
+| Field | Value |
+|-------|-------|
+| Origin | {{ source_origin }} (csv / parquet / db dump, path or query) |
+| Raw row count | {{ raw_row_count }} |
+| Rows dropped (empty / duplicate) | {{ dropped_row_count }} |
+| Columns used | {{ columns_used }} |
+| Label column (classification only) | {{ label_column }} |
+
+## 2. Transform
+
+### Schema map (rule r1-jsonl-schema)
+
+| JSONL field | Source column |
+|-------------|---------------|
+| `messages[0]` system | canonical prompt below (constant) |
+| `messages[1]` user | {{ user_column }} |
+| `messages[2]` assistant | {{ assistant_column }} |
+| `non_preferred_output` (dpo only) | {{ rejected_column }} |
+
+### Canonical system prompt (rule r5-deterministic-system-prompt)
+
+One string, identical on every line. Never varied per example.
+
+```
+<system_prompt>
+```
+
+### PII scrub (rule r6-no-pii)
+
+| Pattern | Action | Matches found |
+|---------|--------|---------------|
+| email | replace with sha256 token | {{ pii_email_count }} |
+| phone (E.164 / national) | replace with sha256 token | {{ pii_phone_count }} |
+| customer / ticket IDs | replace with sha256 token | {{ pii_id_count }} |
+
+`pii_scrubbed: <pii_scrubbed>` (must be `true` before upload).
+
+### Token budget (rule r2-token-budget)
+
+| Field | Value |
+|-------|-------|
+| Tokenizer | tiktoken `<tiktoken_encoding>` |
+| Context cap enforced | <context_cap_tokens> tokens |
+| Examples rejected over cap | {{ over_cap_count }} |
+| Max tokens / example | <max_tokens_per_example> |
+| Total tokens (one epoch) | {{ total_tokens }} |
+| Planned epochs | {{ epochs }} |
+| Training price ($ / 1M tokens) | <price_per_1m_usd> |
+| **Estimated cost (USD)** | **{{ estimated_usd }}** |
+
+## 3. Split (rule r3-train-val-split, r4-balanced-classes)
+
+| Field | Value |
+|-------|-------|
+| Strategy | hash-disjoint on user text, seed `<split_seed>` |
+| Ratio | {{ split_ratio }} (80/20 default; 70/30 when total < 500) |
+| Train count | {{ train_count }} |
+| Validation count | {{ val_count }} |
+| Class ratio before / after balancing | {{ class_ratio_before }} / {{ class_ratio_after }} (cap 1.5x) |
+
+Validation rows are never used for training and never reused as the eval held-out set.
+
+## 4. Output
+
+| Artifact | Value |
+|----------|-------|
+| `train_path` | {{ train_path }} |
+| `val_path` | {{ val_path }} |
+| OpenAI training file ID | {{ training_file_id }} |
+| OpenAI validation file ID | {{ validation_file_id }} |
+| Validator report | {{ validator_report_path }} (`openai-validate-jsonl.py` exit 0) |
+
+## 5. Self-check
+
+- [ ] Every line parses and carries the `<format>` schema (r1)
+- [ ] No example exceeds <context_cap_tokens> tokens (r2)
+- [ ] Train and validation are hash-disjoint; ratio matches the rule (r3)
+- [ ] Class ratio within 1.5x or balancing recorded above (r4)
+- [ ] Single canonical system prompt across all lines (r5)
+- [ ] `pii_scrubbed: true` with match counts recorded (r6)
+- [ ] `scripts/validate-fine-tuning-openai-data-prep.py` exits 0

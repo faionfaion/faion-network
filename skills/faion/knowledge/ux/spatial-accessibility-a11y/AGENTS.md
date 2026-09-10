@@ -65,6 +65,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/spatial-accessibility-record.json` | JSON skeleton matching the schema. |
+| `templates/xr-scene-audit.py` | Stdlib scene-JSON audit for the five spatial rules (reach zones per pose, fixed Y, occlusion budget, directional audio, seated alternate); emits the record JSON. |
 
 ## Related
 

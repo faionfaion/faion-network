@@ -63,6 +63,7 @@
 |------|---------|
 | `templates/terraform-acm.tf` | Terraform aws_acm_certificate skeleton with validation |
 | `templates/backup-config.example.json` | Filled config artefact |
+| `templates/certificate.yaml` | cert-manager Certificate CRD: explicit renewBefore, per-env ClusterIssuer ref, key material only in secretName |
 
 ## Scripts
 

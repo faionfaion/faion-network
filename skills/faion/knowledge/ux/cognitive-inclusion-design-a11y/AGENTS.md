@@ -66,6 +66,7 @@
 |------|---------|
 | `templates/cognitive-spec.md.j2` | Markdown skeleton for cognitive-inclusion design spec. |
 | `templates/cognitive-spec.md` | Markdown skeleton for cognitive-inclusion design spec. Generated from `templates/cognitive-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/readability-gate.py` | Stdlib Flesch / Flesch-Kincaid gate for user-facing copy (>=60 / <=8), flags spans below target and undefined jargon; exit 1 = STOP and rewrite. |
 
 ## Related
 

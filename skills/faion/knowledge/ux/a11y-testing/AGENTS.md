@@ -69,6 +69,7 @@
 | `templates/audit-report.md.j2` | Markdown skeleton for the audit narrative. |
 | `templates/audit-report.md` | Markdown skeleton for the audit narrative. Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audit-findings.json` | JSON findings skeleton matching the schema. |
+| `templates/a11y-scan.sh` | Automated-layer CI wrapper: axe + pa11y + lighthouse per URL, findings normalised to the severity enum with evidence_url, summary.md marks the other three layers Not Tested. |
 
 ## Scripts
 

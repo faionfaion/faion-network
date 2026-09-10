@@ -1,7 +1,56 @@
-# purpose: RAIL XML alternative spec form.
-# consumes: see AGENTS.md ## Prerequisites
-# produces: code
-# depends-on: content/02-output-contract.xml schema for guardrails-ai-framework
-# token-budget-impact: ≤500 tokens to fill
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- purpose: RAIL XML alternative spec form. -->
+<!-- consumes: see AGENTS.md ## Prerequisites -->
+<!-- produces: code -->
+<!-- depends-on: content/02-output-contract.xml schema for guardrails-ai-framework -->
+<!-- token-budget-impact: ≤500 tokens to fill -->
+<!--
+  Same pipeline as guardrails-pipeline.py, declared as RAIL instead of Pydantic (r1).
+  Load with:   guard = Guard.for_rail("rail-spec.xml")
+  Run with:    guard(model="gpt-4o-mini", messages=[...], num_reasks=3)   (r2: reask cap lives on the call)
+  Hub validators are referenced as hub://<namespace>/<name>; install them pinned (r6):
+    guardrails hub install hub://guardrails/detect_pii==0.0.3 hub://guardrails/toxic_language==0.0.5
+  Every validator carries its own on-fail-<validator-name> attribute (r3).
+-->
+<rail version="0.1">
 
-# Stub — see methodology AGENTS.md ## Templates table.
+  <output>
+    <object name="support_reply" description="One support ticket answer.">
+      <string
+        name="reply"
+        description="Customer-facing answer, 1-3 sentences."
+        validators="hub://guardrails/detect_pii: EMAIL_ADDRESS PHONE_NUMBER; hub://guardrails/toxic_language: 0.5 sentence"
+        on-fail-detect_pii="fix"
+        on-fail-toxic_language="refrain"
+      />
+      <!-- r4: detect_pii is fix or filter, never noop -->
+
+      <string
+        name="category"
+        description="Routing bucket for the ticket."
+        validators="valid-choices: {['billing', 'technical', 'account', 'other']}"
+        on-fail-valid-choices="reask"
+      />
+
+      <float
+        name="confidence"
+        description="Model confidence in the category, 0 to 1."
+        validators="valid-range: 0 1"
+        on-fail-valid-range="fix"
+      />
+    </object>
+  </output>
+
+  <messages>
+    <message role="system">
+You are a support agent. Answer the ticket below and return only the JSON object described by the schema.
+    </message>
+    <message role="user">
+Ticket:
+${ticket_text}
+
+${gr.complete_xml_suffix_v2}
+    </message>
+  </messages>
+
+</rail>

@@ -70,6 +70,7 @@
 | `templates/vercel-deployment-discipline.json` | DeploymentPlan JSON skeleton. |
 | `templates/vercel-deployment-discipline.md.j2` | Human-readable audit trail + go/no-go report. |
 | `templates/vercel-deployment-discipline.md` | Human-readable audit trail + go/no-go report. Generated from `templates/vercel-deployment-discipline.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/runtime-allow-list.yaml` | Edge-runtime allow/deny list the runtime-check step diffs edge routes against (r2). |
 
 ## Scripts
 

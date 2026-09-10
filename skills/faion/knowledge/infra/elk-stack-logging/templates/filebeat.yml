@@ -4,4 +4,90 @@
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200 tokens when loaded as context
 
-# Skeleton — replace placeholder values before applying.
+# Filebeat 8.x. Ships JSON logs straight to Elasticsearch over mTLS; no Logstash
+# hop and no username/password. The client certificate is issued from the same CA
+# as the cluster (elasticsearch-certutil) and mounted read-only.
+filebeat.inputs:
+  - type: filestream
+    id: app-json-logs
+    enabled: true
+    paths:
+      - /var/log/<app>/*.json
+      - /var/lib/docker/containers/*/*-json.log
+    # structured-logs-only: parse NDJSON at the source. A line that is not JSON
+    # stays in `message` and is tagged, so it shows up in the backfill dashboard
+    # instead of silently indexing as free text.
+    parsers:
+      - ndjson:
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+          expand_keys: true
+    fields_under_root: true
+    fields:
+      env: <env>
+      host_role: <role>
+    close.on_state_change.inactive: 5m
+
+processors:
+  - add_host_metadata: {}
+  - add_docker_metadata: {}
+  # Normalise the four mandatory fields to ECS names so the index template matches.
+  - rename:
+      ignore_missing: true
+      fail_on_error: false
+      fields:
+        - { from: timestamp, to: "@timestamp" }
+        - { from: level, to: log.level }
+        - { from: service, to: service.name }
+        - { from: trace_id, to: trace.id }
+  - add_tags:
+      tags: [not_structured]
+      when:
+        has_fields: [error.message]
+  # trace-id-correlation: flag, never drop. Backfill owners query tag:needs_trace_backfill.
+  - add_tags:
+      tags: [needs_trace_backfill]
+      when:
+        not:
+          has_fields: [trace.id]
+  - drop_fields:
+      ignore_missing: true
+      fields: [agent.ephemeral_id, ecs.version, input.type]
+
+# ilm-required: bind the data stream to the committed policy (templates/ilm-policy.json).
+setup.ilm.enabled: true
+setup.ilm.policy_name: logs-<app>
+setup.ilm.check_exists: true
+setup.ilm.overwrite: false
+setup.template.name: logs-<app>
+setup.template.pattern: "logs-<app>-*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 1
+
+# agent-mtls-or-token: client certificate only; username/password intentionally absent.
+output.elasticsearch:
+  hosts:
+    - https://<es-node-1>.<internal-domain>:9200
+    - https://<es-node-2>.<internal-domain>:9200
+  protocol: https
+  index: "logs-<app>-%{[env]}"
+  ssl.enabled: true
+  ssl.verification_mode: full
+  ssl.certificate_authorities: [/etc/filebeat/certs/ca.crt]
+  ssl.certificate: /etc/filebeat/certs/filebeat.crt
+  ssl.key: /etc/filebeat/certs/filebeat.key
+  # Passphrase for an encrypted key, if used, is read from FILEBEAT_KEY_PASSPHRASE.
+  ssl.key_passphrase: "${FILEBEAT_KEY_PASSPHRASE:}"
+  ssl.supported_protocols: [TLSv1.3]
+  bulk_max_size: 1600
+  worker: 2
+
+logging.level: warning
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  keepfiles: 7
+  permissions: "0640"
+monitoring.enabled: false

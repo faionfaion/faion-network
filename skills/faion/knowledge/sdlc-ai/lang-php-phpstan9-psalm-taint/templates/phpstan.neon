@@ -3,4 +3,57 @@
 # produces: config
 # depends-on: content/02-output-contract.xml (schema)
 # token-budget-impact: low — ~100-400 tokens when loaded as context
-# Fill per content/02-output-contract.xml
+
+# PHPStan 2.x. Companion to templates/psalm.xml; CI runs the two as separate jobs
+# (ci-runs-both). Generate the baseline once with
+#   vendor/bin/phpstan analyse --generate-baseline phpstan-baseline.neon
+# and commit it; from then on the baseline may only shrink.
+includes:
+  # baseline-files-committed: existing violations are frozen here, not ignored inline.
+  - phpstan-baseline.neon
+  # composer require --dev phpstan/phpstan-strict-rules
+  - vendor/phpstan/phpstan-strict-rules/rules.neon
+  # Drop the extension lines below that do not match the framework in use.
+  # - vendor/phpstan/phpstan-phpunit/extension.neon
+  # - vendor/phpstan/phpstan-doctrine/extension.neon
+
+parameters:
+  # phpstan-level-9: 9 for applications; `max` (10) for published libraries.
+  level: 9
+  # PHP 8.2 semantics; keep in step with composer.json "php" constraint.
+  phpVersion: 80200
+  paths:
+    - src
+    - tests
+  excludePaths:
+    analyseAndScan:
+      - vendor
+      - var
+      - storage
+    analyse:
+      - tests/fixtures
+  tmpDir: var/cache/phpstan
+  parallel:
+    maximumNumberOfProcesses: 4
+  # Fail when a baseline or ignoreErrors entry no longer matches: this is what
+  # makes the baseline ratchet (rule baseline-files-committed) enforceable.
+  reportUnmatchedIgnoredErrors: true
+  # Strictness on top of level 9.
+  treatPhpDocTypesAsCertain: true
+  checkUninitializedProperties: true
+  checkBenevolentUnionTypes: true
+  checkImplicitMixed: true
+  reportAnyTypeWideningInVarTag: true
+  reportPossiblyNonexistentGeneralArrayOffset: true
+  reportPossiblyNonexistentConstantArrayOffset: true
+  polluteScopeWithLoopInitialAssignments: false
+  polluteScopeWithAlwaysIterableForeach: false
+  # Generated code with dynamic properties belongs on the skip path, not in an ignore.
+  ignoreErrors: []
+  # no-suppression-without-justification: an entry is only accepted with a
+  # justification comment on the line above it and a narrow `path`, e.g.
+  #   # Facade resolved by larastan; delete once larastan is a dev dependency.
+  #   - message: '#Call to an undefined method .*Facades\\DB::raw\(\)#'
+  #     path: src/Infrastructure/Persistence/*
+  errorFormat: table
+  editorUrl: 'vscode://file/%%file%%:%%line%%'

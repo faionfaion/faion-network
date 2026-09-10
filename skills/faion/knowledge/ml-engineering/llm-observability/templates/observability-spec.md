@@ -6,4 +6,81 @@ depends-on: content/02-output-contract.xml schema for llm-observability
 token-budget-impact: ≤500 tokens to fill
 -->
 
-# Stub — see methodology AGENTS.md ## Templates table.
+# LLM Observability Spec: <spec_name>
+
+## Context
+
+- slug: llm-observability
+- owner: <role:person>
+- approver: <role:person>
+- produced_at: <YYYY-MM-DDTHH:MM:SSZ>
+- stack under observation: <LLM stack, e.g. LangGraph + provider; from ML lead>
+- data-residency policy: <region / constraint; from trust+safety>
+
+## Vendor (rule r6)
+
+- vendor: `<vendor>` (one of langfuse_self / langfuse_cloud / langsmith / phoenix / native_otel)
+- trace storage region: <region>
+- residency match: <how the vendor region satisfies the policy; EU customer data defaults to langfuse_self>
+- decision-tree path: <branch taken in content/06-decision-tree.xml>
+
+## Traces (rules r1, r5)
+
+- trace_coverage_pct: <trace_coverage_pct>
+- fields captured per LLM call: input, output, tokens_in, tokens_out, latency, cost_usd
+- instrumentation: <@observe / langfuse_handler / OTel spans; see templates/langfuse-init.py>
+- sampling policy: 100% for the first <sampling_policy> days; sample below 100% only when volume forces it; evals never sampled
+- uncovered call sites: <none, or list with owner and date>
+
+## PII redaction (rule r4)
+
+- pii_redaction: <pii_redaction>
+- redaction point: client-side, before export (never vendor-side alone)
+- classes redacted: <classes_redacted>
+
+## Cost (rule r3)
+
+- price book source: <provider price sheet + date>
+- cost_usd persisted per call: yes
+- daily alert: daily cost > <cost_alert_daily_multiplier>x the 7-day moving average
+- single-call alert: single-call cost > <cost_alert_single_call_multiplier>x median
+
+## Continuous eval (rule r2)
+
+- eval_cadence: `<eval_cadence>` (hourly / daily / weekly; weekly only with written justification)
+- probe set: <path, count, owner>
+- scoring: <scoring>
+- metric exposed as: <Prometheus series name; see templates/eval-probe-runner.py>
+- drop alert: accuracy drop > <drop_alert> pp against the previous run
+
+## Alerts
+
+| Signal | Rule | Threshold | Route |
+|---|---|---|---|
+| daily cost | r3 | > <cost_alert_daily_multiplier>x 7-day MA | <on-call channel> |
+| single-call cost | r3 | > <cost_alert_single_call_multiplier>x median | <on-call channel> |
+| p95 latency | - | > 2x baseline | <on-call channel> |
+| eval accuracy | r2 | drop > <eval_accuracy> pp | <owner_channel> |
+
+## Output (content/02-output-contract.xml)
+
+```json
+{
+  "spec_name": "<spec_name>",
+  "vendor": "<vendor>",
+  "trace_coverage_pct": <trace_coverage_pct>,
+  "eval_cadence": "<eval_cadence>",
+  "cost_alert": {
+    "daily_multiplier": <cost_alert_daily_multiplier>,
+    "single_call_multiplier": <cost_alert_single_call_multiplier>
+  },
+  "pii_redaction": <pii_redaction>
+}
+```
+
+## Review
+
+- validator: `python3 scripts/validate-llm-observability.py --file <out.json>`
+- cadence: monthly | quarterly
+- next_review_at: <YYYY-MM-DD>
+- outcome: <filled at next review>

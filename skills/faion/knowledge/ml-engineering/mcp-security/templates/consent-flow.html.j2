@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Stub — see methodology AGENTS.md ## Templates table.</title>
+<title>Consent Flow: {{ rubric_name }}</title>
 <style>:root{color-scheme:light dark}
 body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
 font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -25,5 +25,23 @@ code{background:#242424} pre{background:#1d1d1d}
 th{background:#1d1d1d} th,td{border-color:#333}
 blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
 <body>
-<h1>Stub — see methodology AGENTS.md ## Templates table.</h1>
+<h1>Consent Flow: {{ rubric_name }}</h1>
+<h2>Context</h2>
+<ul><li>slug: mcp-security</li><li>owner: &lt;role:person&gt;</li><li>approver: &lt;role:person&gt;</li><li>produced_at: &lt;YYYY-MM-DDTHH:MM:SSZ&gt;</li><li>scope: <code>&lt;scope&gt;</code> (local_desktop / remote_single_tenant / remote_multi_tenant)</li><li>client: &lt;host name and version from the inventory&gt;</li><li>consent policy: <code>&lt;consent_policy&gt;</code> (per_call / per_session / always_allow_listed_only)</li></ul>
+<h2>Shared rules (apply to every primitive)</h2>
+<ul><li>Rule r1: the consent surface is visually distinct from model output and from tool text; the user cannot mistake it for chat.</li><li>Rule r1: a decision is cached at most for the session; a new session asks again.</li><li>Rule r4: a server calling a method it did not declare in <code>initialize</code> gets no prompt at all; the call is rejected and logged.</li><li>Rule r5: consent granted to one server never carries over to another server, even for a same-named tool.</li><li>Rule r6: every prompt shown and every decision taken is written to the audit log with server_id, tool_name, caller_session, arguments_hash, outcome, timestamp.</li><li>Rule r7: the prompt names the server by its verified identity (signed manifest / pinned cert); an unverified server is blocked before any prompt.</li></ul>
+<h2>Tools (actions)</h2>
+<ul><li>trigger: first call to <code>&lt;server&gt;__&lt;tool&gt;</code> in this session</li><li>surface: {{ surface }}</li><li>shows: verified server name, tool name, the server-supplied description labelled &quot;text from server&quot;, the argument summary</li><li>rule r3: the description and the arguments are displayed as quoted data, never interpreted</li><li>options: allow once | allow for session | deny</li><li>cache scope: &lt;per_call: never; per_session: until session end; always_allow_listed_only: only for tools on the allow-list, still per session&gt;</li><li>deny path: the model receives &quot;user denied tool call&quot; as the tool result; no retry without a new prompt</li></ul>
+<h2>Resources (read-only data)</h2>
+<ul><li>trigger: first <code>resources/read</code> for a URI prefix (e.g. <code>file://</code>, <code>db://</code>)</li><li>surface: &lt;same surface as tools, with a &quot;read&quot; badge&gt;</li><li>shows: verified server name, URI prefix, data class ({{ public_internal_pii }})</li><li>cache scope: per URI prefix, per session</li><li>deny path: resource read returns empty; model is told the read was refused</li></ul>
+<h2>Prompts (templates)</h2>
+<ul><li>trigger: user picks a server prompt from the host's prompt list</li><li>surface: prompt list entry shows the server label next to the prompt name</li><li>rule r3: prompt body is rendered for the user to read before it is sent; server text is never auto-inserted into the system prompt</li><li>cache scope: none; each selection is an explicit user action</li><li>deny path: user closes the preview; nothing is sent</li></ul>
+<h2>Sampling (server asks the host to call the model)</h2>
+<ul><li>trigger: <code>sampling/createMessage</code> from a server</li><li>surface: {{ modal }}, blocking; shows the full messages the server wants sent and the model it asks for</li><li>rule r1: host approval is mandatory each time; no per-session cache for sampling</li><li>deny path: server receives a JSON-RPC error; the host logs the attempt</li></ul>
+<h2>Audit record (rule r6)</h2>
+<pre><code class="language-json">{&quot;ts&quot;: &quot;&lt;ISO-8601&gt;&quot;, &quot;server_id&quot;: &quot;&lt;verified-name&gt;&quot;, &quot;primitive&quot;: &quot;tool|resource|prompt|sampling&quot;,
+ &quot;tool_name&quot;: &quot;&lt;name&gt;&quot;, &quot;caller_session&quot;: &quot;&lt;session-id&gt;&quot;, &quot;arguments_hash&quot;: &quot;&lt;sha256&gt;&quot;,
+ &quot;decision&quot;: &quot;allow_once|allow_session|deny&quot;, &quot;outcome&quot;: &quot;ok|error|denied&quot;}</code></pre>
+<h2>Review</h2>
+<ul><li>cadence: monthly | quarterly</li><li>next_review_at: &lt;YYYY-MM-DD&gt;</li><li>outcome: &lt;filled at next review&gt;</li></ul>
 </body></html>

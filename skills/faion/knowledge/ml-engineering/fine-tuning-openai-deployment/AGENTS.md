@@ -64,6 +64,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/openai-router.py` | Router that splits traffic between base and fine-tune by percentage. |
+| `templates/model-id-registry.yaml` | Version-controlled model-ID registry: model_id, eval-gate evidence, rollout pct, rollback signal. |
 
 ## Scripts
 

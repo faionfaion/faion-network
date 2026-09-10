@@ -4,4 +4,96 @@
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200 tokens when loaded as context
 
-# Skeleton — replace placeholder values before applying.
+# Velero >= 1.15 (Kopia data mover is the default uploader; Restic is deprecated).
+# Install with: velero install --features=EnableCSI --use-node-agent --uploader-type=kopia
+# The referenced BackupStorageLocation must live in a different cloud/region than
+# the control plane; the referenced VolumeSnapshotLocation is the CSI driver's.
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-stateful
+  namespace: velero
+  labels:
+    backup-tier: daily
+spec:
+  # 02:00 UTC daily; weekly/monthly schedules are separate objects with their own ttl.
+  schedule: "0 2 * * *"
+  useOwnerReferencesInBackup: false
+  paused: false
+  skipImmediately: false
+  template:
+    # schedule-retention: ttl is mandatory. daily=168h, weekly=720h, monthly=2160h.
+    ttl: 168h0m0s
+    includedNamespaces:
+      - <postgres-namespace>
+      - <mongo-namespace>
+      - <app-namespace>
+    excludedResources:
+      - events
+      - events.events.k8s.io
+    includeClusterResources: true
+    # csi-snapshots-enabled: take CSI snapshots and move them with the Kopia data mover.
+    snapshotVolumes: true
+    snapshotMoveData: true
+    csiSnapshotTimeout: 10m
+    defaultVolumesToFsBackup: false
+    # backup-storage-location-separate-cloud: this BSL points at an off-cluster region.
+    storageLocation: <bsl-name-offsite-region>
+    volumeSnapshotLocations:
+      - <vsl-name-csi>
+    uploaderConfig:
+      parallelFilesUpload: 4
+    # pre-post-hooks-for-stateful: quiesce before the snapshot, release after.
+    # Equivalent pod-annotation form, if you prefer to keep hooks with the workload:
+    #   pre.hook.backup.velero.io/command:  '["/bin/sh","-c","<quiesce>"]'
+    #   post.hook.backup.velero.io/command: '["/bin/sh","-c","<unfreeze>"]'
+    hooks:
+      resources:
+        - name: postgres-quiesce
+          includedNamespaces:
+            - <postgres-namespace>
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+          pre:
+            - exec:
+                container: postgresql
+                command:
+                  - /bin/sh
+                  - -c
+                  - psql -U "$POSTGRES_USER" -c "CHECKPOINT;" && fsfreeze --freeze /var/lib/postgresql/data
+                onError: Fail
+                timeout: 60s
+          post:
+            - exec:
+                container: postgresql
+                command:
+                  - /bin/sh
+                  - -c
+                  - fsfreeze --unfreeze /var/lib/postgresql/data
+                onError: Fail
+                timeout: 30s
+        - name: mongo-quiesce
+          includedNamespaces:
+            - <mongo-namespace>
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: mongodb
+          pre:
+            - exec:
+                container: mongodb
+                command:
+                  - /bin/sh
+                  - -c
+                  - mongosh --quiet --eval "db.fsyncLock()"
+                onError: Fail
+                timeout: 60s
+          post:
+            - exec:
+                container: mongodb
+                command:
+                  - /bin/sh
+                  - -c
+                  - mongosh --quiet --eval "db.fsyncUnlock()"
+                onError: Fail
+                timeout: 30s

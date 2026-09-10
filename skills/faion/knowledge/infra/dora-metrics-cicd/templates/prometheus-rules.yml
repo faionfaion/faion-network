@@ -4,4 +4,78 @@
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200 tokens when loaded as context
 
-# Skeleton — replace placeholder values before applying.
+# Source metrics, produced by the deploy-event ingester (see deploy-event.yml):
+#   deployments_total{service,environment,success}        counter, one per deploy event
+#   deployment_lead_time_seconds_bucket{service}          histogram, prod_deploy - commit ts
+#   incidents_linked_total{service}                        counter, incident joined to a deploy
+#   incident_mitigation_seconds_bucket{service}           histogram, first symptom -> mitigated
+#   slo_good_requests_total / slo_total_requests_total     from the SLO exporter
+# Thresholds are the DORA 2024 "High" band; tighten to "Elite" per team.
+groups:
+  - name: dora.recording
+    interval: 5m
+    rules:
+      # deploy-frequency-rolling-7-day: never a monthly aggregate.
+      - record: dora:deployment_frequency:per_week
+        expr: sum by (service) (increase(deployments_total{environment="production"}[7d]))
+      # lead-time-from-commit-to-prod: p50 of commit-to-prod, hours.
+      - record: dora:lead_time_hours:p50_7d
+        expr: |
+          histogram_quantile(0.5,
+            sum by (service, le) (rate(deployment_lead_time_seconds_bucket[7d]))) / 3600
+      # change-failure-rate-from-incidents: deploy-linked incidents within 24h over deploys.
+      - record: dora:change_failure_rate:pct_7d
+        expr: |
+          100 * sum by (service) (increase(incidents_linked_total[7d]))
+          / clamp_min(sum by (service) (increase(deployments_total{environment="production"}[7d])), 1)
+      # mttr-includes-detection-time: the histogram clock starts at first observable symptom.
+      - record: dora:mttr_hours:p50_30d
+        expr: |
+          histogram_quantile(0.5,
+            sum by (service, le) (rate(incident_mitigation_seconds_bucket[30d]))) / 3600
+      # reliability-as-fifth-metric: SLO attainment over the same 30d window.
+      - record: dora:reliability_slo_attainment:pct_30d
+        expr: |
+          100 * sum by (service) (increase(slo_good_requests_total[30d]))
+          / clamp_min(sum by (service) (increase(slo_total_requests_total[30d])), 1)
+
+  - name: dora.alerts
+    rules:
+      - alert: DoraDeployEventsMissing
+        expr: sum by (service) (increase(deployments_total[7d])) == 0
+        for: 1h
+        labels: { severity: warning, dora: ingestion }
+        annotations:
+          summary: "No deploy events from {{ $labels.service }} in 7d"
+          description: "Either the service stopped shipping or the deploy-event emitter is broken. Check the CI step that POSTs to the ingester."
+      - alert: DoraDeployFrequencyBelowHigh
+        expr: dora:deployment_frequency:per_week < 1
+        for: 24h
+        labels: { severity: info, dora: deployment_frequency }
+        annotations:
+          summary: "{{ $labels.service }} deploys < 1/week (below High band)"
+      - alert: DoraLeadTimeAboveHigh
+        expr: dora:lead_time_hours:p50_7d > 168
+        for: 24h
+        labels: { severity: warning, dora: lead_time }
+        annotations:
+          summary: "{{ $labels.service }} p50 commit-to-prod lead time {{ $value | printf \"%.0f\" }}h > 1 week"
+      - alert: DoraChangeFailureRateAboveHigh
+        expr: dora:change_failure_rate:pct_7d > 15
+        for: 1h
+        labels: { severity: warning, dora: change_failure_rate }
+        annotations:
+          summary: "{{ $labels.service }} CFR {{ $value | printf \"%.1f\" }}% over 7d (> 15%)"
+      - alert: DoraMttrAboveHigh
+        expr: dora:mttr_hours:p50_30d > 24
+        for: 1h
+        labels: { severity: warning, dora: mttr }
+        annotations:
+          summary: "{{ $labels.service }} p50 detection-to-mitigation {{ $value | printf \"%.1f\" }}h > 24h"
+      - alert: ReliabilitySloBelowTarget
+        expr: dora:reliability_slo_attainment:pct_30d < <slo-target-pct>
+        for: 15m
+        labels: { severity: critical, dora: reliability }
+        annotations:
+          summary: "{{ $labels.service }} SLO attainment {{ $value | printf \"%.2f\" }}% below target"
+          runbook_url: https://<runbook-host>/slo/<service>

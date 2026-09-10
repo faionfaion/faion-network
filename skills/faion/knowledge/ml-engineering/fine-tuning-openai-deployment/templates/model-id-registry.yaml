@@ -4,4 +4,66 @@
 # depends-on: content/02-output-contract.xml schema for fine-tuning-openai-deployment
 # token-budget-impact: ≤500 tokens to fill
 
-# Stub — see methodology AGENTS.md ## Templates table.
+# r5-model-id-version-controlled: the ONLY place a fine-tuned model_id lives.
+# Code reads this file (openai-router.py); nothing inlines an ft: string.
+# One entry per fine-tune; `active` points at the entry the router serves.
+# Rollback = set rollout.pct to 0 (or move `active` back) and commit.
+
+registry_version: 1
+task: <task-name>                    # e.g. support-tone
+owner: <team-or-person>              # rollback owner; assign before any ramp
+base_model: gpt-4o-mini-2024-07-18   # the arm that receives (100 - pct)% of traffic
+
+active: <entry-name>                 # key under `models`, e.g. tone_v2
+
+models:
+  <entry-name>:
+    model_id: ft:gpt-4o-mini-2024-07-18:<org>::<suffix>
+    job_id: ftjob-<id>
+    created: <YYYY-MM-DD>
+    training_file_id: file-<id>
+    validation_file_id: file-<id>
+    n_epochs: 3
+    lr_multiplier: 1.0
+
+    # r1-eval-gate-required: router refuses the entry unless passed is true.
+    eval_gate:
+      passed: false
+      report: <path-to-eval-report.md>
+      metric: accuracy
+      baseline_score: 0.0
+      ft_score: 0.0
+      eval_count: 0
+
+    # r2-gradual-rollout: 10 -> 50 -> 100, >= 24h and >= 1000 requests per step.
+    rollout:
+      pct: 0                        # current share of traffic sent to model_id
+      stage: pending                # pending | ramp-10 | ramp-50 | ramp-100 | rolled-back
+      since: <ISO-8601 timestamp>   # when the current pct took effect
+      schedule:
+        - {pct: 10, hold_h: 24}
+        - {pct: 50, hold_h: 48}
+        - {pct: 100, hold_h: 0}
+
+    # r4-rollback-signal: defined BEFORE ramp-10, never during an incident.
+    rollback_signal:
+      latency_threshold: p95_2x     # p95 latency > 2x base-model baseline
+      error_rate_threshold: 0.01    # > 1% of requests
+      quality_drop_threshold: 0.05  # > 5 pts below eval-gate ft_score
+
+    # r3-cost-watch: fine-tunes cost 1.5-2x base; alert past 2x for 1h.
+    cost_watch:
+      ratio_threshold: 2.0
+      window_h: 1
+      dashboard: <langfuse-or-prometheus-url>
+
+  <previous-entry-name>:
+    model_id: ft:gpt-4o-mini-2024-07-18:<org>::<previous-suffix>
+    job_id: ftjob-<previous-id>
+    created: <YYYY-MM-DD>
+    eval_gate: {passed: true, report: <path>, metric: accuracy, baseline_score: 0.68, ft_score: 0.86, eval_count: 300}
+    rollout: {pct: 0, stage: rolled-back, since: <ISO-8601 timestamp>}
+
+# Append-only audit trail; one line per pct change or rollback.
+history:
+  - {at: <ISO-8601 timestamp>, entry: <entry-name>, pct: 10, by: <who>, note: "ramp-10 start"}

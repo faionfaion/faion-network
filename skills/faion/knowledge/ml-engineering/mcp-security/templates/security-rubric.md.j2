@@ -6,4 +6,91 @@ depends-on: content/02-output-contract.xml schema for mcp-security
 token-budget-impact: ≤500 tokens to fill
 -->
 
-# Stub — see methodology AGENTS.md ## Templates table.
+# MCP Security Rubric: {{ rubric_name }}
+
+## Context
+
+- slug: mcp-security
+- owner: <role:person>
+- approver: <role:person>
+- produced_at: <YYYY-MM-DDTHH:MM:SSZ>
+- scope: `<scope>` (local_desktop / remote_single_tenant / remote_multi_tenant)
+- decision-tree path: <branch taken in content/06-decision-tree.xml>
+
+## Inventory (procedure step 1)
+
+| Server | Transport | Scope | Primitives | Data sensitivity |
+|---|---|---|---|---|
+| <name> | <stdio / http_sse / streamable_http> | <local / remote / multi-tenant> | {{ tools_resources_prompts }} | {{ public_internal_pii }} |
+
+## Score bands
+
+Each dimension is graded fails / meets / exceeds. `overall_pass` is true only when every dimension is at least meets; a single fails makes the rubric fail.
+
+## Consent (rule r1)
+
+- fails: any tool runs without a user prompt, or consent persists across sessions
+- meets: first call per tool prompts in a distinguishable surface; decision cached per session at most
+- exceeds: meets, plus per-call prompts for write tools and a visible consent ledger in the UI
+- evidence: <consent-flow doc, screenshots, code path>
+- consent_grade: `<consent_grade>`
+
+## Auth (rule r2)
+
+- n/a: scope local_desktop with stdio only; record meets with note "local, host boundary"
+- fails: any remote endpoint reachable without OAuth 2.1 + PKCE (api_key or anonymous)
+- meets: OAuth 2.1 with PKCE enforced on every remote endpoint; tokens scoped and expiring
+- exceeds: meets, plus per-tool scopes and token audience bound to the resource server URL
+- evidence: <authorization server, scope list, negative test>
+- auth_grade: `<auth_grade>`
+
+## Injection defence (rules r3, r5)
+
+- fails: tool output or tool descriptions inlined raw into the next prompt, or tools from one server able to invoke another server's tools implicitly
+- meets: tool output treated as data (quoted, flagged for suspicious tokens); tool descriptions rendered in a separate surface; per-server isolation with no shared session or credentials
+- exceeds: meets, plus automated injection probes in CI against every server
+- evidence: <bridge code review, probe results>
+- injection_grade: `<injection_grade>`
+
+## Capability attestation (rule r4)
+
+- fails: client accepts methods the server did not declare in `initialize`
+- meets: client rejects undeclared methods and logs the attempt
+- exceeds: meets, plus declared capabilities pinned in config and diffed on every connect
+- evidence: <client code path, log sample>
+- folded into: injection_grade (take the lower of the two)
+
+## Audit and identity (rules r6, r7)
+
+- fails: any tool call missing from the log, or servers loaded outside an allow-list
+- meets: every call logged with server_id, tool_name, caller_session, arguments_hash, outcome, timestamp; log stored outside the MCP host; allow-list enforced with signed manifest or pinned cert
+- exceeds: meets, plus tamper-evident log (append-only, hashed) and alerting on identity mismatch
+- evidence: <log sample, allow-list file, verification code>
+- audit_grade: `<audit_grade>`
+
+## Findings
+
+| Server | Dimension | Grade | Finding | Fix owner | Due |
+|---|---|---|---|---|---|
+| <name> | <consent / auth / injection / audit> | {{ fails_meets_exceeds }} | <one line> | <role:person> | <YYYY-MM-DD> |
+
+## Output (content/02-output-contract.xml)
+
+```json
+{
+  "rubric_name": "<rubric_name>",
+  "scope": "<scope>",
+  "consent_grade": "<consent_grade>",
+  "auth_grade": "<auth_grade>",
+  "injection_grade": "<injection_grade>",
+  "audit_grade": "<audit_grade>",
+  "overall_pass": <overall_pass>
+}
+```
+
+## Review
+
+- validator: `python3 scripts/validate-mcp-security.py --file <out.json>`
+- cadence: monthly | quarterly
+- next_review_at: <YYYY-MM-DD>
+- outcome: <filled at next review>

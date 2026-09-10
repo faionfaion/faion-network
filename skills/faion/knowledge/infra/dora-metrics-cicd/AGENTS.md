@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/schema.sql` | SQL schema for deploys + incidents join |
 | `templates/backup-config.example.json` | Filled report artefact |
+| `templates/deploy-event.yml` | CDEvents-style deploy event JSON Schema (YAML form) with commit_timestamp + success in customData |
+| `templates/prometheus-rules.yml` | Prometheus recording rules for the four DORA metrics + Reliability, and the alerts on the High-band thresholds |
 
 ## Related
 

@@ -3,4 +3,98 @@
 # produces: structured artefact
 # depends-on: content/02-output-contract.xml
 # token-budget-impact: small
-# stub fixture created to satisfy declared template; replace with realistic example
+
+# r2-runtime-allow-list: every file that declares `export const runtime = 'edge'`
+# is diffed against this list before deploy. A file that imports anything under
+# `denied` stays on the Node runtime; the finding lands in DeploymentPlan.edge_violations
+# as "<path> uses <module>". Baseline is the Vercel Edge Runtime docs; audit the
+# `allowed` sets against the current docs whenever Next.js or Vercel CLI is bumped.
+version: 1
+scan:
+  # Where edge declarations may legally appear (Next.js app + pages router, middleware).
+  include:
+    - "app/**/route.{ts,js}"
+    - "app/**/page.{tsx,jsx}"
+    - "app/**/layout.{tsx,jsx}"
+    - "pages/api/**/*.{ts,js}"
+    - "middleware.{ts,js}"
+  exclude:
+    - "**/*.test.*"
+    - "**/__mocks__/**"
+  edge_marker: "export const runtime = 'edge'"
+  # Both import styles count; a dynamic `await import('fs')` is still a violation.
+  import_patterns:
+    - "^import .* from ['\"](?<module>[^'\"]+)['\"]"
+    - "require\\(['\"](?<module>[^'\"]+)['\"]\\)"
+    - "import\\(['\"](?<module>[^'\"]+)['\"]\\)"
+  violation_format: "<file> uses <module>"
+
+runtimes:
+  edge:
+    # Node built-ins the Edge Runtime implements (with or without the node: prefix).
+    allowed_node_builtins:
+      - async_hooks
+      - events
+      - buffer
+      - assert
+      - util
+    # Web-standard globals; anything not listed here is not guaranteed on Edge.
+    allowed_globals:
+      - fetch
+      - Request
+      - Response
+      - Headers
+      - URL
+      - URLSearchParams
+      - crypto
+      - TextEncoder
+      - TextDecoder
+      - ReadableStream
+      - WritableStream
+      - TransformStream
+      - AbortController
+      - structuredClone
+      - atob
+      - btoa
+    # Hard denials: these are the modules behind the edge-node-api-500 failure mode.
+    denied:
+      node_builtins:
+        - fs
+        - fs/promises
+        - child_process
+        - dns
+        - net
+        - tls
+        - http
+        - https
+        - http2
+        - os
+        - path
+        - stream
+        - zlib
+        - worker_threads
+        - cluster
+        - vm
+        - readline
+        - perf_hooks
+      # Packages that pull the built-ins above in transitively; prefer the
+      # listed HTTP-based alternative or keep the route on Node.
+      npm_packages:
+        - { name: pg, alternative: "@neondatabase/serverless or @vercel/postgres" }
+        - { name: mysql2, alternative: "@planetscale/database" }
+        - { name: mongodb, alternative: "MongoDB Atlas Data API over fetch" }
+        - { name: ioredis, alternative: "@upstash/redis" }
+        - { name: redis, alternative: "@upstash/redis" }
+        - { name: nodemailer, alternative: "resend or an HTTP mail API" }
+        - { name: sharp, alternative: "next/image or a Node runtime route" }
+        - { name: bcrypt, alternative: "bcryptjs or crypto.subtle PBKDF2" }
+        - { name: jsonwebtoken, alternative: "jose" }
+        - { name: "@prisma/client", alternative: "Prisma Accelerate or Node runtime" }
+    limits:
+      # Vercel Pro defaults; the scanner warns, it does not fail, on these.
+      bundle_size_kb: 4096
+      cpu_time_ms_initial_response: 50
+      env_var_access: process.env
+  nodejs:
+    # Node runtime has no import restrictions; the scanner only records the choice.
+    denied: {}

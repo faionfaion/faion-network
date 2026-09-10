@@ -62,6 +62,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/backup-config.example.json` | Filled config artefact |
+| `templates/velero-schedule.yaml` | Velero Schedule CRD: daily CSI + Kopia backup with explicit ttl and pre/post quiesce hooks for Postgres and Mongo |
 
 ## Scripts
 

@@ -3,5 +3,95 @@
 # produces: artefact for downstream agent
 # depends-on: content/02-output-contract.xml
 # token-budget-impact: small
+#
+# Fill one owner + evidence per gate; every criterion below is binary and checkable by the named
+# `check`. Gate keys match `gates.*` in the LaunchReadiness schema; `status` is green | yellow | red.
 
-skeleton: fill per artefact
+launch_id: <launch-id>
+launch_date: <YYYY-MM-DD>
+
+policy:
+  red_is_blocker: true                      # no exec override without risk_acceptance_memo on file
+  yellow_requires_remediation_due: true     # a yellow gate without a dated remediation is treated as red
+  min_criterion_chars: 10                   # "looks ok" fails schema validation
+  risk_acceptance_memo: null                # <url> only when a red gate is consciously overridden
+
+gates:
+  security:
+    owner: <security-lead>                  # from the security function, never the PM by default
+    criterion: "External pen-test report dated within 90 days with zero open critical/high findings; dependency scan clean."
+    check: "pen-test PDF in <security-drive-url>; `trivy fs --severity CRITICAL,HIGH --exit-code 1 .` returns 0"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+  performance:
+    owner: <backend-lead>
+    criterion: "p95 latency < 250 ms and error rate < 0.1% at 2x forecast peak for 30 min on the load-test run."
+    check: "k6 run scripts/load/launch.js --vus <2x-peak> --duration 30m; thresholds pass"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+  observability:
+    owner: <sre-lead>
+    criterion: "SLO dashboard live for availability + latency; paging alert fires on synthetic breach within 5 min."
+    check: "trigger synthetic failure in staging; alert reaches on-call pager < 5 min (screenshot of timeline)"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+  runbooks:
+    owner: <sre-lead>
+    criterion: "Runbook exists for each paging alert; every runbook URL returns HTTP 200; one dry-run executed by a non-author."
+    check: "curl -sSf -o /dev/null <runbook-url> for each alert; dry-run log linked"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+  on_call:
+    owner: <eng-manager>
+    criterion: "Rotation covers T-1 through T+14 with primary + secondary, no gaps, escalation policy attached."
+    check: "PagerDuty/Opsgenie schedule export shows 100% coverage for the window"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+  legal:
+    owner: <counsel>
+    criterion: "ToS + Privacy Policy updates merged and published; DPA available; data-residency review signed."
+    check: "signed review in <legal-drive-url>; published ToS diff link"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+  support_enablement:
+    owner: <support-lead>
+    criterion: "Help-center articles published for every launch feature; support team trained; macros loaded; escalation path documented."
+    check: "article URLs return 200; training attendance list; helpdesk macro export"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+  comms_tree:
+    owner: <pm>
+    criterion: "Customer + internal comms tree (templates/comms-tree.md) approved, with senders, channels and send times for go, delay and rollback."
+    check: "approved comms-tree doc linked; each message has an owner and a scheduled time"
+    evidence: <url>
+    status: red
+    remediation_due: null
+
+# Rule snapshots-t-minus-7-3-1: copy the gate statuses into each snapshot; a T-3 red escalates
+# to the launch committee immediately, it does not wait for T-1.
+snapshots:
+  - t_minus_days: 7
+    captured_at: <YYYY-MM-DDTHH:MM:SSZ>
+    open_blockers: []
+  - t_minus_days: 3
+    captured_at: <YYYY-MM-DDTHH:MM:SSZ>
+    open_blockers: []
+  - t_minus_days: 1
+    captured_at: <YYYY-MM-DDTHH:MM:SSZ>
+    open_blockers: []
+
+decision: no-go                             # go | go-with-conditions | no-go; go is invalid while any gate is red

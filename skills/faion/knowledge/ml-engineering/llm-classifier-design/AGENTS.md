@@ -66,6 +66,7 @@
 | `templates/system-prefix.md.j2` | Cacheable system prefix template. |
 | `templates/system-prefix.md` | Cacheable system prefix template. Generated from `templates/system-prefix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum valid classifier-config. |
+| `templates/classifier-runner.py` | Batch runner: JSONL in, one forced tool call per batch, cached system prefix, verdict-count gate. |
 
 ## Scripts
 

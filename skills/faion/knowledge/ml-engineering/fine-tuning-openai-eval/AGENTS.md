@@ -67,6 +67,7 @@
 | `templates/openai-eval-runner.py` | Eval runner: takes ft + base IDs, runs on held-out, returns scores. |
 | `templates/eval-report.md.j2` | Eval report skeleton with metrics + gate decision. |
 | `templates/eval-report.md` | Eval report skeleton with metrics + gate decision. Generated from `templates/eval-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/judge-prompt.txt` | LLM-as-judge prompt template (criterion + rubric); version-controlled, hashed into the report. |
 
 ## Scripts
 

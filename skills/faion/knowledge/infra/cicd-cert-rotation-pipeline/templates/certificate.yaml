@@ -4,4 +4,50 @@
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200 tokens when loaded as context
 
-# Skeleton — replace placeholder values before applying.
+# cert-manager >= 1.12 (cert-manager.io/v1). One Certificate per environment,
+# each pointing at that environment's own ClusterIssuer (issuer-isolated-per-env).
+# Apply path: author this file -> `helm template` / kustomize render ->
+# `kubectl-validate` gate in CI -> apply. Never `kubectl apply` from a laptop.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: <service>-tls
+  namespace: <namespace>
+  labels:
+    app.kubernetes.io/name: <service>
+    environment: <env>
+spec:
+  # no-private-keys-in-git: the key and chain exist only in this Secret.
+  # The Secret is created by cert-manager; nothing under spec carries key material.
+  secretName: <service>-tls
+  secretTemplate:
+    labels:
+      environment: <env>
+      managed-by: cert-manager
+  # renewal-30-days-before-expiry: 90-day certificate, renew at 30 days remaining.
+  # Set renewBefore explicitly; the 2/3-lifetime default is too late for short certs.
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    encoding: PKCS8
+    # Fresh key on every renewal so a leaked key never survives a rotation.
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+  commonName: <service>.<env>.<domain>
+  dnsNames:
+    - <service>.<env>.<domain>
+  # issuer-isolated-per-env: staging and prod never share this reference.
+  # Name the issuer per environment, e.g. letsencrypt-staging / letsencrypt-prod.
+  issuerRef:
+    name: letsencrypt-<env>
+    kind: ClusterIssuer
+    group: cert-manager.io
+# expiry-alert-7-days lives outside this CRD: scrape cert-manager's
+# certmanager_certificate_expiration_timestamp_seconds and alert when
+# (value - time()) < 7 * 24 * 3600. See sibling Prometheus rules in the
+# cicd-tls-validation-gate methodology.

@@ -68,6 +68,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/psalm.xml` | Psalm taint-analysis config. |
+| `templates/phpstan.neon` | PHPStan level-9 config with committed baseline include and strict rules. |
 
 ## Scripts
 

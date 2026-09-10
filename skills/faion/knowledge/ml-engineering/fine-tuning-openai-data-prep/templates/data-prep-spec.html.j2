@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Stub — see methodology AGENTS.md ## Templates table.</title>
+<title>Data-Prep Spec: {{ dataset_name }}</title>
 <style>:root{color-scheme:light dark}
 body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
 font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -25,5 +25,26 @@ code{background:#242424} pre{background:#1d1d1d}
 th{background:#1d1d1d} th,td{border-color:#333}
 blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
 <body>
-<h1>Stub — see methodology AGENTS.md ## Templates table.</h1>
+<h1>Data-Prep Spec: {{ dataset_name }}</h1>
+<p><strong>Format:</strong> {{ format }} (chat | completion | dpo) <strong>Target base model:</strong> {{ base_model }} <strong>Owner:</strong> {{ owner }} <strong>Date:</strong> {{ date }}</p>
+<h2>1. Source</h2>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Origin</td><td>{{ source_origin }} (csv / parquet / db dump, path or query)</td></tr><tr><td>Raw row count</td><td>{{ raw_row_count }}</td></tr><tr><td>Rows dropped (empty / duplicate)</td><td>{{ dropped_row_count }}</td></tr><tr><td>Columns used</td><td>{{ columns_used }}</td></tr><tr><td>Label column (classification only)</td><td>{{ label_column }}</td></tr></tbody></table>
+<h2>2. Transform</h2>
+<h3>Schema map (rule r1-jsonl-schema)</h3>
+<table><thead><tr><th>JSONL field</th><th>Source column</th></tr></thead><tbody><tr><td><code>messages[0]</code> system</td><td>canonical prompt below (constant)</td></tr><tr><td><code>messages[1]</code> user</td><td>{{ user_column }}</td></tr><tr><td><code>messages[2]</code> assistant</td><td>{{ assistant_column }}</td></tr><tr><td><code>non_preferred_output</code> (dpo only)</td><td>{{ rejected_column }}</td></tr></tbody></table>
+<h3>Canonical system prompt (rule r5-deterministic-system-prompt)</h3>
+<p>One string, identical on every line. Never varied per example.</p>
+<pre><code>&lt;system_prompt&gt;</code></pre>
+<h3>PII scrub (rule r6-no-pii)</h3>
+<table><thead><tr><th>Pattern</th><th>Action</th><th>Matches found</th></tr></thead><tbody><tr><td>email</td><td>replace with sha256 token</td><td>{{ pii_email_count }}</td></tr><tr><td>phone (E.164 / national)</td><td>replace with sha256 token</td><td>{{ pii_phone_count }}</td></tr><tr><td>customer / ticket IDs</td><td>replace with sha256 token</td><td>{{ pii_id_count }}</td></tr></tbody></table>
+<p><code>pii_scrubbed: &lt;pii_scrubbed&gt;</code> (must be <code>true</code> before upload).</p>
+<h3>Token budget (rule r2-token-budget)</h3>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Tokenizer</td><td>tiktoken <code>&lt;tiktoken_encoding&gt;</code></td></tr><tr><td>Context cap enforced</td><td>&lt;context_cap_tokens&gt; tokens</td></tr><tr><td>Examples rejected over cap</td><td>{{ over_cap_count }}</td></tr><tr><td>Max tokens / example</td><td>&lt;max_tokens_per_example&gt;</td></tr><tr><td>Total tokens (one epoch)</td><td>{{ total_tokens }}</td></tr><tr><td>Planned epochs</td><td>{{ epochs }}</td></tr><tr><td>Training price ($ / 1M tokens)</td><td>&lt;price_per_1m_usd&gt;</td></tr><tr><td><strong>Estimated cost (USD)</strong></td><td><strong>{{ estimated_usd }}</strong></td></tr></tbody></table>
+<h2>3. Split (rule r3-train-val-split, r4-balanced-classes)</h2>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Strategy</td><td>hash-disjoint on user text, seed <code>&lt;split_seed&gt;</code></td></tr><tr><td>Ratio</td><td>{{ split_ratio }} (80/20 default; 70/30 when total &lt; 500)</td></tr><tr><td>Train count</td><td>{{ train_count }}</td></tr><tr><td>Validation count</td><td>{{ val_count }}</td></tr><tr><td>Class ratio before / after balancing</td><td>{{ class_ratio_before }} / {{ class_ratio_after }} (cap 1.5x)</td></tr></tbody></table>
+<p>Validation rows are never used for training and never reused as the eval held-out set.</p>
+<h2>4. Output</h2>
+<table><thead><tr><th>Artifact</th><th>Value</th></tr></thead><tbody><tr><td><code>train_path</code></td><td>{{ train_path }}</td></tr><tr><td><code>val_path</code></td><td>{{ val_path }}</td></tr><tr><td>OpenAI training file ID</td><td>{{ training_file_id }}</td></tr><tr><td>OpenAI validation file ID</td><td>{{ validation_file_id }}</td></tr><tr><td>Validator report</td><td>{{ validator_report_path }} (<code>openai-validate-jsonl.py</code> exit 0)</td></tr></tbody></table>
+<h2>5. Self-check</h2>
+<ul><li>[ ] Every line parses and carries the <code>&lt;format&gt;</code> schema (r1)</li><li>[ ] No example exceeds &lt;context_cap_tokens&gt; tokens (r2)</li><li>[ ] Train and validation are hash-disjoint; ratio matches the rule (r3)</li><li>[ ] Class ratio within 1.5x or balancing recorded above (r4)</li><li>[ ] Single canonical system prompt across all lines (r5)</li><li>[ ] <code>pii_scrubbed: true</code> with match counts recorded (r6)</li><li>[ ] <code>scripts/validate-fine-tuning-openai-data-prep.py</code> exits 0</li></ul>
 </body></html>

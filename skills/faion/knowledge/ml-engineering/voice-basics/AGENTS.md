@@ -70,6 +70,7 @@
 |------|---------|
 | `templates/basic-voice-agent.py` | BasicVoiceAgent with listen / think / speak loop. |
 | `templates/vad-recording.py` | webrtcvad-based recorder stopping on silence. |
+| `templates/prompt-design.txt` | System-prompt design sheet: under 200 words, no Markdown, 1-3 spoken sentences, rolling-summary slot. |
 
 ## Related
 
