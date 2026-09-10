@@ -72,8 +72,6 @@
 | `templates/decision-record.md.j2` | ES vs CRUD decision record |
 | `templates/decision-record.md` | ES vs CRUD decision record Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -92,27 +90,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (audit-need, read-pattern, schema stability) to a rule from `01-core-rules.xml` and either approves ES or redirects to a state-stored aggregate with domain events.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/event-catalog.yml`
-
-```yaml
-aggregate: Order
-stream_strategy: one_per_aggregate_instance
-events:
-  - name: OrderPlaced
-    version: 1
-    fields: [order_id, customer_id]
-  - name: ItemAdded
-    version: 1
-    fields: [order_id, sku, price, quantity]
-  - name: OrderShipped
-    version: 1
-    fields: [order_id, carrier, shipped_at]
-  - name: OrderCancelled
-    version: 1
-    fields: [order_id, reason]
-```

@@ -62,8 +62,6 @@
 | `templates/repo-rules.md` | Guardrail Markdown skeleton with the canonical 6 sections. Generated from `templates/repo-rules.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/repo-rules.schema.json` | JSON skeleton matching the output contract. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,31 +79,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree decides extraction-only vs extraction-plus-inference based on lint config completeness and PR sample availability.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/repo-rules.schema.json`
-
-```json
-{
-  "artefact_id": "rrev-2026-05-23",
-  "owner": "@ruslan",
-  "client_repo": "github.com/acme/web",
-  "lint_tool": "eslint",
-  "lint_config_path": ".eslintrc.json",
-  "naming": {
-    "files": "kebab-case",
-    "classes": "PascalCase",
-    "functions": "camelCase"
-  },
-  "branching_model": "github-flow",
-  "commit_format": "conventional",
-  "layering_rules": [
-    "no DB calls from controllers"
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
-}
-```

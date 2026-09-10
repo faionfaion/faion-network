@@ -68,8 +68,6 @@
 | `templates/cap-pacelc-walkthrough.md.j2` | Markdown skeleton naming both axes. |
 | `templates/cap-pacelc-walkthrough.md` | Markdown skeleton naming both axes. Generated from `templates/cap-pacelc-walkthrough.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,26 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree separates the two CAP/PACELC axes and routes the decision to AP vs CP first, then EL vs EC; both must be named.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/cap-pacelc-walkthrough.json`
-
-```json
-{
-  "artefact_id": "cap-pacelc-orders-2026-05-23",
-  "owner": "@ruslan",
-  "decision": "orders-service: AP under partition (DynamoDB), EL when healthy (low-latency reads)",
-  "rationale": "RPO=30s and revenue impact of read unavailability dominates; PACELC choice EL because checkout p95 budget is 80ms; both inputs cited",
-  "inputs_used": [
-    "policy/rpo-rto.md",
-    "observability/orders-read-write-split.json"
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "cap_mode": "AP",
-  "pacelc_mode": "EL"
-}
-```

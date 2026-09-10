@@ -68,8 +68,6 @@
 | `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,33 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
-  },
-  "owner": "swe:alice",
-  "inputs": [
-    {
-      "name": "scope",
-      "value": "billing"
-    }
-  ],
-  "decision": "Adopt variant A behind feature flag.",
-  "evidence": [
-    "https://example.com/pr/1"
-  ],
-  "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
-  }
-}
-```

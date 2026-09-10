@@ -75,8 +75,6 @@
 | `templates/ai-review-prompt.md` | AI second-reviewer prompt template. Generated from `templates/ai-review-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable self-review record for validator smoke-test. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -94,23 +92,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - peer availability, risk flags, AI review, cool-off, CI status - onto a rule from `content/01-core-rules.xml`. Use it before every merge: it catches skip-checklist-fast-merge and ai-review-absent upstream.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "pr_id": "PR-1",
-  "checklist_passed": {
-    "items_total": 10,
-    "items_passed": 10
-  },
-  "ai_review_present": true,
-  "risk_flags_hit": [],
-  "ci_status": "green",
-  "merge_decision": "merge"
-}
-```

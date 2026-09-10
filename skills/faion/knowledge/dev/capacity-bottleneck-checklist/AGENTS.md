@@ -60,8 +60,6 @@
 | `templates/capacity-bottleneck-checklist.md.j2` | Markdown skeleton naming the checklist sections. |
 | `templates/capacity-bottleneck-checklist.md` | Markdown skeleton naming the checklist sections. Generated from `templates/capacity-bottleneck-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,29 +77,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree gates the workflow on headroom and ownership; below the 20% floor escalates, missing owner blocks output.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/capacity-bottleneck-checklist.json`
-
-```json
-{
-  "artefact_id": "cap-2026-05-23",
-  "owner": "@ruslan",
-  "decision": "raise pgbouncer pool from 80 to 200; provision +2 web replicas",
-  "rationale": "db pool saturation observed at 95% during last load test (load-test-2026-05-22.html); web CPU p95 at 78%; both inputs cited",
-  "inputs_used": [
-    "observability/load-test-2026-05-22.html",
-    "observability/web-cpu-p95.json"
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "headroom_pct": 22,
-  "bottlenecks": [
-    "db_pool",
-    "web_cpu"
-  ]
-}
-```

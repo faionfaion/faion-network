@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 un-inlined: `dev`, `frontend`, `hr`.** 599 blocks from 302 envelopes —
+  `dev` alone carried 571 of them, the largest concentration in the corpus.
+
 - **F-077 un-inlined: `backend`, `comms`.** 324 blocks from 141 envelopes. This is
   also where the reversal stops being bookkeeping: `server-init-bootstrap`'s
   envelope carried a verbatim copy of the pre-fix `bootstrap.sh` and

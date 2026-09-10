@@ -63,8 +63,6 @@
 |------|---------|
 | `templates/_smoke-test.go` | Minimal compilable example combining the four templates above. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,20 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether testing-go applies: root question — "Is the test target a pure Go function/method in this module?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.go`
-
-```go
-package testing_go_test
-
-import "testing"
-
-// Smoke test demonstrating the four shapes.
-func TestPlaceholder(t *testing.T) {
-  t.Skip("placeholder template; replace with real test per 04-procedure.xml")
-}
-```

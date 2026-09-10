@@ -63,8 +63,6 @@
 | `templates/_smoke-test.md.j2` | Minimal filled rubric example. |
 | `templates/_smoke-test.md` | Minimal filled rubric example. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,25 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether testing-patterns applies: root question — "Does this codebase have a written test strategy?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/builder.py.tmpl`
-
-```python
-Python builder skeleton
-"""
-from __future__ import annotations
-
-
-def main() -> None:
-    """Entry point. Fill per methodology procedure."""
-    # TODO: implement per 04-procedure.xml
-    raise NotImplementedError
-
-
-if __name__ == "__main__":
-    main()
-```

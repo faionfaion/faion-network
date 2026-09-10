@@ -71,8 +71,6 @@
 | `templates/clippy.toml` | Clippy lint block forbidding `unwrap_used`, `expect_used` outside tests |
 | `templates/check-errors.sh` | CI script: clippy denies for unwrap/expect/panic/todo + grep gate on `Box<dyn Error>` in public signatures |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,60 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree first asks crate type (library / binary / build-script) → picks `thiserror` (lib), `anyhow` (bin), or `Box<dyn Error>` (build). Then asks whether downstream needs variant matching → yes ⇒ enum with `#[from]` source chains; no ⇒ opaque error with `.context()`. All leaves reference rules from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/error.rs.thiserror.tmpl`
-
-```text
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-pub enum CrateError {
-    #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("parse error: {0}")]
-    Parse(#[from] serde_json::Error),
-
-    #[error("resource '{id}' not found")]
-    NotFound { id: String },
-
-    #[error("invalid state: {0}")]
-    InvalidState(String),
-}
-
-pub type Result<T, E = CrateError> = std::result::Result<T, E>;
-```
-
-### `templates/clippy.toml`
-
-```toml
-# Place at crate root. Override per-file with #[allow(clippy::unwrap_used)] in tests.
-
-avoid-breaking-exported-api = false
-```
-
-### `templates/check-errors.sh`
-
-```bash
-set -euo pipefail
-
-cargo clippy --all-targets --all-features -- \
-  -D clippy::unwrap_used \
-  -D clippy::expect_used \
-  -D clippy::panic \
-  -D clippy::todo \
-  -D clippy::unimplemented \
-  -W clippy::missing_errors_doc
-
-# Forbid Box<dyn Error> in public function signatures (rule thiserror-for-lib).
-if grep -rn 'pub\s\+fn\b.*Box<dyn\s\+\(std::error::\)\?Error' src/; then
-  echo "ERROR: Box<dyn Error> in public API — use a typed error enum"
-  exit 1
-fi
-
-echo "Error handling checks passed."
-```

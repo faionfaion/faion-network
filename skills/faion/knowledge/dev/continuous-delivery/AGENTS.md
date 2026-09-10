@@ -72,8 +72,6 @@
 | `templates/cd-triage-checklist.md.j2` | Four-prerequisite triage routing to `cd-basics` vs `cd-pipelines`, emitting a decision record |
 | `templates/cd-triage-checklist.md` | Four-prerequisite triage routing to `cd-basics` vs `cd-pipelines`, emitting a decision record Generated from `templates/cd-triage-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -92,23 +90,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/spec.json`
-
-```json
-{
-  "every_commit_releasable": true,
-  "pipeline_automated": true,
-  "schema_migration_pattern": "expand-contract",
-  "pr_max_lines": 200,
-  "feature_flag_required_fields": [
-    "owner",
-    "expires_on"
-  ],
-  "rollback_step_required": true
-}
-```

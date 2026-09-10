@@ -69,8 +69,6 @@
 | `templates/ownership-audit-comment.tmpl.rs` | 3-line comment template documenting the audit answers above each pub fn |
 | `templates/audit-clones.sh` | Crate-level audit: clippy clone lints, clone-count baseline, Rc/RefCell-across-spawn scan |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,45 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: does the function need to keep the value after returning? → yes → consume (move); no → reference. Then: needs to modify? → `&mut T`; otherwise → `&T`. Then: shared across threads? → `Arc<T>` (or `Arc<Mutex<T>>` for shared mutable). All leaves reference rules from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/ownership-audit-comment.tmpl.rs`
-
-```rust
-// Ownership audit:
-//   keeps_value:           false   // does this fn store / return the value?
-//   modifies_value:        false   // does it write through the param?
-//   shares_across_threads: false   // does any path spawn with the value?
-// → param_kind: shared-ref (&T)
-pub fn example(input: &str) -> usize {
-    input.len()
-}
-```
-
-### `templates/audit-clones.sh`
-
-```bash
-set -euo pipefail
-
-cargo clippy --all-targets -- \
-  -W clippy::needless_clone \
-  -W clippy::redundant_clone \
-  -W clippy::clone_on_copy \
-  -W clippy::implicit_clone 2>&1 | tee target/clippy-clones.txt
-
-echo "--- Clone call count in src/ ---"
-grep -rn '\.clone()\|\.to_string()\|\.to_owned()' src/ | wc -l
-
-# Rc / RefCell are !Send + !Sync — flag any file that both uses them and spawns.
-echo "--- Files using Rc/RefCell that also spawn ---"
-for f in $(grep -rl 'Rc<\|RefCell<' src/ || true); do
-  if grep -q 'thread::spawn\|tokio::spawn\|rayon::' "$f"; then
-    echo "  $f  (see rule arc-mutex-across-threads)"
-  fi
-done
-
-echo "--- clippy-clones.txt written to target/ ---"
-```

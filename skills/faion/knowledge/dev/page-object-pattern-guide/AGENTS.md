@@ -71,8 +71,6 @@
 | `templates/page-object-pattern-guide.md` | Markdown skeleton for the Page Object Pattern at Scale (Playwright / Cypress) artefact. Generated from `templates/page-object-pattern-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable page-object-pattern-guide record for validator smoke-test. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,35 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree filters on suite size, locator-debt level, and refactor ownership; routes under-scaled suites or xpath-heavy suites away first.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "artefact_id": "pop-2026-q2",
-  "owner": "qa@faion.net",
-  "framework": "playwright",
-  "pages": [
-    {
-      "name": "LoginPage",
-      "actions": [
-        "signInWithEmail",
-        "requestPasswordReset"
-      ]
-    }
-  ],
-  "locator_hierarchy": [
-    "role",
-    "test-id",
-    "css"
-  ],
-  "implicit_waits_banned": true,
-  "contract_test_path": "tests/contracts/page-objects.contract.ts",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
-}
-```
