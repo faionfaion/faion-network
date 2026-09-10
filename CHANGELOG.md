@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-014 closed: validator 5's B3.2 measures the body, not the file.** It was
+  `stat().st_size < 50` over a file whose header alone is 200-300 bytes. It now
+  strips the five-key header (comment, docstring or `__faion_header__` forms),
+  and fails a template whose remainder is nothing, a JSON `{}`, members that are
+  all empty, or only the corpus's own placeholder stamps. Short is still fine: a
+  CSV header row, a `CLAUDE.md.template` that is exactly `@AGENTS.md`, four real
+  linter flags all pass, because the rule is about content, not byte count. On
+  first run it caught two stubs the standalone classifier had missed
+  (`.agents-INDEX.md.j2`, `.hadolint.yaml`); both got real bodies, and the
+  corpus passes 2,521 / 2,521 with no baseline line added. Content first, gate
+  last — the order the CR asked for, so the gate lands green instead of as a
+  40-line exception list.
+
 - **CR-014: the remaining 53 empty templates have bodies.** After the 21 JSON
   fills, the corpus still had 30 declared stubs (`.py`, `.md.j2`, `.yaml`,
   `.txt`, `.xml`) and 23 undeclared ones, all reading `# Stub — see methodology

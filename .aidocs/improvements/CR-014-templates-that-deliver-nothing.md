@@ -4,7 +4,7 @@ cr_id: CR-014
 title: "74 templates whose body is empty, and the six-line header that hides them from the gate"
 priority: P1
 created: 2026-09-10
-status: proposed
+status: executed 2026-09-10 — 74 bodies written (21 from contract examples, 53 authored), 2 orphans deleted, B3.2 now measures the body
 affected_components: [faion-network/skills/faion/knowledge, scripts/validate-methodology-templates.py]
 blocks: "publication — 40 of them are advertised in a `## Templates` row a customer follows"
 relates_to: ".aidocs/improvements/CR-012-templates-that-fail-when-run.md; .aidocs/improvements/CR-011-rules-that-say-nothing.md"

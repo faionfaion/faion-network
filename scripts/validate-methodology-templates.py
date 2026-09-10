@@ -240,6 +240,62 @@ def _variable_findings(p: Path, header: str) -> list[str]:
     return errs
 
 
+# B3.2 used to be `path.stat().st_size < 50` — the whole file, header included.
+# The five-key header is itself 200-300 bytes, so a template that was ONLY a
+# header passed a non-emptiness check by four to six times, and CR-014 found
+# 74 such files, 51 of them advertised in a `## Templates` row. The check now
+# measures the BODY: what is left once the header comes off. A body is empty
+# when there is nothing there, when a JSON document is `{}` (or its only member
+# is `__faion_header__`), or when every remaining line is one of the corpus's
+# own placeholder stamps. Short is not empty: a CSV header row, a
+# `CLAUDE.md.template` that is exactly `@AGENTS.md`, four real linter flags all
+# pass, because the rule is about content, not byte count.
+_PLACEHOLDER_LINE = re.compile(
+    r"^(?:#|//|--|;)?\s*(?:"
+    r"fill per artefact|skeleton\b|stub\b|.*\bfill per artefact\b|example_key: example_value"
+    r"|skeleton: fill per artefact|.*replace placeholder values before applying"
+    r'|echo "skeleton [^"]*"|.*fill per content/02-output-contract\.xml'
+    r")", re.I)
+_HEADER_LINE = re.compile(
+    r"^\s*(?:#|//|<!--|;|--|/\*|\*|\")?\s*"
+    r"(?:purpose|consumes|produces|depends[-_]on|token[-_]budget[-_]impact)\s*:",
+    re.I)
+_TERMINATORS = {"-->", "<!--", '"""', "'''", "*/", "/*"}
+
+
+def _body_is_empty(p: Path) -> str:
+    """Why the template's body is empty, or '' when it has one."""
+    try:
+        raw = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return "unreadable"
+    if not raw.strip():
+        return "zero bytes"
+    if p.suffix in JSON_LIKE:
+        try:
+            import json
+            data = json.loads(raw)
+        except Exception:
+            return ""  # unparseable JSON is a different finding, not this one
+        if isinstance(data, dict):
+            data = {k: v for k, v in data.items() if k != "__faion_header__"}
+            if not data:
+                return "only a header, no members"
+            if all(v in ([], {}, "", None) for v in data.values()):
+                return "every member is empty"
+        elif data in ([], "", None):
+            return "empty document"
+        return ""
+    lines = [l for l in raw.split("\n")
+             if l.strip() and not l.startswith("#!") and not _HEADER_LINE.match(l)
+             and l.strip() not in _TERMINATORS]
+    if not lines:
+        return "only a header"
+    if len("".join(lines)) < 120 and all(_PLACEHOLDER_LINE.match(l) for l in lines):
+        return "only a placeholder line"
+    return ""
+
+
 def validate_dir(dir_path: Path) -> list[str]:
     errs: list[str] = []
     listed = _templates_listed(dir_path / "AGENTS.md")
@@ -251,8 +307,9 @@ def validate_dir(dir_path: Path) -> list[str]:
         if not path.exists():
             errs.append(f"declared template missing: {f}")
             continue
-        if path.stat().st_size < 50:
-            errs.append(f"template too small (<50 bytes): {f}")
+        empty_reason = _body_is_empty(path)
+        if empty_reason:
+            errs.append(f"template delivers nothing ({empty_reason}): {f}")
             continue
         missing = _missing_header_keys(path)
         if missing:
