@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-006 follow-up: the old `sdd/templates-planning` path is gone.** The
+  previous commit landed the merge, the archive copy and the manifest, but the
+  deletions of the original 28 files had been unstaged by an index reset and the
+  slug was briefly tracked at both `skills/…` and `.archive/…`. The commit
+  title rule (50 characters) rejected the first attempt, which is how the two
+  changes ended up in one commit with the CR-008 work; the CHANGELOG entries
+  above are the record of which was which.
+
 - **CR-011 §0: a gate that can tell when rules say nothing.**
   `scripts/validate-rules-say-something.py` fails a methodology whose rules are
   all filler — statements shared verbatim by 10+ slugs, restating Applies If /
