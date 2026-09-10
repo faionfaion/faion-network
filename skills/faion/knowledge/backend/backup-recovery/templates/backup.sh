@@ -10,9 +10,12 @@ set -euo pipefail
 
 BACKUP_ROOT=/home/nero/backups
 STAMP=$(date +%Y%m%d)
+mkdir -p "$BACKUP_ROOT"/{database,redis,configs}
 
 # 1. Postgres
-docker exec -t nero-postgres pg_dump -U nero -Fc nero_db \
+# No -t: a TTY turns every 0x0A in the custom-format dump into 0x0D 0x0A
+# and pg_restore refuses the file.
+docker exec nero-postgres pg_dump -U nero -Fc nero_db \
   > "$BACKUP_ROOT/database/nero_db_${STAMP}.dump"
 pg_restore --list "$BACKUP_ROOT/database/nero_db_${STAMP}.dump" >/dev/null \
   || { echo CORRUPT; exit 1; }
@@ -29,4 +32,4 @@ restic backup "$BACKUP_ROOT" --tag daily --quiet
 restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune --quiet
 
 # 5. Local retention
-find "$BACKUP_ROOT" -mtime +14 -delete
+find "$BACKUP_ROOT" -type f -mtime +14 -delete

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The nightly backup can succeed now** (CR-012 #1).
+  `backend/backup-recovery/templates/backup.sh` ran `docker exec -t … pg_dump -Fc`,
+  and the `-t` allocates a TTY, whose line discipline inserts `0x0D` before every
+  `0x0A` — in a **binary** custom-format dump. Reproduced here against a running
+  container: `printf 'a\nb\nc\n'` arrives as `61 0d 0a 62 0d 0a 63 0d 0a`. The
+  script's own `pg_restore --list` verify catches it, prints `CORRUPT` and exits 1,
+  so steps 2-5 never run: no Redis snapshot, no config tarball, no restic offsite,
+  no retention. The operator gets a nightly CORRUPT mail and has no backups at all.
+
+  Two more in the same file: the three destination directories are now created
+  (`> "$BACKUP_ROOT/database/…"` fails on a fresh host), and the retention `find`
+  is scoped to `-type f` so it stops trying to `-delete` the directory tree it
+  just wrote into.
+
 - **9 Python templates can be imported again** (CR-012). Each carried two module
   docstrings — the five-key header, then the original description — and a
   docstring in second position is an expression *statement*, so
