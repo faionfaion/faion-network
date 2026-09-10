@@ -1,23 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules">
-  <rule testable="true">The register tracks at least 6 agency-level risk classes: revenue concentration, key-person, FX/currency, contractor classification, pipeline thinness, regulatory; project-level risks live in a separate register and are not allowed here.</rule>
-  <rule testable="true">Each row has 8 columns: ID, class, description, likelihood (1-5), impact (1-5), score (L×I), owner (named human), trigger (the observable event that flips it to actioned); rows missing owner or trigger are rejected.</rule>
-  <rule testable="true">Revenue-concentration row uses the running 90-day rule: any client ≥40% of trailing-90-day revenue is automatically scored ≥15 and added if missing; this row is recomputed every Monday from billing data, not estimated.</rule>
-  <rule testable="true">Key-person rows must name the bus-factor item (e.g. "only X knows the AWS root creds", "only Y can run the data pipeline") and a remediation owner with a written deadline; "we'll cross-train" without a date is rejected.</rule>
-  <rule testable="true">Weekly refresh fits in 30 minutes: 5 min to update scores from the dashboard, 15 min to walk the top-5 by score, 10 min to write the action note; if the meeting runs over twice in a row, the register is too big — split it.</rule>
-  <rule testable="true">Any risk scoring ≥15 (high likelihood × high impact) must have either a mitigation action active this week OR a written decision to accept the risk signed by the founder; silent high-score rows are forbidden.</rule>
-  <rule testable="true">Archive resolved risks to a "closed" tab with the date and a one-line lesson; do not delete — closed-risk history is the agency's institutional memory and feeds annual planning.</rule>
-  <example>Monday 9:00, 6-person agency: PM opens the register. Revenue concentration shows Client A at 47% (auto-bumped to 5×4=20). Key-person row: "Anna sole admin of client portal infra" — owner = founder, trigger = Anna takes >5 working days off without backup. FX row: 60% revenue in USD, EUR costs, score 4×3=12, action = quarterly hedge review. Contractor row: two devs in PL not classified, owner = ops, deadline = end of month. Meeting closes at 9:28 with three actions logged.</example>
+<text id="01-core-rules" title="Agency Risk Register Template Core Rules" version="2.0.0" est_tokens="1950" depth="essential">
+  <summary>9 testable rules every agency risk register application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Self-routing anchors">
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>If all Applies-If preconditions hold and no Skip-If disqualifier is present, execute the full procedure from `04-procedure.xml` and commit the artefact described in `02-output-contract.xml`.</statement>
-      <rationale source="self-routing rule">Anchor for the decision tree's affirmative leaf; pairs the preconditions with the methodology's commit path.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-six-agency-risk-classes" testable="true" depth="essential">
+      <statement>The register MUST carry at least one row in each of six agency-level classes: revenue concentration, key-person, FX/currency, contractor classification, pipeline thinness, regulatory. Project-level risks (a scope slip, a late vendor on one engagement, a bug) MUST NOT appear; they live in that project's own register.</statement>
+      <rationale source="ISO 31000:2018 (risk register scope); widely established practice in agency operations">A register that mixes thirty project rows with four agency rows buries the one that closes the company. The founder scans the project rows because they are familiar and never reaches the client that is 47% of revenue. Six mandatory classes make the absence of a row visible: if the FX class is empty, someone has to write "no foreign-currency billing" rather than forget.</rationale>
     </rule>
 
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If any Skip-If condition is present (one-shot, &lt;3 instances/year, regulator override, missing owner), do NOT apply this methodology. Route to the sibling/upstream methodology named in `AGENTS.md` Related section.</statement>
-      <rationale source="self-routing rule">Anchor for the decision tree's skip leaf; prevents over-application of a heavyweight artefact when the loop conditions do not hold.</rationale>
+    <rule id="r-eight-column-row" testable="true" depth="essential">
+      <statement>Every row has exactly 8 columns: ID, class, description, likelihood (1-5), impact (1-5), score (likelihood x impact), owner (one named human, never "team" or "ops"), trigger (the observable event that flips the row from monitored to actioned). A row missing owner or trigger is rejected at the Monday refresh.</statement>
+      <rationale source="PMI Practice Standard for Project Risk Management (2009), probability-impact matrix; ISO 31000:2018">Without a trigger the row is a worry, not a risk: nothing tells the PM the week it became real. "Client A might churn" with trigger "Client A misses two invoices in a row or cancels the weekly sync" is something a Monday scan can check in ten seconds; "if things get worse" is not.</rationale>
     </rule>
+
+    <rule id="r-concentration-90d-auto-score" testable="true" depth="essential">
+      <statement>The revenue-concentration row is recomputed every Monday from the billing or invoicing export over the trailing 90 days, never estimated. Any client at 40% or more of trailing-90-day revenue is scored at least 15 automatically and added as its own row if missing; any client above 20% has a row.</statement>
+      <rationale source="Customer-concentration diligence practice in agency M&amp;A and lending; this methodology's Applies If threshold">Concentration creeps. A 25% client becomes 45% over two quarters of "one more retainer" and nobody re-scores because every individual step felt small. Buyers and lenders discount an agency with a dominant client for exactly this reason; recomputing from the ledger removes the founder's optimism from the number.</rationale>
+    </rule>
+
+    <rule id="r-key-person-bus-factor-dated" testable="true" depth="essential">
+      <statement>Each key-person row names the specific single-point item (a credential, a system, a client relationship, a skill), the person who holds it, a remediation owner, and a written deadline date. "We'll cross-train" without a date is rejected. The trigger is an absence condition, for example "holder unavailable for more than 5 working days with no backup".</statement>
+      <rationale source="Bus-factor concept, widely established in software team practice">Key-person risk only materialises during the absence, which is the one moment the remedy cannot be applied. A dated deadline forces the hand-over before the holiday, the illness or the resignation; an undated intention survives every Monday untouched.</rationale>
+    </rule>
+
+    <rule id="r-cross-border-rows-quantified" testable="true" depth="essential">
+      <statement>The FX row states, as numbers from the ledger, the share of revenue by billing currency and the share of costs by currency. The contractor-classification row names each cross-border contractor's jurisdiction, the classification test applied, its outcome, and a dated fix for any unresolved case. "Some USD exposure" or "a few contractors abroad" is rejected.</statement>
+      <rationale source="UK IR35 off-payroll rules; US IRS common-law worker-classification test; treasury natural-hedging practice">"Some exposure" cannot be scored; "60% of revenue in USD against 90% of costs in EUR" is a 4 x 3 and a hedging conversation. A misclassification finding brings back-taxes and penalties for the whole engagement history, and the fix (contract restructure or an employer of record) takes weeks, so the row must be actionable before an audit letter, not after.</rationale>
+    </rule>
+
+    <rule id="r-pipeline-months-of-coverage" testable="true" depth="essential">
+      <statement>The pipeline-thinness row expresses stage-weighted pipeline from the CRM as months of coverage against the monthly cost base, and its trigger is a month threshold written in the row (for example "weighted coverage below 3 months"). "Pipeline feels thin" is rejected.</statement>
+      <rationale source="Widely established agency-finance practice (pipeline coverage ratio)">Agencies fail with full order books because the quarter after next is empty and nobody looked. Expressing pipeline in months of cost puts the runway on the same page as the concentration row, so a 45% client and a 2-month pipeline are read together as what they are: one lost renewal from insolvency.</rationale>
+    </rule>
+
+    <rule id="r-thirty-minute-monday" testable="true" depth="essential">
+      <statement>The weekly refresh is timeboxed at 30 minutes: 5 minutes updating scores from billing, CRM and dashboard; 15 minutes walking the top 5 rows by score; 10 minutes writing the action note. If the refresh overruns twice in a row, the register MUST be split (agency rows only, project rows out) or pruned before the next Monday.</statement>
+      <rationale source="Meeting-timebox practice; this methodology's Skip If clause 'without cadence, the register decays'">Thirty minutes is the slot a founder keeps for eight weeks running. A 90-minute risk review is skipped in week three and the register is folklore by week six. The overrun is the signal that project risks have leaked in, which is the same defect r-six-agency-risk-classes guards.</rationale>
+    </rule>
+
+    <rule id="r-score-15-action-or-signed-acceptance" testable="true" depth="essential">
+      <statement>Every row scoring 15 or more MUST carry either a mitigation action with an owner and a date inside the current week, or an explicit written acceptance signed with the founder's name and date. A high-score row with neither is forbidden.</statement>
+      <rationale source="PMI Practice Standard for Project Risk Management (2009): response strategies avoid / mitigate / transfer / accept">Accepting a risk is a legitimate strategy; not deciding is not. A 20 that sits for four Mondays without a note is the register saying "we know and we chose not to choose", and that is the row that ends up in the post-mortem. The signature makes acceptance a decision someone owns.</rationale>
+    </rule>
+
+    <rule id="r-closed-tab-not-delete" testable="true" depth="essential">
+      <statement>A resolved risk moves to a "closed" tab with the close date and a one-line lesson. Rows are never deleted. The closed tab is read at the annual planning cycle.</statement>
+      <rationale source="PMBOK Guide (6th / 7th ed.), lessons learned register">The same FX swing and the same key-person dependency come back every year in a small agency. The closed tab is how the founder notices that Client B's concentration risk has been "resolved" three times, and that the resolution never held.</rationale>
+    </rule>
+
   </section>
 </text>

@@ -49,9 +49,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules — explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 rules: history from committed instances, no repeat in last 3, async pool, three-signal stale detector, fatigued picks 12-month-unused format, rationale names history and tie-breaker, counts recorded per retro, two rotations without refresh escalate to team health | ~2200 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for the rotation guide artefact + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 modes: three sailboats, history from memory, live format for async team, blind stale detector, fatigued gets fourth-most-recent, morale treated as format | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing

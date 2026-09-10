@@ -1,21 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Ramp Task Difficulty Ladder Decision Tree" version="1.0.0" est_tokens="300">
+<text id="06-decision-tree" title="Ramp Task Difficulty Ladder Decision Tree" version="2.0.0" est_tokens="450">
   <decision-tree>
-    <root-question id="q-warrants-ladder">Does the product-dev team's onboarding cadence warrant a pinned, versioned ladder?</root-question>
-    <branch when="expected_hires_per_year &gt;= 3 AND named_owner_present == true">
-      <question id="q-evidence-and-trigger">Is the trigger event observable AND is there at least one prior ramp cycle with evidence (tickets, retro notes, PRs) to anchor the ladder?</question>
-      <branch when="trigger_observable == true AND evidence_links_count &gt;= 1">
-        <conclusion ref="r2-bounded-output">Fill the full ladder using `templates/skeleton.md`. Use `r3-evidence-anchored` to attach evidence, `r4-named-owner` for the header, `r5-iteration-loop` to schedule the next outcome review.</conclusion>
+    <root-question id="q-warrants-ladder">Does the team hire at least 3 developers a year, and is there at least one merged PR from a previous newcomer to anchor the rungs?</root-question>
+    <branch when="expected_hires_per_year &gt;= 3 AND prior_newcomer_merged_prs &gt;= 1">
+      <question id="q-ladder-shape">Are rungs defined by observable scope, are duration bands non-decreasing with rung 1 under a day, and does buddy support fade up the ladder?</question>
+      <branch when="any rung pattern uses story points, sizes or easy/medium/hard">
+        <conclusion ref="r-rung-defined-by-observable-scope">Repair: rewrite the rung patterns as files / modules / feature flag / design review scope before tagging tickets.</conclusion>
       </branch>
-      <branch when="trigger_observable == false OR evidence_links_count == 0">
-        <conclusion ref="r1-explicit-trigger">Block. Resolve the trigger event (named, observable) and gather at least one cycle of evidence before filling the spec — vague triggers and unevidenced ladders decay into folklore.</conclusion>
+      <branch when="duration bands decrease up the ladder OR rung 1 upper bound &gt; 1 working day">
+        <conclusion ref="r-durations-monotonic-rung1-under-a-day">Repair: reorder or re-band the rungs; rung 1 must be mergeable within a day.</conclusion>
+      </branch>
+      <branch when="buddy support is flat, non-monotonic, or reaches none inside the ramp window">
+        <conclusion ref="r-buddy-support-fades-per-rung">Repair: full pairing at rung 1, check-ins only at the top rung, strictly decreasing between.</conclusion>
+      </branch>
+      <branch when="rung 1 evidence is a sandbox or training-repo task, not a merged PR on the production repo">
+        <conclusion ref="r-rung1-merges-to-main">Repair: replace rung 1 with real merge-to-main changes that run the full pipeline.</conclusion>
+      </branch>
+      <branch when="any rung's evidence is an unstarted backlog item, a senior engineer's PR, or TBD">
+        <conclusion ref="r-evidence-is-a-completed-prior-ramp">Repair: link a merged PR from a previous newcomer with its actual duration, or mark the rung `not_applicable: unvalidated`.</conclusion>
+      </branch>
+      <branch when="ladder shape valid AND fewer than 2 tickets per rung tagged before the start date">
+        <conclusion ref="r-tickets-tagged-before-start-date">Block the start date: tag at least 2 tickets per rung, keep rungs 1 and 2 off the committed sprint scope.</conclusion>
+      </branch>
+      <branch when="ladder shape valid AND tickets tagged AND a newcomer is mid-ramp">
+        <question id="q-mid-ramp">Has the newcomer merged a ticket on the current rung, and is the current ticket inside twice its expected upper bound?</question>
+        <branch when="current rung ticket not yet merged OR ticket past 2x expected upper bound">
+          <conclusion ref="r-promotion-requires-completed-rung">Hold the rung; if overrun, re-classify the ticket rather than grade the newcomer.</conclusion>
+        </branch>
+        <branch when="current rung ticket merged inside its band">
+          <conclusion ref="run-the-checklist">Promote to the next rung; record actual duration against the rung for the outcome review.</conclusion>
+        </branch>
+      </branch>
+      <branch when="ladder shape valid AND tickets tagged AND outcome review due">
+        <conclusion ref="r-outcome-review-regrades-rungs">Run the review: record time_to_first_pr and rung reached per newcomer; re-band any rung whose median actual duration is outside its band; bump the version.</conclusion>
       </branch>
     </branch>
-    <branch when="expected_hires_per_year &lt; 3 OR named_owner_present == false">
-      <conclusion ref="r5-iteration-loop">Skip the methodology. Write a one-off onboarding doc instead; revisit when hiring cadence ≥3/year AND a named owner is appointed.</conclusion>
+    <branch when="expected_hires_per_year &lt; 3 OR prior_newcomer_merged_prs == 0">
+      <conclusion ref="skip-this-methodology">Skip the versioned ladder. Write a one-off onboarding doc; revisit once hiring reaches 3/year and one ramp has produced merged PRs to anchor the rungs.</conclusion>
     </branch>
-    <example trace="three-hires-per-year-named-owner">
-      <p>Product-dev team hired 4 devs last year, alice owns onboarding-runbook, last hire's ramp tickets are linked in retro #42. → warrants full ladder → conclusion r2-bounded-output.</p>
+    <example trace="four-hires-first-day">
+      <p>Team hired 4 devs last year; rung 1 evidence is PR #812 (docs fix, merged in 3h by the previous hire); 2 tickets per rung tagged `ramp/rung-N` before start date → newcomer merges rung-1 ticket on day one → promoted to rung 2 → conclusion run-the-checklist.</p>
     </example>
   </decision-tree>
 </text>

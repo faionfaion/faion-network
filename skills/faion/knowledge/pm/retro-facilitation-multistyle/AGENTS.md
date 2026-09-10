@@ -49,9 +49,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules — explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 rules: format matches distribution, rationale names state and history, fatigued team rotates, Prime Directive and safety check, previous actions reviewed first, 1-3 owned linked dated actions, anonymous-async window and clustering, timebox held | ~2200 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for retro instance + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 modes: live format on async team, same format forever, action avalanche, no memory of previous actions, status meeting in disguise, timebox blowout | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing

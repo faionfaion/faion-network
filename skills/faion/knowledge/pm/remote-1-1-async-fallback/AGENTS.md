@@ -50,9 +50,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/01-core-rules.xml` | essential | 9 rules: async only when sync infeasible, three named prompts, window in IC business hours, missing field is unresponsive, PM ack within 24h with owned actions, reschedule-then-manager ladder, leave pauses the cycle, morale stays private, quarterly response-rate review | ~2450 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for `Async11Note` + forbidden patterns | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 modes: cargo-cult, ownership ambiguity, drift, leakage, no outcome review, trigger drift | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 modes: async becomes default, generic prompts, window in PM timezone, ack without actions, silent skip, morale leaks into dashboards | ~900 |
 | `content/04-procedure.xml` | medium | 5-step: post prompts → IC responds → PM ack → escalate-if-unresponsive → quarterly review | ~600 |
 | `content/06-decision-tree.xml` | essential | Tree: response window, unresponsive count, scope of issue → ack / escalate / synchronous-reschedule | ~400 |
 

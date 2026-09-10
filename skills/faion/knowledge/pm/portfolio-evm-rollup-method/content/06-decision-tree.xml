@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Portfolio Evm Rollup Method — Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Portfolio Evm Rollup Method — Decision Tree" version="2.0.0" est_tokens="750">
   <decision-tree>
-    <root-question id="q-applicability">Does the portfolio have ≥3 projects, all running individual EVM, with a named portfolio owner and a scheduled exec review?</root-question>
+    <root-question id="q-applicability">Does the portfolio have at least 3 projects, each with a week-grain PV / EV / AC ledger, a named portfolio owner and a scheduled executive review?</root-question>
+    <branch when="project_count &lt; 3 OR all_projects_evm == false OR owner_named == false OR exec_review_scheduled == false">
+      <conclusion ref="skip-this-methodology">Skip. Below 3 projects single-project EVM is enough; without per-project ledgers there is nothing to aggregate; an OKR-only org needs a different shape.</conclusion>
+    </branch>
     <branch when="project_count &gt;= 3 AND all_projects_evm == true AND owner_named == true AND exec_review_scheduled == true">
-      <conclusion ref="r1-explicit-trigger">Run the rollup: per-project metrics + weighted portfolio aggregate + variance narrative + outcome review.</conclusion>
-    </branch>
-    <branch when="all_projects_evm == false">
-      <conclusion ref="r2-bounded-output">Block. Establish per-project EVM first; rollup has nothing to aggregate.</conclusion>
-    </branch>
-    <branch when="project_count &lt; 3">
-      <conclusion ref="r3-evidence-anchored">Skip. Single-project EVM is enough; aggregate is noise.</conclusion>
+      <question id="q-data-date">Do all ledger exports share the data date, with any project older than one period flagged `stale` and excluded?</question>
+      <branch when="data_dates_match == false OR stale_unflagged &gt; 0">
+        <conclusion ref="r-single-data-date">Block. Align exports to one data date; flag and exclude stale projects; never carry values forward.</conclusion>
+      </branch>
+      <branch when="data_dates_match == true AND stale_unflagged == 0">
+        <question id="q-aggregation">Are portfolio SPI and CPI computed as sum(EV) / sum(PV) and sum(EV) / sum(AC) in one currency, with the EV method named per project and LOE shown separately?</question>
+        <branch when="indices_averaged == true OR ev_method_missing &gt; 0">
+          <conclusion ref="r-rollup-sums-currency-not-indices">Recompute from currency sums; record the EV method per project; separate LOE from discrete work.</conclusion>
+        </branch>
+        <branch when="indices_averaged == false AND ev_method_missing == 0">
+          <question id="q-exec-view">Does every project beyond the stated variance thresholds carry a narrative, and does the summary state EAC vs BAC and fixed-bid margin in currency over a three-period trend?</question>
+          <branch when="thresholds_stated == false OR narrative_missing_beyond_threshold &gt; 0">
+            <conclusion ref="r-variance-thresholds-named">State the thresholds; add a cause + corrective-action line for each project beyond them.</conclusion>
+          </branch>
+          <branch when="money_block_missing == true">
+            <conclusion ref="r-eac-and-margin-in-money">Add portfolio EAC vs BAC, VAC and per-project fixed-bid margin in currency.</conclusion>
+          </branch>
+          <branch when="thresholds_stated == true AND narrative_missing_beyond_threshold == 0 AND money_block_missing == false">
+            <conclusion ref="run-the-checklist">Run the rollup: per-project table, currency-sum aggregate, three-period trend, variance narrative, money block; portfolio owner signs before the review.</conclusion>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 </text>

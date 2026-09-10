@@ -1,37 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI-Assisted Development — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `ai-assisted-dev` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="AI-Assisted Development Core Rules" version="2.0.0" est_tokens="2750" depth="essential">
+  <summary>9 testable rules every AI-assisted development application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-tool-to-task-map-written" testable="true" depth="essential">
+      <statement>The record's `inputs[]` MUST contain a tool-to-task map: for each task class (boilerplate and scaffolding, unit tests, refactor, code review, documentation, data migration, infrastructure) it names the tool used (Claude Code, Cursor, Copilot, other, or `ai-off`) and the review checkpoint that applies. A team using AI tools without this map in the record is not applying the methodology; "we use Copilot for everything" is not a map.</statement>
+      <rationale source="DORA, Accelerate State of DevOps Report 2024 (AI adoption findings)">DORA's 2024 data associated higher AI adoption with lower delivery throughput and stability when adoption was informal. The map is the difference between a tool used where it is strong (tests, boilerplate, first-pass docs) and a tool used wherever the cursor happens to be, and it is the only artefact the outcome review can tighten.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-security-critical-block-list" testable="true" depth="essential">
+      <statement>The record MUST carry a block-list of code areas where AI generation is `ai-off` or requires two human reviewers, one of whom did not write the prompt. The list MUST include at minimum: authentication and session handling, authorization checks, cryptography and key handling, payment and billing logic, PII processing, secrets and configuration loading, production infrastructure-as-code, and database migrations. Any PR touching a block-listed path with an AI-assisted label and fewer than two reviewers MUST NOT merge.</statement>
+      <rationale source="Perry, Srivastava, Kumar, Boneh, Do Users Write More Insecure Code with AI Assistants? (ACM CCS 2023); OWASP Top 10 for LLM Applications">The Stanford study found participants with an AI assistant wrote less secure code and were more confident it was secure. Auth, crypto and payments are where a plausible-looking default (`verify=False`, a hard-coded IV, a missing ownership check) ships silently; the block-list puts a second pair of eyes exactly where the assistant's confidence is least earned.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-structured-prompt-four-blocks" testable="true" depth="essential">
+      <statement>Every code-generation prompt written by hand MUST use the four blocks in `templates/prompt-code.txt`: `Context` (language and framework version, the path of an existing file showing the pattern to follow), `Task` (one verb: Generate, Refactor, Review, Add tests for), `Requirements` (must-haves and constraints as a list), `Output` (exact file path and format, "no explanation"). Scripted prompts MUST state at least Task, Requirements and Output. A prompt without a named pattern file or an exact output target is rejected at review.</statement>
+      <rationale source="Anthropic, Claude prompt engineering documentation (be clear and direct; use examples); vendor documentation for Cursor and GitHub Copilot">"Write tests for this" yields tests in whatever style the model saw most. Naming `conftest.py` as the pattern and `tests/test_billing.py` as the output is what turns a paragraph of prose plus a code block into a file that matches the repo. The four blocks are also what makes a prompt reviewable when the output is wrong.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-repo-context-file-maintained" testable="true" depth="essential">
+      <statement>The repository MUST carry a tool context file for each tool in the map (`CLAUDE.md` for Claude Code, `.cursor/rules` or `.cursorrules` for Cursor, `.github/copilot-instructions.md` for Copilot) stating build and test commands, conventions and forbidden patterns, and the record's `inputs[]` MUST reference it by path. The context file is reviewed on the same cadence as the record; a context file with stale commands is a defect.</statement>
+      <rationale source="Anthropic, Claude Code documentation (CLAUDE.md); GitHub Copilot documentation (repository custom instructions); Cursor documentation (rules)">Without the context file every developer re-explains the repo in every prompt, differently, and the assistant reintroduces `print()` debugging and the wrong fixture pattern in every session. The file is the one place where "how we do things here" is written for the tool rather than for people.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-no-secrets-or-customer-data-in-prompts" testable="true" depth="essential">
+      <statement>Prompts and tool context MUST NOT include credentials, API keys, private keys, `.env` contents, production customer records or regulated personal data. Secrets files and data directories MUST be excluded from the tool's context through its ignore mechanism (for example `.cursorignore`, `.claudeignore` where supported, or `.gitignore` when the tool honours it), and the record names the exclusion file. A tool whose data-retention terms are unknown MUST be marked `ai-off` for proprietary code until checked.</statement>
+      <rationale source="OWASP Top 10 for LLM Applications, Sensitive Information Disclosure; vendor data-usage policies for Claude Code, Cursor and GitHub Copilot">A `cat .env` pasted into a prompt "so the model knows the config" sends production credentials to a third party and into a chat log. Excluding the files at the tool level is cheaper than training every developer to remember, and the retention check is what stops proprietary code leaving on a plan whose terms nobody read.</rationale>
+    </rule>
+
+    <rule id="r-verify-introduced-dependencies-and-apis" testable="true" depth="essential">
+      <statement>Any package, module, function or API endpoint that an AI-generated diff introduces MUST be verified before review: the package exists in the registry under exactly that name and pinned version, the import resolves, and the function signature matches the documentation. New dependencies proposed by AI MUST be listed in the PR description and approved explicitly; a dependency the reviewer cannot find in the registry blocks the merge.</statement>
+      <rationale source="Package hallucination research (Spracklen et al., 2025) and reported slopsquatting incidents; widely established supply-chain practice">Models invent plausible package names, and attackers register them. A generated `pip install fastapi-auth-utils` that does not exist today may exist next week with a payload. The verify step costs a registry lookup; the alternative is a supply-chain compromise signed off by a reviewer who assumed the model knew the ecosystem.</rationale>
+    </rule>
+
+    <rule id="r-ai-tests-must-assert-and-fail-when-broken" testable="true" depth="essential">
+      <statement>AI-generated tests (including output of `templates/gen-tests.sh`) MUST NOT be committed until a human confirms that every test asserts an observable behaviour or value, not merely that no exception was raised, and that at least one test in the file fails when the function under test is deliberately broken. Tests that only mirror the implementation, mock the unit under test, or assert on the model's own hallucinated return values are deleted, not fixed.</statement>
+      <rationale source="Widely established practice in mutation testing (PIT, mutmut); the gen-tests.sh footer in this methodology">Green CI from generated tests is the most expensive false comfort in AI-assisted work: the model reads the code, writes tests that agree with it, and the suite passes on a function that returns the wrong sign. Breaking the function on purpose is a two-minute check that catches the tests that test nothing.</rationale>
+    </rule>
+
+    <rule id="r-ai-diff-reviewed-like-human-code" testable="true" depth="essential">
+      <statement>Every AI-generated or AI-modified diff MUST go through the same pull-request review as human code, carry an `ai-assisted` label (or an equivalent PR field), and MUST NOT be auto-merged. The prompter MUST self-review the diff line by line before requesting review and MUST be able to explain every changed line; "the assistant did it" is not an accepted answer in review. The review checkpoint matrix in the record maps each task class to self-review, one reviewer, or two reviewers.</statement>
+      <rationale source="GitClear, Coding on Copilot (2024) on rising code churn; widely established practice in code review">GitClear's analysis of 150M+ changed lines showed churn (code reverted or rewritten within two weeks) rising alongside assistant adoption. Code nobody read before merging is code nobody can maintain; the label is what makes the churn and defect data attributable, and the line-by-line rule is what keeps the human accountable for the output.</rationale>
+    </rule>
+
+    <rule id="r-defect-rate-tracked-ai-vs-human" testable="true" depth="essential">
+      <statement>At each `review.cadence` the outcome review MUST compare, using the `ai-assisted` label, the defect escape rate, revert rate and two-week churn of AI-assisted PRs against other PRs over the period, and record the numbers as `evidence[]`. If AI-assisted PRs are worse on any of the three, the tool-to-task map MUST be tightened (move the offending task class to a stricter checkpoint or `ai-off`) and the record version bumped; a review that records worse numbers and changes nothing is invalid.</statement>
+      <rationale source="DORA, Accelerate State of DevOps Report 2024; GitClear, Coding on Copilot (2024)">The defect-rate-reducing discipline this methodology promises exists only if someone measures the defect rate. The comparison is cheap once the label exists, and it is the mechanism that turns "AI is making us faster" into a claim with a number and a direction.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
     </rule>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

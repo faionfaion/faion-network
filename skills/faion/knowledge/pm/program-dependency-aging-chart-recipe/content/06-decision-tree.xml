@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Program Dependency Aging Chart Recipe — Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Program Dependency Aging Chart Recipe — Decision Tree" version="2.0.0" est_tokens="750">
   <decision-tree>
-    <root-question id="q-applicability">Does the program have a dependency graph, ≥3 teams, weekly cadence, and a named PM?</root-question>
-    <branch when="graph_present == true AND teams_count &gt;= 3 AND cadence_weekly == true AND named_pm == true">
-      <conclusion ref="r1-explicit-trigger">Plot the aging chart weekly; route entries &gt; 14 days to the program PM for re-baseline.</conclusion>
+    <root-question id="q-applicability">Does the program have at least 3 teams, a typed dependency graph with tracker link timestamps, a weekly checkpoint, and a named program PM?</root-question>
+    <branch when="teams_count &lt; 3 OR graph_present == false OR cadence_weekly == false OR named_pm == false">
+      <conclusion ref="skip-this-methodology">Skip. A single team has nothing to age across; without a graph build it first (see `dependency-graph-reasoning`); a monthly cadence sees the rot after the milestone slipped.</conclusion>
     </branch>
-    <branch when="graph_present == false">
-      <conclusion ref="r2-bounded-output">Block. Build the dependency graph first (see `dependency-graph-reasoning`).</conclusion>
-    </branch>
-    <branch when="teams_count &lt; 3 OR cadence_weekly == false">
-      <conclusion ref="r3-evidence-anchored">Skip. Chart adds no signal at this scale or cadence.</conclusion>
+    <branch when="teams_count &gt;= 3 AND graph_present == true AND cadence_weekly == true AND named_pm == true">
+      <question id="q-edges">Does every plotted edge carry producer, consumer, type, `opened_at`, `needed_by` and a tracker link id, and are standup-only dependencies absent?</question>
+      <branch when="edges_missing_fields &gt; 0 OR unplotted_standup_dependencies &gt; 0">
+        <conclusion ref="r-typed-edges-from-graph">Block. Complete the edges in the graph and create edges for the dependencies only mentioned in standups.</conclusion>
+      </branch>
+      <branch when="edges_missing_fields == 0 AND unplotted_standup_dependencies == 0">
+        <question id="q-clock">Is age computed from each edge's `opened_at`, in the bands fixed at adoption, with re-ticketed edges inheriting the original `opened_at`?</question>
+        <branch when="age_clock != opened_at OR bands_changed_since_adoption == true">
+          <conclusion ref="r-age-from-dependency-open-not-task">Recompute age from `opened_at` in the adopted bands; regenerate the last four weeks.</conclusion>
+        </branch>
+        <branch when="reticketed_edges_without_superseded_from &gt; 0">
+          <conclusion ref="r-no-aging-reset">Link the new edges to their originals and inherit `opened_at`.</conclusion>
+        </branch>
+        <branch when="age_clock == opened_at AND bands_changed_since_adoption == false AND reticketed_edges_without_superseded_from == 0">
+          <question id="q-actions">Does every edge in an escalation band or with non-positive slack carry an owner and a due date, with a re-baseline decision on every edge over 28 days?</question>
+          <branch when="escalation_edges_without_action &gt; 0">
+            <conclusion ref="r-action-per-escalation-band">Assign owner and date to each; program PM decides re-baseline for the top band before the checkpoint closes.</conclusion>
+          </branch>
+          <branch when="escalation_edges_without_action == 0">
+            <conclusion ref="run-the-checklist">Regenerate by script, publish the chart with the SLE line and the sorted action table, close the checkpoint.</conclusion>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 </text>

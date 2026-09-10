@@ -1,34 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Retro Format Rotation Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable signals from the rotation artefact to a rule from 01-core-rules.xml for retro-format-rotation-guide.</summary>
+<text id="06-decision-tree" title="Retro Format Rotation Decision Tree" version="2.0.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals from the rotation artefact (committed history, last-3 set, distribution, fatigue, stale-format signals, recorded counts, refresh trend) to a rule from 01-core-rules.xml.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the next_format respect the no-repeat-in-3 rule AND match team state?</root-question>
+    <root-question id="q-root">Is there a committed 3-retro history with counts, and does the candidate next_format respect the no-repeat rule, the async pool, the stale detector and the fatigue lookback?</root-question>
 
-    <branch when="history_length &lt; 3">
-      <conclusion ref="skip-this-methodology" verdict="SKIP — defer until 3-retro history exists"/>
+    <branch when="fewer than 3 committed retro instances for this team OR first-ever retro OR one-shot post-incident retro">
+      <conclusion ref="skip-this-methodology" verdict="SKIP: no rotation until three committed instances exist"/>
     </branch>
-    <branch when="next_format in last_3_formats">
-      <conclusion ref="r2-bounded-output" verdict="BLOCK — pick a format not used in last 3"/>
+    <branch when="last_3_formats does not match the three most recent committed instances">
+      <conclusion ref="r-history-read-from-committed-instances" verdict="BLOCK: rebuild the history from the committed instances, newest first"/>
     </branch>
-    <branch when="rationale_length &lt; 20">
-      <conclusion ref="r3-evidence-anchored" verdict="BLOCK — write the team-state evidence"/>
+    <branch when="last two scheduled retros have no action-item / participant / silent-participant counts recorded">
+      <conclusion ref="r-counts-recorded-per-scheduled-retro" verdict="BLOCK: backfill the counts; the stale detector is blind without them"/>
     </branch>
-    <branch when="owner_is_team == true">
-      <conclusion ref="r4-named-owner" verdict="BLOCK — name a person"/>
+    <branch when="two consecutive rotations to non-stale formats raised neither action-item count nor contributing-participant count">
+      <conclusion ref="r-two-rotations-without-refresh-escalate-to-team-health" verdict="SUSPEND rotation: record that fatigue is not a format problem; route to morale pulse / burnout tripwires"/>
     </branch>
-    <branch when="outcome_review_last_run_older_than_cadence == true">
-      <conclusion ref="r5-iteration-loop" verdict="BLOCK — run the outcome review"/>
+    <branch when="distribution == async AND next_format in {mad-sad-glad, lean-coffee} OR scheduled without anonymous asynchronous input">
+      <conclusion ref="r-async-team-rotates-within-async-pool" verdict="BLOCK: rotate within the async-capable pool with a timezone-spanning window"/>
     </branch>
-    <branch when="all_gates_green == true">
-      <conclusion ref="run-the-checklist" verdict="APPROVE — schedule the next retro with chosen format"/>
+    <branch when="next_format in last_3_formats AND no recorded async-pool exception">
+      <conclusion ref="r-no-repeat-in-last-3" verdict="BLOCK: pick a format not used in the last three retros"/>
     </branch>
-    <branch when="preconditions_unmet == true">
-      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+    <branch when="candidate format appears twice in last 3 OR its action-item count fell &gt; 50% between its last two uses OR its last outcome review shows 2+ silent participants">
+      <conclusion ref="r-stale-format-detector-three-signals" verdict="BLOCK: format is stale for this team; exclude it and name the triggering signal in the rationale"/>
+    </branch>
+    <branch when="fatigue_signal == fatigued AND candidate format used by this team within the last 12 months">
+      <conclusion ref="r-fatigued-team-picks-format-unused-12-months" verdict="BLOCK: pick a format unused for 12 months or never used; state its last-used date"/>
+    </branch>
+    <branch when="rationale &lt; 20 chars OR does not name the three previous formats, distribution, fatigue signal and the deciding tie-breaker">
+      <conclusion ref="r-rationale-names-history-state-and-tiebreaker" verdict="BLOCK: write the rationale with history, team state and the tie-breaker that decided"/>
+    </branch>
+    <branch when="all gates green">
+      <conclusion ref="run-the-checklist" verdict="APPROVE: schedule the next retro with the chosen format; record counts at its outcome review"/>
     </branch>
   </decision-tree>
 
   <example trace="retro-format-rotation-guide-happy-path">
-    Team platform; last 3 = [mad-sad-glad, 4ls, sailboat]; distribution shifted to async + Carol in PT TZ → pick anonymous-async with 96-char rationale; named owner Ruslan; quarterly cadence last 2026-05-09 → APPROVE.
+    Team platform; committed history [mad-sad-glad, 4ls, sailboat] with counts (5/6/4 actions, 0 silent); distribution shifted to async after Carol moved to PT; fatigue rotating → anonymous-async (not in last 3, in async pool, not stale); rationale names all three previous formats and the async tie-breaker → APPROVE.
   </example>
 </text>

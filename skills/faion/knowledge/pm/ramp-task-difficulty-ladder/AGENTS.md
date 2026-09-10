@@ -46,9 +46,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 rules: rungs by observable scope, monotonic durations with rung 1 under a day, rung 1 merges to main, buddy support fades, evidence is a prior ramp, tickets tagged before start date, no rung skip, outcome review regrades | ~2200 |
 | `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 modes: story points as rungs, sandbox rung 1, rung skip under pressure, cannibalised ramp backlog, support never fades, whiteboard durations | ~900 |
 | `content/06-decision-tree.xml` | essential | Decides whether the team is ready to commit to a versioned ladder vs ad-hoc onboarding | ~300 |
 
 ## Task Routing

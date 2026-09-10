@@ -49,9 +49,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules — explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/01-core-rules.xml` | essential | 9 rules: net MRR from provider report, 3+ consecutive month-ends, runway co-condition, reversal hysteresis, concentration and churn gates, pre-commit before threshold, provider-export evidence, dated conclusion, reviews with readings | ~1950 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for the contract artefact + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 7 known failure modes with detector + repair | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing

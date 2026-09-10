@@ -1,29 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="RAG Policy Thresholds Decision Tree" version="1.1.1" est_tokens="400" depth="essential">
-  <summary>Tree mapping signal values to colour + default action; gates scaffolding by trigger validity + owner + freshness.</summary>
+<text id="06-decision-tree" title="RAG Policy Thresholds Decision Tree" version="2.0.0" est_tokens="450" depth="essential">
+  <summary>Tree that first checks the policy is computable (numeric thresholds, ordered bands, queryable inputs, fresh review), then maps the worst signal to a colour and its bound action.</summary>
   <decision-tree>
-    <root-question id="q-applies">header.trigger in {weekly_status, fortnightly_status, monthly_status}?</root-question>
-    <branch when="trigger_valid == false">
-      <conclusion ref="r1-explicit-trigger" verdict="skip-this-methodology — refuse vague trigger; named cadence only"/>
+    <root-question id="q-computable">Is every signal numeric, does red lie strictly beyond amber, and does `input_source` name a repeatable query?</root-question>
+    <branch when="any threshold is prose (significant / material)">
+      <conclusion ref="r-threshold-numeric-with-comparator" verdict="repair: replace the prose with a number and comparator, or delete the signal"/>
     </branch>
-    <branch when="trigger_valid == true AND stale == true">
-      <conclusion ref="r5-iteration-loop" verdict="refresh: run quarterly review first; do NOT compute colours from stale thresholds"/>
+    <branch when="red_threshold not strictly beyond amber_threshold in the comparator direction">
+      <conclusion ref="r-red-strictly-beyond-amber" verdict="repair: reorder the thresholds; check lt-signals copied from gt rows"/>
     </branch>
-    <branch when="trigger_valid == true AND stale == false AND thresholds_invalid == true">
-      <conclusion ref="r2-bounded-output" verdict="repair: replace any non-numeric threshold; require evidence anchor per signal"/>
+    <branch when="input_source is an estimate or opinion rather than a named query">
+      <conclusion ref="r-input-source-is-a-query" verdict="repair: point the signal at a JQL / Sentry / finance query; exclude it from compute until then"/>
     </branch>
-    <branch when="trigger_valid == true AND stale == false AND thresholds_invalid == false AND signal_red == true">
-      <conclusion ref="r4-named-owner" verdict="colour=Red; fire actions.red immediately; sponsor notified within 4h"/>
+    <branch when="any signal has empty evidence">
+      <conclusion ref="r-evidence-anchor-per-signal" verdict="repair: add an incident, post-mortem or policy anchor per signal before publishing"/>
     </branch>
-    <branch when="trigger_valid == true AND stale == false AND thresholds_invalid == false AND signal_red == false AND signal_amber == true">
-      <conclusion ref="r3-evidence-anchored" verdict="colour=Amber; PM-scheduled mid-week health-check; surface in next sync with evidence"/>
+    <branch when="header.last_reviewed older than 90 days">
+      <conclusion ref="r-review-within-90-days-prunes-and-adds" verdict="refresh: run the quarterly review first; do NOT compute colours from a stale policy"/>
     </branch>
-    <branch when="trigger_valid == true AND stale == false AND thresholds_invalid == false AND signal_red == false AND signal_amber == false">
-      <conclusion ref="r3-evidence-anchored" verdict="colour=Green; continue normal cadence; record in review log"/>
+    <branch when="policy computable AND fresh AND worst signal beyond red_threshold">
+      <conclusion ref="r-red-action-named-and-time-bound" verdict="colour=Red: fire actions.red at compute time; sponsor notified within the stated bound"/>
     </branch>
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
+    <branch when="policy computable AND fresh AND worst signal beyond amber_threshold only">
+      <conclusion ref="r-worst-signal-wins" verdict="colour=Amber: run actions.amber before the cycle ends; cite policy version in the report"/>
+    </branch>
+    <branch when="policy computable AND fresh AND no signal beyond amber_threshold">
+      <conclusion ref="r-worst-signal-wins" verdict="colour=Green: continue normal cadence; record value, version and last_reviewed"/>
+    </branch>
+    <branch when="PM wants to report a colour other than the computed one">
+      <conclusion ref="r-override-logged-never-downgrades-red" verdict="allowed only with a review_log override entry; a computed Red can never be reported lower"/>
+    </branch>
+    <branch when="fewer than 3 reports per year OR no recurring cadence OR regulated framework mandates its own status scheme">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; adopt the mandated framework or skip"/>
     </branch>
   </decision-tree>
-  <example trace="checkout-W21">trigger=weekly_status → fresh → schedule_variance=22 &gt; red_threshold=20 → Red; fire distressed-project-rescue playbook.</example>
+  <example trace="checkout-W21">all thresholds numeric, red beyond amber, last_reviewed 40 days ago → schedule_variance_pct=22 gt red_threshold=20 → Red; sponsor notified within 4h, rescue playbook opened.</example>
 </text>

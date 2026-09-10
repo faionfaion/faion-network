@@ -1,46 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Incident Comms Templates Internal External Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Incident Comms Templates Internal External must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Incident Comms Templates Internal External Core Rules" version="2.0.0" est_tokens="2100" depth="essential">
+  <summary>9 testable rules every incident comms template bundle MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r-severity-audience-matrix" testable="true" depth="essential">
+      <statement>The bundle MUST contain the four templates (status-page update, customer email, exec brief, internal channel post) and one severity x audience matrix that maps every severity level from the org's incident runbook to the audiences that receive a message. A template MUST NOT be sent to an audience the matrix does not list for that severity; the highest severity always includes the public status page.</statement>
+      <rationale source="Atlassian Incident Management Handbook (incident communication); PagerDuty Incident Response documentation">Without the matrix, the decision "do we email customers?" is made at 03:00 by whoever is on call, and it goes both ways: a P3 internal degradation triggers a 40,000-recipient apology, or a P1 goes unannounced because nobody felt authorised. The matrix moves that decision to daylight.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="r-first-post-deadline-and-cadence" testable="true" depth="essential">
+      <statement>Each external template carries a numeric first-post deadline measured from incident declaration and an update interval, both set per severity in the matrix. Every update ends with "next update by &lt;time with timezone&gt;". A promised interval that passes with no change is itself an update ("no change, still investigating"), never silence.</statement>
+      <rationale source="Atlassian Statuspage guidance on incident updates; Google SRE book (Beyer et al., 2016), ch. 14 Managing Incidents">Silence during an outage is read as abandonment. Customers refresh the page, then open tickets, then post publicly, and the support queue becomes a second incident. A "no change" post at the promised minute keeps the queue flat and buys the responders the time they need.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="r-status-page-lifecycle-states" testable="true" depth="essential">
+      <statement>The status-page template uses the four lifecycle states in order: Investigating, Identified, Monitoring, Resolved. Every update carries the current state, a timestamp with timezone, the impact (which components, regions or customer segments, and what they cannot do), and the next-update time. Component status set on the page MUST agree with the text of the update.</statement>
+      <rationale source="Atlassian Statuspage documentation (incident statuses and component status)">A page that says "Operational" next to an update that says "checkout failing for EU customers" teaches every reader that the page lies. The four states are the vocabulary status-page consumers and integrations already parse; inventing a fifth one ("Partially fixed") breaks subscribers' filters and their trust at the same time.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for delivery, scheduling, RACI, throughput">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="r-no-speculation-external" testable="true" depth="essential">
+      <statement>Customer-facing templates (status page, customer email) MUST NOT contain an unconfirmed root cause, blame directed at a person, team or vendor, internal system or host names, or any customer name or personal data. Cause appears only in the Resolved message or the post-incident report, after it is confirmed.</statement>
+      <rationale source="PagerDuty Incident Response documentation (external communications); Google SRE book ch. 14">"We believe the database cluster is the cause" becomes a quote in a customer's own incident review, and retracting it two hours later costs more trust than "we are investigating" ever would. Naming a vendor draws them into a public dispute mid-incident; naming a host leaks architecture to anyone reading the page.</rationale>
     </rule>
+
+    <rule id="r-internal-post-fields" testable="true" depth="essential">
+      <statement>The internal channel template MUST carry: severity, incident commander (a named person), communications lead, blast radius, current hypothesis, actions in flight each with an owner, link to the incident channel or document, and the next checkpoint time. Hypotheses and system names belong here and nowhere external.</statement>
+      <rationale source="Google SRE book ch. 14 Managing Incidents (incident commander, communications lead roles)">The internal post is where a responder joining at minute 40 learns who is in charge and what not to duplicate. Without a named commander two engineers restart the same service; without a comms lead the CTO posts on the status page from a hallway conversation. The internal template is also the only place a hypothesis is allowed, which is what keeps it out of the customer email.</rationale>
+    </rule>
+
+    <rule id="r-exec-brief-one-screen" testable="true" depth="essential">
+      <statement>The exec brief fits on one screen without scrolling and has exactly five fields: customer impact in business terms (customers affected, revenue at risk, SLA credits exposed), ETA or "unknown, next update at &lt;time&gt;", decisions needed from the reader, what is being done, next update time. Technical narrative is forbidden in the brief.</statement>
+      <rationale source="Widely established practice in incident management; Atlassian Incident Management Handbook">An executive reads the brief on a phone between meetings and needs to know one thing: is there a decision only they can make (spend, customer call, press line). Three paragraphs about connection pools produce a reply-all asking "so is it fixed?", which the commander now has to answer instead of running the incident.</rationale>
+    </rule>
+
+    <rule id="r-resolution-and-postmortem-commitment" testable="true" depth="essential">
+      <statement>The Resolved message states the incident start and end times with timezone, the affected scope, what was changed to fix it, and a dated commitment to a post-incident report. The post-incident customer email is sent by the deadline the matrix sets for that severity, and it links the report or summarises its corrective actions.</statement>
+      <rationale source="Google SRE book ch. 15 Postmortem Culture; Atlassian Incident Management Handbook">"Resolved" with no window and no scope leaves every customer computing their own downtime for the SLA claim, and every account manager guessing. The dated postmortem commitment is the difference between a company that had an outage and a company that had an outage and will have it again.</rationale>
+    </rule>
+
+    <rule id="r-placeholders-resolved-before-send" testable="true" depth="essential">
+      <statement>Every variable in a template is a named token from the bundle's fixed list (for example `{{incident_id}}`, `{{impact}}`, `{{next_update_at}}`, `{{commander}}`). A filled instance MUST contain zero unresolved tokens and zero template comments before it is posted or sent; the validator rejects any instance that fails this check.</statement>
+      <rationale source="Widely established template-hygiene practice; this methodology's output contract">A status page reading "We are investigating an issue affecting {{impact}}" has happened at companies that ship software for a living. It is the one comms failure that is fully preventable by a regex, and it is the one customers screenshot.</rationale>
+    </rule>
+
+    <rule id="r-quarterly-drill" testable="true" depth="essential">
+      <statement>Each of the four templates carries a `last_drilled` date and is exercised in a game day or tabletop drill at least once per quarter and after any edit to the severity matrix, the status-page components, or the on-call rotation. A template whose `last_drilled` is older than 90 days is marked stale and cannot be the default for a live incident.</statement>
+      <rationale source="Google SRE book ch. 14 (practising incident management); PagerDuty Incident Response documentation">Templates rot faster than services: the status-page component gets renamed, the exec distribution list loses the new COO, the commander rotation moves to a new tool. The drill is where a template referring to a retired component is found, instead of at minute 12 of a real P1.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Incident → postmortem → preventive backlog (role: p6-product-dev-team)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: Communications-management is generic. Incidents need ready-to-edit templates for status page, customer email, exec brief, and internal channel; absence costs minutes during outages.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

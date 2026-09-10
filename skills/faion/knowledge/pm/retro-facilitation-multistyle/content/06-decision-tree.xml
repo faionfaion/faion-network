@@ -1,34 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Retro Facilitation Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable signals from the retro instance to a rule from 01-core-rules.xml for retro-facilitation-multistyle.</summary>
+<text id="06-decision-tree" title="Retro Facilitation Decision Tree" version="2.0.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals from the retro instance (distribution, fatigue, safety check, action items, previous-action status, timebox) to a rule from 01-core-rules.xml.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Is the format choice justified AND do action items carry owner + evidence?</root-question>
+    <root-question id="q-root">Does the chosen format fit the team's distribution and fatigue, were previous actions reviewed, and are the new action items 1-3, owned, linked and dated?</root-question>
 
-    <branch when="format_not_in_closed_list == true">
-      <conclusion ref="r2-bounded-output" verdict="BLOCK — pick one of 5 supported formats"/>
+    <branch when="retros_per_year &lt; 3 OR one-shot retro">
+      <conclusion ref="skip-this-methodology" verdict="skip: write a single retro doc; no versioned instance"/>
     </branch>
-    <branch when="selection_rationale_empty == true">
-      <conclusion ref="r1-explicit-trigger" verdict="BLOCK — write the team-state rationale"/>
+    <branch when="format not in the 5 supported formats OR distribution == async AND format != anonymous-async OR format == lean-coffee AND distribution == async">
+      <conclusion ref="r-format-matches-distribution" verdict="BLOCK: async teams run anonymous-async; lean-coffee needs everyone on one live board"/>
     </branch>
-    <branch when="action_item_missing_evidence == true">
-      <conclusion ref="r3-evidence-anchored" verdict="BLOCK — attach evidence link"/>
+    <branch when="selection_rationale &lt; 20 chars OR rationale does not name distribution, fatigue signal and the last two formats">
+      <conclusion ref="r-rationale-names-distribution-fatigue-and-history" verdict="BLOCK: write the team-state rationale with the previous two formats"/>
     </branch>
-    <branch when="action_item_owner_is_team == true">
-      <conclusion ref="r4-named-owner" verdict="BLOCK — name a person"/>
+    <branch when="fatigue_signal == fatigued AND format used in either of the last 2 retros OR fatigue_signal == rotating AND format == previous format">
+      <conclusion ref="r-fatigued-team-rotates-format" verdict="BLOCK: rotate to a format not used in the last two retros"/>
     </branch>
-    <branch when="outcome_review_last_run_older_than_cadence == true">
-      <conclusion ref="r5-iteration-loop" verdict="BLOCK — run the outcome review"/>
+    <branch when="no Prime Directive / safety check recorded OR safety median &lt; 3 without switch to anonymous input OR non-member manager in the discussion">
+      <conclusion ref="r-prime-directive-and-safety-check" verdict="BLOCK: run the safety check; switch to anonymous cards below 3; manager leaves for discussion"/>
     </branch>
-    <branch when="all_gates_green == true">
-      <conclusion ref="run-the-checklist" verdict="APPROVE — retro instance is canonical"/>
+    <branch when="previous instance's action items have no done / not-done / dropped status">
+      <conclusion ref="r-previous-actions-reviewed-before-new-ones" verdict="BLOCK: walk the previous actions first; carry over once, then drop with a reason"/>
     </branch>
-    <branch when="preconditions_unmet == true">
-      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+    <branch when="action_items count == 0 OR &gt; 3 OR any owner not a named person OR missing evidence_link OR due_date after next retro">
+      <conclusion ref="r-action-items-one-to-three-owned-dated-linked" verdict="BLOCK: 1-3 items, one named owner each, tracker link created in the retro, due before next retro"/>
+    </branch>
+    <branch when="format == anonymous-async AND collection window shorter than one working day in every timezone OR cards carry author identity">
+      <conclusion ref="r-anonymous-async-window-and-clustering" verdict="BLOCK: extend the window across all timezones; strip identity; cluster before recap"/>
+    </branch>
+    <branch when="no timebox recorded before start OR actual duration &gt; timebox OR lean-coffee topic extended more than twice">
+      <conclusion ref="r-timebox-published-and-held" verdict="REPAIR: publish the timebox; dot-vote and clock each lean-coffee topic; log the overrun into the next fatigue signal"/>
+    </branch>
+    <branch when="all gates green">
+      <conclusion ref="run-the-checklist" verdict="APPROVE: retro instance is canonical; schedule the outcome review for the next retro"/>
     </branch>
   </decision-tree>
 
   <example trace="retro-facilitation-multistyle-happy-path">
-    Async team + rotating fatigue → anonymous-async chosen with rationale; 1 action item owned by Carol with GitHub issue evidence; next-retro outcome review scheduled → APPROVE.
+    Async team, fatigue rotating, last two formats sailboat and 4ls → anonymous-async with a 2-working-day window across UA/PT/UK; safety median 4; previous 2 actions marked done; 1 new action owned by Carol with GitHub issue #482 due before next retro; 60-minute recap timebox held → APPROVE.
   </example>
 </text>

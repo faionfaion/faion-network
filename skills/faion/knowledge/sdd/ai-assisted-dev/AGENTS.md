@@ -44,9 +44,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 9 rules: tool-to-task map, security-critical block-list, four-block prompt, repo context file, no secrets in prompts, verify introduced dependencies, AI tests must fail when broken, AI diff reviewed like human code, defect rate tracked AI vs human | ~2750 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 7 modes: AI everywhere no map, confident insecure default, prose prompt, secrets in the prompt, hallucinated package, tests that test nothing, churn nobody measures | ~950 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 

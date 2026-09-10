@@ -1,15 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Incident Comms Templates Internal External — Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Incident Comms Templates Internal External — Decision Tree" version="2.0.0" est_tokens="750">
   <decision-tree>
-    <root-question id="q-applicability">Does the org run a paid service AND have &gt;=1 P1/P2 per quarter AND a named incident commander?</root-question>
-    <branch when="paid_service == true AND p1_p2_per_quarter &gt;= 1 AND commander_named == true">
-      <conclusion ref="r1">Ship all four templates (status / customer / exec / internal) with severity + audience matrix.</conclusion>
+    <root-question id="q-applicability">Does the org run a paid service or a published SLA, see at least one P1 / P2 per quarter, and have a named incident commander on rotation?</root-question>
+    <branch when="paid_service_or_sla == false OR p1_p2_per_quarter &lt; 1 OR commander_named == false">
+      <conclusion ref="skip-this-methodology">Skip. Pre-launch or no commander: defer until customers and an on-call rotation exist; a regulated org uses the regulator's template.</conclusion>
     </branch>
-    <branch when="paid_service == true AND commander_named == false">
-      <conclusion ref="r2">Block. Establish on-call commander rotation first; anonymous templates rot.</conclusion>
-    </branch>
-    <branch when="paid_service == false OR p1_p2_per_quarter &lt; 1">
-      <conclusion ref="r3">Skip. Defer until customers + recurring incidents exist.</conclusion>
+    <branch when="paid_service_or_sla == true AND p1_p2_per_quarter &gt;= 1 AND commander_named == true">
+      <question id="q-matrix">Does the severity x audience matrix have a row for the declared severity, and are the four templates present with `last_drilled` within 90 days?</question>
+      <branch when="matrix_row_for_severity == false OR templates_present &lt; 4">
+        <conclusion ref="r-severity-audience-matrix">Block. Complete the matrix and the four-template bundle before any send.</conclusion>
+      </branch>
+      <branch when="matrix_row_for_severity == true AND any_template_last_drilled_days &gt; 90">
+        <conclusion ref="r-quarterly-drill">Drill the stale templates before they are used as defaults; fix retired components and recipients.</conclusion>
+      </branch>
+      <branch when="matrix_row_for_severity == true AND templates_present == 4 AND max_last_drilled_days &lt;= 90">
+        <question id="q-cadence">Was the first external post inside the severity's deadline, and does every update end with a next-update time?</question>
+        <branch when="first_post_minutes &gt; deadline_minutes OR update_missing_next_time == true">
+          <conclusion ref="r-first-post-deadline-and-cadence">Post now, even "no change"; add the next-update time; keep the interval timer.</conclusion>
+        </branch>
+        <branch when="first_post_minutes &lt;= deadline_minutes AND update_missing_next_time == false">
+          <question id="q-draft-clean">Is the external draft free of unconfirmed cause, blame, internal names and unresolved tokens?</question>
+          <branch when="speculation_or_internal_names == true">
+            <conclusion ref="r-no-speculation-external">Strip cause and system names; move the hypothesis to the internal post.</conclusion>
+          </branch>
+          <branch when="unresolved_tokens &gt; 0">
+            <conclusion ref="r-placeholders-resolved-before-send">Block the send until every token is filled.</conclusion>
+          </branch>
+          <branch when="speculation_or_internal_names == false AND unresolved_tokens == 0">
+            <conclusion ref="run-the-checklist">Send to the audiences in the matrix row; commander or comms lead approves the rendered text.</conclusion>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 </text>

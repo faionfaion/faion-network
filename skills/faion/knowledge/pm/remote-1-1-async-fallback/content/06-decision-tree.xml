@@ -1,42 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Remote 1:1 Async Fallback Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
-  <summary>Tree mapping observed response state (within window, late, missing) and unresponsive count to ack / reschedule / escalate.</summary>
+<text id="06-decision-tree" title="Remote 1:1 Async Fallback Decision Tree" version="2.0.0" est_tokens="450" depth="essential">
+  <summary>Tree mapping sync feasibility, leave status and observed response state (in window, late, missing) to post / pause / ack / reschedule / escalate.</summary>
 
   <decision-tree>
-    <root-question id="q-sync-feasible">synchronous 1:1 is feasible this cycle?</root-question>
+    <root-question id="q-sync-feasible">Is a synchronous 1:1 feasible this cycle, or has the pair already run 3 async cycles in a row?</root-question>
 
     <branch when="sync_feasible == true">
-      <conclusion ref="r1-explicit-trigger" verdict="skip-this-methodology — use synchronous 1:1; async is fallback only"/>
+      <conclusion ref="skip-this-methodology" verdict="hold the synchronous 1:1; async is fallback only"/>
     </branch>
 
-    <branch when="sync_feasible == false">
-      <question id="q-owner">PM owner named AND escalation contact in stakeholder register?</question>
+    <branch when="sync_feasible == false AND consecutive_async_cycles &gt;= 3">
+      <conclusion ref="r-async-only-when-sync-infeasible" verdict="do not post another note; book a synchronous call (rotate the off-hours burden) before the next cycle"/>
+    </branch>
 
-      <branch when="owner_missing == true">
-        <conclusion ref="r4-named-owner" verdict="defer; resolve PM ownership + escalation contact before starting cycle"/>
+    <branch when="sync_feasible == false AND IC on formal leave (vacation / parental / sick) during the cycle">
+      <conclusion ref="r-formal-leave-pauses-the-cycle" verdict="mark the cycle paused; no note, no reminders, count unchanged"/>
+    </branch>
+
+    <branch when="sync_feasible == false AND IC not on leave AND consecutive_async_cycles &lt; 3">
+      <question id="q-response">Did the IC answer all three prompts with received_at inside the window counted in the IC's business hours?</question>
+
+      <branch when="prompts generic OR any prompt under 10 chars OR morale not on workload/autonomy/clarity scales">
+        <conclusion ref="r-three-named-prompts-fixed" verdict="fix the prompts before posting; a vague prompt cannot produce a valid cycle"/>
       </branch>
 
-      <branch when="owner_missing == false">
-        <question id="q-response">IC responded within response_window_business_hours?</question>
+      <branch when="response_window_business_hours outside 24-168 OR window counted in PM timezone">
+        <conclusion ref="r-response-window-in-ic-business-hours" verdict="repair the window (24-168, IC's working days) and recount before judging the response late"/>
+      </branch>
 
-        <branch when="responded_in_window == true">
-          <conclusion ref="r3-evidence-anchored" verdict="ack with next_actions including owner_role + deadline_sprint; record cycle as completed"/>
-        </branch>
+      <branch when="all three fields present inside window (empty answers allowed)">
+        <conclusion ref="r-pm-ack-within-24h-with-owned-actions" verdict="ack within 24 business hours; one owned, sprint-dated action per reported blocker or decision; count resets to 0"/>
+      </branch>
 
-        <branch when="responded_in_window == false">
-          <question id="q-unresponsive">unresponsive_count after this cycle?</question>
-          <branch when="unresponsive_count &gt;= 2">
-            <conclusion ref="r1-explicit-trigger" verdict="escalate_to_manager via stakeholder register; do NOT post next async until synchronous contact made"/>
-          </branch>
-          <branch when="unresponsive_count == 1">
-            <conclusion ref="r2-bounded-output" verdict="synchronous_reschedule next slot; document attempt; continue methodology"/>
-          </branch>
-        </branch>
+      <branch when="a field is missing OR the reply exists only in another channel">
+        <conclusion ref="r-empty-answer-ok-missing-field-is-unresponsive" verdict="treat as unresponsive; do not transcribe on the IC's behalf; ask the IC to complete the note"/>
+      </branch>
+
+      <branch when="window expired AND unresponsive_count after this cycle == 1">
+        <conclusion ref="r-escalation-ladder-reschedule-then-manager" verdict="action = synchronous_reschedule; offer a sync slot within the next cycle"/>
+      </branch>
+
+      <branch when="window expired AND unresponsive_count after this cycle &gt;= 2">
+        <conclusion ref="r-escalation-ladder-reschedule-then-manager" verdict="action = escalate_to_manager with count and last acked actions only; no further async note until synchronous contact"/>
+      </branch>
+
+      <branch when="quarterly review due OR last_reviewed older than 90 days">
+        <conclusion ref="r-quarterly-response-rate-review" verdict="compute in-window response rate; below 80% over 4 cycles forces a window change, pair restructure or sync mandate"/>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="cross-tz-cycle">
-    sync_feasible=false → owner=pm-handle → response_in_48h → ack with 1 next_action (S14 deadline).
+    sync_feasible=false (no overlapping hours), 1 async cycle so far, IC not on leave → all three fields received 31 business hours after posting (IC's clock) → PM acks same day with one action (owner PM, deadline S14) → count 0.
   </example>
 </text>

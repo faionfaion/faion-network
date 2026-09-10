@@ -1,20 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Agency Risk Register Template — Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable preconditions to a rule from `01-core-rules.xml`. Mandatory minimum tree for every methodology.</summary>
+<text id="06-decision-tree" title="Agency Risk Register Template — Decision Tree" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>Routing tree mapping observable register signals (row shape, concentration recompute, high-score handling) to a rule from `01-core-rules.xml`. Walk it at every Monday refresh.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Are all Applies-If preconditions satisfied AND none of the Skip-If disqualifiers present?</root-question>
+    <root-question id="q-agency-shape">Is this a 3-25 person agency with a client above 20% of revenue or cross-border billing / hiring, and can the founder or PM hold a 30-minute slot every Monday for at least 8 weeks?</root-question>
 
-    <branch when="preconditions == true">
-      <conclusion ref="run-the-checklist" verdict="execute the procedure in 04-procedure.xml and commit the artefact"/>
+    <branch when="agency_shape == false OR weekly_slot_committed == false">
+      <conclusion ref="skip-this-methodology" verdict="do not apply; solo freelancer routes to freelancer-client-scorecard, product team to a project-level register"/>
     </branch>
 
-    <branch when="preconditions == false">
-      <conclusion ref="skip-this-methodology" verdict="do not apply; route to the upstream / sibling methodology named in AGENTS.md Related"/>
+    <branch when="agency_shape == true AND weekly_slot_committed == true">
+      <question id="q-row-shape">Does the register hold at least one row per agency class (concentration, key-person, FX, contractor classification, pipeline, regulatory), each with all 8 columns, a named human owner and an observable trigger?</question>
+
+      <branch when="classes_covered == false OR rows_missing_owner_or_trigger &gt; 0">
+        <conclusion ref="r-eight-column-row" verdict="reject incomplete rows; fill the six classes with 8-column rows before scoring"/>
+      </branch>
+
+      <branch when="classes_covered == true AND rows_missing_owner_or_trigger == 0">
+        <question id="q-concentration">Was the concentration row recomputed this Monday from the trailing-90-day billing export, and does every client at 40% or more score at least 15?</question>
+
+        <branch when="concentration_recomputed == false OR (top_client_share &gt;= 0.40 AND concentration_score &lt; 15)">
+          <conclusion ref="r-concentration-90d-auto-score" verdict="recompute from billing; auto-score the dominant client at 15 or more"/>
+        </branch>
+
+        <branch when="concentration_recomputed == true">
+          <question id="q-high-score">Does every row scoring 15 or more carry a dated mitigation action this week or a founder-signed acceptance?</question>
+
+          <branch when="silent_high_score_rows &gt; 0">
+            <conclusion ref="r-score-15-action-or-signed-acceptance" verdict="refresh cannot close; assign an action or record a signed acceptance for each row"/>
+          </branch>
+
+          <branch when="silent_high_score_rows == 0">
+            <conclusion ref="run-the-checklist" verdict="write the action note, archive resolved rows to the closed tab, close the refresh inside 30 minutes"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="precondition-check">
-    preconditions=true → run-the-checklist → artefact committed.
+  <example trace="monday-refresh">
+    6-person agency, Monday slot held → six classes present, all rows have owner + trigger → concentration recomputed: Client A 47%, scored 20 → Client A row has a dated action (proposal to two new prospects, owner founder, due Friday) → run-the-checklist → refresh closes at 28 minutes.
   </example>
 </text>

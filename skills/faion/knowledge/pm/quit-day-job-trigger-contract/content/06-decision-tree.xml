@@ -1,34 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Quit Day Job Trigger Contract Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable signals from the contract artefact to a rule from 01-core-rules.xml for quit-day-job-trigger-contract.</summary>
+<text id="06-decision-tree" title="Quit Day Job Trigger Contract Decision Tree" version="2.0.0" est_tokens="950" depth="essential">
+  <summary>Routing tree mapping observable signals from the contract and the provider's MRR report to a rule from 01-core-rules.xml for quit-day-job-trigger-contract. Walk it at every review.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Is the contract specific enough to fire deterministically AND reviewed on cadence?</root-question>
+    <root-question id="q-root">Is this a solo SaaS builder on a $0 to $4k MRR bootstrap with a billing-provider MRR report, a runway model, and a version-controlled place for the contract?</root-question>
 
-    <branch when="trigger_kind == feeling OR trigger_threshold == null">
-      <conclusion ref="r1-explicit-trigger" verdict="BLOCK — define numeric trigger"/>
+    <branch when="solo_bootstrap == false OR provider_mrr_report == false OR runway_model == false OR versioned_store == false">
+      <conclusion ref="skip-this-methodology" verdict="skip; without a provider MRR report and a runway model there is nothing to trigger on"/>
     </branch>
-    <branch when="output_shape == empty">
-      <conclusion ref="r2-bounded-output" verdict="BLOCK — pin the artefact path"/>
-    </branch>
-    <branch when="conclusion_evidence_links_count == 0">
-      <conclusion ref="r3-evidence-anchored" verdict="BLOCK — attach evidence links"/>
-    </branch>
-    <branch when="owner_is_team_or_channel == true">
-      <conclusion ref="r4-named-owner" verdict="BLOCK — name a person"/>
-    </branch>
-    <branch when="review_last_run_older_than_cadence == true">
-      <conclusion ref="r5-iteration-loop" verdict="BLOCK — run the outcome review"/>
-    </branch>
-    <branch when="all_gates_green == true">
-      <conclusion ref="run-the-checklist" verdict="APPROVE — contract is live"/>
-    </branch>
-    <branch when="preconditions_unmet == true">
-      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+
+    <branch when="solo_bootstrap == true AND provider_mrr_report == true AND runway_model == true AND versioned_store == true">
+      <question id="q-metric">Is the metric net MRR from the named provider report, with the window set to N &gt;= 3 consecutive month-ends?</question>
+
+      <branch when="metric_source != provider_report">
+        <conclusion ref="r-mrr-definition-pinned" verdict="BLOCK; pin the metric to the provider's net MRR report"/>
+      </branch>
+      <branch when="metric_source == provider_report AND window_months &lt; 3">
+        <conclusion ref="r-consecutive-months-window" verdict="BLOCK; set N to at least 3 consecutive month-ends"/>
+      </branch>
+
+      <branch when="metric_source == provider_report AND window_months &gt;= 3">
+        <question id="q-guards">Is runway &gt;= R months a stated co-condition, and is the reversal threshold strictly below the trigger with a window of at least 2 months?</question>
+
+        <branch when="runway_co_condition == false">
+          <conclusion ref="r-runway-co-condition" verdict="BLOCK; add the runway floor with burn including tax, insurance and business costs"/>
+        </branch>
+        <branch when="reversal_threshold &gt;= trigger_threshold OR reversal_window_months &lt; 2">
+          <conclusion ref="r-reversal-hysteresis" verdict="BLOCK; lower the reversal threshold and widen its window"/>
+        </branch>
+
+        <branch when="runway_co_condition == true AND reversal_threshold &lt; trigger_threshold AND reversal_window_months &gt;= 2">
+          <question id="q-precommit">Was version 1.0.0 committed before the first qualifying month-end, with no parameter change inside the current window?</question>
+
+          <branch when="committed_after_first_qualifying_reading == true OR parameter_change_in_window == true">
+            <conclusion ref="r-precommit-before-threshold" verdict="revert in-window changes; label a late contract post_hoc and treat its first window as void"/>
+          </branch>
+          <branch when="committed_after_first_qualifying_reading == false AND parameter_change_in_window == false">
+            <conclusion ref="run-the-checklist" verdict="APPROVE; contract is live, record the month-end readings and gate values at each review"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
   <example trace="quit-day-job-trigger-contract-happy-path">
-    Trigger threshold $4k MRR + 3-month window + output stored at .product/decisions/quit-day-job.md + 2 evidence links + owner Ruslan + quarterly review last run 2026-05-23 → APPROVE → contract is live.
+    Solo builder, Stripe MRR report, runway model in repo → metric = Stripe net MRR, N = 3 → runway floor 12 months stated, reversal $3,000 for 2 months below trigger $4,000 → v1.0.0 committed 2026-02-01, first qualifying month-end 2026-05-31 → APPROVE → quarterly review records readings 4,150 / 4,300 / 4,420, runway 13.1 months, top customer 11%, churn 2.8% → verdict `fired`.
   </example>
 </text>

@@ -1,36 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Program Dependency Aging Chart Recipe — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>5 testable rules every application of `program-dependency-aging-chart-recipe` must enforce. The rules pin the discipline that turns a recipe from folklore into a reviewable, owned, version-controlled operating tool.</summary>
+<text id="01-core-rules" title="Program Dependency Aging Chart Recipe Core Rules" version="2.0.0" est_tokens="2050" depth="essential">
+  <summary>9 testable rules every program dependency aging chart MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers (&apos;when needed&apos;) are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-age-from-dependency-open-not-task" testable="true" depth="essential">
+      <statement>The age of a dependency edge is the number of calendar days since the edge was opened: the creation timestamp of the "blocks / is blocked by" link or the dependency ticket in the tracker. Age MUST NOT be measured from the blocked task's creation date, the last comment, the last status change, or the date the chart was first drawn.</statement>
+      <rationale source="Vacanti, Actionable Agile Metrics for Predictability (2015), work item age">Every alternative clock resets on activity that is not progress. A dependency with a fresh "any update?" comment every Friday reads as three days old on a last-activity clock while the milestone that needs it has been waiting eleven weeks. Age from the opened timestamp is the only measure that keeps climbing until something is delivered.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed (template, schema, or artefact path). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-typed-edges-from-graph" testable="true" depth="essential">
+      <statement>Every plotted edge comes from the typed dependency graph and carries: producer team, consumer team, dependency type, `opened_at`, `needed_by` (the milestone date that consumes it), and the tracker link id. A dependency mentioned in a standup or a chat thread is not plotted until it exists as an edge with these fields; an edge without `needed_by` is plotted but flagged `no-deadline` and cannot be closed as "not needed".</statement>
+      <rationale source="dependency-graph-reasoning (upstream methodology); Jira / Linear / GitHub Projects issue-link types (blocks, is blocked by)">The chart is only as honest as the graph. "We're waiting on platform" said in a standup for three weeks has no age, no owner and no needed-by, so it never appears in the chart and the milestone slips with a clean chart on the wall. Forcing the edge into the graph is what gives the dependency a clock.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data, ticket, transcript). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Multi-team coordination lives or dies on dependency tracking, but Jira/ADO methodologies stop at workflow setup. Need a concrete dependency-aging visualisation recipe (how to compute, how to render, how to act on it).</rationale>
+    <rule id="r-age-bands-fixed" testable="true" depth="essential">
+      <statement>Edges are bucketed into fixed age bands that do not change between weeks. The recipe default is 0-7, 8-14, 15-28 and over 28 calendar days; a program may set its own once, at adoption, and records them in the artefact header. Re-cutting the bands mid-program is forbidden.</statement>
+      <rationale source="Vacanti, Actionable Agile Metrics for Predictability (2015), aging work in progress chart; this recipe's default bands">The chart's value is the week-over-week comparison: how many edges moved right. Bands that move with the data make every chart green and every comparison meaningless. The 14-day boundary is where the existing routing sends an edge to the program PM for re-baseline; changing it changes who is accountable without anyone deciding to.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every instance has a named owner accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour.</rationale>
+    <rule id="r-count-blocked-tasks-per-edge" testable="true" depth="essential">
+      <statement>The y-axis is the count of downstream tasks blocked by the edge, computed from the graph, not estimated. The action table is sorted by age band descending, then by blocked-task count descending, so an edge with 6 blocked tasks at 20 days ranks above an edge with 1 blocked task at 20 days but below any edge over 28 days.</statement>
+      <rationale source="Widely established practice in flow-based program management (blocked work as the cost of a dependency)">Age alone ranks a forgotten one-task dependency above the one that has half a team idle. Count alone hides the edge that has aged for two months because it blocks a single, critical task. The two-key sort is what turns a scatter plot into a list the program PM can act on top-down in a 30-minute checkpoint.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest.</rationale>
+    <rule id="r-milestone-slack-column" testable="true" depth="essential">
+      <statement>For every edge the table shows `needed_by` and remaining slack = `needed_by` minus the chart date, in days. An edge with negative or zero slack is rendered red and placed at the top of the action table regardless of its age band.</statement>
+      <rationale source="PMBOK Guide, schedule float; critical path method">A 5-day-old dependency due yesterday is a milestone at risk; a 40-day-old dependency due next quarter is a nuisance. Age measures neglect, slack measures danger, and the chart needs both because the milestone slips on slack, not on age. The existing 14-day routing catches neglect; the slack column catches the young edge that will sink the milestone.</rationale>
     </rule>
+
+    <rule id="r-weekly-refresh-by-script" testable="true" depth="essential">
+      <statement>The chart is regenerated by script from tracker timestamps before every weekly checkpoint, on the same weekday. The artefact records the tracker query, the extraction timestamp, and the chart date. Hand-edited charts and charts older than the checkpoint week are rejected.</statement>
+      <rationale source="Applies If: weekly checkpoint cadence; reproducibility practice in program reporting">A chart drawn once and touched up by hand drifts within two weeks: closed edges stay, new ones never appear, and the PM defends a picture nobody can regenerate. A script plus a recorded query lets any team lead rebuild the chart and dispute an edge with data rather than memory.</rationale>
+    </rule>
+
+    <rule id="r-action-per-escalation-band" testable="true" depth="essential">
+      <statement>Every edge in the second band or older (8 days and beyond in the default bands), and every edge with non-positive slack, carries an action with a named owner and a due date in the artefact. "Waiting on team X" is not an action. Edges over 28 days carry a re-baseline decision by the program PM: move the milestone, cut the scope, or swap the producer.</statement>
+      <rationale source="Widely established practice in program management (escalation paths per aging threshold)">The chart is a trigger, not an outcome. Without an owner and date the same edge is discussed at four consecutive checkpoints with the same sentence, and the milestone slips exactly as it would have with no chart. The re-baseline rule at the top band stops the program pretending a 6-week-old dependency will arrive by Friday.</rationale>
+    </rule>
+
+    <rule id="r-no-aging-reset" testable="true" depth="essential">
+      <statement>Reopening, re-linking, splitting or re-ticketing a dependency does not reset its age. The new edge inherits `opened_at` from the original, and the artefact lists the original link id as `superseded_from`. An edge that is closed and reopened within 14 days is treated as never closed.</statement>
+      <rationale source="Vacanti, Actionable Agile Metrics for Predictability (2015), work item age; metric-gaming practice">Within a month of the chart appearing at the program review, teams learn that closing a ticket and opening "part 2" makes their band green. From then on the chart measures ticket hygiene, not dependency rot, and the program PM is reading a lie with a nice trend line.</rationale>
+    </rule>
+
+    <rule id="r-closed-edges-feed-sle" testable="true" depth="essential">
+      <statement>When a dependency is delivered the edge leaves the chart and its total age is appended to a resolved log. The 85th percentile of resolved ages over the trailing 12 weeks is drawn on the chart as the program's service level expectation (SLE) line and printed in the header; a program with fewer than 10 resolved edges prints "SLE: insufficient data" instead of a line.</statement>
+      <rationale source="Vacanti, Actionable Agile Metrics for Predictability (2015), service level expectation at the 85th percentile">Fixed bands say what the program decided; the SLE line says what the program actually does. When the 85th percentile sits at 31 days, the 28-day band is not an escalation threshold, it is the norm, and the program PM needs to know that before promising a milestone that depends on a 3-week turnaround.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-  </see-also>
 </text>

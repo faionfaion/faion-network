@@ -1,7 +1,7 @@
 <!-- purpose: Async11Note skeleton with 3 named prompts + response section -->
 <!-- consumes: pair_id + cycle_iso + response_window -->
 <!-- produces: scaffold populated by compose-prompts -->
-<!-- depends-on: content/01-core-rules.xml#r2-bounded-output -->
+<!-- depends-on: content/01-core-rules.xml#r-three-named-prompts-fixed -->
 <!-- token-budget-impact: ~140 tokens -->
 
 # Async 1:1 — <pair_id>

@@ -50,9 +50,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 rules: numeric thresholds with comparator, red beyond amber, queryable input source, worst signal wins, logged override never downgrades Red, evidence anchor per signal, time-bound Red action, 90-day review | ~2150 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for `RAGPolicy` + forbidden patterns | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 modes: cargo-cult, ownership ambiguity, drift, example-text leakage, no outcome review, trigger drift | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 modes: watermelon report, prose threshold, collapsed Amber band, opinion input source, Red without consequence, fossil thresholds | ~900 |
 | `content/04-procedure.xml` | medium | 5-step: scaffold → set thresholds → publish → run weekly → quarterly review | ~600 |
 | `content/06-decision-tree.xml` | essential | Tree: signal value vs threshold → colour + escalation rule | ~400 |
 

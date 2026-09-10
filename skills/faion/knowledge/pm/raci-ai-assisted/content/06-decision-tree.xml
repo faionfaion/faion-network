@@ -1,37 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="RACI AI Assisted Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
-  <summary>Tree mapping observable signals (trigger validity, owner named, A-count per row, evidence presence, staleness) to scaffold / suppress / repair / refresh.</summary>
+<text id="06-decision-tree" title="RACI AI Assisted Decision Tree" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>Tree mapping observable matrix signals (trigger, roster membership, leaf coverage, A count, anchors, staleness) to a rule from 01-core-rules.xml. Walk it at every trigger before publish.</summary>
 
   <decision-tree>
-    <root-question id="q-trigger">header.trigger in {kickoff, roster_delta, quarterly_review}?</root-question>
+    <root-question id="q-trigger">Is `header.trigger` one of kickoff, roster_delta, quarterly_review, and do a WBS spec and a stakeholder register exist?</root-question>
 
-    <branch when="trigger_valid == false">
-      <conclusion ref="r1-explicit-trigger" verdict="skip-this-methodology — refuse vague triggers; named cadence only"/>
+    <branch when="wbs_spec == false OR stakeholder_register == false">
+      <conclusion ref="skip-this-methodology" verdict="skip; RACI binds to WBS leaves and roster roles, build those first (see wbs-creation)"/>
     </branch>
 
-    <branch when="trigger_valid == true">
-      <question id="q-owner">header.owner.person populated AND in stakeholder register?</question>
+    <branch when="trigger_valid == false">
+      <conclusion ref="r-trigger-enum-and-roster-delta" verdict="refuse; name the trigger from the enum, no 'when needed' refresh"/>
+    </branch>
 
-      <branch when="owner_missing == true">
-        <conclusion ref="r4-named-owner" verdict="defer; resolve PM ownership before scaffold"/>
+    <branch when="trigger_valid == true AND wbs_spec == true AND stakeholder_register == true">
+      <question id="q-coverage">Is there one row per open WBS leaf and none for summary nodes, with every R / A / C / I value present in the current roster?</question>
+
+      <branch when="leaf_coverage_complete == false OR summary_node_rows &gt; 0">
+        <conclusion ref="r-rows-bind-to-wbs-leaves" verdict="repair: add rows for uncovered leaves, drop parent rows"/>
+      </branch>
+      <branch when="roles_not_in_roster &gt; 0">
+        <conclusion ref="r-responsible-in-roster" verdict="repair: flag orphaned rows, reassign before publish"/>
       </branch>
 
-      <branch when="owner_missing == false">
-        <question id="q-stale">last_reviewed within 90 days?</question>
+      <branch when="leaf_coverage_complete == true AND summary_node_rows == 0 AND roles_not_in_roster == 0">
+        <question id="q-a-and-anchor">Does every row have exactly one A, no role in two columns, and at least one resolving anchor (charter#, wbs-dict#, stakeholders#)?</question>
 
-        <branch when="stale == true">
-          <conclusion ref="r5-iteration-loop" verdict="refresh: run quarterly review before scaffold"/>
+        <branch when="rows_with_a_count_ne_1 &gt; 0 OR rows_with_role_in_two_columns &gt; 0">
+          <conclusion ref="r-exactly-one-accountable-per-row" verdict="repair: rerun assign-A; single A per row, one column per role"/>
+        </branch>
+        <branch when="rows_without_anchor &gt; 0">
+          <conclusion ref="r-evidence-anchor-per-assignment" verdict="hold as proposed; PM confirms or supplies the anchor"/>
         </branch>
 
-        <branch when="stale == false">
-          <question id="q-a-count">every row has exactly one accountable role + ≥1 evidence anchor?</question>
+        <branch when="rows_with_a_count_ne_1 == 0 AND rows_with_role_in_two_columns == 0 AND rows_without_anchor == 0">
+          <question id="q-stale">Is `last_reviewed` within 90 days and are closed leaves removed?</question>
 
-          <branch when="a_missing_or_dup == true">
-            <conclusion ref="r3-evidence-anchored" verdict="repair: rerun assign-A; reject rows with missing or duplicate A; require evidence per row"/>
+          <branch when="last_reviewed_days &gt; 90 OR closed_leaf_rows &gt; 0">
+            <conclusion ref="r-quarterly-review-90-days" verdict="refresh: run the quarterly review, append counts to review_log, then publish"/>
           </branch>
-
-          <branch when="a_missing_or_dup == false">
-            <conclusion ref="r2-bounded-output" verdict="publish RACIMatrix per fixed schema; notify roster"/>
+          <branch when="last_reviewed_days &lt;= 90 AND closed_leaf_rows == 0">
+            <conclusion ref="r-notify-assignees-on-publish" verdict="publish RACIMatrix; send each R / A holder their rows and record channel, date and rows in review_log"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +48,6 @@
   </decision-tree>
 
   <example trace="checkout-roster-delta">
-    trigger=roster_delta → owner=pm-handle → last_reviewed=2026-05-10 (fresh) → every row has 1 A + evidence → publish.
+    trigger=roster_delta, WBS + register present → 14 open leaves, 14 rows, no parent rows, all roles in roster → every row one A, no double columns, anchors resolve → last_reviewed 2026-05-10 (fresh), no closed leaves → publish; backend-lead and security-lead receive their rows in #checkout, recorded in review_log.
   </example>
 </text>

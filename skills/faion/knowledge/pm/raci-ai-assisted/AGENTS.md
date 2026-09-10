@@ -50,9 +50,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 rules: exactly one A per row, roles in roster, rows bind to WBS leaves, anchor per assignment, trigger enum and roster-delta deadline, one column per role, notify on publish, 90-day review | ~1800 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for `RACIMatrix` + forbidden patterns | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 modes: cargo-cult, ownership ambiguity, drift, example-text leakage, no outcome review, trigger drift | ~900 |
+| `content/03-failure-modes.xml` | essential | 7 modes: cargo-cult, ownership ambiguity, drift, example-text leakage, no outcome review, trigger drift | ~900 |
 | `content/04-procedure.xml` | medium | 5-step: scaffold → assign → validate → publish → quarterly-review | ~600 |
 | `content/06-decision-tree.xml` | essential | Tree: trigger present? owner named? evidence? per-row A count? → action + rule | ~400 |
 

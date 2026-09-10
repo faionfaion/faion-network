@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011, batch 4 of 4: `pm` and `sdd` — 12 methodologies, and the count is
+  zero.** `rag-policy-thresholds`, a document named for thresholds that stated
+  none, now requires every threshold numeric with a comparator, worst signal
+  wins, and an override that is logged and can never downgrade red.
+  `portfolio-evm-rollup-method` sums currency, never indices, on a single data
+  date (PMI EVM standard, ANSI/EIA-748); `raci-ai-assisted` demands exactly one
+  Accountable per row; `retro-format-rotation-guide` forbids a repeat in the last
+  three and escalates two stale rotations to team health; `sdd/ai-assisted-dev`
+  cites Perry et al. (CCS 2023) and requires AI-written tests to fail when the
+  code is broken. Three templates carried `depends-on:` anchors to the removed
+  stamp ids and were repointed.
+
+  Re-measured after all four batches with the same classifier that found the
+  problem: methodologies with **zero** subject-bearing rules, **61 → 0**;
+  documents at ≥40% filler, 179 → 167. Every one of the 61 passes
+  `validate-methodology-v2`, the decision-tree validator and an XML parse, and
+  the whole-corpus gate is clean against the baseline. CR-011's status is
+  updated; its §0 finding — that the gate only checks `testable="true"`, which
+  is a constant — is still open, as is the second layer the rewrite exposed.
+
 - **CR-011, batch 3 of 4: `marketing` — 19 methodologies.** `google-analytics`,
   the CR's headline example, now has nine rules about GA4: `transaction_id`
   deduplication on purchase, custom dimensions registered within the property

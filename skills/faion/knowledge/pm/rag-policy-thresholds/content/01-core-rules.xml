@@ -1,36 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="RAG Policy Thresholds — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>5 testable rules every application of `rag-policy-thresholds` must enforce. The rules pin the discipline that turns a method from folklore into a reviewable, owned, version-controlled operating tool.</summary>
+<text id="01-core-rules" title="RAG Policy Thresholds Core Rules" version="2.0.0" est_tokens="2150" depth="essential">
+  <summary>8 testable rules every RAG policy thresholds application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers (&apos;when needed&apos;) are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-threshold-numeric-with-comparator" testable="true" depth="essential">
+      <statement>Every signal MUST carry a numeric `amber_threshold`, a numeric `red_threshold` and one of the comparators `gt`, `lt`, `gte`, `lte`, `eq`, in the same unit the `input_source` reports (percent, count, ratio). Words such as "significant", "material", "noticeable" or "trending" are rejected as thresholds; a signal without a number is deleted from the policy, not kept as a judgement call.</statement>
+      <rationale source="PRINCE2 (AXELOS), management by exception and tolerances">Management by exception only works when the tolerance is a number the board agreed before the deviation happened. "Significant slippage" is renegotiated every week under stakeholder pressure, so the same 12% overrun is Amber in a calm week and Green in the week before a steering committee. The number removes the negotiation.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed (template, schema, or artefact path). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-red-strictly-beyond-amber" testable="true" depth="essential">
+      <statement>`red_threshold` MUST lie strictly beyond `amber_threshold` in the direction of the comparator: for `gt` / `gte` red is greater than amber, for `lt` / `lte` red is less than amber. `eq` is allowed only for boolean-style signals (0/1) and then both thresholds MUST differ. Equal thresholds, or thresholds that make the Amber band empty, fail validation.</statement>
+      <rationale source="Widely established practice in threshold-based alerting; this methodology's validator">An inverted or collapsed band means a project can never be Amber: it jumps from Green to Red with no warning window, which defeats the point of the middle colour. The most common cause is a copy-paste of the default row where amber and red were swapped for a `lt` signal.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data, ticket, transcript). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">RAG colors are inconsistent across PMs and clients; a tier-pro standard would reduce client-PM trust friction.</rationale>
+    <rule id="r-input-source-is-a-query" testable="true" depth="essential">
+      <statement>`input_source` MUST name a system and a repeatable extraction (a Jira JQL filter, a Sentry saved search, a finance export name, a DORA dashboard panel) that a second person can run and obtain the same value. "PM estimate", "gut feel", "team consensus" or "ask the lead" are not input sources. Schedule and budget signals MUST be defined as earned-value style variances (planned vs actual, expressed as a percentage) rather than raw calendar or currency deltas.</statement>
+      <rationale source="PMI, Practice Standard for Earned Value Management; DORA State of DevOps reports">A threshold is only reproducible if the input is. When `schedule_variance_pct` comes from whoever fills the report, the colour reflects the reporter's mood, and an auditor cannot reconstruct why a week was Green. Percent variance also keeps the same threshold meaningful across a 3-week and a 9-month project.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every instance has a named owner accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour.</rationale>
+    <rule id="r-worst-signal-wins" testable="true" depth="essential">
+      <statement>The project colour for a reporting cycle MUST equal the worst colour of any single signal. Signals MUST NOT be averaged, weighted or netted against each other; one Red signal makes the project Red even if every other signal is Green.</statement>
+      <rationale source="Widely established practice in PMO status reporting (watermelon reporting)">Averaging is how a project with a 25% budget overrun reports Green because schedule, defects and blockers are fine: green outside, red inside. Every distressed-project post-mortem contains a run of Green reports that averaged away the one signal that mattered.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest.</rationale>
+    <rule id="r-override-logged-never-downgrades-red" testable="true" depth="essential">
+      <statement>A PM MAY override a computed colour only by adding a `review_log` entry that records the computed colour, the reported colour, the reason and the person. An override MUST NOT turn a computed Red into Amber or Green; Red can only be cleared by the signal value returning under `red_threshold` on the next compute. Reports whose colour differs from the computed colour without a matching log entry are invalid.</statement>
+      <rationale source="PRINCE2 exception reporting; audit practice in PMO governance">If the override path is free, the policy is decoration: the threshold fires, the PM re-labels it, and the sponsor never learns the project crossed the line. Logging the override keeps the honest cases (a known data glitch) and makes the dishonest ones visible in the quarterly review.</rationale>
+    </rule>
+
+    <rule id="r-evidence-anchor-per-signal" testable="true" depth="essential">
+      <statement>Every signal MUST cite at least one `evidence` anchor that explains where its numbers came from: an incident or post-mortem id, a policy document URI, or a cohort baseline reference. Evidence values such as "TBD", "see ticket", "experience" or an empty string fail validation. When a threshold is changed in a review, the review MUST add a new anchor for the new value.</statement>
+      <rationale source="Beyer, Jones, Petoff, Murphy, Site Reliability Engineering (O'Reilly, 2016), ch. 15 Postmortem Culture">A threshold nobody can trace is a threshold nobody will defend when a stakeholder asks to loosen it. Anchoring 20% schedule variance to the overrun that actually lost a client turns the argument from "is 20 too strict?" into "do we want that incident again?".</rationale>
+    </rule>
+
+    <rule id="r-red-action-named-and-time-bound" testable="true" depth="essential">
+      <statement>`actions.red` MUST name a specific playbook or escalation path and a time bound for the first step (for example "sponsor notified within 4h; distressed-project-rescue playbook opened same day"). `actions.amber` MUST name a concrete review step and its deadline within the reporting cycle. "Discuss", "monitor", "keep an eye on it" or any action without a deadline is rejected. A Red colour fires `actions.red` at compute time, not at the next scheduled sync.</statement>
+      <rationale source="PRINCE2 exception process; incident-response practice (escalation SLAs)">A colour with no consequence is trivia. Teams that reach Red and "discuss it Monday" are the teams that reach Red for six consecutive weeks; the time bound is what converts the colour into an event someone has to answer for.</rationale>
+    </rule>
+
+    <rule id="r-review-within-90-days-prunes-and-adds" testable="true" depth="essential">
+      <statement>`header.last_reviewed` MUST be no older than 90 days at the time a colour is computed; a stale policy MUST NOT be used to compute or publish a colour until reviewed. Each review MUST (a) remove or justify every signal that produced no Amber or Red in the last two review periods, (b) add or tighten a signal for every incident in the period that the policy did not flag ahead of time, and (c) bump `header.version` and append a `review_log` entry. Every published colour cites the `version` and `last_reviewed` it was computed under.</statement>
+      <rationale source="Deming PDCA cycle; widely established practice in KPI governance">Thresholds set once become folklore: the project grows, the 2-blocker Amber line that fit a 4-person team fires every week for a 20-person programme, and everyone learns to ignore Amber. The review is where dead signals are pruned and the incidents the policy missed become the next thresholds; citing the version makes it possible to audit an old report against the rules that existed at the time.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions hold.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when preconditions fail.</rationale>
     </rule>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

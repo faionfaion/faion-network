@@ -1,21 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="AI-Assisted Development Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="AI-Assisted Development Decision Tree" version="2.0.0" est_tokens="500">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-map-exists">Does the record carry a tool-to-task map with a security-critical block-list, and does the repo carry a tool context file plus an ignore file for secrets?</root-question>
+    <branch when="no tool-to-task map in the record's inputs">
+      <conclusion ref="r-tool-to-task-map-written">Write the map first: task class to tool (or ai-off) to review checkpoint. No AI-assisted PR is reviewed under the methodology until it exists.</conclusion>
+    </branch>
+    <branch when="map exists but no block-list, or block-list omits auth, crypto, payments, PII, secrets, prod IaC or migrations">
+      <conclusion ref="r-security-critical-block-list">Add the block-list with the minimum areas; block-listed paths need two reviewers (one not the prompter) or ai-off.</conclusion>
+    </branch>
+    <branch when="no CLAUDE.md / .cursor rules / copilot-instructions.md for a tool in the map, or its commands are stale">
+      <conclusion ref="r-repo-context-file-maintained">Create or refresh the tool context file and reference it from the record's inputs.</conclusion>
+    </branch>
+    <branch when="no ignore file excludes secrets and data directories, or a tool's data-retention terms are unrecorded">
+      <conclusion ref="r-no-secrets-or-customer-data-in-prompts">Add the exclusion file, record the retention check, mark unknown-retention tools ai-off for proprietary code.</conclusion>
+    </branch>
+    <branch when="map, block-list, context file and ignore file all present AND a developer is about to prompt or has a diff">
+      <question id="q-task">What is the task class and what did the assistant produce?</question>
+      <branch when="task touches a block-listed path">
+        <conclusion ref="r-security-critical-block-list">ai-off, or generate and route to two reviewers with a non-prompter second reviewer.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="hand-written prompt lacks Context with a pattern file, a single-verb Task, Requirements, or an exact Output path">
+        <conclusion ref="r-structured-prompt-four-blocks">Rewrite the prompt in the four blocks before running it.</conclusion>
+      </branch>
+      <branch when="the diff introduces a new package, import or API call">
+        <conclusion ref="r-verify-introduced-dependencies-and-apis">Verify in the registry and docs at the pinned version; list new dependencies in the PR; block on anything unresolvable.</conclusion>
+      </branch>
+      <branch when="the output is a test file">
+        <conclusion ref="r-ai-tests-must-assert-and-fail-when-broken">Check every test asserts a value and that the suite goes red when the function is deliberately broken; delete the rest.</conclusion>
+      </branch>
+      <branch when="the diff is ready for merge">
+        <conclusion ref="r-ai-diff-reviewed-like-human-code">Label ai-assisted, self-review line by line, request review per the checkpoint matrix, never auto-merge.</conclusion>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
+    <branch when="review.cadence is due">
+      <conclusion ref="r-defect-rate-tracked-ai-vs-human">Compare defect escape, revert and two-week churn for ai-assisted vs other PRs; tighten the map if AI-assisted is worse; bump the record version.</conclusion>
     </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <branch when="no named trigger, no named owner, or the team does not use any AI coding tool">
+      <conclusion ref="skip-this-methodology">Skip; there is nothing to map. Route trigger or owner gaps upstream before reapplying.</conclusion>
+    </branch>
+    <example trace="billing-tests-with-claude-code">
+      <p>Map exists (tests: Claude Code, self-review + one reviewer; payments logic: ai-off); CLAUDE.md and .cursorignore present. Developer runs gen-tests.sh on `billing/tax.py` (not block-listed) → output is a test file → breaks `compute_tax` on purpose, two of nine tests stay green and are deleted → PR labelled ai-assisted, one reviewer → conclusion r-ai-diff-reviewed-like-human-code.</p>
     </example>
   </decision-tree>
 </text>
