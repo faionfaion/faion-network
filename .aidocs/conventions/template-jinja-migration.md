@@ -195,8 +195,9 @@ with a `--file` override — the standing rule in `skills/faion/tools/AGENTS.md`
 ### 2b. How §1a's four forms are actually written — `tpl-jinja --migrate`
 
 One invocation, **atomic per template**: the three Jinja files, the `.md` regenerated from the new
-`.md.j2`, the methodology's `## Templates` rows, and its inline `## Template Contents` body — or none
-of them. Partial application is the outcome that must be impossible, because a `.md.j2` written
+`.md.j2`, and the methodology's `## Templates` rows — or none of them. (It also rewrote an inline
+`## Template Contents` body where one existed. **F-077 removed every one of them**, so that arm is
+now unreachable by construction; see below.) Partial application is the outcome that must be impossible, because a `.md.j2` written
 without its row makes `validate-methodology-templates.py` fail with *declared template missing*.
 `--check` re-derives every generated form and diffs it, the shape `init_project.py --check` already
 has. Four decisions fall out of §1a and are recorded here because the waves depend on them.
@@ -221,10 +222,16 @@ ships everything under a `templates/` segment — so the table is a reading guid
 **A template no table row names is refused** (exit 5; 414 of the 2,919 are in that state). Adding a
 row is a documentation decision, and CR-010 is the shape of making one silently.
 
-**A methodology with no `## Template Contents` section keeps none.** The section exists for files the
-packer does not ship standalone, and both `.md` and `.md.j2` ship by path; creating 2,505 inlines
-would duplicate delivered bytes into the file every retrieval loads first. Where an inline already
-exists it is regenerated, as the `.md.j2` source verbatim, by the call that writes the `.md.j2`.
+**There is no `## Template Contents` section left, in any methodology.** The reasoning here was
+already right — both `.md` and `.md.j2` ship by path, so creating 2,505 inlines would duplicate
+delivered bytes into the file every retrieval loads first — and F-077 applied it to the 3,376
+inlines that predated it. `packablePath` admits everything under a `templates/` segment, so an
+inline is a second shipment of bytes the caller already has, paid during *retrieval* rather than on
+a fetch: `vfs-pack -check-double-ship` reported **2,583** of them.
+
+`tpl-jinja --migrate` keeps its no-op arm, and that is now the only arm it can take: it rewrites an
+existing section and never creates one. `scripts/uninline-template-contents.py --check` is in
+`FAST_IDS`, so if a section ever reappears the commit that adds it fails the gate.
 
 ## 3. The variable dictionary — the point of the whole exercise
 

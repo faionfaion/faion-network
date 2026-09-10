@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`template-jinja-migration.md` §2b corrected.** It described `--migrate` as
+  rewriting an inline `## Template Contents` body, and stated the rule for a
+  methodology that has no such section. There are none left, so the rule is now
+  the whole story and the tool's reinline arm is unreachable by construction —
+  it rewrites an existing section and never creates one. The convention had
+  already reasoned its way to the right answer for new templates ("creating 2,505
+  inlines would duplicate delivered bytes into the file every retrieval loads
+  first"); it just never applied it backwards to the 3,376 that predated it.
+
 - **F-077 complete, and the gate that keeps it that way.**
   `uninline-template-contents.py --check` joins `FAST_IDS`, so re-inlining a body
   is a new line in the failure set on the commit that does it. The check prints
