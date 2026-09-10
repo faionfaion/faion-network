@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Multi-Region Failover Pattern Pack Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Multi-Region Failover Pattern Pack Decision Tree" version="2.0.0" est_tokens="700">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-rpo-rto">Are numeric RPO and RTO per workload tier agreed with the business owner and recorded as `rpo_minutes` and `rto_minutes`?</root-question>
+    <branch when="rpo_rto == missing">
+      <conclusion ref="r-rpo-rto-numeric-per-tier">Stop. Get the two numbers per tier from the business owner first; no pattern can be chosen or costed without them.</conclusion>
+    </branch>
+    <branch when="rpo_rto == present">
+      <question id="q-multi-region">Does the workload actually run, or need to run, in more than one region (regulatory, RTO under what a single-region restore can deliver, or customer commitment)?</question>
+      <branch when="multi_region == false">
+        <conclusion ref="skip-this-methodology">Skip this methodology. A single-region backup-and-restore plan with tested restores covers the requirement; a multi-region pack would be cost without a driver.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="multi_region == true">
+        <question id="q-replication-facts">Are database replication mode and measured p99 lag, object-store backfill status, and the region-scoped dependency list all recorded?</question>
+        <branch when="replication_facts == incomplete">
+          <conclusion ref="r-database-replication-mode-and-promotion">Collect the replication, backfill and dependency facts before choosing a pattern; the declared RPO is bounded by the measured lag.</conclusion>
+        </branch>
+        <branch when="replication_facts == complete">
+          <question id="q-drilled">Has a live drill been run since the last change to replication, DNS or promotion, with measured RTO and RPO recorded?</question>
+          <branch when="drilled == false">
+            <conclusion ref="r-drill-live-with-measured-results">Choose the pattern from RPO/RTO and cost, label the pack `unverified`, and schedule the drill that turns it into a verified pack.</conclusion>
+          </branch>
+          <branch when="drilled == true">
+            <conclusion ref="run-the-checklist">Produce the full pack: pattern with achievable vs required RPO/RTO, DNS mechanics, database and object-store sections, dependency list, drill results and failback procedure.</conclusion>
+          </branch>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="payments-warm-standby">
+      <p>Payments tier: RPO 5 min, RTO 30 min agreed. Multi-region required by RTO. Async Postgres replication with 12 s p99 lag, S3 backfill job cited, IdP confirmed multi-region. No drill since the DNS health check changed → r-drill-live-with-measured-results: pack labelled `unverified`, drill scheduled on 5% of traffic.</p>
     </example>
   </decision-tree>
 </text>

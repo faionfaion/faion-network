@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011, batch 2 of 4: `dev` — 24 methodologies.** The largest concentration
+  of the stamp. Now `hipaa-phi-data-flow-design` cites §164.312 and the HHS
+  unsecured-PHI guidance instead of semver; `latency-budget-allocation` states
+  that percentiles do not add and fan-out tightens the child percentile (Dean
+  and Barroso, The Tail at Scale); `multi-region-failover-pattern-pack` demands
+  numeric RPO/RTO per tier and a live drill with measured results;
+  `ai-pre-screen-bias-guardrails` cites 29 CFR 1607.4(D) and NYC Local Law 144;
+  `new-dependency-risk-checklist` names event-stream 2018 and ua-parser-js 2021.
+  Three `_smoke-test.json` fixtures gained the inputs the new rules require;
+  two `05-examples.xml` still narrate the generic billing-service and are noted
+  as follow-up.
+
+  What the agents surfaced, and this CR did not: in most of these 24 the
+  `02-output-contract.xml` is the same stamp (`trigger / owner / inputs /
+  decision / evidence / review`), as are `04-procedure.xml`, `05-examples.xml`,
+  the templates, and even Applies If / Skip If. The rules, failure modes and
+  tree are now real; the rest of the body is still the scaffold. That is the
+  next layer, and it is not smaller than this one.
+
 - **CR-011, batch 1 of 4: `ai-core`, `ba`, `comms` — six methodologies get rules
   about their own subject.** Each carried a governance stamp shared verbatim
   with dozens of documents (name an owner, validate the schema, log deviations,

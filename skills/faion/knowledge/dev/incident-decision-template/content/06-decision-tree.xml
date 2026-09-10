@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Incident Decision Template Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Incident Decision Template Decision Tree" version="2.0.0" est_tokens="650">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-live-incident">Is a decision being made on a live incident bridge right now (mitigation, rollback, release hold, traffic shift)?</root-question>
+    <branch when="live_incident == false">
+      <conclusion ref="skip-this-methodology">Skip this methodology. A retrospective write-up belongs in the postmortem; a planned change belongs in an ADR, not an incident decision record.</conclusion>
+    </branch>
+    <branch when="live_incident == true">
+      <question id="q-bridge-open">Is the bridge still open, so the record can be written within 2 minutes of the call?</question>
+      <branch when="bridge_open == false">
+        <conclusion ref="r-record-before-bridge-closes">Write the record now but mark it `reconstructed: true` with the reconstruction time; raise the missing scribe in the postmortem.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="bridge_open == true">
+        <question id="q-rollback-trigger">Does the decision name a rollback trigger as metric + threshold + window + rollback command?</question>
+        <branch when="rollback_trigger == missing">
+          <conclusion ref="r-rollback-trigger-measurable">Stop and agree the numeric trigger on the bridge before the mitigation ships; record it in `inputs[]` as `rollback_trigger`.</conclusion>
+        </branch>
+        <branch when="rollback_trigger == present">
+          <question id="q-blast-and-options">Are `blast_radius` (with a number) and `options_considered` (at least two, including do-nothing) both recorded?</question>
+          <branch when="fields == incomplete">
+            <conclusion ref="r-blast-radius-quantified">Fill `blast_radius` from the open dashboard and list the rejected options; then commit.</conclusion>
+          </branch>
+          <branch when="fields == complete">
+            <conclusion ref="run-the-checklist">Commit the record with the commander as owner, pinned evidence and `review.next_review_at` set to the postmortem date.</conclusion>
+          </branch>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="checkout-5xx-sidecar-disable">
+      <p>Live bridge, 02:14. Commander decides to disable the recommendations sidecar. Rollback trigger agreed as "checkout 5xx above 2% for 5 min; `helm rollback checkout 41`"; blast radius recorded as 38% of checkout requests in eu-west-1; options: disable sidecar / roll back full release / wait 10 min. All present → run-the-checklist; record committed 02:16.</p>
     </example>
   </decision-tree>
 </text>

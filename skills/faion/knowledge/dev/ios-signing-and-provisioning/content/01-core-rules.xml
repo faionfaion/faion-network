@@ -1,46 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Ios Signing And Provisioning Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Ios Signing And Provisioning must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Ios Signing And Provisioning Core Rules" version="2.0.0" est_tokens="1900" depth="essential">
+  <summary>8 testable rules every iOS signing and provisioning document MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r-inventory-every-signing-asset" testable="true" depth="essential">
+      <statement>The document MUST inventory every signing asset by type with its identifier, expiry date and storage location: each distribution and development certificate, each provisioning profile (bundle ID, type: development / ad-hoc / App Store / enterprise, expiry), each App Store Connect API key (Key ID, Issuer ID, role, where the `.p8` lives), and each APNs key or certificate. An asset without an expiry date or a storage location is incomplete.</statement>
+      <rationale source="Apple Developer documentation: 'Certificates, Identifiers &amp; Profiles'; App Store Connect API 'Creating API Keys'">The release that fails at 23:50 on submission day fails because a profile nobody listed expired. Every asset has an expiry and a home; the inventory is what turns 'ask the one person who set it up two years ago' into a table someone can act on.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="r-apns-token-key-over-cert" testable="true" depth="essential">
+      <statement>Push notifications MUST use token-based APNs authentication with a `.p8` auth key. Certificate-based APNs auth is allowed only when the document records the constraint that forces it, and then the certificate expiry (one year from issue) MUST appear in the rotation calendar.</statement>
+      <rationale source="Apple Developer documentation: 'Establishing a token-based connection to APNs' and 'Establishing a certificate-based connection to APNs'">One APNs auth key serves every app on the team and does not expire; an APNs certificate is per app and dies after a year, usually on a weekend. Teams that stay on certificates collect one silent push outage per app per year.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="r-private-keys-in-secret-store-only" testable="true" depth="essential">
+      <statement>Private key material (`.p12`, `.p8`, certificate private keys) MUST NOT be committed to the app repository or stored in a chat thread or email. The document MUST name the secret store (CI secrets, a fastlane-match style encrypted store, or the team password manager) and the list of people and pipelines with read access. One shared distribution certificate for the team is the default; per-developer distribution certificates are forbidden unless the document explains why.</statement>
+      <rationale source="fastlane match documentation and codesigning guide (docs.fastlane.tools/codesigning); Apple developer account security guidance">A `.p12` in the repo is a signing identity for anyone who ever cloned it, and rotating it means revoking a certificate that other builds depend on. A single shared certificate in one encrypted store is what makes 'new laptop, ship in ten minutes' possible instead of a day of Xcode signing errors.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for code, architecture, release, performance">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="r-asc-api-key-least-privilege" testable="true" depth="essential">
+      <statement>Every App Store Connect API key used by CI or tooling MUST be issued with the least role that works (Developer or App Manager; never Admin or Account Holder) and one key per pipeline or vendor so revocation is scoped. Key ID and Issuer ID are recorded in the inventory; the `.p8` is stored at issue time because Apple allows it to be downloaded only once.</statement>
+      <rationale source="Apple Developer documentation: App Store Connect API 'Creating API Keys' (single download of the private key; key roles)">An Admin key in a CI secret is full control of the account for whoever reads the CI log. And the `.p8` that was 'downloaded to someone's laptop' is gone the day that laptop is, forcing a key rotation across every pipeline that shared it.</rationale>
     </rule>
+
+    <rule id="r-rotation-calendar-with-lead-time" testable="true" depth="essential">
+      <statement>Every expiring asset MUST have a rotation entry with a date at least 30 days before expiry and a named person. Distribution certificates and provisioning profiles under the standard Apple Developer Program expire one year after creation; the calendar MUST reflect the actual expiry read from the portal, not an assumed one.</statement>
+      <rationale source="Apple Developer documentation: certificate and provisioning profile validity; widely established release-engineering practice">A certificate that expires on a Saturday does not fail on Saturday; it fails on the next build, which is the hotfix. Thirty days of lead time turns rotation into a ticket instead of an incident, and a named person turns the ticket into a done ticket.</rationale>
+    </rule>
+
+    <rule id="r-push-environment-per-build-config" testable="true" depth="essential">
+      <statement>The document MUST map each build configuration (debug, TestFlight, App Store, enterprise) to its `aps-environment` entitlement value (`development` or `production`) and to the APNs host the backend targets (`api.sandbox.push.apple.com` or `api.push.apple.com`). A build config without this mapping is not release-ready.</statement>
+      <rationale source="Apple Developer documentation: 'aps-environment' entitlement; 'Sending notification requests to APNs' (sandbox and production hosts)">The classic silent failure: TestFlight builds are signed for production APNs, the backend still points at the sandbox host, and every push returns `BadDeviceToken` while the app looks fine. The mapping table is what lets a reviewer catch it before the marketing campaign does.</rationale>
+    </rule>
+
+    <rule id="r-client-account-owns-the-app" testable="true" depth="essential">
+      <statement>For apps built for a client, the app record and bundle ID MUST live under the client's Apple Developer account (its Team ID is recorded), with the agency invited as team members under a named role. Creating the client's app under the agency's account is forbidden; if it already happened, the document MUST include the app-transfer plan.</statement>
+      <rationale source="Apple App Store Connect Help: 'Transfer an app'; widely established practice for outsourced iOS development">An app under the agency's account becomes a hostage the day the contract ends, and Apple's transfer process has conditions (in-app purchase state, account standing) that can block it for months. Setting ownership right on day one costs one invitation email.</rationale>
+    </rule>
+
+    <rule id="r-revocation-impact-documented" testable="true" depth="essential">
+      <statement>For each certificate type the document MUST state what stops working when it is revoked, verified against Apple's current documentation: which installed builds keep launching, which stop, and which pipelines break. A revocation runbook (who may revoke, what to regenerate, in what order) MUST be present before any key is rotated.</statement>
+      <rationale source="Apple Developer documentation on revoking certificates and provisioning; widely established practice">The developer who clicks 'revoke and request new certificate' in Xcode to fix a local build has, more than once, killed every ad-hoc and enterprise build in the field. Writing down the blast radius per certificate type is the difference between a five-minute fix and a fleet-wide reinstall.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Ship a Mobile Build on iOS and Android (role: role-software-developer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: iOS provisioning profiles, App Store Connect API keys, push certs, key rotation — none documented. P4 outsource devs ship to client store accounts and burn days every project on this.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

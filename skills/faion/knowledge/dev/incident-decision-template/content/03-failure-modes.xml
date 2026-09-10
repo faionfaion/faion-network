@@ -1,36 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Incident Decision Template — Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 known failure modes when applying `incident-decision-template` in real teams. Each carries a detector (what to look for) and a repair (the corrective action).</summary>
+<text id="03-failure-modes" title="Incident Decision Template — Failure Modes" version="2.0.0" est_tokens="1150" depth="essential">
+  <summary>6 known failure modes when writing incident decision records in real teams. Each carries a detector (what to look for) and a repair (the corrective action).</summary>
 
   <section title="Failure modes">
     <failure-mode id="fm-01" severity="high">
-      <description>Cargo-cult fill — the practitioner copies the skeleton and ships it without filling the evidence fields.</description>
-      <detector>Filled artefact has placeholders ('to-be-determined', 'see ticket', empty arrays) in evidence / inputs / decision.</detector>
-      <repair>Block at review; require evidence URLs or explicit `not_applicable: &lt;reason&gt;`. Reject the artefact if neither is present.</repair>
+      <description>Reconstructed record: the decision is written up hours after the bridge, from memory, and presented as if taken live.</description>
+      <detector>Commit timestamp of the record is later than the bridge end time in the incident timeline AND no `reconstructed` entry in `inputs[]`.</detector>
+      <repair>Add `reconstructed: true` with the reconstruction time; in the postmortem, assign a scribe for the next incident so the record is typed while the commander speaks (rule r-record-before-bridge-closes).</repair>
     </failure-mode>
 
     <failure-mode id="fm-02" severity="high">
-      <description>Ownership ambiguity — artefact lands with `owner: team` or a Slack channel, decays into stale folklore.</description>
-      <detector>owner field missing OR not matching `role:handle` regex.</detector>
-      <repair>Reject at merge. Owner must be a person + role. Team-level ownership is forbidden for living artefacts.</repair>
+      <description>Rollback trigger is a feeling: "roll back if it gets worse": so nobody rolls back until a customer tweets.</description>
+      <detector>`rollback_trigger` entry missing, or its value contains no metric name, no numeric threshold or no time window.</detector>
+      <repair>Rewrite as metric + threshold + window + rollback command or runbook URL before the mitigation ships (rule r-rollback-trigger-measurable).</repair>
     </failure-mode>
 
-    <failure-mode id="fm-03" severity="medium">
-      <description>Drift from operating reality — last_reviewed exceeds the published staleness window; the artefact still gets cited as authoritative.</description>
-      <detector>review.next_review_at &lt; today() AND artefact is still being referenced downstream.</detector>
-      <repair>Auto-flag stale artefacts in the weekly review job; tag `stale:true` and require refresh before use in any production decision.</repair>
+    <failure-mode id="fm-03" severity="high">
+      <description>Single-option record: the only option listed is the one taken, so the postmortem cannot tell whether waiting was ever considered.</description>
+      <detector>`options_considered` entry missing, has fewer than two items, or lacks a "do nothing / keep observing" item.</detector>
+      <repair>Add the rejected options with one-line reasons; if the commander genuinely considered only one action, record that explicitly as a finding for the postmortem (rule r-options-considered-min-two).</repair>
     </failure-mode>
 
     <failure-mode id="fm-04" severity="medium">
-      <description>AI-drafted body retains the template's example tokens — practitioner ships the example.</description>
-      <detector>Filled artefact contains canonical example phrases verbatim (names, numbers, URLs from the template's example block).</detector>
-      <repair>Run `validate-incident-decision-template.py --strict-example` which fails the commit when &gt;30% of the template's example tokens remain in the filled artefact.</repair>
+      <description>Blast radius stated as prose: "some EU users affected": so severity, paging and status-page decisions are made on vibes.</description>
+      <detector>`blast_radius` entry missing or contains no number (percent, count, revenue) and no named system, region or tenant.</detector>
+      <repair>Pull the number from the dashboard already open on the bridge (error rate, affected request count) and record it with the dashboard link pinned to the time range (rule r-blast-radius-quantified).</repair>
     </failure-mode>
 
-    <failure-mode id="fm-05" severity="low">
-      <description>Trigger drift — methodology fires on a vague signal ('when it feels right') and either runs constantly or never.</description>
-      <detector>Invocation log compared against the named trigger shows &gt;30% mismatch.</detector>
-      <repair>Rewrite the trigger to a numeric / event-based criterion. Vague triggers are organisational debt and must be retired.</repair>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Evidence points at healthy graphs: dashboard links without a pinned time range, so a week later every link shows a green system.</description>
+      <detector>Any `evidence[]` URL to a dashboard lacks explicit `from`/`to` (or equivalent) time parameters, or every URL is a documentation page.</detector>
+      <repair>Re-link each dashboard with the incident window pinned; add the alert permalink and the chat message where the decision was announced (rule r-evidence-is-timestamped-signal).</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="medium">
+      <description>Owner is the executor: the engineer who ran the command is recorded as decision owner, hiding who actually made the call.</description>
+      <detector>`owner` differs from the incident commander in the incident timeline and no delegation is recorded in the bridge transcript or `inputs[]`.</detector>
+      <repair>Set `owner` to the commander (or the recorded delegate) and move the executor to an `inputs[]` entry `executor` (rule r-owner-is-commander-or-delegate).</repair>
     </failure-mode>
   </section>
 

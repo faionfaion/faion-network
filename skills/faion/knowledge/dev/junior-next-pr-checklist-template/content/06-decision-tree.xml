@@ -1,24 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Junior Next Pr Checklist Template Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="Junior Next Pr Checklist Template Decision Tree" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable review signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 4.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the input satisfy this methodology's preconditions (trigger present + named consumer + source-of-truth accessible)?</root-question>
-    <branch when="preconditions == satisfied">
-      <question id="q-scope">Is the case in-scope for junior-next-pr-checklist-template (matches Applies-If, no Skip-If matches)?</question>
-      <branch when="scope == in_scope">
-        <conclusion ref="r1" verdict="apply rule r1 from content/01-core-rules.xml; run the procedure"/>
-      </branch>
-      <branch when="scope == out_of_scope">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: case is out of scope; do not produce an artefact"/>
-      </branch>
+    <root-question id="q-root">Was a PR review just completed with a junior author and at least one substantive review comment (not only nits a formatter would catch)?</root-question>
+    <branch when="review_context == false">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: no mentoring review to derive items from; automation-only feedback belongs in lint config, not a checklist"/>
     </branch>
-    <branch when="preconditions == not_satisfied">
-      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: preconditions not met; resolve inputs before re-running"/>
+    <branch when="review_context == true">
+      <question id="q-previous">Does a previous checklist exist for this junior?</question>
+      <branch when="previous_checklist == true">
+        <question id="q-carry">Was every item on it ticked by the junior before review, and are any items carried three times or ticked on two consecutive PRs?</question>
+        <branch when="carry_state == needs_action">
+          <conclusion ref="r-carry-forward-and-retire" verdict="retire mastered items, escalate thrice-carried ones to a pairing session, then draft the new list from this review's comments"/>
+        </branch>
+        <branch when="carry_state == clean">
+          <conclusion ref="r-item-traces-to-review-comment" verdict="draft the next list: each new item permalinked to a review comment, statuses set, 3 to 7 items, one blocker at most"/>
+        </branch>
+      </branch>
+      <branch when="previous_checklist == false">
+        <question id="q-lintable">Are most of the review comments things a linter, formatter or type checker could enforce?</question>
+        <branch when="mostly_lintable == true">
+          <conclusion ref="r-machine-checkable-items-become-lint" verdict="file the lint/CI rules first; build the checklist only from the comments that need human judgement"/>
+        </branch>
+        <branch when="mostly_lintable == false">
+          <conclusion ref="run-the-checklist" verdict="run the procedure: permalinked, verifiable, standard-cited items, ordered by severity with at most one blocker"/>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="primary-path">
-    Observable: preconditions == satisfied AND scope == in_scope → conclusion: r1 → run the procedure in content/04-procedure.xml.
+  <example trace="second-checklist">
+    Observable: junior's PR reviewed with 9 comments; previous checklist exists; two items ticked twice in a row, one item carried three times → r-carry-forward-and-retire: retire the two, schedule pairing for the third, then draft 5 new permalinked items with one blocker.
   </example>
 </text>

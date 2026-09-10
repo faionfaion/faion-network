@@ -1,36 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="PR Pattern Mining For Feedback — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>5 testable rules every application of `pr-pattern-mining-for-feedback` must enforce. The rules pin the discipline that turns a method from folklore into a reviewable, owned, version-controlled operating tool.</summary>
+<text id="01-core-rules" title="PR Pattern Mining For Feedback Core Rules" version="2.0.0" est_tokens="2050" depth="essential">
+  <summary>8 testable rules every PR Pattern Mining For Feedback application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers (&apos;when needed&apos;) are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-corpus-window-and-query-stated" testable="true" depth="essential">
+      <statement>The report MUST state the corpus it was mined from: repository list, date window (start and end), number of merged PRs, number of review comments, and the exact query or command used to fetch them (for example a `gh api graphql` query or `gh pr list --search` invocation). A corpus under 20 merged PRs or under 100 review comments MUST be labelled `insufficient-sample` and the report MUST then contain observations only, no suggested rules.</statement>
+      <rationale source="widely established practice in defect and sample analysis">Three comments from one bad week are not a pattern; they are a bad week. Stating the window and the query lets the next cycle re-run the same extraction and compare, which is the only way the report can ever show that a suggested rule changed anything.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed (template, schema, or artefact path). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-pattern-requires-recurrence" testable="true" depth="essential">
+      <statement>A finding MAY be reported as a pattern only when the same code behaviour was raised in at least 3 distinct PRs and by at least 2 distinct reviewers (or by 1 reviewer across at least 5 PRs where the team has a single reviewer). Each pattern MUST cite at least 3 review-comment URLs in the report. Anything below the threshold is listed under `single-occurrence` and MUST NOT generate a suggested rule.</statement>
+      <rationale source="widely established practice in defect analysis; Joseph M. Juran on the Pareto principle in quality management">A single reviewer's pet peeve counted three times looks identical to a team-wide gap unless the reviewer axis is checked. The comment URLs are what let the reader verify that the pattern is real rather than the miner's summary of it.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data, ticket, transcript). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Architect needs a quick method to extract recurring teachable patterns from a mentee&apos;s PR history. Pattern-memory methodology is too generic.</rationale>
+    <rule id="r-pattern-phrased-as-code-behaviour" testable="true" depth="essential">
+      <statement>Each pattern MUST be phrased as an observable code behaviour with a before and after example ("HTTP client call without a timeout; add `timeout=` on every `requests` call", "test asserts only the status code; assert the response body and the side effect"). Patterns phrased as traits ("careless", "does not think about errors") or as categories without an example ("error handling") are rejected.</statement>
+      <rationale source="Google Engineering Practices, 'How to do a code review'; Kluger and DeNisi, 'The Effects of Feedback Interventions on Performance', Psychological Bulletin (1996)">Feedback about the task changes the task; feedback about the person changes morale. A pattern the author can grep for, and an example of the fixed form, is something a linter, a checklist or a mentoring session can act on. "Error handling" is a chapter title, not a finding.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every instance has a named owner accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour.</rationale>
+    <rule id="r-ranked-by-frequency-times-cost" testable="true" depth="essential">
+      <statement>Patterns MUST be ranked by frequency multiplied by cost, where cost is the number of review round-trips (review cycles until resolved) or the label severity (`issue` above `suggestion` above `nitpick`) and the basis is stated in the report. The report presents at most 5 top patterns with count and cost shown per pattern; the remainder go into an appendix table.</statement>
+      <rationale source="Joseph M. Juran, 'Quality Control Handbook', on the Pareto principle (the vital few); widely established practice in defect analysis">Ranking by raw count promotes whatever is easiest to comment on, which is spacing and naming. Weighting by round-trips surfaces the pattern that actually delays merges. Five items is what a team will read and act on; twenty is a document nobody opens twice.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest.</rationale>
+    <rule id="r-formatter-covered-comments-excluded" testable="true" depth="essential">
+      <statement>Comments about formatting, import order, quote style, trailing whitespace or any behaviour a formatter or linter already available for the language can enforce MUST be excluded from pattern counts. They are reported once as a single `automation-gap` item naming the tool and configuration change (for example `ruff` rule code, `eslint` rule id, `prettier` config key) that removes the whole class.</statement>
+      <rationale source="'Software Engineering at Google' (Winters, Manshreck, Wright, 2020), chapters on style guides and code review; widely established practice">Human reviewers spending cycles on what `black` or `prettier` does in milliseconds is a tooling defect, not a learning gap, and counting those comments as patterns buries the design problems under a pile of whitespace. One config change deletes the entire category from next cycle's corpus.</rationale>
     </rule>
+
+    <rule id="r-suggested-rule-names-enforcement-channel" testable="true" depth="essential">
+      <statement>Every suggested rule addition MUST name its enforcement channel, chosen in this order of preference and with the reason the earlier options do not apply: (1) linter or formatter rule by id, (2) CI check or test, (3) PR template checkbox, (4) written guideline. A suggestion with no channel is recorded as a note, not a rule, and MUST NOT appear in the top-5 list.</statement>
+      <rationale source="'Software Engineering at Google' (Winters, Manshreck, Wright, 2020), chapters on style guides and code review; widely established practice">A guideline in a wiki is enforced by whoever remembers it on the day. A lint rule is enforced on every commit by nobody. Reports that produce guidelines produce the same report next quarter; the channel field forces the miner to ask what actually stops the pattern.</rationale>
+    </rule>
+
+    <rule id="r-per-person-scope-declared-and-consented" testable="true" depth="essential">
+      <statement>The report MUST declare its scope as `team` or `mentee:&lt;handle&gt;`. A team-scoped report MUST NOT rank or list individual authors by comment count. A mentee-scoped report MUST name the mentee as its primary reader, MUST be readable by the mentee, and MUST state whether it feeds a performance evaluation. A report that lists per-author counts without a declared mentee scope is rejected.</statement>
+      <rationale source="Kluger and DeNisi, 'The Effects of Feedback Interventions on Performance', Psychological Bulletin (1996); widely established practice in engineering management">A leaderboard of who got the most review comments measures who wrote the most code and who had the strictest reviewer, and it turns reviewers into people whose comments count against their colleagues. The mentee-scoped report is the legitimate use; it works only when the mentee reads it first.</rationale>
+    </rule>
+
+    <rule id="r-baseline-and-remeasure-per-pattern" testable="true" depth="essential">
+      <statement>Each top-5 pattern MUST carry its baseline count for the current window and a re-measure date for the next cycle. The next cycle's report MUST show the delta per pattern using the same query. A suggested rule whose pattern has not dropped after two cycles MUST be marked `ineffective` and its enforcement channel changed or the rule withdrawn.</statement>
+      <rationale source="widely established practice in continuous improvement (plan-do-check-act); Joseph M. Juran on quality improvement">A rule that produced no drop in the thing it was written for is noise in the style guide. The baseline and the re-measure are what separate a feedback loop from a quarterly essay, and the two-cycle limit is what lets the team delete rules instead of only adding them.</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

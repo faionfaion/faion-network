@@ -1,24 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Post Migration Cleanup Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="Post Migration Cleanup Decision Tree" version="2.0.0" est_tokens="850" depth="essential">
+  <summary>Routing tree mapping observable migration signals (legacy write traffic, legacy read traffic, flag keys, snapshot presence) to a rule from `content/01-core-rules.xml`. Every leaf names a concrete rule id, `run-the-checklist`, or `skip-this-methodology` when cleanup is premature.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the input satisfy this methodology's preconditions (trigger present + named consumer + source-of-truth accessible)?</root-question>
-    <branch when="preconditions == satisfied">
-      <question id="q-scope">Is the case in-scope for post-migration-cleanup (matches Applies-If, no Skip-If matches)?</question>
-      <branch when="scope == in_scope">
-        <conclusion ref="r1-explicit-trigger" verdict="apply rule r1-explicit-trigger from content/01-core-rules.xml; run the procedure"/>
-      </branch>
-      <branch when="scope == out_of_scope">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: case is out of scope; do not produce an artefact"/>
-      </branch>
+    <root-question id="q-cutover-complete">Has 100% of production traffic been served by the new path for at least one full weekly traffic cycle?</root-question>
+    <branch when="cutover_complete == false">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: the migration is not finished; cleanup before cutover deletes the rollback path"/>
     </branch>
-    <branch when="preconditions == not_satisfied">
-      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: preconditions not met; resolve inputs before re-running"/>
+    <branch when="cutover_complete == true">
+      <question id="q-legacy-writes">Do write metrics on the legacy store still show non-zero traffic, or is the legacy write path still present in code?</question>
+      <branch when="legacy_writes == present">
+        <conclusion ref="r-dual-write-retired-after-parity" verdict="run the reconciliation over 7 consecutive days; on zero mismatches delete the legacy write path in its own PR and cite the report"/>
+      </branch>
+      <branch when="legacy_writes == removed">
+        <question id="q-reads-and-flags">Does the legacy read-path counter read zero for a full cycle, and is every migration flag key already deleted from code and the flag service?</question>
+        <branch when="legacy_reads &gt; 0">
+          <conclusion ref="r-legacy-read-path-deleted-at-zero-traffic" verdict="identify the remaining callers from the counter; do not delete the read path until it reads zero for 7 days including the batch window"/>
+        </branch>
+        <branch when="flag_keys_remaining &gt; 0">
+          <conclusion ref="r-migration-flags-removed-from-code" verdict="delete each flag key and collapse its branches in one PR per key; record the PR URL against the key"/>
+        </branch>
+        <branch when="reads_zero_and_flags_gone == true">
+          <question id="q-snapshot">Is there a dated snapshot of the legacy data and a zero-hit reference scan before any DROP?</question>
+          <branch when="snapshot_and_scan == missing">
+            <conclusion ref="r-legacy-schema-dropped-after-backup-and-reference-scan" verdict="take the snapshot, run the cross-repo and query-log scan, record both; only then schedule the DROP as a separate change"/>
+          </branch>
+          <branch when="snapshot_and_scan == present">
+            <conclusion ref="run-the-checklist" verdict="run the full checklist: shims with expiry, docs and runbooks, alerts and infra decommission, cleanup deadline with per-item owners"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="primary-path">
-    Observable: preconditions == satisfied AND scope == in_scope → conclusion: r1-explicit-trigger → run the procedure in content/04-procedure.xml.
+  <example trace="orders-service-postgres-to-new-schema">
+    Observable: cutover 2026-04-01, legacy write path deleted in PR #8812 after reconciliation showed 0 mismatches over 2026-04-03..2026-04-10; legacy read counter `orders_v1_reads_total` = 0 for 9 days; 3 flag keys deleted → snapshot `s3://backups/orders_v1-2026-04-12` with retention to 2026-10-01, reference scan 0 hits → conclusion: run-the-checklist.
   </example>
 </text>

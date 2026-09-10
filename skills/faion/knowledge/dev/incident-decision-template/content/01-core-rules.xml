@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Incident Decision Template — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `incident-decision-template` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Incident Decision Template Core Rules" version="2.0.0" est_tokens="1650" depth="essential">
+  <summary>8 testable rules every incident decision record MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-record-before-bridge-closes" testable="true" depth="essential">
+      <statement>The record MUST be written and committed while the incident bridge is still open, within 2 minutes of the decision being spoken. A record written after the bridge closed MUST carry an `inputs[]` entry `reconstructed: true` with the reconstruction time; it is never presented as contemporaneous.</statement>
+      <rationale source="PagerDuty Incident Response documentation (Scribe role); Google SRE Book ch. 14 'Managing Incidents'">Voice decisions evaporate. Ten minutes after the bridge, three engineers remember three different rollback thresholds, and the postmortem reconstructs a timeline from Slack scroll-back. The scribe writes while the commander talks; that is the whole point of the 2-minute form.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-options-considered-min-two" testable="true" depth="essential">
+      <statement>`inputs[]` MUST contain an entry named `options_considered` listing at least two options, one of which is "do nothing / keep observing". Each option is one line: action plus the reason it was or was not chosen.</statement>
+      <rationale source="Nygard, 'Documenting Architecture Decisions' (2011); MADR decision-record format ('Considered Options')">A record with one option is a log line, not a decision. Listing the rejected option, including waiting, is what lets the postmortem judge whether the call was reasonable with the information available at the time, rather than with hindsight.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-blast-radius-quantified" testable="true" depth="essential">
+      <statement>`inputs[]` MUST contain an entry named `blast_radius` naming the affected systems, regions or tenants and a number: percent of traffic, request count, customer count or revenue per minute. "Some users" and "part of the platform" are rejected.</statement>
+      <rationale source="Google SRE Book ch. 14 'Managing Incidents'; widely established incident-severity practice">Blast radius decides who gets paged, whether the status page updates and whether legal is told. A decision to restart the primary database looks different at 3% of read traffic than at 100% of checkout. Without the number the severity is whatever the loudest voice on the bridge says it is.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-rollback-trigger-measurable" testable="true" depth="essential">
+      <statement>`inputs[]` MUST contain an entry named `rollback_trigger` with a metric name, a threshold, a time window and the rollback command or runbook URL (e.g. "checkout 5xx rate above 2% for 5 consecutive minutes on dashboard X; rollback: `helm rollback checkout 41`"). "If it gets worse" is rejected.</statement>
+      <rationale source="Google SRE Workbook ch. 16 'Canarying Releases'; Google SRE Book ch. 22 'Addressing Cascading Failures'">The moment a mitigation makes things worse is the moment nobody wants to admit it. A pre-agreed numeric trigger removes the argument: the metric crossed the line, the runbook runs. Without it the bridge spends twenty minutes debating whether the new graph is noise.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-decision-is-one-imperative-sentence" testable="true" depth="essential">
+      <statement>`decision` MUST be a single imperative sentence naming the action, the target system and when it takes effect ("Disable the recommendations sidecar in eu-west-1 now"). Sentences containing "consider", "maybe", "look into" or "should probably" are rejected.</statement>
+      <rationale source="Widely established incident-communication practice; content/04-procedure.xml step 4">A hedged decision is executed differently by each engineer who reads it. During an incident the record is read by people who were not on the call and are about to type a command; ambiguity here is a second incident.</rationale>
     </rule>
+
+    <rule id="r-owner-is-commander-or-delegate" testable="true" depth="essential">
+      <statement>`owner` MUST be the incident commander or the person the commander explicitly delegated the call to, in `role:handle` form. The engineer who executes the change is recorded in `inputs[]` as `executor` when different. A record whose owner is a team, a channel or the executor without delegation is rejected.</statement>
+      <rationale source="PagerDuty Incident Response documentation (Incident Commander role); Incident Command System">Incidents fail when two people believe they are making the call. Recording the commander as owner is the one governance rule this artefact needs: it makes the delegation chain visible and stops "I thought you approved that" in the postmortem.</rationale>
+    </rule>
+
+    <rule id="r-evidence-is-timestamped-signal" testable="true" depth="essential">
+      <statement>Every `evidence[]` URL MUST resolve to a timestamped signal from this incident: a dashboard link with the time range pinned, an alert, a log query, a chat-message permalink or a commit. At least one URL MUST show the state of the system at the moment of the decision. Links to general documentation do not count as evidence.</statement>
+      <rationale source="Google SRE Book ch. 15 'Postmortem Culture: Learning from Failure'">The postmortem needs to answer "what did they see when they decided". A dashboard link without a pinned time range shows tomorrow's healthy graph, and a docs page proves nothing about that night. Pinned evidence makes the decision reviewable rather than defensible only by memory.</rationale>
+    </rule>
+
+    <rule id="r-review-at-postmortem" testable="true" depth="essential">
+      <statement>`review.next_review_at` MUST be no later than the incident's postmortem date, and the review outcome MUST state whether the rollback trigger fired and whether the measured blast radius matched the recorded one. An incident record still unreviewed after the postmortem is closed is marked stale.</statement>
+      <rationale source="Google SRE Book ch. 15 'Postmortem Culture: Learning from Failure'; content/02-output-contract.xml `review` block">The record only earns its keep if someone checks whether the call was right. Reviewing it at the postmortem, when the timeline is on the table, costs minutes; reviewing it a quarter later costs an archaeology session and produces nothing the team will act on.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

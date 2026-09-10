@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="AI Pre-Screen Bias Guardrails Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="AI Pre-Screen Bias Guardrails Decision Tree" version="2.0.0" est_tokens="850">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-model-touches-candidates">Does a model score, rank, summarise or filter any candidate submission (CV, cover letter, take-home) before a human sees it?</root-question>
+    <branch when="model_touches_candidates == false">
+      <conclusion ref="skip-this-methodology">Skip. No automated selection step exists; ordinary structured-interview practice applies.</conclusion>
+    </branch>
+    <branch when="model_touches_candidates == true">
+      <question id="q-redaction-before-model">Is there a separate, unit-tested redaction step that strips name, photo, age and graduation years, address below city, gender markers, nationality and family status before the model input?</question>
+      <branch when="redaction_before_model == false">
+        <conclusion ref="r-protected-attributes-stripped-before-model">Stop scoring. Build and test the redaction step, inspect a sample of its output, then re-enter the tree.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="redaction_before_model == true">
+        <question id="q-human-and-monitoring">Does every advance or reject record carry a human of record's `role:handle`, is a real-pool calibration run with a pre-set threshold linked in `evidence[]`, and is the per-stage four-fifths table produced each review cycle?</question>
+        <branch when="human_of_record_on_every_decision == false">
+          <conclusion ref="r-human-of-record-decides">Remove any threshold filter that drops candidates without a human; route every scored candidate with the redacted document to a named reviewer.</conclusion>
+        </branch>
+        <branch when="human_of_record_on_every_decision == true and calibration_linked == false">
+          <conclusion ref="r-calibration-sample-before-go-live">Draw a calibration sample from the real applicant pool, score it blind by two reviewers and by the system, set the agreement threshold before looking, and link the run.</conclusion>
+        </branch>
+        <branch when="human_of_record_on_every_decision == true and calibration_linked == true and four_fifths_table_per_stage == false">
+          <conclusion ref="r-adverse-impact-monitored-per-stage">Join self-identification data to per-stage pass-through counts, compute the selection ratio per group, and hold the system if any group is below 0.8.</conclusion>
+        </branch>
+        <branch when="human_of_record_on_every_decision == true and calibration_linked == true and four_fifths_table_per_stage == true">
+          <conclusion ref="run-the-checklist">Run the full procedure: versioned rubric, proxy review, applicable-law notice and audit, per-candidate audit log; emit the guardrail spec per the output contract.</conclusion>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="take-home-grader-for-backend-role">
+      <p>An LLM grades take-homes for a backend role before the hiring manager looks: model touches candidates. Submissions are redacted by a tested function. Every forward/reject carries the manager's handle. Calibration was run on 30 real submissions with weighted kappa 0.71 against a pre-set 0.65 floor. No per-stage four-fifths table exists → conclusion r-adverse-impact-monitored-per-stage before the next cohort.</p>
     </example>
   </decision-tree>
 </text>

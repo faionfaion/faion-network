@@ -46,7 +46,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/01-core-rules.xml` | essential | 8 rules: total is the user-facing SLO, percentiles do not add, fan-out tightens child percentile, every hop measured, timeouts and retries fit the hop, histogram buckets at thresholds, executable CI gate, budget reconciled with measured p95 | 1800 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |

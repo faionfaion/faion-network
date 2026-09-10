@@ -1,21 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="CLAUDE.md Creation Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="CLAUDE.md Creation Decision Tree" version="2.0.0" est_tokens="500">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-root-file-state">What is the state of the root CLAUDE.md at HEAD: missing, present but failing a check (secret scan, line budget, path existence, command run), or present and green?</root-question>
+    <branch when="root_file == 'missing'">
+      <question id="q-commands-source">Do the build, test and lint commands already exist in a machine-readable place (Makefile, package.json scripts, pyproject, CI workflow)?</question>
+      <branch when="commands_source == 'exists'">
+        <conclusion ref="r-claude-md-import-not-paste">Bootstrap with `/init`, then replace any pasted README or doc content with `@path` imports and keep the command list verbatim from the existing scripts.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="commands_source == 'none'">
+        <conclusion ref="r-claude-md-commands-verbatim">Write the command set first: each command copy-pasteable and verified to exit 0 on a fresh clone; only then add conventions and prohibitions.</conclusion>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
+    <branch when="root_file == 'failing'">
+      <question id="q-failing-check">Which check fails: secret scan, line budget, path existence or command run, or is the failing content per-package rules in a monorepo root?</question>
+      <branch when="failing_check == 'secret_scan'">
+        <conclusion ref="r-claude-md-no-secrets">Rotate the exposed secret, replace it with the env-var or vault-item name, and wire the scanner into pre-commit and CI before any other edit.</conclusion>
+      </branch>
+      <branch when="failing_check == 'line_budget'">
+        <conclusion ref="r-claude-md-line-budget">Cut the root to commands, conventions, prohibitions and pointers until `wc -l` fits the declared budget; move depth into on-demand files.</conclusion>
+      </branch>
+      <branch when="failing_check == 'path_or_command'">
+        <conclusion ref="r-claude-md-refs-exist">Fix or remove every dead path and non-running command in this PR and add the path-existence check to CI so the next rename cannot reintroduce drift.</conclusion>
+      </branch>
+      <branch when="failing_check == 'per_package_rules'">
+        <conclusion ref="r-claude-md-subdir-scoping">Split per-package commands and rules into `&lt;subdir&gt;/CLAUDE.md` files; leave cross-cutting conventions and a package map in the root.</conclusion>
+      </branch>
+      <branch when="failing_check == 'personal_content'">
+        <conclusion ref="r-claude-md-personal-goes-local">Move absolute home paths, local ports and personal habits to `CLAUDE.local.md` or `~/.claude/CLAUDE.md`; gitignore the local file.</conclusion>
+      </branch>
     </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <branch when="root_file == 'green'">
+      <conclusion ref="skip-this-methodology">Root file exists, fits its budget, scans clean and every path and command resolves. No authoring work; revisit when a referenced file is renamed.</conclusion>
+    </branch>
+    <example trace="monorepo-with-pasted-readme">
+      <p>Root CLAUDE.md is 480 lines against a declared budget of 100 and contains `cd api &amp;&amp; pytest` and `cd web &amp;&amp; pnpm test`. root_file == 'failing', failing_check == 'per_package_rules' → conclusion r-claude-md-subdir-scoping; the line budget is met as a side effect once the per-package content moves out.</p>
     </example>
   </decision-tree>
 </text>

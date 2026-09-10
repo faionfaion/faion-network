@@ -1,32 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI Pre-Screen Bias Guardrails — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `ai-pre-screen-bias-guardrails` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="AI Pre-Screen Bias Guardrails Core Rules" version="2.0.0" est_tokens="2100" depth="essential">
+  <summary>8 testable rules every AI-assisted hiring pre-screen or take-home review MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-protected-attributes-stripped-before-model" testable="true" depth="essential">
+      <statement>Before any model reads a CV, cover letter or take-home, a separate redaction step MUST remove: name, photo, email handle, date of birth and age, graduation years, address below city level, gender markers and pronouns, nationality and visa status, marital and parental status, and any club, church or association that reveals a protected class. The redaction function is unit-tested on a fixture set, and a sample of redacted documents is inspected by a human at every release.</statement>
+      <rationale source="Bertrand and Mullainathan 2004, 'Are Emily and Greg More Employable than Lakisha and Jamal?'; Goldin and Rouse 2000 on blind orchestra auditions">Identical CVs with different names receive materially different callback rates from human screeners, and models trained on human-labelled hiring data reproduce the same pattern. The model cannot be told to ignore a name; the only reliable control is that it never sees one.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-rubric-versioned-before-first-score" testable="true" depth="essential">
+      <statement>The scoring rubric MUST be written, versioned and hashed before the first candidate is scored. Every criterion maps to a stated job requirement and carries behavioural anchors for at least the lowest, middle and highest score. The rubric version is recorded on every score; a rubric change re-runs calibration (see `r-calibration-sample-before-go-live`).</statement>
+      <rationale source="Schmidt and Hunter 1998, 'The Validity and Utility of Selection Methods in Personnel Psychology'; structured-interview research">Unstructured judgement is the least predictive and most bias-prone selection method in the literature; structure is what carries validity. A rubric written after the scores exist is a rationalisation, and a criterion with no anchor lets the model invent its own scale per candidate.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-no-proxy-criteria-in-prompt" testable="true" depth="essential">
+      <statement>The rubric and the prompt MUST NOT ask for or reward: "culture fit", "energy", "polish", "native speaker", "recent graduate", "digital native", employment gaps, years since graduation, commute distance, or the prestige of a school or employer. The criterion list is reviewed against this proxy list at every rubric change, and the review is recorded in `evidence[]`.</statement>
+      <rationale source="EEOC technical assistance, May 2023, 'Select Issues: Assessing Adverse Impact in Software, Algorithms, and Artificial Intelligence Used in Employment Selection Procedures Under Title VII'">A criterion does not need to name a protected class to select on one: employment gaps track parental leave and disability, "native speaker" tracks national origin, "recent graduate" tracks age. Disparate impact through a proxy carries the same liability as direct discrimination.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-calibration-sample-before-go-live" testable="true" depth="essential">
+      <statement>Before go-live, and after every change to the prompt, rubric, model id or redaction step, a calibration sample drawn from the real applicant pool MUST be scored blind by at least two human reviewers and by the system. The agreement statistic (Cohen's kappa, weighted kappa or Spearman rank correlation), its numeric acceptance threshold set in advance, and the run URL go in `evidence[]`. Below threshold, the system does not score candidates.</statement>
+      <rationale source="Inter-rater reliability practice in personnel assessment; widely established practice in ML validation">A model that agrees with reviewers on synthetic CVs and disagrees on real ones is measuring the synthetic distribution. Without a pre-set threshold the team decides after seeing the number whether it was good enough, which is exactly the judgement the calibration was meant to replace.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-adverse-impact-monitored-per-stage" testable="true" depth="essential">
+      <statement>At every stage where the system filters or ranks, pass-through rates MUST be computed per protected group from self-identification data held separately from the scoring pipeline. A selection rate for any group below four-fifths (80%) of the highest group's rate puts the system on hold and opens a review; the per-stage table is attached to every review cycle.</statement>
+      <rationale source="EEOC Uniform Guidelines on Employee Selection Procedures, 29 CFR 1607.4(D)">The four-fifths rule is the enforcement agencies' stated threshold for adverse impact, and it can only be checked with group counts per stage. A team that never computes the ratio discovers the disparity when a regulator or plaintiff computes it for them, over the full history of the system.</rationale>
     </rule>
+
+    <rule id="r-human-of-record-decides" testable="true" depth="essential">
+      <statement>The system MUST NOT reject, advance or rank-out a candidate on its own. Its output is a score with rubric-referenced reasons; every advance or reject record carries the `role:handle` of the human of record who made the decision, and that human has the redacted document and the score in front of them, not the score alone.</statement>
+      <rationale source="GDPR Art. 22 (decisions based solely on automated processing); EU AI Act Annex III (recruitment and selection as high-risk); NYC Local Law 144 of 2021">A score threshold that auto-rejects is a solely automated decision with legal effect, which the GDPR lets the candidate contest and the EU AI Act regulates as high-risk. The human of record is also the only mechanism that catches the redaction miss or rubric bug on a single candidate before it becomes a pattern.</rationale>
+    </rule>
+
+    <rule id="r-candidate-notice-and-bias-audit" testable="true" depth="essential">
+      <statement>Where the role is subject to an automated-employment-decision-tool law, the guardrail spec MUST link the candidate notice text and the most recent independent bias audit in `evidence[]`. For NYC Local Law 144 that means notice at least 10 business days before the tool is used and a bias audit conducted within the preceding year, with its summary published. For other jurisdictions, record which law applies or an explicit "none applies" with the counsel who confirmed it.</statement>
+      <rationale source="NYC Local Law 144 of 2021 and its DCWP implementing rules (6 RCNY 5-300 et seq.)">The notice and audit obligations attach to the employer, not the vendor, and they attach per role and per jurisdiction of the candidate. A spec that does not say which law applies has not been checked by legal, whatever the DEI review concluded.</rationale>
+    </rule>
+
+    <rule id="r-per-candidate-audit-log-retained" testable="true" depth="essential">
+      <statement>For every candidate scored, the pipeline MUST retain: the hash of the original submission, the redacted text as sent to the model, the model id, prompt hash and rubric version, the score with reasons, and the human of record's decision. Retention MUST be at least the applicable record-keeping period (29 CFR 1602.14 sets one year for most private US employers; check the jurisdiction) and the log is queryable per candidate on request.</statement>
+      <rationale source="EEOC record-keeping regulation 29 CFR 1602.14; GDPR Art. 15 right of access">A candidate's challenge, a regulator's request or an internal four-fifths investigation all reduce to one question: what exactly did the system see and say for this person? If the redacted text and the rubric version were not stored, the answer is a reconstruction, and reconstructions do not survive discovery.</rationale>
+    </rule>
+
   </section>
 
   <see-also>

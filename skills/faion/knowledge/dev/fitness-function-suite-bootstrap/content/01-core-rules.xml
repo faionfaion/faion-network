@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Fitness-Function Suite Bootstrap — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `fitness-function-suite-bootstrap` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Fitness-Function Suite Bootstrap Core Rules" version="2.0.0" est_tokens="2000" depth="essential">
+  <summary>8 testable rules every starter fitness-function suite MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-ffsb-five-to-eight-functions" testable="true" depth="essential">
+      <statement>The starter suite MUST contain between 5 and 8 fitness functions and MUST cover all five categories with at least one function each: performance, deployability, dependency structure, code complexity, and API contract. A suite outside that range, or with an empty category, is not a bootstrap suite and is rejected.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (O'Reilly, 2017; 2nd ed. 2022); scope fixed by this methodology">Fewer than five leaves a category with no guard and the team learns nothing about that dimension; more than eight in week one means half of them were not thought through and the first red one that nobody understands discredits the rest. Five categories is the minimum set that catches the ways a service degrades in practice: it gets slow, it gets hard to ship, its modules tangle, its functions bloat, and it breaks its consumers.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-ffsb-perf-p95-under-fixed-load" testable="true" depth="essential">
+      <statement>The performance function MUST measure p95 latency (or throughput) of one named critical endpoint under a fixed, versioned load profile using a load tool with thresholds in its config (`k6` `thresholds`, Gatling assertions, Locust), MUST run on a dedicated runner or environment, and MUST be scheduled post-merge or nightly rather than on every pull request.</statement>
+      <rationale source="k6 documentation on thresholds; Ford, Parsons, Kua, Building Evolutionary Architectures (holistic vs atomic fitness functions)">A latency check on a shared CI runner fails whenever a neighbour job compiles, and a check that fails for reasons unrelated to the code is switched off within a week. A fixed load profile and a dedicated runner make a red result mean "the service got slower", which is the only result worth blocking on.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-ffsb-deploy-lead-time-from-ci" testable="true" depth="essential">
+      <statement>The deployability function MUST measure a value derivable from the CI/CD system without manual entry: pipeline duration from commit to deployable artifact, or lead time from merge to production, with a numeric threshold in minutes. It MUST be computed from pipeline timestamps by a script committed to the repo, not read from a spreadsheet.</statement>
+      <rationale source="Forsgren, Humble, Kim, Accelerate (IT Revolution, 2018), four key delivery metrics; widely established continuous-delivery practice">Deployability is the characteristic that erodes most silently: nobody notices the pipeline creeping from 8 to 35 minutes until releases become weekly. A threshold on a value the pipeline already knows costs nothing to collect and turns "deploys feel slow" into a number the team can defend or fix.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-ffsb-dependency-direction-tool" testable="true" depth="essential">
+      <statement>The dependency function MUST enforce the declared module or layer dependency direction and forbid cycles with a named structural tool matched to the language (ArchUnit or NetArchTest, `dependency-cruiser` `no-circular`, `import-linter` contracts). The allowed dependency graph MUST be written in the suite spec, and the function MUST run on every pull request as a blocking check.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (ArchUnit layer example); ArchUnit user guide">Dependency erosion is one convenient import at a time with no test failing, and it is the cheapest characteristic to guard: a structural test runs in seconds, never flakes, and fails with a file and line. It belongs in the pull-request path precisely because it is atomic and fast.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-ffsb-complexity-ratchet-with-baseline" testable="true" depth="essential">
+      <statement>The complexity function MUST measure cyclomatic complexity per function with a named tool (`radon`, `lizard`, ESLint `complexity`, SonarQube) against a numeric per-function limit (McCabe's suggested 10 is the default), and MUST ship with a committed baseline file listing current violators so that only new or worsened violations fail the build.</statement>
+      <rationale source="McCabe, 'A Complexity Measure', IEEE Transactions on Software Engineering (1976); widely established ratcheting practice in quality gates">Switching on a limit of 10 against a codebase with 200 functions above it paints every build red, and a permanently red check is disabled by Friday. The baseline file turns the debt into a visible list that only shrinks, while every new function is held to the real limit from day one.</rationale>
     </rule>
+
+    <rule id="r-ffsb-contract-breaking-change-gate" testable="true" depth="essential">
+      <statement>The contract function MUST fail the build on a breaking change to a published API, using either consumer-driven contract tests (Pact, verified on the provider side in CI) or a schema diff against the last released OpenAPI, GraphQL or protobuf definition with a tool that classifies changes as breaking (`oasdiff`, `openapi-diff`, `buf breaking`). Which consumers or which released schema it checks against MUST be written in the spec.</statement>
+      <rationale source="Pact documentation (consumer-driven contracts); Buf documentation on breaking-change detection; widely established API-versioning practice">Breaking a consumer is the failure that reaches customers fastest and is caught by unit tests least: the provider's tests pass because the provider changed them. A contract gate is the only check that fails from the consumer's point of view before the deploy rather than in their error tracker after it.</rationale>
+    </rule>
+
+    <rule id="r-ffsb-ratchet-first-then-block" testable="true" depth="essential">
+      <statement>In its first week every function MUST run in informational or ratchet mode against a recorded baseline; no function MUST block merges until it has produced at least five consecutive green runs on main and the first weekly review has confirmed the threshold. The promotion date and the person who approved it are recorded in the spec.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (fitness functions evolve with the system); widely established practice in progressive rollout of quality gates">A gate that blocks on day one with a threshold nobody has calibrated produces a week of false reds, an `allow_failure` flag, and a suite that is technically live and practically off. Five green runs and one review is the cheapest evidence that a threshold is right before it is allowed to stop work.</rationale>
+    </rule>
+
+    <rule id="r-ffsb-owner-and-weekly-review" testable="true" depth="essential">
+      <statement>Each function MUST name one owner (`role:handle`) and the suite MUST be reviewed weekly for its first four weeks against the run history, then at the cadence the review sets. A function red for two consecutive reviews with no linked action MUST be fixed, re-baselined or removed at the second review; the suite MUST NOT carry an ignored failure.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (reviewing and retiring fitness functions)">The first month is when thresholds are wrong, tools misconfigured and runners flaky, and a weekly look is what separates "we have fitness functions" from "we have a red job everyone scrolls past". Once one failure is safely ignorable, all of them are, which is why removal is a required outcome, not a last resort.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

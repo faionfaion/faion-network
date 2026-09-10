@@ -1,32 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Architectural Impact PR Ranking — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `architectural-impact-pr-ranking` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Architectural Impact PR Ranking Core Rules" version="2.0.0" est_tokens="1850" depth="essential">
+  <summary>8 testable rules every architectural-impact PR ranking report MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-score-formula-published-in-report" testable="true" depth="essential">
+      <statement>The blast-radius score MUST be a documented weighted sum over named signals — at minimum `modules_touched`, `public_api_delta`, `dependency_changes`, `contract_changes`, `infra_or_config_changes` — with the weights printed in the report header. The same PR set and weights MUST produce the same ranking on re-run; a rank the reader cannot recompute from the printed signals is rejected.</statement>
+      <rationale source="Widely established practice in code-quality metrics; reproducibility as a review requirement">A ranking is only trusted when a sceptical reviewer can check why PR #4412 sits above #4398. Hidden or hand-adjusted weights turn the report into an opinion with a number attached, and the architect goes back to skimming everything.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-signals-from-diff-not-metadata" testable="true" depth="essential">
+      <statement>Every signal MUST be computed from the change itself — the file list and diff (`git diff --name-status`, `--stat`), dependency manifests, and schema or contract files — never from the PR title, description, labels, author or reviewer count. Metadata may be shown as context but MUST NOT enter the score.</statement>
+      <rationale source="git documentation (`git diff --name-status`, `--stat`); Bacchelli and Bird 2013, 'Expectations, Outcomes, and Challenges of Modern Code Review'">The PRs that quietly bend the architecture are titled "fix typo in config" and "small refactor". Titles reflect what the author thinks they did; the diff reflects what they did. A score that rewards a "breaking change" label rewards authors who label, not changes that break.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-public-api-surface-enumerated-per-repo" testable="true" depth="essential">
+      <statement>What counts as `public_api_delta` MUST be enumerated per repository in a version-controlled config the report links: OpenAPI, protobuf, GraphQL or AsyncAPI schema files, exported package entry points, database migrations, published event schemas, CLI flags. A change in any listed path is a public API delta; a repo with no such list gets no `public_api_delta` score and the report says so.</statement>
+      <rationale source="Semantic Versioning 2.0.0 (semver.org), which defines the public API as the thing the author must declare">Semver's whole premise is that the public API is explicitly declared, because nobody agrees on it otherwise. Without the list, one reviewer scores a migration as internal and another as a contract change, and the ranking is not comparable week to week.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-dependency-change-weighted-by-kind" testable="true" depth="essential">
+      <statement>`dependency_changes` MUST distinguish, per manifest (`package.json`, `go.mod`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, etc.): a new dependency added, a major-version bump, a minor or patch bump, and a removal. Lockfile-only churn with no manifest change scores zero. A new dependency or a major bump MUST outweigh any number of patch bumps.</statement>
+      <rationale source="Semantic Versioning 2.0.0; widely established supply-chain practice (a new dependency is a new trust decision)">Renovate and Dependabot open a dozen patch bumps a week; counting them as equal to `left-pad`-style new transitive trees puts bot PRs at the top of every ranking and the architect stops reading. A major bump is where the breaking changes are, by definition.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-top-n-fits-the-session" testable="true" depth="essential">
+      <statement>Each ranked PR MUST carry its changed-line count and an estimated read time, and N MUST be chosen so the summed estimate fits the session's time-box (45 minutes by default). A PR the session cannot finish is listed as "deferred" with its score, not silently dropped. The time-box and the resulting N are printed in the report header.</statement>
+      <rationale source="Cohen, 'Best Kept Secrets of Peer Code Review' (SmartBear / Cisco study): defect detection falls sharply beyond roughly 400 lines or an hour of review">A top-10 with 8,000 lines is a top-2 plus eight PRs that get a glance. Sizing N to the session is what turns "we reviewed the top ten" from a claim into something that happened.</rationale>
     </rule>
+
+    <rule id="r-window-repos-exclusions-stated" testable="true" depth="essential">
+      <statement>The report MUST state the window (opened or merged between two timestamps), the repositories scanned, and the exclusion rules applied (bot authors, reverts, docs-only, generated files) with the count excluded by each rule. Every PR in the window appears either ranked, deferred or in an exclusion count, so the totals reconcile.</statement>
+      <rationale source="Widely established practice in audit reporting (population, sample, exclusions must reconcile)">A ranking that does not reconcile to the population cannot tell "this PR scored low" apart from "this PR was never scanned". The week a contract change is merged from a fork the scanner did not cover is the week the architect needs that distinction.</rationale>
+    </rule>
+
+    <rule id="r-merged-without-review-flagged" testable="true" depth="essential">
+      <statement>PRs whose score exceeds the review threshold and which were merged before the session MUST appear in a separate "merged without architecture review" section with score, merge time and merger. The section is never empty by omission: it prints "none" when there are none.</statement>
+      <rationale source="Widely established practice in change management (post-merge review of high-impact changes)">The ranking is not only for choosing what to read; it is the record of what slipped past. A high-blast-radius change merged on Thursday night is the most important line in Monday's report, and a ranking of open PRs hides it entirely.</rationale>
+    </rule>
+
+    <rule id="r-precision-recorded-per-session" testable="true" depth="essential">
+      <statement>After each session the architect MUST mark every ranked PR as `hit` (warranted architectural discussion or action) or `miss`, and the report for the next week prints the previous precision (hits over N). Weights MUST NOT be changed without citing at least four weeks of recorded precision, and the change is logged in the report header with before and after weights.</statement>
+      <rationale source="Precision at N as the standard metric for ranked retrieval; widely established practice in feedback-driven scoring">A ranking with no outcome record cannot be tuned, only argued about. Recording hits makes the weight change a decision with evidence; without it the weights drift towards whatever the last loud reviewer thought mattered.</rationale>
+    </rule>
+
   </section>
 
   <see-also>

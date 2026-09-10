@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="LLM-Friendly Architecture (Software Developer) Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="LLM-Friendly Architecture (Software Developer) Decision Tree" version="2.0.0" est_tokens="650">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-agent-edited">Is the codebase edited by an AI coding agent (Claude Code, Cursor or similar) on a recurring basis?</root-question>
+    <branch when="agent_edited == false">
+      <conclusion ref="skip-this-methodology">Skip this methodology. The rubric pays for itself only where an agent reads the tree every day; a human-only codebase gets a normal architecture review.</conclusion>
+    </branch>
+    <branch when="agent_edited == true">
+      <question id="q-audit-script">Was the audit produced by `llm-arch-audit.sh` (or the project's committed equivalent) with the command and commit SHA recorded?</question>
+      <branch when="audit_reproducible == false">
+        <conclusion ref="r-audit-is-reproducible-command">Rerun the committed script on the current SHA and cite command plus SHA in `evidence[]` before drawing any conclusion.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="audit_reproducible == true">
+        <question id="q-barrels-or-wildcards">Does the audit list any barrel files or wildcard imports?</question>
+        <branch when="hidden_imports == true">
+          <conclusion ref="r-no-barrel-reexports">Remove barrels and star imports first; they hide symbol locations and invalidate every other finding about file navigation.</conclusion>
+        </branch>
+        <branch when="hidden_imports == false">
+          <question id="q-oversized">Does any file exceed the recorded `line_limit`, or any path exceed 3 directory levels?</question>
+          <branch when="size_or_depth == violated">
+            <conclusion ref="r-file-size-histogram-with-threshold">Decision names the specific files to split (data out, hooks out, utils out) and the paths to flatten, ranked by size.</conclusion>
+          </branch>
+          <branch when="size_or_depth == clean">
+            <conclusion ref="r-claude-md-matches-audit">Baseline is clean: commit `CLAUDE.md` with the same line limit and conventions, and wire the audit command into CI.</conclusion>
+          </branch>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="react-app-first-audit">
+      <p>Codebase edited daily by Claude Code. Audit run via `bash templates/llm-arch-audit.sh src 250` on SHA `a1b2c3d`; barrel section lists `src/components/index.ts` → r-no-barrel-reexports: delete the barrel and rewrite 14 imports, then rerun to reach the file-size branch.</p>
     </example>
   </decision-tree>
 </text>

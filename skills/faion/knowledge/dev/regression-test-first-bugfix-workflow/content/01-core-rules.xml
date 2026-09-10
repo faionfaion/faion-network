@@ -1,36 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Regression Test First Bugfix Workflow — Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>5 testable rules every application of `regression-test-first-bugfix-workflow` must enforce. The rules pin the discipline that turns a method from folklore into a reviewable, owned, version-controlled operating tool.</summary>
+<text id="01-core-rules" title="Regression Test First Bugfix Workflow Core Rules" version="2.0.0" est_tokens="2000" depth="essential">
+  <summary>8 testable rules every Regression Test First Bugfix Workflow application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers (&apos;when needed&apos;) are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-red-test-committed-before-fix" testable="true" depth="essential">
+      <statement>`red_test.commit` MUST be an ancestor of every commit that touches production code in the fix PR (`git merge-base --is-ancestor &lt;red_test.commit&gt; &lt;first-fix-commit&gt;` succeeds), and the commit message MUST contain the alert URL. The CI run for that commit MUST show the new test failing. A PR whose first commit already contains the fix, or whose test commit follows the fix commit, fails this rule regardless of the final green run.</statement>
+      <rationale source="Kent Beck, 'Test-Driven Development: By Example' (2002)">A test written after the fix has never been observed to fail, so nobody knows whether it detects the bug or merely passes. The commit order is the only durable evidence that the red state existed; "I ran it locally and it failed" is not reviewable a month later when the same alert fires again.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed (template, schema, or artefact path). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-test-fails-for-the-alerts-reason" testable="true" depth="essential">
+      <statement>The red test MUST fail with the same observable outcome the alert reports: the same exception type and message fragment, or the same wrong output value. `red_test.asserts[]` MUST contain at least one assertion on that outcome and, where the bug had a side effect (a row written, an email sent, a charge made), at least one assertion that the side effect is absent. A test that asserts `pytest.raises(Exception)` or only that "something failed" is rejected.</statement>
+      <rationale source="Kent Beck, 'Test-Driven Development: By Example' (2002); widely established practice in test engineering">A test that fails for the wrong reason (an import error, a fixture typo) goes red, the fix goes in, the test goes green because the typo was fixed, and the bug ships with a passing regression test named after it. The side-effect assertion is what catches the checkout that now returns 422 but still creates the order.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data, ticket, transcript). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">TDD methodology exists but not as &apos;red-test-from-prod-bug&apos; workflow. This is the most common testing situation for an FE/BE dev on a real product.</rationale>
+    <rule id="r-inputs-lifted-from-alert-payload" testable="true" depth="essential">
+      <statement>The test's inputs MUST be taken from the alert payload (request body, query parameters, locale, timezone, feature-flag state, record ids) and recorded in the workflow record; personal data is replaced field-by-field with values of the same shape, and the substitution is noted. Inputs invented from the developer's guess about the cause are forbidden until the payload-derived test reproduces the failure.</statement>
+      <rationale source="Sentry documentation on event payloads and breadcrumbs; widely established practice in production debugging">The checkout bug that only fires with `locale=tr_TR` and `amount=0.0` is not reproduced by a test with `en_US` and `9.99`. The payload is the one artefact that is known to trigger the fault; a test built from a hypothesis proves the hypothesis, not the bug.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every instance has a named owner accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour.</rationale>
+    <rule id="r-test-is-deterministic-and-located" testable="true" depth="essential">
+      <statement>`red_test.path` MUST be under `tests/regression/` (or the runner's equivalent regression directory) and named after the alert slug, with the alert id in the test's docstring or leading comment. The test MUST NOT perform real network calls, read the wall clock or use unseeded randomness; time is frozen and external calls are stubbed. A test that passes and fails across three consecutive runs of the same commit is rejected.</statement>
+      <rationale source="Martin Fowler, 'Eradicating Non-Determinism in Tests' (2011)">A flaky regression test is worse than none: the team learns to retry it, then to skip it, and the bug it guarded returns silently. Locating it under a regression directory with the alert id is what lets the next developer, or the next incident review, find every test that exists because production once broke.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest.</rationale>
+    <rule id="r-fix-is-minimal-and-assertions-untouched" testable="true" depth="essential">
+      <statement>The fix commit MUST change only what is needed to turn the red test green; `fix.diff_lines` is recorded and refactors go in a separate PR. The fix PR MUST NOT modify the assertions of the red test; if an assertion was wrong, the change to it is a separate commit with its own explanation, and the test MUST be shown failing again on the fix's parent after the assertion change.</statement>
+      <rationale source="Kent Beck, 'Test-Driven Development: By Example' (2002); Google Engineering Practices, 'Small CLs'">The fastest way to make a red test green is to edit the assertion, and under SLA pressure it happens. Separating the assertion edit and re-proving red is the only guard. A fix mixed with a refactor cannot be reverted alone, and the reviewer cannot tell which of the 400 lines is the one that matters.</rationale>
     </rule>
+
+    <rule id="r-ci-shows-red-then-green" testable="true" depth="essential">
+      <statement>`verification.ci_run_url` MUST point to the CI run of the complete PR with `passed: true`, and the record MUST also cite the CI run of the test-only commit showing the failure. `passed` MUST be set from CI output, never from a local run. A PR merged with the regression test skipped, marked `xfail`, or excluded from the CI job fails this rule.</statement>
+      <rationale source="widely established practice in continuous integration">Local runs share the developer's environment, cached fixtures and uncommitted files. The pair of CI runs is the reproducible statement "this test detects this bug and this fix removes it"; either run alone proves half of it.</rationale>
+    </rule>
+
+    <rule id="r-hotfix-variant-carries-follow-up" testable="true" depth="essential">
+      <statement>When the SLA forces a ship-first hotfix, the workflow record MUST still be created with `red_test` marked pending, a follow-up ticket URL, and a due date at most 14 days after the hotfix merge. The alert MUST NOT be marked resolved in the alerting tool until the regression test is merged. A hotfix with no follow-up ticket, or with the alert already closed, fails this rule.</statement>
+      <rationale source="widely established practice in incident management">The hotfix stops the bleeding; the test stops the recurrence. Teams that close the alert at hotfix time carry a growing set of bugs that were fixed once and guarded never, and each one comes back on the next refactor of the same code with nobody remembering the first time.</rationale>
+    </rule>
+
+    <rule id="r-alert-closed-after-recurrence-window" testable="true" depth="essential">
+      <statement>`review.next_review_at` MUST be set to the merge date plus 90 days. At that review the record MUST cite the alert's status in the alerting tool: no regression event for the same issue in the window, and no new issue with the same stack signature. A regression event within the window reopens the record and requires a new red test for the new inputs before any second fix.</statement>
+      <rationale source="Sentry documentation on issue resolution and regression detection">Alerting tools flag an issue as regressed when a resolved error reappears, which is exactly the signal that the regression test did not cover the real input space. Checking it 90 days out, against the tool rather than memory, is the only way the workflow can learn which of its tests actually held.</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

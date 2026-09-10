@@ -1,36 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Post Migration Cleanup — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>5 testable rules every application of `post-migration-cleanup` must enforce. The rules pin the discipline that turns a method from folklore into a reviewable, owned, version-controlled operating tool.</summary>
+<text id="01-core-rules" title="Post Migration Cleanup Core Rules" version="2.0.0" est_tokens="2150" depth="essential">
+  <summary>8 testable rules every Post Migration Cleanup application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers (&apos;when needed&apos;) are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-dual-write-retired-after-parity" testable="true" depth="essential">
+      <statement>The write path to the legacy store MUST be removed from code (not merely disabled by a flag) only after the checklist records a reconciliation report showing zero mismatches between legacy and new store (record counts and per-record checksum or field diff) for at least 7 consecutive days including one full weekly traffic cycle. The checklist MUST cite the reconciliation report URL, the date range, and the PR that deletes the legacy write.</statement>
+      <rationale source="Martin Fowler, 'Strangler Fig Application' (2004); widely established practice in zero-downtime data migration">Dual-write is the safety net that lets the migration be reversed. Cutting it on the day of cutover, before a reconciliation has run across a real week of traffic, converts an unnoticed divergence (a batch job that still wrote to the old table on Sunday night) into permanent data loss the moment the old store is dropped.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed (template, schema, or artefact path). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-legacy-read-path-deleted-at-zero-traffic" testable="true" depth="essential">
+      <statement>Code that reads from the legacy store or calls the legacy endpoint MUST be deleted only after a request counter on that path (metric, log line or API-gateway route count) reads zero for a full traffic cycle of at least 7 days, including any month-end or batch window the system has. The checklist MUST cite the dashboard or query showing the zero and the counter's name. Deleting a read path with no counter is forbidden.</statement>
+      <rationale source="Martin Fowler, 'Strangler Fig Application' (2004); Hyrum's Law (Hyrum Wright)">"Nobody uses the old endpoint" is a belief until a counter says so. The consumer that still calls it is the monthly invoicing job, the partner integration, or the mobile app version that half the users have not updated, and it shows up as an outage on the first day of the month, three weeks after the deletion merged.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data, ticket, transcript). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Removing the strangler scaffolding, killing feature flags, deleting dead dual-runtime code. Tech-debt methodology exists but doesn&apos;t address the specific shape of migration debt.</rationale>
+    <rule id="r-migration-flags-removed-from-code" testable="true" depth="essential">
+      <statement>Every feature flag introduced for the migration MUST be listed in the checklist by flag key. Each MUST be removed by a code deletion: the flag key is deleted from the flag service or config, and every `if flag` branch is collapsed to the new path. Setting a flag permanently to `true` and leaving the branches in place does not satisfy this rule. The checklist records one removal PR URL per flag key.</statement>
+      <rationale source="Pete Hodgson, 'Feature Toggles (aka Feature Flags)', martinfowler.com (2017); SEC order against Knight Capital Group (2013) on the 1 August 2012 trading incident">Knight Capital lost about 440 million dollars in 45 minutes when a deploy repurposed a flag that still gated eight-year-old dead code on one server. A flag that "is always true now" is a dormant branch waiting for someone to flip it, and the longer it stays the less anyone remembers what the other branch does.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every instance has a named owner accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour.</rationale>
+    <rule id="r-compat-shims-listed-with-expiry" testable="true" depth="essential">
+      <statement>Every compatibility shim created for the migration (adapter, column alias, endpoint proxy, event-schema translator, redirect) MUST be listed in the checklist with its known consumers and either a removal date or a consumer counter that must reach zero. A shim with zero known consumers and no counter is deleted in this cleanup, not deferred. A shim that stays MUST have a named consumer and a date written next to it.</statement>
+      <rationale source="Hyrum's Law (Hyrum Wright); 'Software Engineering at Google' (Winters, Manshreck, Wright, 2020), chapter on deprecation">With enough users every observable behaviour of the shim becomes something someone depends on, so the cost of removing it only grows. Shims listed "temporarily" without a date are the ones still in the codebase five years later, translating a schema nobody can describe.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest.</rationale>
+    <rule id="r-legacy-schema-dropped-after-backup-and-reference-scan" testable="true" depth="essential">
+      <statement>Dropping legacy tables, columns, indexes, topics or buckets MUST be a separate change from the code deletion, and MUST be preceded by (a) a snapshot or export of the legacy data with a URL and a retention date at or after the checklist's next review date, and (b) a reference scan across all repositories and the query log (for example `grep -rn legacy_orders` across the org plus a search of slow-query or audit logs for the table name) that returns zero hits. Both the snapshot URL and the scan command with its result are recorded in the checklist.</statement>
+      <rationale source="Scott Ambler and Pramod Sadalage, 'Refactoring Databases: Evolutionary Database Design' (2006)">A DROP is the one migration step that cannot be rolled back by a redeploy. The reference scan catches the reporting query, the ad-hoc admin script and the second service nobody remembered still joins on the column; the dated snapshot is what turns an unnoticed miss from a data-loss incident into a restore.</rationale>
     </rule>
+
+    <rule id="r-docs-and-runbooks-refreshed" testable="true" depth="essential">
+      <statement>Every document, runbook, ADR, on-call playbook and architecture diagram that names the legacy component MUST be updated to the new path or moved to an archive location marked superseded. The checklist MUST record the search used to find them (for example `grep -ril "orders-v1" docs/ runbooks/ adr/`) with its hit count before the cleanup and the hit count after; after MUST be zero outside the archive location.</statement>
+      <rationale source="'Software Engineering at Google' (Winters, Manshreck, Wright, 2020), chapter on deprecation; widely established practice in operations documentation">The 3 a.m. on-call engineer follows the runbook, and the runbook still says to restart the legacy service that no longer exists. Stale documentation after a migration is not a cosmetic issue; it is the incident-response procedure being wrong at the moment it is used.</rationale>
+    </rule>
+
+    <rule id="r-alerts-dashboards-and-infra-decommissioned" testable="true" depth="essential">
+      <statement>The checklist MUST list every alert rule, dashboard, SLO and synthetic check that targets the legacy path, and for each record `retargeted` (new target named) or `deleted` (PR or change URL). Legacy infrastructure (instances, databases, queues, DNS records, IAM roles, service accounts, secrets) MUST be listed with a decommission date and the monthly cost removed; an item left running MUST have a named reason and an end date.</statement>
+      <rationale source="widely established practice in site reliability engineering and cloud cost management">Alerts on a dead path fire on the missing metric and train the on-call rota to ignore pages. Infrastructure that is "just idling" keeps its IAM role, its credentials and its unpatched OS, and turns into the forgotten host that appears in the next security review or the next invoice.</rationale>
+    </rule>
+
+    <rule id="r-cleanup-deadline-from-cutover" testable="true" depth="essential">
+      <statement>The checklist MUST record the cutover date (first day 100% of production traffic served by the new path) and a cleanup deadline no later than one delivery cycle (sprint, or 30 days if the team has no fixed cycle) after the parity window closes. Every item not deleted by the deadline MUST have a ticket URL and a named person; an item with neither is a checklist failure, not a deferral.</statement>
+      <rationale source="'Software Engineering at Google' (Winters, Manshreck, Wright, 2020), chapter on deprecation">The team that did the migration disperses to the next project within weeks; after that nobody holds the context to delete safely, and the half-migrated system becomes the permanent state. A dated deadline with per-item owners is what keeps the last 10 percent of the migration from becoming the next team's "legacy".</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

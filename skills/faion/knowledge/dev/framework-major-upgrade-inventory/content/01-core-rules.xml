@@ -1,46 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Framework Major Upgrade Inventory Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Framework Major Upgrade Inventory must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Framework Major Upgrade Inventory Core Rules" version="2.0.0" est_tokens="2050" depth="essential">
+  <summary>8 testable rules every framework major-upgrade inventory MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r-fmui-one-major-step-per-inventory" testable="true" depth="essential">
+      <statement>One inventory covers exactly one major-version step (N to N+1). If the gap between current and target is more than one major, the artefact MUST be one inventory per step, ordered along the vendor's documented upgrade path, and the upgrade branch for step N+2 MUST NOT open before step N+1 is merged.</statement>
+      <rationale source="Ruby on Rails Guides, 'Upgrading Ruby on Rails' (upgrade one version at a time); Angular update guide (sequential major updates); Semantic Versioning 2.0.0">Vendors write deprecation shims and codemods for the adjacent version only. Jumping two majors means the intermediate deprecation warnings never fire, the codemods do not match the code they see, and the failure surface is the union of two release notes with no way to bisect which change broke what.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="r-fmui-breaking-change-cited-to-vendor" testable="true" depth="essential">
+      <statement>Every breaking-change entry in the map MUST cite the vendor's official release notes, upgrade guide or changelog by URL and version, and the map MUST cover every minor release between current and target. Entries sourced from memory, blog posts or forum answers are not admissible; a suspected break with no vendor citation is listed under `unverified` with the search that was tried.</statement>
+      <rationale source="Semantic Versioning 2.0.0 (a major version signals incompatible API changes); vendor upgrade guides (React, Angular, Django, Rails, Spring Boot)">A breaking-change map is only as good as its completeness, and the only complete list is the vendor's. A map built from recollection captures the famous breaks and misses the quiet ones (a default that flipped, a removed positional argument), which are the ones that reach production because nobody was looking for them.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="r-fmui-deprecation-warnings-as-errors" testable="true" depth="essential">
+      <statement>Before the map is finalised, the full test suite MUST be run on the CURRENT framework version with deprecation warnings elevated to errors (`python -W error::DeprecationWarning`, Node `--throw-deprecation`, Rails `config.active_support.deprecation = :raise`, or the framework's equivalent), and every distinct warning MUST appear in the inventory as an entry with its call-site count.</statement>
+      <rationale source="Django documentation, 'Upgrading Django to a newer version' (run tests with warnings enabled); Node.js CLI documentation (`--throw-deprecation`); Rails configuration guide">The current version already knows most of what the next one will remove; it says so in warnings that scroll past unread. Turning them into failures for one run gives an exact, repo-specific list of removals in minutes, before anyone reads a changelog.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for code, architecture, release, performance">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="r-fmui-call-site-count-per-change" testable="true" depth="essential">
+      <statement>Each breaking-change entry MUST record the number of affected call sites in this repository, found by a named, reproducible search (a grep or ripgrep pattern, an AST query, a codemod dry run, or the deprecation-warning run) linked from the entry. Entries with zero hits are marked `not affected` together with the pattern that proved it, never simply omitted.</statement>
+      <rationale source="widely established practice in impact analysis; codemod tooling documentation (jscodeshift dry-run, OpenRewrite dry-run)">"We probably don't use that API" is how a two-day upgrade becomes a three-week one. A count with the search behind it makes the estimate checkable, lets the risk matrix rank by real blast radius, and records for the next upgrade which patterns were already ruled out.</rationale>
     </rule>
+
+    <rule id="r-fmui-codemod-coverage-classified" testable="true" depth="essential">
+      <statement>Each breaking change MUST be classified `codemod` or `manual`. A `codemod` entry names the tool and exact command (`npx react-codemod &lt;transform&gt;`, `ng update`, `rector process`, `django-upgrade --target-version`, an OpenRewrite recipe, `pyupgrade`) and records the dry-run diff size; the classification MUST NOT be `codemod` when the tool's own documentation marks the transform as partial or experimental.</statement>
+      <rationale source="jscodeshift and react-codemod documentation; Angular CLI `ng update` documentation; OpenRewrite documentation; Rector documentation">The codemod surface is what decides whether the upgrade is a morning or a quarter, so it must be measured, not assumed. A transform marked experimental rewrites 90 percent of call sites correctly and leaves the remaining 10 percent compiling and wrong; classifying it as manual with the codemod as a starting point keeps the review budget honest.</rationale>
+    </rule>
+
+    <rule id="r-fmui-dependent-package-compatibility" testable="true" depth="essential">
+      <statement>Every third-party package that depends on the framework (plugins, adapters, ORM extensions, auth libraries, test helpers) MUST be listed with its current version, the earliest version compatible with the target framework version as stated by that package's own release notes, and whether that version is released. A package with no compatible release is a `blocker` entry at the top of the risk matrix, not a footnote.</statement>
+      <rationale source="widely established practice in dependency management; package release notes as primary source">The framework itself is rarely what blocks a major upgrade; the unmaintained plugin pinned to the old major is. Discovering it on day three of the upgrade branch means the branch stalls while someone forks the plugin. Discovering it in the inventory means the fork, replacement or removal is planned and estimated before any code moves.</rationale>
+    </rule>
+
+    <rule id="r-fmui-runtime-prerequisites-listed" testable="true" depth="essential">
+      <statement>The inventory MUST list the target version's runtime prerequisites as stated in its release notes (language version, database versions, Node or JVM version, OS or container base image) next to the currently deployed values in every environment. Any prerequisite not met is a `blocker` entry with its own upgrade plan preceding the framework step.</statement>
+      <rationale source="vendor release notes (for example Django and Rails release notes state minimum supported Python and Ruby versions per major)">A framework major routinely raises the language floor, and the language upgrade is a separate project with its own breaking changes. Finding out in staging that the target needs Python 3.10 while production runs 3.8 turns one upgrade into two done in the wrong order under time pressure.</rationale>
+    </rule>
+
+    <rule id="r-fmui-risk-scored-on-two-axes" testable="true" depth="essential">
+      <statement>Every entry in the risk matrix MUST carry two scores written in the artefact: blast radius (call-site count multiplied by whether the code path runs in production requests, jobs, or both) and detectability (compile-time or type-check failure; runtime failure covered by an existing test; runtime failure with no test). Entries scored runtime-with-no-test MUST have a characterisation test written and linked before the upgrade branch opens.</statement>
+      <rationale source="Feathers, Working Effectively with Legacy Code (Prentice Hall, 2004), characterisation tests; widely established risk-assessment practice">A change the compiler catches costs an hour; a change that alters a default silently at runtime in an untested path costs a customer-facing incident weeks after the upgrade shipped. Scoring both axes makes the matrix rank by where the tests are missing, which is where the upgrade budget actually goes.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Survive a Major Framework Upgrade Without a Big-Bang Branch (role: role-software-developer)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: How to do the upfront forensics before any code touches: codemod inventory, breaking-change map, risk matrix. `framework-decomposition-patterns` exists but is about decomposition not version-jump.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

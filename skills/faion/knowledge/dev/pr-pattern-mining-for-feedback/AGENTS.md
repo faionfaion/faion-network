@@ -46,12 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/01-core-rules.xml` | essential | 8 rules: corpus + query stated, recurrence threshold, patterns as code behaviour, ranked by frequency x cost, formatter comments excluded, enforcement channel per rule, scope declared + consented, baseline + remeasure | 2050 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | 1200 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
 | `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 800 |
 
 ## Task Routing
 

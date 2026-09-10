@@ -1,32 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="C4 Drift Detection From IaC — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `c4-drift-detection-from-iac` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="C4 Drift Detection from IaC Core Rules" version="2.0.0" est_tokens="2050" depth="essential">
+  <summary>8 testable rules every C4-versus-IaC drift report MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-c4-model-machine-readable" testable="true" depth="essential">
+      <statement>The canonical C4 diagram MUST exist as a machine-readable model (Structurizr DSL or workspace JSON, LikeC4, or a version-controlled YAML/JSON model with stable element ids) and the diff MUST run against that model. A PNG, draw.io or Miro board is a rendering, not the canonical source; a report produced by eyeballing a picture is rejected.</statement>
+      <rationale source="C4 model (Simon Brown, c4model.com); Structurizr DSL documentation">Drift detection is a set difference between two inventories. A picture has no element ids to difference against, so every run becomes a manual comparison that is skipped the week it matters. The model is also what makes "this element was removed" a line in a diff rather than an opinion.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-compare-applied-state-not-source" testable="true" depth="essential">
+      <statement>The infrastructure side of the comparison MUST come from applied state, not from source: `terraform show -json` on the current state file, `pulumi stack export`, or CloudFormation `DescribeStackResources` / `ListStackResources`. Comparing against HCL, Pulumi program code or a template file is forbidden, because source may be unapplied, partially applied, or applied from a different branch.</statement>
+      <rationale source="Terraform CLI documentation (`terraform show -json`, state serial); Pulumi CLI documentation (`pulumi stack export`); AWS CloudFormation API reference (`DescribeStackResources`)">The branch with the new queue merged on Monday and applied on Thursday; between those two the diagram, the source and reality disagree three ways. The only one of the three that describes what is running is the state, and it is the only one a report about "live" drift can be checked against.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-mapping-table-versioned" testable="true" depth="essential">
+      <statement>A version-controlled mapping table MUST define how IaC resources become C4 elements: resource type (for example `aws_ecs_service`, `google_cloud_run_service`, `azurerm_function_app`) to C4 level and element kind, and which tag or name attribute carries the C4 element id. Resources whose type is not in the table are reported in an `unmapped` section with counts; they are never silently dropped. The report links the table's commit.</statement>
+      <rationale source="Widely established practice in model-to-model reconciliation (explicit mapping, explicit residue)">Without a mapping, the script author decides in code that a Lambda is a container and a queue is not, and the next author decides otherwise. The `unmapped` section is what turns "the tool did not see it" into a visible, countable statement instead of a false "no drift".</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-three-drift-classes-with-ids" testable="true" depth="essential">
+      <statement>Every finding MUST be classified as exactly one of `added` (in state, absent from the model), `removed` (in the model, absent from state) or `edge-changed` (a relationship present on one side only, derived from security groups, IAM policies, VPC peering, network policies, queue subscriptions or explicit dependency references), and MUST carry both the IaC resource address and the C4 element id (or the id that would be expected). A finding with a description but no ids is rejected.</statement>
+      <rationale source="C4 model element and relationship definitions (c4model.com); widely established practice in configuration drift reporting">"The diagram is a bit out of date" cannot be actioned. `added: aws_sqs_queue.orders_dlq (no C4 element)` can be turned into a model commit in two minutes by whoever is on rotation, and `edge-changed` is the class that catches the security-group opening nobody drew.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-comparison-level-stated" testable="true" depth="essential">
+      <statement>The report MUST state which C4 level it compares. Container level is the default and the only level IaC state can fully support; System Context is derived from external endpoints and third-party integrations in state; Component level MUST NOT be claimed from IaC, since state does not see inside a deployable. A report that lists component-level findings from IaC alone is rejected.</statement>
+      <rationale source="C4 model level definitions (System Context, Container, Component, Code) at c4model.com">A Terraform state knows there is an ECS service; it does not know there is an `OrderValidator` inside it. Reports that pretend otherwise produce component-level "removed" findings for every component, and the team learns to ignore the whole report to get past the noise.</rationale>
     </rule>
+
+    <rule id="r-noise-allowlist-explicit" testable="true" depth="essential">
+      <statement>Resources that never map to a C4 element (log groups, IAM roles and policies, `random_id`, `null_resource`, `time_sleep`, TLS certificates, DNS records for the same host, and similar plumbing) MUST be listed in a version-controlled allowlist, and the report MUST print the count suppressed per allowlist entry. Suppression outside the allowlist, including hard-coded skips in the comparison script, is forbidden.</statement>
+      <rationale source="Widely established practice in alert and drift tooling (explicit suppression with audit trail)">A typical service has three C4-relevant resources and thirty supporting ones. Without an allowlist the first report has 400 findings and is closed unread; with hidden skips in the script the one resource that mattered is filtered and nobody can see that it was. The printed count is what keeps the allowlist honest.</rationale>
+    </rule>
+
+    <rule id="r-run-on-apply-and-on-schedule" testable="true" depth="essential">
+      <statement>The comparison MUST run as a post-apply step in the IaC pipeline (every successful `terraform apply`, `pulumi up` or stack update) and on a fixed schedule at least weekly, and every report MUST record the state identity it read (Terraform state `serial` and lineage, Pulumi stack export version, CloudFormation stack id and last-updated time) and the C4 model commit hash. Reports missing either identity are rejected.</statement>
+      <rationale source="Terraform state documentation (serial, lineage); widely established continuous-verification practice">A weekly-only run lets drift live for six days after the apply that caused it; an apply-only run misses state changed by hand or by another pipeline. The two identities are what let a reader tell "the model is behind" from "the state changed since the report", which are different people's jobs.</rationale>
+    </rule>
+
+    <rule id="r-finding-closes-by-commit-or-expiry" testable="true" depth="essential">
+      <statement>Every finding MUST close in one of three ways, recorded in the report: a C4 model commit (the diagram now matches), an IaC change (the infrastructure now matches), or an `accepted` entry with a named reason and an expiry date no more than one review cadence away. Findings open across two consecutive reports without one of these are escalated in the report header.</statement>
+      <rationale source="Widely established practice in exception management (time-boxed exceptions with owner and expiry)">"Known, ignore" is how drift becomes permanent and how the diagram stops being trusted. The expiry date forces the question again on a schedule; the escalation line makes a finding that nobody will own visible to the people who can assign it.</rationale>
+    </rule>
+
   </section>
 
   <see-also>

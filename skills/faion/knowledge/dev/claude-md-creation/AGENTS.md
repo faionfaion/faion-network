@@ -44,9 +44,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: commands extracted and executed, zero secrets, token budget held, load-bearing structure, monorepo delegates via imports, repo-specific gotchas, personal settings local, manifest resync check | ~2050 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 subject-specific antipatterns with detector + repair | ~1050 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
 | `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |

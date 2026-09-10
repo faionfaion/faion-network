@@ -46,9 +46,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/01-core-rules.xml` | essential | 8 rules: every hop inventoried, minimum necessary per hop, BAA per external hop, encryption in transit and at rest, audit event per access, no PHI in logs or URLs, unique identity and roles, retention and deletion per store | 2250 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with detector + repair | 950 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
 | `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |

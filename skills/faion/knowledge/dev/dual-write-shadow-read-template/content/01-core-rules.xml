@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Dual-Write Shadow-Read Template — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `dual-write-shadow-read-template` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Dual-Write Shadow-Read Template Core Rules" version="2.0.0" est_tokens="1950" depth="essential">
+  <summary>8 testable rules every dual-write + shadow-read migration runbook MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-dual-write-idempotent-writes" testable="true" depth="essential">
+      <statement>Every write fanned out to the new store MUST be idempotent: keyed by the source record's primary key plus a monotonic version (row version, `updated_at`, or log sequence number) and applied as an upsert with a compare-and-set on that version. Replaying the same write twice, or applying an older write after a newer one, MUST leave the new store unchanged.</statement>
+      <rationale source="Kleppmann, Designing Data-Intensive Applications (O'Reilly, 2017), chapter on dual writes and derived data; widely established practice in change-data-capture pipelines">Dual writes are retried on timeouts and replayed during backfill, so the same record arrives at the new store several times and in no guaranteed order. Without a version-guarded upsert, a retried "old" write lands after the "new" one and the new store silently holds stale data that passes row-count checks and fails only at parity diff, weeks later.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-old-store-authoritative" testable="true" depth="essential">
+      <statement>Until the read cutover flag is flipped, the old store is the system of record. A failed write to the new store MUST NOT fail the user request: the failure is recorded to a durable retry queue and counted in a `dual_write_failures_total` metric with an alert threshold declared in the runbook. The new-store write MUST NOT sit inside the old store's transaction.</statement>
+      <rationale source="Stripe engineering, 'Online migrations at scale' (2017); Kleppmann, Designing Data-Intensive Applications (2017)">Coupling the two writes turns the new store's availability into a dependency of production before it has earned it. The first time the new cluster hiccups, checkout fails for a store that nobody reads from yet. The metric plus queue give the same information without the outage.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-reconciliation-job-required" testable="true" depth="essential">
+      <statement>The runbook MUST name a scheduled reconciliation job that walks the old store by key, compares each record to the new store, repairs the new store from the old, and emits `reconciliation_repairs_total` per entity type. Its cadence and the maximum acceptable repair count per run MUST be written down before dual-write is enabled.</statement>
+      <rationale source="Kleppmann, Designing Data-Intensive Applications (2017), on the impossibility of atomic dual writes without a shared log">Two writes to two stores are never atomic: process crashes between them, the retry queue loses an entry, a deploy races a write. Drift accumulates without producing any error. The reconciliation job is the only mechanism that turns silent drift into a measured, bounded, self-healing number.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-backfill-before-shadow" testable="true" depth="essential">
+      <statement>Historical backfill MUST start after dual-write is on and MUST finish, with per-partition row counts and a content checksum matching the old store, before any shadow-read parity number is reported. Backfill writes MUST use the same version-guarded upsert as live writes so they cannot overwrite a newer dual-written record.</statement>
+      <rationale source="Stripe engineering, 'Online migrations at scale' (2017), four-phase migration pattern">Backfilling before dual-write leaves a gap of records written during the backfill window; backfilling with plain overwrites clobbers records the live path updated a second earlier. Both produce parity mismatches that look like application bugs and burn days of investigation on data that was simply loaded in the wrong order.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-shadow-read-parity-diff" testable="true" depth="essential">
+      <statement>In shadow mode every read MUST be issued to both stores and compared field-by-field with a normalising comparator: the runbook lists the fields excluded from comparison (auto-generated timestamps, surrogate ids) and the mismatch rate is published as `shadow_read_mismatch_ratio` per entity type with a sample of mismatching keys retained for inspection.</statement>
+      <rationale source="GitHub Scientist library documentation (control / candidate experiments, mismatch publishing)">A comparator that diffs raw serialised rows reports 100 percent mismatch on `updated_at` alone, the team learns to ignore the dashboard, and the one real mismatch (a truncated decimal, a lost timezone) sails through. Per-entity ratios plus sampled keys make the number both trustworthy and actionable.</rationale>
     </rule>
+
+    <rule id="r-shadow-read-no-user-impact" testable="true" depth="essential">
+      <statement>A shadow read MUST return the old store's result to the caller. The new-store read MUST run with its own timeout no longer than the old store's p99 latency, and any exception or timeout from it MUST be counted and swallowed, never propagated. Shadow reads MUST be sampled by a runtime percentage flag, not hard-wired to 100 percent.</statement>
+      <rationale source="GitHub Scientist library documentation (candidate exceptions are swallowed, control result is returned); widely established practice in progressive delivery">The point of the shadow phase is to learn about the new store without paying for its mistakes. Serving its result early, or letting its slow query double the request latency, converts a measurement into an incident. Sampling lets the team start at 1 percent and raise it as the new store proves out.</rationale>
+    </rule>
+
+    <rule id="r-cutover-gate-numeric" testable="true" depth="essential">
+      <statement>Reads MUST NOT be switched to the new store until the runbook's numeric gate holds: `shadow_read_mismatch_ratio` below the declared threshold for every entity type, over the declared window, with at least the declared minimum number of comparisons per entity type. The three numbers are written in the runbook before shadow mode starts, and the gate evaluation is linked as evidence at cutover.</statement>
+      <rationale source="Stripe engineering, 'Online migrations at scale' (2017); widely established practice in release gating">"Parity looks fine" is what every migration says the day before it corrupts an invoice. A gate fixed in advance cannot be lowered under schedule pressure without an explicit, visible edit, and a minimum comparison count stops a quiet entity type with twelve reads from passing on luck.</rationale>
+    </rule>
+
+    <rule id="r-rollback-flag-per-stage" testable="true" depth="essential">
+      <statement>Each phase (dual-write on, shadow-read on, read-from-new on, write-to-old off) MUST be its own runtime flag, flippable without a deploy, and the runbook MUST state the reverse order. Writes to the old store MUST continue for a declared retention window after the read cutover, and switching reads back to the old store MUST be rehearsed once before write-to-old is turned off.</statement>
+      <rationale source="Stripe engineering, 'Online migrations at scale' (2017); widely established feature-flag practice">A migration whose only rollback is "redeploy last week's build" has no rollback once the old store has stopped receiving writes. Keeping the old store current through the retention window, and proving the read flag flips back cleanly, is what turns a big-bang cutover into a reversible one.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

@@ -1,21 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="CLAUDE.md Creation (Software Developer) Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="CLAUDE.md Creation Decision Tree" version="2.0.0" est_tokens="700">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-brief-needed">Is a CLAUDE.md being created for a repository or app directory that has none, or does an existing one name a command that no longer exists in `package.json`, `Makefile` or `pyproject.toml`?</root-question>
+    <branch when="brief_needed == false">
+      <conclusion ref="skip-this-methodology">Skip. The brief exists and its commands match the manifests; amend it in the PR that changes the code, not on a schedule.</conclusion>
+    </branch>
+    <branch when="brief_needed == true">
+      <question id="q-secrets-in-draft">Does the draft contain any literal token, password, connection string with credentials, private key, or a pasted `.env` block?</question>
+      <branch when="secrets_in_draft == true">
+        <conclusion ref="r-zero-secrets-env-by-name-only">Stop. Replace every value with `NAME=&lt;required&gt;` and a pointer to `.env.example`; rotate anything already committed; run the secret scanner before continuing.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="secrets_in_draft == false">
+        <question id="q-layout-and-budget">Is this a monorepo (several apps with their own manifests), and does the draft fit the token budget declared in the template header?</question>
+        <branch when="monorepo == true">
+          <conclusion ref="r-monorepo-root-delegates-via-imports">Keep only cross-cutting content in the root; create a per-app CLAUDE.md next to each app and reference it by `@path` import; verify each referenced file exists.</conclusion>
+        </branch>
+        <branch when="monorepo == false and within_token_budget == false">
+          <conclusion ref="r-token-budget-declared-and-held">Split: keep commands, structure, conventions, key files and gotchas; move the rest behind `@path` imports or one-line pointers until the file is within budget.</conclusion>
+        </branch>
+        <branch when="monorepo == false and within_token_budget == true">
+          <conclusion ref="run-the-checklist">Run the full procedure: extract and execute the commands, load-bearing structure only, repo-specific gotchas, personal settings kept local, manifest-sync check in CI; commit the CLAUDE.md.</conclusion>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="new-fastapi-service">
+      <p>A new FastAPI repo has no CLAUDE.md: brief needed. The draft's Gotchas section contains `DATABASE_URL=postgres://app:s3cret@db/prod` → conclusion r-zero-secrets-env-by-name-only; after replacing it with `DATABASE_URL=&lt;required&gt;`, the repo is single-app and the draft is 480 tokens against a 500 budget → run-the-checklist.</p>
     </example>
   </decision-tree>
 </text>

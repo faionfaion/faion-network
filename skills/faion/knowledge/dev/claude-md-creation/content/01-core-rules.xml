@@ -1,32 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="CLAUDE.md Creation (Software Developer) — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `claude-md-creation` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="CLAUDE.md Creation Core Rules" version="2.0.0" est_tokens="2050" depth="essential">
+  <summary>8 testable rules every CLAUDE.md project brief MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-commands-extracted-and-executed" testable="true" depth="essential">
+      <statement>Every command in `## Commands` MUST come from the repository's own manifests (`package.json` scripts, `Makefile` targets, `pyproject.toml` tooling, `justfile`) via `templates/extract-commands.sh` or an equivalent read of those files, and MUST have been run successfully once on a clean checkout before the file is committed. Each command carries a trailing comment saying what it does. Commands the author believes exist but did not run are forbidden.</statement>
+      <rationale source="Claude Code documentation, 'Manage Claude's memory' (CLAUDE.md is loaded into every session); templates/extract-commands.sh in this methodology">Claude runs what CLAUDE.md tells it to. A `npm run test:unit` that was renamed last quarter fails on the first turn of every session, and the agent then improvises a command of its own, which is exactly the behaviour the brief exists to prevent.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-zero-secrets-env-by-name-only" testable="true" depth="essential">
+      <statement>The file MUST NOT contain tokens, API keys, passwords, connection strings with credentials, private keys, or internal hostnames paired with credentials. Environment variables are referenced by name with a placeholder (`DATABASE_URL=&lt;required&gt;`) and the file points at `.env.example`. A secret-scanning pass (gitleaks, trufflehog, or the host's built-in scanner) over the file MUST be clean before commit.</statement>
+      <rationale source="OWASP Secrets Management Cheat Sheet; GitHub secret scanning documentation">CLAUDE.md is committed, read by every contributor, and loaded into the context of every session, including sessions whose transcripts are stored elsewhere. A pasted `.env` block in it is a credential leak with the widest possible blast radius in the repo, and the placeholder pattern costs nothing.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-token-budget-declared-and-held" testable="true" depth="essential">
+      <statement>The template header MUST declare the file's token budget (`token-budget-impact`), and the committed file MUST stay within it: roughly 250 tokens for the minimal skeleton, 500 for the standard, 700 for a monorepo root. Anything that does not fit goes behind an `@path` import or a one-line "see `path`" pointer to a file that exists. A CLAUDE.md over budget is split, not trimmed of its commands.</statement>
+      <rationale source="Claude Code documentation, 'Manage Claude's memory' (CLAUDE.md content is prepended to every session's context; `@path` imports)">Every token in CLAUDE.md is paid on every turn of every session by every contributor. A 3,000-token brief costs more context than the task it was meant to help with, and the model attends less to each instruction the more of them there are.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-structure-lists-load-bearing-paths-only" testable="true" depth="essential">
+      <statement>`## Structure` MUST list only the directories and files a developer needs in the first hour, each with a one-phrase purpose; no full `tree` dumps, no generated directories (`node_modules`, `dist`, `.venv`, `__pycache__`), and no entry without a purpose. If `## Key Files` is present, every listed file MUST exist at the stated path at commit time.</statement>
+      <rationale source="Widely established practice in onboarding documentation; Claude Code documentation on keeping CLAUDE.md concise">A `tree -L 3` output tells the agent nothing it cannot get by listing the directory itself, and it goes stale on the next refactor. The purpose phrase is the information the agent cannot derive: that `src/core/config.py` is where settings come from and nothing else may read env directly.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-monorepo-root-delegates-via-imports" testable="true" depth="essential">
+      <statement>In a monorepo the root CLAUDE.md MUST carry only cross-cutting content (workspace layout, shared packages, commands that run across all apps) and MUST delegate app-specific instructions to a per-app CLAUDE.md next to the app, referenced by `@path` import or an explicit relative path. The root MUST NOT restate a per-app file's commands or conventions; every referenced per-app file exists at commit time.</statement>
+      <rationale source="Claude Code documentation, 'Manage Claude's memory' (memory file hierarchy by directory; `@path` imports)">Claude Code loads the CLAUDE.md files on the path from the repository root to the working directory, so app-level detail belongs where the agent working on that app will pick it up and where the frontend team will not pay for the backend's migration commands. Duplicating it in the root guarantees the two copies diverge.</rationale>
     </rule>
+
+    <rule id="r-gotchas-are-repo-specific" testable="true" depth="essential">
+      <statement>Every entry under `## Gotchas` or `## Anti-patterns` MUST name something specific to this repository: a file, an environment variable, a command, a version pin, or a lint rule (for example "no `print()` in production code, ruff `T20` blocks the commit"). Generic engineering advice ("write clean code", "add tests", "follow best practices") is forbidden and is deleted at review.</statement>
+      <rationale source="Widely established practice in prompt design (specific, verifiable instructions outperform generic ones); Claude Code documentation on CLAUDE.md content">The model already knows to write clean code; telling it so spends tokens and dilutes the instructions that matter. "`DATABASE_URL` has no default; the app exits at startup without it" changes what the agent does on the first run. "Be careful with config" does not.</rationale>
+    </rule>
+
+    <rule id="r-personal-and-machine-specifics-stay-local" testable="true" depth="essential">
+      <statement>Personal preferences, local absolute paths, machine-specific ports and one developer's editor settings MUST NOT be committed in the project CLAUDE.md. They go in `CLAUDE.local.md` in the repository (kept out of version control) or in the user-level `~/.claude/CLAUDE.md`. A review check greps the committed file for `/Users/`, `/home/`, `C:\` and personal handles.</statement>
+      <rationale source="Claude Code documentation, 'Manage Claude's memory' (project memory vs. project local memory vs. user memory)">"Use my venv at `/Users/alice/venvs/api`" breaks for every other contributor and for CI, and the agent will try it before anything else because it was told to. The three-tier memory layout exists so that the shared file only says what is true for everyone.</rationale>
+    </rule>
+
+    <rule id="r-commands-resync-on-manifest-change" testable="true" depth="essential">
+      <statement>The repository MUST have a lightweight check (CI job or pre-commit hook) that fails when `package.json` scripts, `Makefile` targets or `pyproject.toml` tooling change in a commit that does not also touch the CLAUDE.md `## Commands` section, or when a command named in CLAUDE.md no longer exists in the manifest. The check's location is recorded in `evidence[]`.</statement>
+      <rationale source="Widely established practice in documentation-as-code (docs tested in CI); templates/extract-commands.sh in this methodology">Nobody rewrites CLAUDE.md on Monday; the file drifts one renamed script at a time until the agent's first action in every session is a failing command. The check makes the drift a red build at the commit that caused it, which is the only moment the author still remembers the rename.</rationale>
+    </rule>
+
   </section>
 
   <see-also>

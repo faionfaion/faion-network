@@ -1,36 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Multi-Region Failover Pattern Pack — Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 known failure modes when applying `multi-region-failover-pattern-pack` in real teams. Each carries a detector (what to look for) and a repair (the corrective action).</summary>
+<text id="03-failure-modes" title="Multi-Region Failover Pattern Pack — Failure Modes" version="2.0.0" est_tokens="1300" depth="essential">
+  <summary>7 known failure modes in multi-region failover designs. Each carries a detector (what to look for) and a repair (the corrective action).</summary>
 
   <section title="Failure modes">
     <failure-mode id="fm-01" severity="high">
-      <description>Cargo-cult fill — the practitioner copies the skeleton and ships it without filling the evidence fields.</description>
-      <detector>Filled artefact has placeholders ('to-be-determined', 'see ticket', empty arrays) in evidence / inputs / decision.</detector>
-      <repair>Block at review; require evidence URLs or explicit `not_applicable: &lt;reason&gt;`. Reject the artefact if neither is present.</repair>
+      <description>RPO as a slogan: the pack says "zero data loss" on top of asynchronous replication with tens of seconds of lag.</description>
+      <detector>`rpo_minutes` missing or non-numeric, OR declared RPO below the measured p99 replication lag for an async database.</detector>
+      <repair>Record numeric RPO/RTO per tier and set RPO to at least the measured lag, or move to synchronous replication and re-cost the pattern (rules r-rpo-rto-numeric-per-tier, r-database-replication-mode-and-promotion).</repair>
     </failure-mode>
 
     <failure-mode id="fm-02" severity="high">
-      <description>Ownership ambiguity — artefact lands with `owner: team` or a Slack channel, decays into stale folklore.</description>
-      <detector>owner field missing OR not matching `role:handle` regex.</detector>
-      <repair>Reject at merge. Owner must be a person + role. Team-level ownership is forbidden for living artefacts.</repair>
+      <description>Never drilled: the failover runbook has been reviewed quarterly for two years and executed zero times.</description>
+      <detector>No drill result with date, scope, measured RTO and measured RPO in the pack, or last drill predates the most recent change to replication, DNS or promotion.</detector>
+      <repair>Schedule a live drill on a bounded traffic slice, record the measurements and every manual step, and label the pack `unverified` until then (rule r-drill-live-with-measured-results).</repair>
     </failure-mode>
 
-    <failure-mode id="fm-03" severity="medium">
-      <description>Drift from operating reality — last_reviewed exceeds the published staleness window; the artefact still gets cited as authoritative.</description>
-      <detector>review.next_review_at &lt; today() AND artefact is still being referenced downstream.</detector>
-      <repair>Auto-flag stale artefacts in the weekly review job; tag `stale:true` and require refresh before use in any production decision.</repair>
+    <failure-mode id="fm-03" severity="high">
+      <description>Split brain on promotion: the replica is promoted while the old primary keeps accepting writes; two databases diverge for the length of the outage.</description>
+      <detector>Promotion procedure has no fencing step for the old primary and no single-writer enforcement.</detector>
+      <repair>Add fencing (revoke writes, detach, or kill the old primary) before promotion and a reconciliation step to failback (rules r-database-replication-mode-and-promotion, r-failback-procedure-included).</repair>
     </failure-mode>
 
     <failure-mode id="fm-04" severity="medium">
-      <description>AI-drafted body retains the template's example tokens — practitioner ships the example.</description>
-      <detector>Filled artefact contains canonical example phrases verbatim (names, numbers, URLs from the template's example block).</detector>
-      <repair>Run `validate-multi-region-failover-pattern-pack.py --strict-example` which fails the commit when &gt;30% of the template's example tokens remain in the filled artefact.</repair>
+      <description>DNS TTL of an hour: the record flips in seconds and half the users keep hitting the dead region for sixty minutes.</description>
+      <detector>Failover record TTL above 60 seconds, no health check named, or no observed propagation time from a drill.</detector>
+      <repair>Lower TTL on failover records, wire the health check, list TTL-ignoring clients with their fallback, and measure propagation in the next drill (rule r-dns-failover-ttl-and-health-check).</repair>
     </failure-mode>
 
-    <failure-mode id="fm-05" severity="low">
-      <description>Trigger drift — methodology fires on a vague signal ('when it feels right') and either runs constantly or never.</description>
-      <detector>Invocation log compared against the named trigger shows &gt;30% mismatch.</detector>
-      <repair>Rewrite the trigger to a numeric / event-based criterion. Vague triggers are organisational debt and must be retired.</repair>
+    <failure-mode id="fm-05" severity="medium">
+      <description>Replication without backfill: S3 replication was enabled last year; every object older than that exists only in the primary bucket.</description>
+      <detector>No record of a batch replication job for existing objects, or no replication backlog metric and alert.</detector>
+      <repair>Run the backfill job, cite it in the pack, add the backlog and replication-time alerts (rule r-object-store-replication-verified).</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-06" severity="medium">
+      <description>Single-region control plane: the IdP, secrets manager or CI that runs the failover script lives only in the primary region.</description>
+      <detector>Dependency list missing, or any listed dependency marked unreachable from the secondary without a documented bypass.</detector>
+      <repair>Replicate the dependency or write and drill the manual bypass; do not claim the pattern until every dependency on the failover path is reachable (rule r-region-scoped-dependencies-listed).</repair>
+    </failure-mode>
+
+    <failure-mode id="fm-07" severity="medium">
+      <description>Warm standby at 10%: the secondary exists but has never run full load; failover succeeds and immediately becomes a capacity outage.</description>
+      <detector>Secondary capacity or scale-up time not recorded, or regional service quotas not verified against full production load.</detector>
+      <repair>Pre-provision or verify scale-up within RTO, request quotas in the secondary region, and prove it in a drill at a meaningful traffic percentage (rule r-pattern-chosen-from-rpo-rto-and-cost).</repair>
     </failure-mode>
   </section>
 

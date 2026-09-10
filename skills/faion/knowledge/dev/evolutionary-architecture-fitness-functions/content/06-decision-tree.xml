@@ -1,21 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Evolutionary Architecture Fitness Functions Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Evolutionary Architecture Fitness Functions Decision Tree" version="2.0.0" est_tokens="550">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-review-target">What is under review: a single proposed fitness function, a function already running in CI, or the suite as a whole?</root-question>
+    <branch when="target == 'proposed_function'">
+      <question id="q-proposed-shape">Does the entry name one characteristic with a numeric metric and unit, a verbatim CI command, and a recorded baseline that passes the threshold today?</question>
+      <branch when="shape == 'no_metric'">
+        <conclusion ref="r-ff-one-attribute-one-metric">Rewrite the entry as one characteristic, one metric with a unit, or reject it.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="shape == 'no_command'">
+        <conclusion ref="r-ff-executable-in-ci">Name the tool and the exact command; label `manual` only if no tool can measure it, and keep manual entries under one fifth of the suite.</conclusion>
+      </branch>
+      <branch when="shape == 'fails_baseline'">
+        <conclusion ref="r-ff-threshold-with-baseline-ratchet">Record the baseline and introduce the function in ratchet mode with a stated date for the absolute limit.</conclusion>
+      </branch>
+      <branch when="shape == 'complete'">
+        <conclusion ref="r-ff-blocking-vs-informational">Classify it blocking or informational and triggered or continual; place holistic checks outside the pull-request path.</conclusion>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
+    <branch when="target == 'running_function'">
+      <question id="q-running-behaviour">How is it behaving: red or disabled across two reviews, slow enough that people skip it, green with no trend data, or healthy?</question>
+      <branch when="behaviour == 'red_ignored'">
+        <conclusion ref="r-ff-owner-and-review-cadence">Reassign the owner and fix, re-baseline or delete the function at this review.</conclusion>
+      </branch>
+      <branch when="behaviour == 'slow_skipped'">
+        <conclusion ref="r-ff-blocking-vs-informational">Move it to a scheduled or post-merge stage as a continual function; keep only atomic checks on pull requests.</conclusion>
+      </branch>
+      <branch when="behaviour == 'green_no_trend'">
+        <conclusion ref="r-ff-results-trended">Emit the measured value per run to a time series keyed by function id and commit before the next review.</conclusion>
+      </branch>
+      <branch when="behaviour == 'healthy'">
+        <conclusion ref="skip-this-methodology">No spec change needed; revisit at the declared review cadence.</conclusion>
+      </branch>
     </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <branch when="target == 'whole_suite'">
+      <question id="q-suite-coverage">Does the suite include a structural function enforcing dependency direction and cycle-freedom with a named tool?</question>
+      <branch when="structural == 'missing'">
+        <conclusion ref="r-ff-structural-dependency-function">Add an ArchUnit / NetArchTest / dependency-cruiser / import-linter function with the allowed dependency graph written in the spec.</conclusion>
+      </branch>
+      <branch when="structural == 'present'">
+        <conclusion ref="r-ff-owner-and-review-cadence">Run the cadence review against trend data; confirm every function still has a reachable owner.</conclusion>
+      </branch>
+    </branch>
+    <example trace="coupling-limit-proposal">
+      <p>Proposed function: "afferent coupling of `billing.core` below 12, measured by JDepend, current value 15". target == 'proposed_function', shape == 'fails_baseline' → conclusion r-ff-threshold-with-baseline-ratchet: ship as ratchet at 15, absolute limit 12 from next quarter.</p>
     </example>
   </decision-tree>
 </text>

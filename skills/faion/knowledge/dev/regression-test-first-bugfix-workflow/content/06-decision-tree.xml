@@ -1,21 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Regression Test First Bugfix Workflow Decision Tree" version="1.1.0" est_tokens="300">
+<text id="06-decision-tree" title="Regression Test First Bugfix Workflow Decision Tree" version="2.0.0" est_tokens="600">
   <decision-tree>
-    <root-question id="q-deterministic">Is the bug deterministically reproducible from a fixed input?</root-question>
-    <branch when="deterministic_repro == true">
-      <question id="q-sla">Does the SLA / customer pressure allow time for red-test-first?</question>
-      <branch when="sla_allows_test_first == true">
-        <conclusion ref="r1-explicit-trigger">Full flow: write the red test FIRST, then the fix, ship both in one PR. Use procedure steps 1-6.</conclusion>
-      </branch>
-      <branch when="sla_allows_test_first == false">
-        <conclusion ref="r2-bounded-output">Hotfix-then-test variant: ship the smallest possible fix immediately; open a follow-up ticket to land the pinned regression test within one cycle. Record the follow-up id in the workflow record.</conclusion>
-      </branch>
-    </branch>
+    <root-question id="q-deterministic">Does a test built from the alert payload's inputs reproduce the same failure on every run against the unfixed code?</root-question>
     <branch when="deterministic_repro == false">
-      <conclusion ref="r3-evidence-anchored">Skip this methodology. Route to observability/QA: add structured logging + a synthetic monitor that fails on the symptom; do not pretend to add a regression test.</conclusion>
+      <conclusion ref="skip-this-methodology">Skip: a non-deterministic fault gets structured logging and a synthetic monitor on the symptom, not a regression test that will flake. Route to observability or QA.</conclusion>
+    </branch>
+    <branch when="deterministic_repro == true">
+      <question id="q-sla">Does the SLA allow the red test to be committed and shown failing in CI before the fix ships?</question>
+      <branch when="sla_allows_test_first == false">
+        <conclusion ref="r-hotfix-variant-carries-follow-up">Ship the smallest hotfix; create the record with `red_test` pending, a follow-up ticket due within 14 days, and keep the alert open until the test merges.</conclusion>
+      </branch>
+      <branch when="sla_allows_test_first == true">
+        <question id="q-red-seen">Has CI shown the new test failing on a test-only commit, with the alert's exception or wrong output, before any production-code commit?</question>
+        <branch when="red_run_in_ci == false">
+          <conclusion ref="r-red-test-committed-before-fix">Commit the test alone first; wait for the failing CI run; only then start the fix commit. If the failure reason differs from the alert, fix the assertions until it matches.</conclusion>
+        </branch>
+        <branch when="red_run_in_ci == true">
+          <conclusion ref="run-the-checklist">Run the rest of the flow: minimal fix with assertions untouched, green CI run cited alongside the red one, review date at merge plus 90 days against the alert's regression status.</conclusion>
+        </branch>
+      </branch>
     </branch>
     <example trace="sentry-checkout-zero-amount">
-      <p>Sentry alert reproduces with `amount=0.0, locale=tr_TR`. SLA: 24h, plenty of room → full red-test-first flow → conclusion r1.</p>
+      <p>Sentry issue reproduces with `amount=0.0, locale=tr_TR` on every run; SLA 24h leaves room; test `tests/regression/test_checkout_zero_amount.py` committed alone at `a1b2c3d`, CI run 76 shows `ValidationError` matching the alert → conclusion run-the-checklist; fix PR #9981, 18 lines, CI run 77 green, review 2026-08-22.</p>
     </example>
   </decision-tree>
 </text>

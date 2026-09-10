@@ -1,37 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Evolutionary Architecture Fitness Functions — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `evolutionary-architecture-fitness-functions` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Evolutionary Architecture Fitness Functions Core Rules" version="2.0.0" est_tokens="1800" depth="essential">
+  <summary>7 testable rules every evolutionary-architecture fitness-function suite spec MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-ff-one-attribute-one-metric" testable="true" depth="essential">
+      <statement>Every fitness function in the spec MUST name exactly one architectural characteristic (coupling, cyclomatic complexity, p95 latency, deploy lead time) and exactly one metric with a unit for it. An entry whose characteristic is an aspiration without a metric ("maintainability", "scalability", "clean architecture") is rejected.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (O'Reilly, 2017; 2nd ed. 2022), definition of a fitness function as an objective integrity assessment of an architectural characteristic">A fitness function exists to make an -ility falsifiable. "Maintainability stays high" cannot fail, so it never protects anything; "no package cycle among `com.acme.*` modules, measured by ArchUnit" fails the moment someone adds one. One characteristic per function also keeps a red result diagnosable: a combined "quality score" that drops tells nobody what to fix.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-ff-executable-in-ci" testable="true" depth="essential">
+      <statement>Each fitness function MUST be executable by a command written verbatim in the spec (an ArchUnit or NetArchTest test, a `dependency-cruiser` rule, a `k6` threshold, a `radon`/`lizard` complexity check) and MUST run in the CI pipeline. A function that can only be assessed by a person is labelled `manual`, carries a review cadence, and MUST NOT exceed one fifth of the suite.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (automated vs manual fitness functions); widely established continuous-integration practice">A fitness function that lives in a wiki is a code-review opinion, and opinions lose to deadlines. Manual checks are legitimate for characteristics no tool measures (legal review, UX audit), but a suite that is mostly manual has no continuous protection and will be skipped the first busy quarter.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-ff-threshold-with-baseline-ratchet" testable="true" depth="essential">
+      <statement>Every threshold MUST be a number with a unit, written next to the current measured baseline and the date it was measured. If the codebase fails the intended threshold today, the function MUST be introduced in ratchet mode (fail only when the value gets worse than the baseline) and the spec MUST state the date or condition on which it becomes an absolute limit.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (fitness functions as guardrails that evolve with the system); widely established ratcheting practice in quality gates">Switching on "cyclomatic complexity below 10" against a codebase with 300 violators paints the build red permanently, and a permanently red check is disabled within a week. A ratchet keeps the build green today, forbids regression tomorrow, and turns the backlog of violators into a visible number that goes down.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-ff-blocking-vs-informational" testable="true" depth="essential">
+      <statement>The spec MUST classify each function as `blocking` (fails the merge or deploy) or `informational` (reports only), and as `triggered` (runs on every change) or `continual` (runs on a schedule or in production). Atomic, sub-minute checks are triggered and blocking; holistic or expensive checks (load tests, chaos experiments, full dependency scans) are continual and MUST NOT sit in the pull-request path.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (atomic vs holistic, triggered vs continual categories)">A 25-minute load test wired into every pull request either slows the team until someone adds `if: false` or gets marked "allow failure" and stops meaning anything. Declaring the trigger and the consequence per function is what lets fast checks stay strict and slow checks stay honest.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-ff-structural-dependency-function" testable="true" depth="essential">
+      <statement>The suite MUST contain at least one structural function that enforces the declared dependency direction between layers or modules and forbids cycles, implemented with a named tool (ArchUnit `layeredArchitecture` / `slices().should().beFreeOfCycles()`, NetArchTest, `dependency-cruiser` `no-circular`, `import-linter` contracts). The allowed dependency graph MUST be written in the spec, not only in the tool config.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (ArchUnit layer-dependency example); ArchUnit user guide">Dependency erosion is the most common way an architecture stops being the one on the whiteboard, and it happens one convenient import at a time with no test failing. It is also the cheapest characteristic to guard: a structural test runs in seconds, has no flakiness, and gives a precise file and line when it fails.</rationale>
     </rule>
+
+    <rule id="r-ff-results-trended" testable="true" depth="essential">
+      <statement>Every run of every fitness function MUST record its measured value (not only pass/fail) to a time series identified by function id and commit, retained for at least the review horizon. The spec names where the series lives (CI artifact, metrics backend, a committed CSV) and the review MUST look at the trend, not only the last result.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (fitness functions reveal trends over time)">A binary check tells you the moment the line is crossed and nothing before it. Coupling that rose from 0.3 to 0.79 against a limit of 0.8 is green on every run and one refactor from red. The series is what turns a guardrail into an early warning and lets the team raise or lower thresholds from evidence rather than argument.</rationale>
+    </rule>
+
+    <rule id="r-ff-owner-and-review-cadence" testable="true" depth="essential">
+      <statement>Each fitness function MUST name one accountable owner (`role:handle`) and the suite MUST be reviewed at a declared cadence (monthly or quarterly) against its trend data. A function that has been red or disabled for two consecutive reviews with no action MUST be fixed, re-baselined, or deleted; it MUST NOT stay in the suite as a permanently ignored failure.</statement>
+      <rationale source="Ford, Parsons, Kua, Building Evolutionary Architectures (fitness function reviews, retiring obsolete functions)">Fitness functions decay: the characteristic stops mattering, the tool version changes, the threshold was wrong. Without a named owner and a review the suite accumulates ignored red checks, and once one check is safely ignorable every check is. The review is the mechanism that keeps the suite short and every entry meaningful.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

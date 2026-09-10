@@ -1,24 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Framework Major Upgrade Inventory Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="Framework Major Upgrade Inventory Decision Tree" version="2.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable upgrade signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the input satisfy this methodology's preconditions (trigger present + named consumer + source-of-truth accessible)?</root-question>
-    <branch when="preconditions == satisfied">
-      <question id="q-scope">Is the case in-scope for framework-major-upgrade-inventory (matches Applies-If, no Skip-If matches)?</question>
-      <branch when="scope == in_scope">
-        <conclusion ref="r1" verdict="apply rule r1 from content/01-core-rules.xml; run the procedure"/>
-      </branch>
-      <branch when="scope == out_of_scope">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: case is out of scope; do not produce an artefact"/>
-      </branch>
+    <root-question id="q-major-gap">How many major versions separate the currently deployed framework version from the target?</root-question>
+    <branch when="major_gap == 0">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: a minor or patch bump does not need a forensics inventory; run the suite with deprecation warnings enabled and proceed"/>
     </branch>
-    <branch when="preconditions == not_satisfied">
-      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: preconditions not met; resolve inputs before re-running"/>
+    <branch when="major_gap &gt; 1">
+      <conclusion ref="r-fmui-one-major-step-per-inventory" verdict="apply r-fmui-one-major-step-per-inventory: split into one inventory per major step in the vendor's documented order"/>
+    </branch>
+    <branch when="major_gap == 1">
+      <question id="q-inventory-gap">Which of the inventory's sections is missing or unverified: vendor-cited breaking-change map, deprecation-warning run, call-site counts, codemod classification, dependent-package compatibility, runtime prerequisites, two-axis risk scores, or none?</question>
+      <branch when="gap == 'breaking_change_map'">
+        <conclusion ref="r-fmui-breaking-change-cited-to-vendor" verdict="apply r-fmui-breaking-change-cited-to-vendor: rebuild the map from vendor release notes for every minor between current and target"/>
+      </branch>
+      <branch when="gap == 'deprecation_run'">
+        <conclusion ref="r-fmui-deprecation-warnings-as-errors" verdict="apply r-fmui-deprecation-warnings-as-errors: run the suite on the current version with warnings elevated to errors and add every warning as an entry"/>
+      </branch>
+      <branch when="gap == 'call_site_counts'">
+        <conclusion ref="r-fmui-call-site-count-per-change" verdict="apply r-fmui-call-site-count-per-change: attach a reproducible search and its hit count to every entry"/>
+      </branch>
+      <branch when="gap == 'codemod_classification'">
+        <conclusion ref="r-fmui-codemod-coverage-classified" verdict="apply r-fmui-codemod-coverage-classified: classify each change codemod or manual with the tool, command and dry-run diff size"/>
+      </branch>
+      <branch when="gap == 'dependent_packages'">
+        <conclusion ref="r-fmui-dependent-package-compatibility" verdict="apply r-fmui-dependent-package-compatibility: table every framework-dependent package with its compatible version; mark blockers"/>
+      </branch>
+      <branch when="gap == 'runtime_prerequisites'">
+        <conclusion ref="r-fmui-runtime-prerequisites-listed" verdict="apply r-fmui-runtime-prerequisites-listed: list target prerequisites against every environment; schedule runtime upgrades first"/>
+      </branch>
+      <branch when="gap == 'risk_scores'">
+        <conclusion ref="r-fmui-risk-scored-on-two-axes" verdict="apply r-fmui-risk-scored-on-two-axes: score blast radius and detectability; write characterisation tests for untested runtime changes"/>
+      </branch>
+      <branch when="gap == 'none'">
+        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: the inventory is complete; hand it to the reviewer and open the upgrade branch for this single major step"/>
+      </branch>
     </branch>
   </decision-tree>
 
   <example trace="primary-path">
-    Observable: preconditions == satisfied AND scope == in_scope → conclusion: r1 → run the procedure in content/04-procedure.xml.
+    Observable: Django 4.2 to 5.0, major_gap == 1; map cited, deprecation run done, but three plugins have no 5.0-compatible release and are not marked blocker → gap == 'dependent_packages' → conclusion: r-fmui-dependent-package-compatibility.
   </example>
 </text>

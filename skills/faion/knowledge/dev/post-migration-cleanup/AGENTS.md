@@ -46,11 +46,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + rationale + source | 900 |
+| `content/01-core-rules.xml` | essential | 8 rules: dual-write retired after parity, read path deleted at zero traffic, flags removed from code, shims with expiry, schema drop after backup + scan, docs/runbooks refreshed, alerts + infra decommissioned, cleanup deadline | 2150 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | 1350 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 850 |
 
 ## Task Routing
 

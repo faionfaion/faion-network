@@ -1,21 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="New Dependency Risk Checklist Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="New Dependency Risk Checklist Decision Tree" version="2.0.0" est_tokens="800">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-already-in-tree">Is the package already present in the committed lockfile (directly or transitively) at the same major version?</root-question>
+    <branch when="already_in_tree == true">
+      <conclusion ref="skip-this-methodology">Skip: no new supply-chain surface is added. Import from the existing version; a major-version bump is handled by the named upgrade owner, not by a new record.</conclusion>
+    </branch>
+    <branch when="already_in_tree == false">
+      <question id="q-licence">Does the package metadata declare an SPDX licence that is permissive, or copyleft but already approved for this distribution model?</question>
+      <branch when="licence == 'missing_or_unapproved'">
+        <conclusion ref="r-licence-spdx-recorded">Stop. Resolve the licence from metadata and the LICENSE file; if copyleft and the distribution model is not approved for it, reject and record the replacement under `alternative`.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="licence == 'approved'">
+        <question id="q-advisory">Does the OSV.dev / GitHub Advisory lookup for the exact version return an open, unpatched advisory?</question>
+        <branch when="open_advisory == true">
+          <conclusion ref="r-advisory-query-in-evidence">Decision is `reject` or `accept-with-mitigation` naming the advisory id and the mitigation; the dated lookup URL goes into `evidence[]`.</conclusion>
+        </branch>
+        <branch when="open_advisory == false">
+          <question id="q-health">Does the registry show more than one maintainer AND a release inside the last 12 months, with no install-time scripts and a `repository` field matching the README?</question>
+          <branch when="single_maintainer_or_stale == true">
+            <conclusion ref="r-maintainer-and-release-recency">Approve only with a named fallback (vendor, fork, alternative) written into `decision`; otherwise reject.</conclusion>
+          </branch>
+          <branch when="install_hook_or_provenance_mismatch == true">
+            <conclusion ref="r-install-hooks-and-provenance-reviewed">Read the install script and verify the repository link before anything else; typosquat or remote-binary hook is a reject.</conclusion>
+          </branch>
+          <branch when="healthy == true">
+            <conclusion ref="run-the-checklist">Run the full record: transitive count, alternative including in-house, exact version plus lockfile commit, upgrade owner and patch window.</conclusion>
+          </branch>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="dayjs-for-date-formatting">
+      <p>`dayjs@1.11.10` is not in the lockfile; licence is MIT; OSV lookup clean; 3 maintainers, release 2 months ago, no install scripts, repository matches. Healthy branch → run-the-checklist: `transitive_count: 0`, `alternative: in-house (rejected: locale tables), already-in-tree: none`, owner `swe:alice`, `patch_window: 7d`.</p>
     </example>
   </decision-tree>
 </text>

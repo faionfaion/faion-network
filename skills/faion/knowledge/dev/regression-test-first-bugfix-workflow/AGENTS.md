@@ -45,11 +45,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: explicit trigger, bounded output, evidence-anchored, named owner, iteration loop | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 rules: red test committed before fix, fails for the alert reason, inputs from alert payload, deterministic + located, minimal fix with assertions untouched, CI red-then-green, hotfix carries follow-up, alert closed after 90-day window | ~2000 |
 | `content/02-output-contract.xml` | essential | Schema for the workflow record (alert, red-test, fix, verification) + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns: cargo-cult, anonymous owner, drift, example bleed, no review, vague trigger | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: test after fix, wrong-reason failure, invented inputs, flaky test, assertion edited, hotfix follow-up forgotten | ~1250 |
 | `content/04-procedure.xml` | medium | 6-step procedure: capture → reproduce → red test → fix → verify → ship + review | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision: full red-test flow vs hotfix-then-test based on SLA + reproducibility | ~300 |
+| `content/06-decision-tree.xml` | essential | Decision: full red-test flow vs hotfix-then-test based on SLA + reproducibility | ~600 |
 
 ## Task Routing
 

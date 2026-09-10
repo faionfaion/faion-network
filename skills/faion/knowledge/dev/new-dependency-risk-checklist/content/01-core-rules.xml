@@ -1,32 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="New Dependency Risk Checklist — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `new-dependency-risk-checklist` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="New Dependency Risk Checklist Core Rules" version="2.0.0" est_tokens="2300" depth="essential">
+  <summary>8 testable rules every New Dependency Risk Checklist application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-licence-spdx-recorded" testable="true" depth="essential">
+      <statement>The record MUST carry an `inputs[]` entry named `licence` whose value is an SPDX identifier read from the package's own metadata (`license` in package.json, `project.license` in pyproject.toml, `license` in Cargo.toml) and cross-checked against the LICENSE file in the source repository. Values `unknown`, `see repo`, `MIT-ish` or an empty string are rejected. Any copyleft or source-available licence (GPL-*, AGPL-*, LGPL-*, SSPL, BUSL, MPL-2.0 with modifications) MUST be named in `decision` together with the distribution model it is approved for (SaaS backend, shipped binary, browser bundle).</statement>
+      <rationale source="SPDX License List; GNU AGPL-3.0 section 13">AGPL section 13 triggers source-disclosure on network use, so an AGPL library inside a SaaS backend creates an obligation nobody notices at `npm install` and everybody notices at the next funding round's due diligence. The SPDX identifier is the only form of the licence a scanner can compare against a policy; prose in a README is not.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-transitive-footprint-counted" testable="true" depth="essential">
+      <statement>The record MUST carry an `inputs[]` entry named `transitive_count`: the number of packages the lockfile diff adds beyond the direct dependency, produced by a dry-run install (`npm install --package-lock-only` then diff, `pip install --dry-run --report`, `cargo tree --prefix none | sort -u`). `decision` MUST cover the whole added subtree, not only the direct package. A `transitive_count` of zero on a package that visibly imports other packages is treated as an unfilled field.</statement>
+      <rationale source="npm security advisory on event-stream / flatmap-stream, November 2018">The event-stream compromise shipped wallet-stealing code in `flatmap-stream`, a transitive dependency of a package with two million weekly downloads. Every team that reviewed only the direct dependency reviewed nothing. The count forces the reviewer to look at what is actually being installed.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-maintainer-and-release-recency" testable="true" depth="essential">
+      <statement>The record MUST carry `inputs[]` entries `maintainers` (count of publishing maintainers shown by the registry: `npm view &lt;pkg&gt; maintainers`, the PyPI project page, crates.io owners) and `last_release` (ISO date of the latest non-prerelease). If `maintainers` is 1 OR `last_release` is older than 12 months, `decision` MUST name a fallback the team can execute without the upstream: vendor the code, maintain a fork, or switch to a named alternative. Approving such a package with no fallback is forbidden.</statement>
+      <rationale source="colors.js and faker.js sabotage by their sole maintainer, January 2022; widely established supply-chain practice">A single maintainer is a single point of failure for both abandonment and sabotage: one person pushed an infinite loop into `colors` and broke thousands of CI pipelines overnight, and nobody else had publish rights to revert it. A release gap over a year means security patches, when needed, will not come from upstream.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-advisory-query-in-evidence" testable="true" depth="essential">
+      <statement>`evidence[]` MUST contain the URL of an advisory lookup for the exact package name and version on OSV.dev, the GitHub Advisory Database or NVD, run on the day the record is written. If the lookup returns an open, unpatched advisory at the pinned version, `decision` MUST be either `reject` or `accept-with-mitigation` naming the advisory id (CVE-YYYY-NNNNN or GHSA-xxxx) and the mitigation. Approving a package with an open advisory without naming it is forbidden.</statement>
+      <rationale source="OSV.dev; GitHub Advisory Database; NIST NVD">A dependency added with a known critical CVE is the cheapest finding any auditor or attacker will ever make. The dated URL proves the check happened against this version, not against whatever the reviewer remembered from last quarter, and it gives the next reviewer a query to re-run rather than a sentence to trust.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-alternative-considered-including-in-house" testable="true" depth="essential">
+      <statement>The record MUST carry an `inputs[]` entry named `alternative` listing at least one alternative with a one-line reason for not choosing it. One listed alternative MUST always be `in-house` (write it ourselves) or `already-in-tree` (a package in the current lockfile that covers the need). A package whose useful surface is a single function of roughly twenty lines or fewer MUST default to `in-house`; `decision` may override only by naming what the package does that twenty lines cannot.</statement>
+      <rationale source="left-pad unpublish incident, March 2016; widely established practice in dependency management">`left-pad` was eleven lines. Its removal from npm broke Babel, React and thousands of builds in the space of an afternoon. Every dependency carries a permanent maintenance, licence and supply-chain cost; a one-function package pays that cost for something a junior engineer writes in ten minutes and the team owns forever.</rationale>
     </rule>
+
+    <rule id="r-exact-version-pinned-in-lockfile" testable="true" depth="essential">
+      <statement>`decision` MUST name the exact version evaluated (`left-pad@1.3.0`, not `^1.3.0`), and `evidence[]` MUST include the commit or PR that updates the lockfile (package-lock.json, yarn.lock, pnpm-lock.yaml, poetry.lock, uv.lock, Cargo.lock). A repository without a committed lockfile fails this rule and the dependency MUST NOT be approved until one exists. The risk record applies to that version only: a major-version bump re-opens the record; a patch or minor bump is covered by the named upgrade owner.</statement>
+      <rationale source="ua-parser-js hijack, October 2021 (versions 0.7.29, 0.8.0, 1.0.0); npm documentation on package-lock.json">The hijacked `ua-parser-js` releases carried a cryptominer and credential stealer, and they reached production in projects whose floating ranges resolved to the new versions on the next CI run. A committed lockfile means a compromised upstream release does nothing until a human bumps it; without one the risk record describes a version the build may never install again.</rationale>
+    </rule>
+
+    <rule id="r-install-hooks-and-provenance-reviewed" testable="true" depth="essential">
+      <statement>For every npm package the record MUST state whether the package declares `preinstall`, `install` or `postinstall` scripts (`npm view &lt;pkg&gt; scripts`) and, if it does, what they execute; a hook that downloads or runs a remote binary is a reject unless `decision` names why it is needed. For every ecosystem the record MUST confirm that the registry `repository` field resolves to the source repository the README claims, and that the package name is not a one-character variation of a more popular package on the same registry (check by searching the registry for the near-name).</statement>
+      <rationale source="npm blog on the crossenv typosquat campaign, August 2017; npm documentation on `--ignore-scripts`">`crossenv` (no hyphen) imitated `cross-env` and exfiltrated environment variables from a `postinstall` script at install time, before any code was imported or reviewed. Install hooks run with the developer's credentials on every machine and every CI runner; the review has to happen before the first `npm install`, which is exactly the step most teams treat as safe.</rationale>
+    </rule>
+
+    <rule id="r-upgrade-owner-and-patch-window" testable="true" depth="essential">
+      <statement>`owner` MUST be the person who receives the Dependabot, Renovate or `npm audit` alert for this package, and the record MUST carry an `inputs[]` entry `patch_window` stating the maximum time from a critical or high advisory to a merged upgrade (for example `7d` for critical, `30d` for high). An owner who has no alert routed to them, or a record with no patch window, is unfilled.</statement>
+      <rationale source="GitHub Dependabot and Renovate documentation; widely established vulnerability-management practice">Approval is a moment; the dependency is a liability for years. Alerts that land in a shared channel with no named recipient are the ones still open eighteen months later when the incident review asks who saw the CVE. Naming the recipient and the window at approval time turns the future patch into a commitment someone can be asked about.</rationale>
+    </rule>
+
   </section>
 
   <see-also>

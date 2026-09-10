@@ -1,46 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Hipaa Phi Data Flow Design Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Hipaa Phi Data Flow Design must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Hipaa Phi Data Flow Design Core Rules" version="2.0.0" est_tokens="2250" depth="essential">
+  <summary>8 testable rules every HIPAA PHI data-flow design MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r-phi-every-hop-inventoried" testable="true" depth="essential">
+      <statement>The data-flow diagram MUST list every hop that stores, processes or transmits PHI: services, databases, queues, caches, search indexes, log pipelines, error trackers, analytics, backups, exports, and every third-party API. For each hop the design names which of the 18 identifier classes in 45 CFR §164.514(b)(2) it carries. A hop that touches PHI and is absent from the diagram is a design defect, not an omission.</statement>
+      <rationale source="45 CFR §164.308(a)(1)(ii)(A) (risk analysis); 45 CFR §164.514(b)(2) (Safe Harbor identifiers)">The Security Rule's risk analysis is only as complete as the inventory of where PHI is. The hops that cause breaches are the ones nobody drew: the crash reporter that captures request bodies, the nightly export to a spreadsheet, the queue with a 7-day retention nobody encrypted. Naming the identifier classes per hop is what makes minimum-necessary and de-identification decisions checkable later.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="r-phi-minimum-necessary-per-hop" testable="true" depth="essential">
+      <statement>Each hop MUST receive only the PHI fields it needs for its stated purpose; the design lists the fields per hop with a one-line justification. Hops for analytics, machine learning, embeddings, LLM prompts or product telemetry MUST receive data de-identified under §164.514(b) (Safe Harbor removal of all 18 identifiers, or documented Expert Determination) unless a BAA covers the recipient and the identified use is documented.</statement>
+      <rationale source="45 CFR §164.502(b) (minimum necessary standard); 45 CFR §164.514(b) and (d)">Pipelines default to passing the whole record because it is easier than selecting columns, and the whole record includes the diagnosis nobody downstream needs. The specific failure this rule exists for: an engineer sends full clinical notes to an embeddings or LLM API for a search feature, creating an undocumented disclosure to a vendor with no BAA. Field-level listing per hop makes that visible at design review instead of at breach notification.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="r-phi-baa-for-every-external-hop" testable="true" depth="essential">
+      <statement>Every external party in the diagram that creates, receives, maintains or transmits PHI on the organisation's behalf (cloud provider, email and SMS gateways, error tracking, analytics, support desk, LLM or embeddings API, backup vendor) MUST have an executed Business Associate Agreement linked from the design. A hop with no BAA MUST be redesigned to receive de-identified data only, or removed; "the vendor is HIPAA-ready" without a signed BAA does not satisfy this rule.</statement>
+      <rationale source="45 CFR §164.308(b)(1) (business associate contracts); 45 CFR §164.502(e); 45 CFR §164.504(e) (required BAA content)">Disclosure to a vendor without a BAA is a Privacy Rule violation regardless of how secure the vendor is, and it is the single most common finding in HHS OCR resolution agreements. Cloud providers and most SaaS vendors sign BAAs only on specific plans and only for specific services; the design must name the plan and the covered service, not the vendor.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for code, architecture, release, performance">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="r-phi-encrypted-in-transit-and-at-rest" testable="true" depth="essential">
+      <statement>Every link carrying PHI MUST use TLS 1.2 or later configured per NIST SP 800-52 Rev. 2, including links inside the private network and between the load balancer and application. Every store holding PHI, including backups, queues, caches, search indexes and object storage, MUST be encrypted at rest per NIST SP 800-111 with keys held in a managed KMS, rotation enabled, and the design MUST show where each link terminates TLS.</statement>
+      <rationale source="45 CFR §164.312(a)(2)(iv) and §164.312(e)(2)(ii) (encryption); HHS 'Guidance to Render Unsecured Protected Health Information Unusable, Unreadable, or Indecipherable' (2009), which references NIST SP 800-111 and NIST SP 800-52">Encryption is "addressable" in the Security Rule text and mandatory in practice, because PHI encrypted per the HHS guidance is "secured" and its loss is not a reportable breach. The design fault this rule targets is TLS terminated at the edge with plaintext hops inside the VPC and an unencrypted backup bucket: a single leaked snapshot then triggers notification to every affected individual and HHS.</rationale>
     </rule>
+
+    <rule id="r-phi-audit-event-per-access" testable="true" depth="essential">
+      <statement>Every read, write, export and deletion of PHI MUST emit an audit event carrying the unique user or service identity, timestamp, patient or record identifier, action, and originating system. The audit log MUST be append-only, MUST NOT contain PHI field values, and MUST be retained for at least six years. The design names the log store and the alert that fires on bulk access.</statement>
+      <rationale source="45 CFR §164.312(b) (audit controls); 45 CFR §164.312(a)(2)(i) (unique user identification); 45 CFR §164.316(b)(2)(i) (six-year documentation retention)">Without a per-access audit trail an organisation cannot answer the first question OCR asks after an incident: who looked at which records, and when. The trail is also how insider snooping (the most common healthcare privacy incident) is detected. Logging the record id but not the field values keeps the audit store itself out of the PHI inventory.</rationale>
+    </rule>
+
+    <rule id="r-phi-never-in-logs-errors-or-urls" testable="true" depth="essential">
+      <statement>Application logs, error-tracker payloads, crash reports, metric labels, trace attributes, URLs and query strings MUST NOT contain PHI. The logging layer MUST scrub or omit PHI fields by allow-list, and the test suite MUST include a test that writes a synthetic PHI record through every request path and asserts none of its identifier values appear in log, error or trace output.</statement>
+      <rationale source="45 CFR §164.502(b) (minimum necessary); widely established practice in healthcare engineering and HHS OCR breach reports involving logs and error tools">Log pipelines and error trackers are the hops that never get a BAA, retain data for months, and are readable by every engineer. A stack trace that captures the request body, or a patient id in a GET query string that lands in the CDN's access log, is a breach that no encryption setting prevents. The only reliable control is a scrubber plus a test that proves it works.</rationale>
+    </rule>
+
+    <rule id="r-phi-unique-identity-and-role-access" testable="true" depth="essential">
+      <statement>Every human and service principal that can access PHI MUST have a unique identity; shared accounts and shared API keys are forbidden. Access to each hop MUST be authorised by role with the roles and their permitted operations listed in the design, sessions MUST end by automatic logoff after a stated idle period, and an emergency-access ("break-glass") procedure MUST be documented with its own audit alert.</statement>
+      <rationale source="45 CFR §164.312(a)(2)(i) through (iii) (unique user identification, emergency access, automatic logoff); 45 CFR §164.312(d) (person or entity authentication)">A shared `ops` login makes the audit log worthless: it records that "ops" viewed 4,000 records and cannot say who. Role listing per hop is what allows the minimum-necessary review to be enforced by the system rather than by policy, and break-glass with an alert is how the design allows the emergency without making it invisible.</rationale>
+    </rule>
+
+    <rule id="r-phi-retention-and-deletion-per-store" testable="true" depth="essential">
+      <statement>Every store in the diagram MUST declare its PHI retention period and the mechanism that deletes or de-identifies data when it expires, and the design MUST show how a deletion of one patient's record propagates to backups, replicas, caches, search indexes, exports and any derived dataset. Media and devices holding PHI MUST have a documented disposal procedure.</statement>
+      <rationale source="45 CFR §164.310(d)(2)(i) and (ii) (disposal and media re-use); 45 CFR §164.530(j) (retention of documentation); widely established data-lifecycle practice">Data that was supposed to be gone is what turns an old backup or a forgotten search index into a breach years later. A design that can show the path from "delete this record" to every copy of it is one where retention is a property of the system; a design that cannot is one where retention is a promise.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI) (role: p4-outsource-specialist)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: HIPAA Security Rule + Privacy Rule impose concrete design constraints (minimum necessary, BAA boundary, audit controls §164.312(b)). Faion has zero HIPAA-specific methodology; the AI agent will silently log PHI or send it to embeddings APIs</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

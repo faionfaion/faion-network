@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: file-size histogram with threshold, directory depth cap, no barrels, explicit imports, naming score lists offenders, static data extracted, CLAUDE.md matches audit, reproducible audit command | ~1750 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |

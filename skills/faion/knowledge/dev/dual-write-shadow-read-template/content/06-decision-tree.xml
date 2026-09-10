@@ -1,21 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Dual-Write Shadow-Read Template Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Dual-Write Shadow-Read Template Decision Tree" version="2.0.0" est_tokens="550">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-migration-phase">Which phase is the migration in: not started, dual-write live, shadow-read live, or reads already cut over to the new store?</root-question>
+    <branch when="phase == 'not_started'">
+      <question id="q-single-store">Can the change be done inside one store as a single transactional migration (no second store, no long-running backfill)?</question>
+      <branch when="single_store == true">
+        <conclusion ref="skip-this-methodology">Skip: a transactional schema migration with a tested down-migration does not need dual-write or shadow-read machinery.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="single_store == false">
+        <conclusion ref="r-dual-write-idempotent-writes">Start by implementing the version-guarded idempotent upsert for the new store; enable dual-write behind its own flag, then backfill.</conclusion>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
+    <branch when="phase == 'dual_write_live'">
+      <question id="q-dual-write-health">Is the new-store write outside the request-critical path, is a reconciliation job running, and has the backfill been reconciled by count and checksum?</question>
+      <branch when="health == 'write_in_critical_path'">
+        <conclusion ref="r-old-store-authoritative">Move the new-store write out of the transaction, queue failures durably, publish `dual_write_failures_total` with an alert threshold.</conclusion>
+      </branch>
+      <branch when="health == 'no_reconciliation'">
+        <conclusion ref="r-reconciliation-job-required">Schedule the key-walk reconciliation with a declared cadence and repair budget before trusting any parity number.</conclusion>
+      </branch>
+      <branch when="health == 'backfill_unverified'">
+        <conclusion ref="r-backfill-before-shadow">Finish the backfill with the version-guarded upsert and verify per-partition counts and checksums; only then enable shadow reads.</conclusion>
+      </branch>
+      <branch when="health == 'green'">
+        <conclusion ref="r-shadow-read-no-user-impact">Enable shadow reads at a low sampling percentage with a bounded new-store timeout; the old store's result is still what callers see.</conclusion>
+      </branch>
     </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <branch when="phase == 'shadow_read_live'">
+      <question id="q-parity-gate">Does `shadow_read_mismatch_ratio` meet the runbook's numeric gate (threshold, window, minimum comparisons) for every entity type?</question>
+      <branch when="gate == 'met'">
+        <conclusion ref="r-cutover-gate-numeric">Link the gate evaluation as evidence and flip read-from-new; keep write-to-old on for the retention window.</conclusion>
+      </branch>
+      <branch when="gate == 'not_met'">
+        <conclusion ref="r-shadow-read-parity-diff">Inspect sampled mismatching keys; fix the comparator's exclusion list if the diffs are on volatile fields, fix the data path if they are real.</conclusion>
+      </branch>
+    </branch>
+    <branch when="phase == 'reads_cut_over'">
+      <question id="q-retention-window">Has the declared retention window passed with reads on the new store, and has the read flip-back been rehearsed?</question>
+      <branch when="window == 'passed_and_rehearsed'">
+        <conclusion ref="r-rollback-flag-per-stage">Turn off write-to-old as the last flag in the documented order; decommission the old store after its backup is verified.</conclusion>
+      </branch>
+      <branch when="window == 'not_yet'">
+        <conclusion ref="r-rollback-flag-per-stage">Keep old-store writes on; rehearse flipping reads back to the old store once before the window ends.</conclusion>
+      </branch>
+    </branch>
+    <example trace="postgres-major-upgrade-parity">
+      <p>Dual-write live for two weeks, reconciliation job repairing 3 records per run, backfill checksums match. phase == 'dual_write_live', health == 'green' → conclusion r-shadow-read-no-user-impact: shadow reads enabled at 5 percent with a 50 ms candidate timeout.</p>
     </example>
   </decision-tree>
 </text>

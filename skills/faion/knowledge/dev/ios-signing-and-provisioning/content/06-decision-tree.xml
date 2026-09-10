@@ -1,24 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Ios Signing And Provisioning Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="Ios Signing And Provisioning Decision Tree" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signing signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 4.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the input satisfy this methodology's preconditions (trigger present + named consumer + source-of-truth accessible)?</root-question>
-    <branch when="preconditions == satisfied">
-      <question id="q-scope">Is the case in-scope for ios-signing-and-provisioning (matches Applies-If, no Skip-If matches)?</question>
-      <branch when="scope == in_scope">
-        <conclusion ref="r1" verdict="apply rule r1 from content/01-core-rules.xml; run the procedure"/>
-      </branch>
-      <branch when="scope == out_of_scope">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: case is out of scope; do not produce an artefact"/>
-      </branch>
+    <root-question id="q-root">Is the app distributed through Apple signing at all (App Store, TestFlight, ad-hoc or enterprise builds)?</root-question>
+    <branch when="apple_distribution == false">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: no Apple signing chain to document (web app, simulator-only, or Android-only)"/>
     </branch>
-    <branch when="preconditions == not_satisfied">
-      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: preconditions not met; resolve inputs before re-running"/>
+    <branch when="apple_distribution == true">
+      <question id="q-inventory">Does a complete inventory exist: every certificate, profile, API key and APNs key with identifier, expiry and storage location?</question>
+      <branch when="inventory == incomplete">
+        <conclusion ref="r-inventory-every-signing-asset" verdict="build the inventory from the developer portal first; nothing else in this document can be checked without it"/>
+      </branch>
+      <branch when="inventory == complete">
+        <question id="q-expiry">Does any asset expire within 30 days, or is any private key stored outside the named secret store?</question>
+        <branch when="expiry_or_storage == at_risk">
+          <conclusion ref="r-rotation-calendar-with-lead-time" verdict="rotate now, move key material into the secret store, add rotation entries with a named person"/>
+        </branch>
+        <branch when="expiry_or_storage == ok">
+          <question id="q-push-and-keys">Is push on a yearly APNs certificate, or is any CI key issued with the Admin role?</question>
+          <branch when="push_or_keys == weak">
+            <conclusion ref="r-apns-token-key-over-cert" verdict="migrate push to a .p8 token key and reissue CI keys per pipeline with the least role"/>
+          </branch>
+          <branch when="push_or_keys == ok">
+            <conclusion ref="run-the-checklist" verdict="run the procedure: fill the per-config aps-environment map, revocation runbook and client Team ID, then hand off for review"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="primary-path">
-    Observable: preconditions == satisfied AND scope == in_scope → conclusion: r1 → run the procedure in content/04-procedure.xml.
+  <example trace="client-app-first-release">
+    Observable: App Store distribution; inventory built (1 distribution cert, 2 profiles, 1 ASC key with Developer role, 1 APNs .p8); nothing expires within 30 days; keys in the CI secret store → run-the-checklist → procedure in content/04-procedure.xml, with the client Team ID recorded per r-client-account-owns-the-app.
   </example>
 </text>

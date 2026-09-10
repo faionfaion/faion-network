@@ -1,24 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Hipaa Phi Data Flow Design Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="Hipaa Phi Data Flow Design Decision Tree" version="2.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable PHI data-flow signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the input satisfy this methodology's preconditions (trigger present + named consumer + source-of-truth accessible)?</root-question>
-    <branch when="preconditions == satisfied">
-      <question id="q-scope">Is the case in-scope for hipaa-phi-data-flow-design (matches Applies-If, no Skip-If matches)?</question>
-      <branch when="scope == in_scope">
-        <conclusion ref="r1" verdict="apply rule r1 from content/01-core-rules.xml; run the procedure"/>
-      </branch>
-      <branch when="scope == out_of_scope">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: case is out of scope; do not produce an artefact"/>
-      </branch>
+    <root-question id="q-phi-present">Does the flow carry PHI at all, and if so does the diagram enumerate every hop that touches it, including logs, error trackers, queues, caches, indexes, backups, exports and third-party APIs?</root-question>
+    <branch when="phi == 'none_or_deidentified'">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: data is de-identified under §164.514(b) or contains no PHI; record the de-identification method and proceed without this design"/>
     </branch>
-    <branch when="preconditions == not_satisfied">
-      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: preconditions not met; resolve inputs before re-running"/>
+    <branch when="phi == 'present_hops_incomplete'">
+      <conclusion ref="r-phi-every-hop-inventoried" verdict="apply r-phi-every-hop-inventoried: complete the hop inventory with identifier classes per hop before assessing any control"/>
+    </branch>
+    <branch when="phi == 'present_hops_complete'">
+      <question id="q-weakest-control">For the hop under review, which control is missing: a BAA for an external party, field-level minimum necessary, encryption on a link or store, a per-access audit event, PHI-free logs and URLs, unique identity and role access, a retention and deletion path, or none?</question>
+      <branch when="control_gap == 'no_baa'">
+        <conclusion ref="r-phi-baa-for-every-external-hop" verdict="apply r-phi-baa-for-every-external-hop: execute a BAA naming plan and service, or de-identify before the hop, or remove the hop"/>
+      </branch>
+      <branch when="control_gap == 'excess_fields'">
+        <conclusion ref="r-phi-minimum-necessary-per-hop" verdict="apply r-phi-minimum-necessary-per-hop: list and justify the fields per hop; de-identify analytics, ML and LLM hops"/>
+      </branch>
+      <branch when="control_gap == 'unencrypted_link_or_store'">
+        <conclusion ref="r-phi-encrypted-in-transit-and-at-rest" verdict="apply r-phi-encrypted-in-transit-and-at-rest: TLS 1.2+ on every link, KMS-managed at-rest encryption on every store including backups"/>
+      </branch>
+      <branch when="control_gap == 'no_audit_event'">
+        <conclusion ref="r-phi-audit-event-per-access" verdict="apply r-phi-audit-event-per-access: emit identity, timestamp, record id, action and source to an append-only store retained six years"/>
+      </branch>
+      <branch when="control_gap == 'phi_in_logs_or_urls'">
+        <conclusion ref="r-phi-never-in-logs-errors-or-urls" verdict="apply r-phi-never-in-logs-errors-or-urls: scrub by allow-list, move identifiers out of URLs, add the synthetic-record test"/>
+      </branch>
+      <branch when="control_gap == 'shared_identity'">
+        <conclusion ref="r-phi-unique-identity-and-role-access" verdict="apply r-phi-unique-identity-and-role-access: unique identities, role list per hop, automatic logoff, break-glass with alert"/>
+      </branch>
+      <branch when="control_gap == 'no_deletion_path'">
+        <conclusion ref="r-phi-retention-and-deletion-per-store" verdict="apply r-phi-retention-and-deletion-per-store: declare retention and deletion per store and show propagation to every copy"/>
+      </branch>
+      <branch when="control_gap == 'none'">
+        <conclusion ref="r-phi-audit-event-per-access" verdict="apply r-phi-audit-event-per-access as the final check: confirm the audit trail and bulk-access alert are live, then route to the Security Officer for sign-off"/>
+      </branch>
     </branch>
   </decision-tree>
 
   <example trace="primary-path">
-    Observable: preconditions == satisfied AND scope == in_scope → conclusion: r1 → run the procedure in content/04-procedure.xml.
+    Observable: clinical notes are sent to a hosted embeddings API for semantic search; hop inventory complete; the API vendor's plan has no BAA → phi == 'present_hops_complete', control_gap == 'no_baa' → conclusion: r-phi-baa-for-every-external-hop.
   </example>
 </text>

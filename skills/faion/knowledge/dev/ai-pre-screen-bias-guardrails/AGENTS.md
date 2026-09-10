@@ -44,9 +44,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: protected attributes stripped, rubric versioned first, no proxy criteria, real-pool calibration, four-fifths monitoring, human of record, notice and bias audit, per-candidate audit log | ~2100 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 subject-specific antipatterns with detector + repair | ~1150 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
 | `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |

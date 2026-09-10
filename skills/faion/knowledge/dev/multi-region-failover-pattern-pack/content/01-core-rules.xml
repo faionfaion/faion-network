@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Multi-Region Failover Pattern Pack — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `multi-region-failover-pattern-pack` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Multi-Region Failover Pattern Pack Core Rules" version="2.0.0" est_tokens="2000" depth="essential">
+  <summary>8 testable rules every multi-region failover pattern pack MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-rpo-rto-numeric-per-tier" testable="true" depth="essential">
+      <statement>RPO and RTO MUST be numeric, per workload tier, agreed with the business owner and recorded in `inputs[]` as `rpo_minutes` and `rto_minutes`. "As fast as possible", "near zero" and "same as today" are rejected. A workload with no tier assignment gets the strictest tier until someone argues it down.</statement>
+      <rationale source="AWS whitepaper 'Disaster Recovery of Workloads on AWS: Recovery in the Cloud'; ISO 22301 business-continuity requirements">Every pattern in this pack is a trade of money for minutes, and without the two numbers there is nothing to trade against. The team that says "zero data loss" and is then shown the bill for synchronous cross-region writes usually discovers its RPO is fifteen minutes.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-pattern-chosen-from-rpo-rto-and-cost" testable="true" depth="essential">
+      <statement>`decision` MUST name exactly one pattern (backup-and-restore, pilot light, warm standby, active-passive with hot standby, or active-active) and the artefact MUST show the chosen pattern's achievable RPO/RTO next to the required ones, plus the secondary region's pre-provisioned capacity or verified scale-up time and service quotas. A pattern whose achievable RTO exceeds the required one is rejected; so is one that assumes quota that has not been requested.</statement>
+      <rationale source="AWS whitepaper 'Disaster Recovery of Workloads on AWS' (pattern tiers from backup-and-restore to multi-site active/active); AWS Well-Architected Framework, Reliability Pillar">Pilot light cannot meet a five-minute RTO no matter how confident the diagram looks, and warm standby at 10% capacity fails over into an outage of its own when 100% of traffic arrives. Quotas are per region; the secondary that has never run at full load has never asked for them.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-dns-failover-ttl-and-health-check" testable="true" depth="essential">
+      <statement>Where DNS is the failover mechanism, the pack MUST state the record TTL (60 seconds or less on failover records), the health check that flips the record (endpoint, interval, failure threshold), and the propagation time observed in the last drill. Clients and resolvers that ignore TTL MUST be listed with their fallback (global load balancer, anycast, or client-side retry to the secondary).</statement>
+      <rationale source="Amazon Route 53 documentation on DNS failover and health checks; widely established DNS practice">A 3600-second TTL turns a two-minute failover into an hour of half the users hitting a dead region, and mobile SDKs that cache a resolved IP for the process lifetime ignore even a 60-second TTL. The drill number is the only honest propagation figure; the TTL is a hope.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-database-replication-mode-and-promotion" testable="true" depth="essential">
+      <statement>The database section MUST state the replication mode (synchronous or asynchronous), the measured p99 replication lag over the last 30 days, the promotion procedure, and how split-brain is prevented (fencing the old primary, single-writer enforcement). For asynchronous replication the declared RPO MUST be at least the measured p99 lag.</statement>
+      <rationale source="Kleppmann, Designing Data-Intensive Applications (2017), ch. 5 'Replication' (async lag, failover, split brain); vendor documentation for the chosen database">The failover that promotes the replica while the old primary keeps accepting writes produces two databases that both think they are right, and merging them is the incident after the incident. An RPO of zero on top of async replication with 40 seconds of lag is a lie the postmortem will find.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-object-store-replication-verified" testable="true" depth="essential">
+      <statement>Object storage MUST have cross-region replication enabled with versioning, a monitored replication backlog and a replication-time metric with an alert. The pack MUST record whether existing objects were backfilled: on Amazon S3, replication rules cover new objects only unless a batch replication job was run, and the pack MUST cite that job; for other providers, the equivalent check against vendor documentation.</statement>
+      <rationale source="Amazon S3 documentation on replication (existing objects require Batch Replication) and Replication Time Control metrics">Teams enable replication, see green, and fail over to a bucket missing every object older than the rule. The backlog metric is what tells you the secondary is 40 GB behind at the moment you are about to point users at it.</rationale>
     </rule>
+
+    <rule id="r-region-scoped-dependencies-listed" testable="true" depth="essential">
+      <statement>The pack MUST list every dependency the failover path touches (identity provider, secrets manager, CI/CD, DNS provider, certificate issuance, payment and email providers, cloud control-plane endpoints) with whether it is reachable from the secondary region without the primary. A dependency that lives only in the primary region invalidates the pattern claim until it is replicated or given a documented manual bypass.</statement>
+      <rationale source="AWS Well-Architected Framework, Reliability Pillar (fault isolation, REL10); widely established practice from regional-outage postmortems">The secondary region is fully warm, the database is promoted, and nobody can log in because the IdP was single-region. Or the deploy pipeline that would run the failover script lives in the region that is down. The dependency list is where those are found on a Tuesday instead of during the outage.</rationale>
+    </rule>
+
+    <rule id="r-drill-live-with-measured-results" testable="true" depth="essential">
+      <statement>The pack MUST include a live drill checklist and the result of the most recent drill: date, scope (which services, what percentage of real traffic), measured RTO, measured RPO, and every step that needed manual intervention. A drill MUST be re-run after any change to replication, DNS or promotion mechanics. A pack whose last drill is older than `review.next_review_at` minus one cadence, or that has never been drilled, is labelled `unverified` in `decision`.</statement>
+      <rationale source="Google SRE Book ch. 17 'Testing for Reliability'; Krishnan, 'Weathering the Unexpected' (ACM Queue, 2012) on Google DiRT exercises">Untested failover is a document, not a capability. The first real failover always finds the hard-coded region name, the expired secondary certificate and the runbook step that only Dave knew. Measured RTO from a drill is the only number that belongs next to the required one.</rationale>
+    </rule>
+
+    <rule id="r-failback-procedure-included" testable="true" depth="essential">
+      <statement>The pack MUST include the failback procedure (returning to the primary or re-establishing two healthy regions) with its own RPO/RTO, the data reconciliation step for writes accepted in the secondary, and the trigger for starting failback. One-way failover without failback is incomplete.</statement>
+      <rationale source="AWS whitepaper 'Disaster Recovery of Workloads on AWS' (failback section); widely established DR practice">The failover works, the primary comes back, and now there are two days of writes in the secondary and no plan to get them home. Teams run in the "temporary" region for months because nobody wrote the way back, and the next incident hits a secondary with no secondary.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

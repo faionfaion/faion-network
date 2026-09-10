@@ -44,11 +44,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: SPDX licence, transitive count, maintainer/release recency, advisory lookup, alternative incl. in-house, exact pin + lockfile, install hooks/provenance, upgrade owner + patch window | ~2300 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | ~1450 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~800 |
 
 ## Task Routing
 

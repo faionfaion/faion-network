@@ -1,24 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Latency Budget Allocation Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="Latency Budget Allocation Decision Tree" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable latency signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 4.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the input satisfy this methodology's preconditions (trigger present + named consumer + source-of-truth accessible)?</root-question>
-    <branch when="preconditions == satisfied">
-      <question id="q-scope">Is the case in-scope for latency-budget-allocation (matches Applies-If, no Skip-If matches)?</question>
-      <branch when="scope == in_scope">
-        <conclusion ref="r1" verdict="apply rule r1 from content/01-core-rules.xml; run the procedure"/>
-      </branch>
-      <branch when="scope == out_of_scope">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: case is out of scope; do not produce an artefact"/>
-      </branch>
+    <root-question id="q-root">Is there a user-facing latency SLO stated as percentile + threshold + measurement point + window?</root-question>
+    <branch when="slo == missing">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: define the end-to-end SLO first; a budget cannot be allocated from a total that does not exist"/>
     </branch>
-    <branch when="preconditions == not_satisfied">
-      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: preconditions not met; resolve inputs before re-running"/>
+    <branch when="slo == present">
+      <question id="q-hops-measured">Does every hop on the critical path have a caller-side latency histogram with a named owner?</question>
+      <branch when="hops_measured == false">
+        <conclusion ref="r-every-hop-named-and-measured" verdict="instrument the unmeasured hops first; allocate only once each hop has a histogram and an owner"/>
+      </branch>
+      <branch when="hops_measured == true">
+        <question id="q-fanout">Does any stage fan out to N parallel calls and wait for all of them?</question>
+        <branch when="fanout == true">
+          <conclusion ref="r-fan-out-tightens-child-percentile" verdict="record N per stage and tighten the child percentile or add hedging before allocating the sequential hops"/>
+        </branch>
+        <branch when="fanout == false">
+          <question id="q-measured-vs-budget">Is any proposed hop budget below that hop's currently measured p95?</question>
+          <branch when="underwater_hop == true">
+            <conclusion ref="r-budget-reconciled-with-measured-p95" verdict="link an improvement ticket with an owner for each underwater hop or raise its budget from the reserve before the gate goes live"/>
+          </branch>
+          <branch when="underwater_hop == false">
+            <conclusion ref="run-the-checklist" verdict="run the procedure: verify the composition against the end-to-end histogram, fix bucket boundaries, fit timeouts and retries, emit the executable CI gate spec"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="primary-path">
-    Observable: preconditions == satisfied AND scope == in_scope → conclusion: r1 → run the procedure in content/04-procedure.xml.
+  <example trace="checkout-p95-800ms">
+    Observable: SLO is p95 800 ms at the edge over 28 days; all five hops have caller-side histograms; the search stage fans out to 12 shards → r-fan-out-tightens-child-percentile: record N=12, budget each shard at a tighter percentile, then continue to the sequential allocation and the CI gate spec.
   </example>
 </text>

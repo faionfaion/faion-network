@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="C4 Drift Detection From IaC Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="C4 Drift Detection from IaC Decision Tree" version="2.0.0" est_tokens="800">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-model-and-state-exist">Is there both a machine-readable C4 model (Structurizr DSL/JSON, LikeC4, or model YAML with stable ids) and applied IaC state (Terraform state, Pulumi stack, CloudFormation stack) for the same system?</root-question>
+    <branch when="iac_state_exists == false">
+      <conclusion ref="skip-this-methodology">Skip. With no applied state there is nothing live to compare against; hand-managed infrastructure needs an inventory source first.</conclusion>
+    </branch>
+    <branch when="iac_state_exists == true and c4_model_machine_readable == false">
+      <conclusion ref="r-c4-model-machine-readable">Transcribe the diagram into a model with stable element ids and render pictures from it; re-enter the tree once the model is committed.</conclusion>
+    </branch>
+    <branch when="iac_state_exists == true and c4_model_machine_readable == true">
+      <question id="q-reads-applied-state">Does the comparison read applied state (`terraform show -json`, `pulumi stack export`, `DescribeStackResources`) and record the state serial or export version plus the model commit hash in the report?</question>
+      <branch when="reads_applied_state == false">
+        <conclusion ref="r-compare-applied-state-not-source">Repoint the comparison from source files to state output and stamp both identities on the report.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="reads_applied_state == true">
+        <question id="q-mapping-and-allowlist">Are the resource-to-element mapping table and the noise allowlist version-controlled, with `unmapped` and suppressed counts printed so the totals reconcile?</question>
+        <branch when="mapping_table_versioned == false">
+          <conclusion ref="r-mapping-table-versioned">Commit the mapping table, emit an `unmapped` section with counts, and reconcile state resource totals in the report header.</conclusion>
+        </branch>
+        <branch when="mapping_table_versioned == true and allowlist_versioned == false">
+          <conclusion ref="r-noise-allowlist-explicit">Move every suppression from code into the allowlist file and print the suppressed count per entry.</conclusion>
+        </branch>
+        <branch when="mapping_table_versioned == true and allowlist_versioned == true">
+          <conclusion ref="run-the-checklist">Run the full procedure: three drift classes with ids, stated comparison level, post-apply plus scheduled runs, closure by commit or expiry; emit the drift report per the output contract.</conclusion>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="orders-platform-weekly-drift">
+      <p>Structurizr DSL model in `docs/c4/` and a Terraform state for `orders-prod` both exist. The current script parses `.tf` files → conclusion r-compare-applied-state-not-source. After switching to `terraform show -json`, the mapping table is committed but `continue` skips for `aws_iam_role` live in the script → r-noise-allowlist-explicit on the next pass.</p>
     </example>
   </decision-tree>
 </text>

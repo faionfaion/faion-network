@@ -1,21 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="AI LLM Workload Architecture Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="AI LLM Workload Architecture Decision Tree" version="2.0.0" est_tokens="700">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-touches-llm-path">Does the change touch an LLM call path — prompt text, system prompt, model id, sampling parameters, retrieval configuration, or tool schemas?</root-question>
+    <branch when="touches_llm_path == false">
+      <conclusion ref="skip-this-methodology">Skip. No LLM behaviour can regress from this change; ordinary code review and tests apply.</conclusion>
+    </branch>
+    <branch when="touches_llm_path == true">
+      <question id="q-eval-set-pinned">Is there a version-pinned eval set (git ref or content hash recorded as `eval_set_ref`) with a baseline run URL in `evidence[]`?</question>
+      <branch when="eval_set_pinned == false">
+        <conclusion ref="r-eval-set-version-pinned">Stop. Build or pin the eval set, run the current commit as the baseline, record its URL, then re-enter the tree.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="eval_set_pinned == true">
+        <question id="q-gate-and-scoring">Does the scoring function give the same score on re-run at the same commit, and is the eval suite a merge-blocking CI job with numeric per-metric thresholds?</question>
+        <branch when="scoring_deterministic == false">
+          <conclusion ref="r-scoring-function-deterministic">Pin the judge model id, temperature 0, and judge prompt hash (or switch to exact-match / schema scoring); re-run twice to establish the noise floor before setting thresholds.</conclusion>
+        </branch>
+        <branch when="scoring_deterministic == true and gate_blocks_merge == false">
+          <conclusion ref="r-regression-gate-blocks-merge">Wire the eval suite as a required CI check on prompt, model, retrieval and tool-schema paths; set thresholds against the baseline; only then merge the change.</conclusion>
+        </branch>
+        <branch when="scoring_deterministic == true and gate_blocks_merge == true">
+          <conclusion ref="run-the-checklist">Run the full procedure: pinned model id, latency and cost budgets, injection cases and the degradation path all present in the spec; emit the artefact per the output contract.</conclusion>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="prompt-rewrite-on-support-summariser">
+      <p>PR rewrites the system prompt of the ticket summariser: touches the LLM path. Eval set is pinned at `evals/summariser@a1b2c3d` with a baseline run linked. The judge is `claude` on an alias with temperature 0.7: scoring is not deterministic → conclusion r-scoring-function-deterministic; the PR waits until the judge is pinned and the baseline re-run.</p>
     </example>
   </decision-tree>
 </text>

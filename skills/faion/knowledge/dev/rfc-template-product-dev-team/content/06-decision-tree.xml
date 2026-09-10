@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="RFC Template for Product Dev Team Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="RFC Template for Product Dev Team Decision Tree" version="2.0.0" est_tokens="750">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-needs-rfc">Does the change take more than a few engineer-days AND touch a shared service, a data schema, a public API, or another team's code?</root-question>
+    <branch when="shared_surface == false">
+      <conclusion ref="skip-this-methodology">Skip: a change inside one team's own code with no shared surface is a ticket with a PR, not an RFC. Write the ticket and move on.</conclusion>
+    </branch>
+    <branch when="shared_surface == true">
+      <question id="q-size">Does the estimated span from first milestone to ship exceed 6 weeks?</question>
+      <branch when="span_weeks &gt; 6">
+        <conclusion ref="r-scope-fits-one-cycle-with-milestones">Split into separately shippable RFCs of at most 6 weeks each, with at least two dated demonstrable increments per RFC, before any review.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="span_weeks &lt;= 6">
+        <question id="q-problem">Does the problem statement carry a measured current value, a target and a date, with no solution named in it?</question>
+        <branch when="problem_measurable == false">
+          <conclusion ref="r-problem-states-metric-and-target">Rewrite the problem with the metric, target and date; move any named technology into `options`.</conclusion>
+        </branch>
+        <branch when="problem_measurable == true">
+          <question id="q-rollback">Is there a named rollback mechanism with a time, an executor and a staging run, and is every irreversible step marked as a point of no return?</question>
+          <branch when="rollback_complete == false">
+            <conclusion ref="r-rollback-named-timed-and-tested">Complete the rollback entry and exercise it in staging before naming reviewers; an RFC without a tested rollback is not ready for review.</conclusion>
+          </branch>
+          <branch when="rollback_complete == true">
+            <conclusion ref="run-the-checklist">Run the full RFC: two or more options with rejection reasons, enumerated blast radius, reviewers from the blast radius with a comment deadline, status and decided_on, outcome review re-measuring the problem metric.</conclusion>
+          </branch>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="checkout-p95-latency">
+      <p>Change touches `checkout-service`, the shared `orders` table and the mobile API (18% of traffic). Span 5 weeks. Problem: "checkout p95 2.4 s, target 1.2 s by 2026-07-15". Rollback: flag `checkout_v2` off in under 1 minute, executed by on-call, staging run cited; backfill marked as point of no return with a row-count check → conclusion run-the-checklist; reviewers `swe:alice` (orders owner), `mobile:dmytro`, deadline 2026-06-05.</p>
     </example>
   </decision-tree>
 </text>

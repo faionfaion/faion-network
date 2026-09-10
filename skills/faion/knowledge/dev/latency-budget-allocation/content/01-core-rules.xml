@@ -1,46 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Latency Budget Allocation Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of Latency Budget Allocation must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
-  <section title="The rules">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every produced instance carries the full template field set. Optional fields are explicitly marked 'N/A' with a reason, never silently omitted.</statement>
-      <rationale source="Form-discipline research (Cooper, About Face, 2014)">silently-empty fields collapse into 'we forgot' and the artefact loses audit value.</rationale>
+<text id="01-core-rules" title="Latency Budget Allocation Core Rules" version="2.0.0" est_tokens="1800" depth="essential">
+  <summary>8 testable rules every latency budget allocation MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Rule set">
+
+    <rule id="r-total-budget-is-user-facing-slo" testable="true" depth="essential">
+      <statement>The end-to-end budget MUST be the user-facing latency SLO, stated as percentile + threshold + measurement point + window (e.g. "p95 of `checkout_request_duration` measured at the edge, 800 ms, rolling 28 days"). A budget measured at the load balancer while the SLO is measured in the client is rejected; the two measurement points MUST match or the difference MUST be allocated as its own hop.</statement>
+      <rationale source="Google SRE Workbook ch. 2 'Implementing SLOs' (specification vs. implementation of an SLI)">Teams meet an 800 ms server-side budget and still ship a 1.4 s experience because TLS, DNS and the CDN were never in anyone's column. Pinning the measurement point makes the budget the same number the user feels.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>The template is versioned (semver). Each filled instance records the template_version it used so downstream consumers can re-parse legacy artefacts.</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="r-percentiles-do-not-add" testable="true" depth="essential">
+      <statement>Per-hop budgets MUST NOT be validated by adding per-hop p95 values. The allocation MUST state its composition model (sequential hops: sum of budgets plus headroom is at most the total; the p95 of the sum is then verified against a measured end-to-end distribution, never computed from the parts) and MUST include the measurement that verifies it.</statement>
+      <rationale source="Dean and Barroso, 'The Tail at Scale', Communications of the ACM (2013); basic properties of order statistics">The sum of p95s is neither the p95 of the sum nor a bound on it. Allocations that add percentiles look tidy in a spreadsheet and are wrong in both directions: they over-constrain fast hops and let the real tail through. Only the end-to-end histogram can say whether the budget holds.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each instance carries a single named owner and a last_touched timestamp. Instances with no touch in N cycles are auto-archived, not silently rotted.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">un-owned artefacts metastasize and the operator stops trusting the whole library.</rationale>
+
+    <rule id="r-fan-out-tightens-child-percentile" testable="true" depth="essential">
+      <statement>For any stage that fans out to N parallel calls and waits for all of them, the artefact MUST record N and set the child budget at a stricter percentile than the stage's target, since the stage's tail is the slowest child's tail. The mitigation chosen (tighter child budget, hedged requests, or partial results after a deadline) MUST be named per fan-out stage.</statement>
+      <rationale source="Dean and Barroso, 'The Tail at Scale', Communications of the ACM (2013)">With 100 parallel backends each at a 1% chance of being slow, 63% of user requests hit at least one slow backend. A fan-out stage budgeted at the child's p95 is a stage that misses its budget most of the time; the paper's hedged-request and tied-request patterns exist for exactly this.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Every non-trivial field value is anchored to a verbatim citation from the source brief, transcript, ticket, or dashboard. No anchor → field is rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for code, architecture, release, performance">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable.</rationale>
+
+    <rule id="r-every-hop-named-and-measured" testable="true" depth="essential">
+      <statement>Every hop in the allocation MUST name the service, the metric that measures it (histogram name and labels), the measurement side (caller-side, so network time is included) and the owning team. A hop with no metric is not a hop; it is a guess.</statement>
+      <rationale source="Google SRE Workbook ch. 2 'Implementing SLOs'; widely established observability practice">A budget nobody can chart is a budget nobody will defend. Caller-side measurement matters because the 40 ms of connection setup and retries between two services belongs to someone, and server-side histograms never show it.</rationale>
     </rule>
+
+    <rule id="r-timeouts-and-retries-fit-the-hop" testable="true" depth="essential">
+      <statement>For every hop the artefact MUST list the client timeout and retry policy, and the worst case (timeout multiplied by attempts, plus backoff) MUST fit inside the hop's budget. Retries without a cap, and timeouts longer than the hop's budget, are forbidden. Deadlines MUST propagate downstream so a hop never works past a budget its caller has already blown.</statement>
+      <rationale source="Google SRE Book ch. 22 'Addressing Cascading Failures' (deadline propagation, retry amplification); gRPC deadlines documentation">A 300 ms hop with a 500 ms timeout and three retries is a 1.5 s hop on a bad day, and the bad day is the one the p95 measures. Propagated deadlines are what let the tail cut short instead of piling retries onto an already-slow dependency.</rationale>
+    </rule>
+
+    <rule id="r-histogram-buckets-at-budget-thresholds" testable="true" depth="essential">
+      <statement>For every hop, the latency histogram used for the SLO and the CI gate MUST have a bucket boundary at (or within 10% of) that hop's budget threshold. If the buckets cannot answer "is p95 under the budget", the artefact MUST include the bucket change as a prerequisite task.</statement>
+      <rationale source="Prometheus documentation, 'Histograms and summaries' (histogram_quantile interpolates within a bucket)">A 250 ms budget checked against buckets at 100 ms and 500 ms yields a p95 that is linear interpolation, not measurement: the gate passes and fails on noise. One boundary at the threshold turns the question into a count of requests above or below it.</rationale>
+    </rule>
+
+    <rule id="r-ci-gate-spec-is-executable" testable="true" depth="essential">
+      <statement>The CI gate spec MUST contain: the exact load or benchmark command, the environment it runs in, the minimum request count per run, the per-hop percentile threshold, and the action on failure (block merge, or warn with a named owner). Gates on mean latency are forbidden. A gate spec that cannot be run from the artefact alone is incomplete.</statement>
+      <rationale source="Google SRE Workbook ch. 2 'Implementing SLOs'; widely established performance-testing practice">"We check performance in CI" usually means someone eyeballs a mean over 50 requests. A p95 from 50 requests is two or three samples; the gate flaps, gets marked flaky and gets disabled. The spec's job is to make the gate reproducible enough that nobody can turn it off quietly.</rationale>
+    </rule>
+
+    <rule id="r-budget-reconciled-with-measured-p95" testable="true" depth="essential">
+      <statement>Every hop budget MUST be shown next to that hop's currently measured p95 over the SLO window. A hop budgeted below its measured p95 MUST carry a linked improvement ticket with an owner; a hop budgeted at more than twice its measured p95 MUST justify the slack. Headroom left unallocated MUST be listed as its own line, never silently absorbed.</statement>
+      <rationale source="Google SRE Workbook ch. 2 'Implementing SLOs' (start from measured performance); widely established capacity-planning practice">An allocation that ignores today's numbers is a wish list. Showing budget beside measurement exposes the hop that will break the gate on day one and the hop hoarding 400 ms it never uses; the reserve line is what keeps the next feature from stealing the margin unnoticed.</rationale>
+    </rule>
+
   </section>
-  <section title="Canonical examples">
-    <example type="good" title="Anchored application">
-      <code lang="text"><![CDATA[
-Trigger: Cost + latency budget BEFORE design freeze (role: role-software-architect)
-Artefact: structured output meeting the contract in content/02-output-contract.xml
-Evidence: >=1 verbatim citation per non-trivial field (URL, ticket id, transcript_id, metric snapshot)
-Decision: downstream consumer acts without re-deriving the reasoning
-]]></code>
-      <note>Demonstrates the closed loop the methodology creates — trigger to artefact to decision — with auditability at each step. Source rationale: performance-architecture exists but is generic. A 'latency budget' methodology splits end-to-end p95 across hops, marks each with an SLO, and produces a CI check. Pairs with reliability-architecture.</note>
-    </example>
-    <example type="bad" title="Un-anchored application">
-      <code lang="text"><![CDATA[
-Trigger: "we should do this thing"
-Artefact: prose paragraph, no schema
-Evidence: "industry best practice" with no source
-Decision: ambiguous — every reader interprets differently
-]]></code>
-      <note>Each ambiguity above is catalogued as a failure mode in content/03-failure-modes.xml. The methodology exists specifically to prevent this shape.</note>
-    </example>
-  </section>
-  <see-also>
-    <link path="content/02-output-contract.xml" />
-    <link path="content/03-failure-modes.xml" />
-  </see-also>
 </text>

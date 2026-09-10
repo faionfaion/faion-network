@@ -1,21 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="PR Mentoring Session Protocol Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="PR Mentoring Session Protocol Decision Tree" version="2.0.0" est_tokens="700">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-pr-with-review">Is there an open PR authored by the junior with at least one review comment from the senior on a specific diff line?</root-question>
+    <branch when="pr_with_line_comment == false">
+      <conclusion ref="skip-this-methodology">Skip: without a PR and a line-level comment there is nothing to mentor on. Wait for the next PR or run an ordinary review.</conclusion>
+    </branch>
+    <branch when="pr_with_line_comment == true">
+      <question id="q-goal">Is there exactly one learning goal for this session, phrased as an observable code behaviour?</question>
+      <branch when="learning_goal == 'missing_or_multiple'">
+        <conclusion ref="r-one-observable-learning-goal">Pick one goal in observable terms before commenting further; park the others for later sessions.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="learning_goal == 'single_observable'">
+        <question id="q-gap-anchor">Can the observed gap be pointed at a specific diff line or comment URL, describing what the code did versus what it should do?</question>
+        <branch when="gap_has_line_url == false">
+          <conclusion ref="r-observed-gap-cites-diff-line">Rewrite the gap as a code behaviour with a line anchor; a trait description is rejected.</conclusion>
+        </branch>
+        <branch when="gap_has_line_url == true">
+          <question id="q-prior">Does a prior session record exist for this junior with a named follow-up action?</question>
+          <branch when="prior_record == 'exists_not_demonstrated'">
+            <conclusion ref="r-progression-linked-to-prior-session">Link the prior record, set `prior_action_status`, and if this is the third `not-demonstrated` in a row change the intervention and escalate in `decision`.</conclusion>
+          </branch>
+          <branch when="prior_record == 'exists_demonstrated' or prior_record == 'none'">
+            <conclusion ref="run-the-checklist">Run the full session: labelled comments with counts, junior restates and writes the fix, deferred findings parked, follow-up named as a next PR, record shared with the junior.</conclusion>
+          </branch>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="idempotent-migration-second-session">
+      <p>PR #412 by `swe:bohdan`, senior comment on `migrations/0042.py#L18` (non-idempotent `ALTER`). Goal: "writes migrations safe to re-run". Prior record exists, follow-up PR #398 showed the same gap → `prior_action_status: not-demonstrated` (second time) → conclusion r-progression-linked-to-prior-session; decision names a 30-minute pairing exercise before PR #420.</p>
     </example>
   </decision-tree>
 </text>

@@ -1,24 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Pr Pattern Mining For Feedback Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="Pr Pattern Mining For Feedback Decision Tree" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>Routing tree mapping observable corpus signals (PR count, recurrence, formatter coverage, prior report) to a rule from `content/01-core-rules.xml`. Every leaf names a concrete rule id, `run-the-checklist`, or `skip-this-methodology` when the sample cannot support a report.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Does the input satisfy this methodology's preconditions (trigger present + named consumer + source-of-truth accessible)?</root-question>
-    <branch when="preconditions == satisfied">
-      <question id="q-scope">Is the case in-scope for pr-pattern-mining-for-feedback (matches Applies-If, no Skip-If matches)?</question>
-      <branch when="scope == in_scope">
-        <conclusion ref="r1-explicit-trigger" verdict="apply rule r1-explicit-trigger from content/01-core-rules.xml; run the procedure"/>
-      </branch>
-      <branch when="scope == out_of_scope">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: case is out of scope; do not produce an artefact"/>
-      </branch>
+    <root-question id="q-corpus-size">Does the mined window contain at least 20 merged PRs and 100 review comments, fetched by a stated query?</root-question>
+    <branch when="corpus_sufficient == false">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: label the corpus insufficient-sample, record observations only, and widen the window or wait a cycle before suggesting rules"/>
     </branch>
-    <branch when="preconditions == not_satisfied">
-      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: preconditions not met; resolve inputs before re-running"/>
+    <branch when="corpus_sufficient == true">
+      <question id="q-recurrence">Does any candidate finding recur in at least 3 distinct PRs from at least 2 distinct reviewers?</question>
+      <branch when="recurring_patterns == 0">
+        <conclusion ref="r-pattern-requires-recurrence" verdict="report 'no recurring pattern' with the single-occurrence list and comment URLs; do not suggest rules"/>
+      </branch>
+      <branch when="recurring_patterns &gt; 0">
+        <question id="q-formatter">Are the most frequent recurring comments enforceable by a formatter or linter already available for the language?</question>
+        <branch when="formatter_coverable == majority">
+          <conclusion ref="r-formatter-covered-comments-excluded" verdict="collapse them into one automation-gap item naming the tool config change; re-rank the remainder by frequency times round-trips"/>
+        </branch>
+        <branch when="formatter_coverable == minority">
+          <question id="q-prior-report">Does a prior report exist for the same scope and query?</question>
+          <branch when="prior_report == exists">
+            <conclusion ref="r-baseline-and-remeasure-per-pattern" verdict="compute the delta per pattern against the prior baseline; mark rules with no drop after two cycles ineffective before adding new ones"/>
+          </branch>
+          <branch when="prior_report == none">
+            <conclusion ref="run-the-checklist" verdict="run the full report: corpus statement, patterns as code behaviour with examples, top-5 ranked by frequency times cost, enforcement channel per rule, scope declared, baseline and re-measure date set"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="primary-path">
-    Observable: preconditions == satisfied AND scope == in_scope → conclusion: r1-explicit-trigger → run the procedure in content/04-procedure.xml.
+  <example trace="backend-team-q2-window">
+    Observable: 64 merged PRs, 412 review comments, 2026-04-01..2026-06-30, query `gh api graphql` saved in the report → 3 recurring patterns (missing `timeout=` on `requests` calls, 11 PRs, 4 reviewers; tests asserting status code only, 7 PRs, 3 reviewers; N+1 query in list endpoints, 5 PRs, 2 reviewers); import-order comments (38) collapsed into one `ruff` I001 automation-gap; no prior report → conclusion: run-the-checklist.
   </example>
 </text>

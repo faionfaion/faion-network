@@ -1,21 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Architectural Impact PR Ranking Decision Tree" version="1.1.0" est_tokens="400">
+<text id="06-decision-tree" title="Architectural Impact PR Ranking Decision Tree" version="2.0.0" est_tokens="700">
   <decision-tree>
-    <root-question id="q-preconditions">Do the inputs satisfy the preconditions in `## Applies If` (named trigger + named owner + typed inputs)?</root-question>
-    <branch when="preconditions_satisfied == true">
-      <question id="q-materiality">Is the trigger's blast radius above the methodology's materiality threshold (e.g. production-affecting, customer-visible, regulator-relevant)?</question>
-      <branch when="materiality == 'high'">
-        <conclusion ref="r2-bounded-output">Produce the full artefact per `02-output-contract.xml` with every section filled, evidence anchored, owner assigned, review scheduled.</conclusion>
+    <root-question id="q-session-and-population">Is there a time-boxed architecture review session with a fixed slot, and a defined PR population (repositories plus a window of opened or merged timestamps) to rank for it?</root-question>
+    <branch when="session_and_population_defined == false">
+      <conclusion ref="skip-this-methodology">Skip. Without a time-box and a population there is nothing to rank against; set up the session and the repo list first.</conclusion>
+    </branch>
+    <branch when="session_and_population_defined == true">
+      <question id="q-signals-from-diff">Are all score signals computed from the diff, file list, manifests and contract paths, with no PR title, label, author or description in the formula?</question>
+      <branch when="signals_from_diff == false">
+        <conclusion ref="r-signals-from-diff-not-metadata">Rewrite the scorer to read `git diff --name-status`, manifests and the contract path list; drop every metadata term from the formula.</conclusion>
       </branch>
-      <branch when="materiality == 'low'">
-        <conclusion ref="r4-named-owner">Produce the minimal-record fallback — owner, trigger, decision, evidence, review — and skip optional narrative sections. Still committed, still reviewable.</conclusion>
+      <branch when="signals_from_diff == true">
+        <question id="q-api-list-and-fit">Is the public API path list committed per repository, and does the summed read estimate of the top N fit the session's time-box?</question>
+        <branch when="public_api_list_committed == false">
+          <conclusion ref="r-public-api-surface-enumerated-per-repo">Commit the per-repo list of schema, migration, export and event paths; until then the report prints "no API surface list" for that repo.</conclusion>
+        </branch>
+        <branch when="public_api_list_committed == true and top_n_fits_session == false">
+          <conclusion ref="r-top-n-fits-the-session">Print line counts and read estimates, cut N to the time-box, and list the remainder as deferred with their scores.</conclusion>
+        </branch>
+        <branch when="public_api_list_committed == true and top_n_fits_session == true">
+          <conclusion ref="run-the-checklist">Run the full procedure: published weights, dependency kinds, window and exclusion reconciliation, merged-without-review section, hit or miss record; emit the report per the output contract.</conclusion>
+        </branch>
       </branch>
     </branch>
-    <branch when="preconditions_satisfied == false">
-      <conclusion ref="r1-explicit-trigger">Skip this methodology. Route the work back to the upstream queue (trigger refinement, owner assignment, observability fix) before reapplying.</conclusion>
-    </branch>
-    <example trace="quarterly-billing-review">
-      <p>Trigger fired (quarterly cadence), owner resolved (`arch:alice`), inputs typed — preconditions satisfied. Blast radius is production-affecting → full-artefact branch → conclusion r2.</p>
+    <example trace="monday-review-week-37">
+      <p>Session is Monday 10:00, 45 minutes; population is three repos, PRs opened or merged in the last seven days. Scorer uses file lists and manifests. Repo `payments` has no committed public API path list → conclusion r-public-api-surface-enumerated-per-repo; the report ships with "no API surface list" for `payments` until the list lands.</p>
     </example>
   </decision-tree>
 </text>

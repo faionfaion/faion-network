@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="CLAUDE.md Creation — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `claude-md-creation` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="CLAUDE.md Creation Core Rules" version="2.0.0" est_tokens="2000" depth="essential">
+  <summary>8 testable rules every CLAUDE.md project brief MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-claude-md-no-secrets" testable="true" depth="essential">
+      <statement>The committed CLAUDE.md and every file it imports with `@path` MUST NOT contain a credential, API key, token, connection string with a password, or private hostname. Reference the secret by its environment-variable or vault-item name (`DATABASE_URL`, 1Password item `prod-db`) instead. A secret scanner (gitleaks or trufflehog) MUST run on the file in CI and pre-commit.</statement>
+      <rationale source="Anthropic Claude Code documentation (project memory files are checked into version control); OWASP Secrets Management Cheat Sheet">A project-level CLAUDE.md is committed to git and injected into the model context of every session on every clone, including forks and CI runners. A connection string pasted "so Claude can run the migration" is now in git history, in every developer's prompt, and in any transcript that gets shared. Rotating it later does not remove it from history.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-claude-md-commands-verbatim" testable="true" depth="essential">
+      <statement>Every build, test, lint and run command in CLAUDE.md MUST be a verbatim copy-pasteable invocation (`npm run test -- --watch src/billing`, `make lint`), never a description ("run the tests"). Each command MUST execute with exit code 0 on a fresh clone at the commit that adds it.</statement>
+      <rationale source="Anthropic engineering post 'Claude Code: Best practices for agentic coding' (2025); Anthropic Claude Code documentation on CLAUDE.md contents">The single highest-value content in a CLAUDE.md is the exact command set, because the agent otherwise discovers it by trial and error every session. "Run the tests" leads to `pytest` in a repo whose tests need `poetry run pytest -m "not slow"`, and the agent reports green after running nothing. A command that does not run on a fresh clone teaches the agent to distrust the whole file.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-claude-md-line-budget" testable="true" depth="essential">
+      <statement>The root CLAUDE.md MUST declare a numeric line budget in its first comment (a workable default is 100 lines) and MUST fit within it; a CI check fails the build when `wc -l` exceeds the budget. Anything past the budget moves to a file loaded on demand (an `@`-import or a subdirectory CLAUDE.md), not into the root.</statement>
+      <rationale source="Anthropic Claude Code documentation (memory files are loaded into context at session start); Anthropic 'Claude Code: Best practices' guidance to keep CLAUDE.md concise">The root file is prepended to every prompt of every session, so each line is paid for thousands of times. A 600-line brief costs more tokens per session than most tasks, and the instructions that matter (the three commands and the two hard prohibitions) get buried under architecture prose the agent skims. A numeric budget is the only limit a reviewer can enforce without arguing.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-claude-md-import-not-paste" testable="true" depth="essential">
+      <statement>Content that already lives in the repository (README sections, CONTRIBUTING, ADRs, a style guide) MUST be referenced with an `@path/to/file` import, never pasted. The import chain MUST stay within Claude Code's documented recursion limit (5 hops); a file that would exceed it is linked as a plain path with a one-line description instead.</statement>
+      <rationale source="Anthropic Claude Code documentation, section on managing Claude memory (CLAUDE.md imports, max depth 5 hops)">Pasted copies drift: the README changes, the CLAUDE.md copy does not, and the agent now follows the stale one because it arrived first in context. An import has one source of truth and is refreshed on every load. Imports past the recursion limit are silently not loaded, so the agent believes it has instructions it never read.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-claude-md-personal-goes-local" testable="true" depth="essential">
+      <statement>Machine-specific paths, personal preferences, local ports and individual workflow habits MUST go in `CLAUDE.local.md` (gitignored) or the user-level `~/.claude/CLAUDE.md`, never in the committed project file. The committed file MUST contain only what applies to every contributor on every machine.</statement>
+      <rationale source="Anthropic Claude Code documentation, section on managing Claude memory (project vs local vs user memory scopes)">`/Users/alice/work/repo/.venv/bin/python` in the shared file breaks for everyone else and the agent keeps trying it. Worse, a preference like "always squash commits" committed by one developer becomes silent team policy nobody agreed to. The scope split exists exactly so the shared file stays true for all readers.</rationale>
     </rule>
+
+    <rule id="r-claude-md-subdir-scoping" testable="true" depth="essential">
+      <statement>In a repository with more than one deployable package or service, conventions that apply to only one area MUST live in that area's own `&lt;subdir&gt;/CLAUDE.md`, which Claude Code loads when it works on files under that directory. The root file MUST NOT contain per-package build commands or per-package style rules.</statement>
+      <rationale source="Anthropic Claude Code documentation (subdirectory CLAUDE.md files are loaded on demand when working in that subtree)">A monorepo root that lists `cd api &amp;&amp; poetry run pytest`, `cd web &amp;&amp; pnpm test` and `cd infra &amp;&amp; terraform validate` pays for all three in every session and still leaves the agent guessing which applies. Scoped files put the right commands in context only when the agent is in the right place, and keep the root inside its line budget.</rationale>
+    </rule>
+
+    <rule id="r-claude-md-prohibitions-argued" testable="true" depth="essential">
+      <statement>Every "do not" or "never" entry MUST state in the same line what goes wrong when it is violated (`never edit /srv/app directly: it is the deploy target, the repo is the source`). Emphasis markers (`IMPORTANT`, `YOU MUST`) are reserved for prohibitions whose violation is irreversible or costly; a file in which more than one line in four carries emphasis fails review.</statement>
+      <rationale source="Anthropic 'Claude Code: Best practices for agentic coding' (emphasis improves adherence to specific instructions); widely established practice in style-guide authoring">A bare prohibition is followed only until it conflicts with the task, at which point the agent reasons its way around it. A prohibition with its consequence attached is a constraint the model can weigh. Emphasis works because it is rare; a file where everything is IMPORTANT has no signal left for the one rule that actually is.</rationale>
+    </rule>
+
+    <rule id="r-claude-md-refs-exist" testable="true" depth="essential">
+      <statement>Every file path, directory, script name and `@`-import referenced in CLAUDE.md MUST exist in the repository at the same commit. A CI check MUST extract the referenced paths and fail when any is missing; the CLAUDE.md MUST be updated in the same pull request that renames or removes a referenced file.</statement>
+      <rationale source="widely established practice in documentation-as-code; Anthropic guidance to iterate on CLAUDE.md as the project evolves">Stale prose is the documented failure mode of project briefs: `scripts/deploy.sh` was renamed two sprints ago, the file still says to run it, and the agent either fails or writes a replacement from scratch. A path-existence check is cheap, deterministic, and catches the drift in the PR that causes it instead of in the session that suffers it.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="LLM-Friendly Architecture (Software Developer) — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every application of `llm-friendly-architecture` must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="LLM-Friendly Architecture (Software Developer) Core Rules" version="2.0.0" est_tokens="1750" depth="essential">
+  <summary>8 testable rules every LLM-friendly architecture audit MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
-  <section title="Rules">
-    <rule id="r1-explicit-trigger" testable="true" depth="essential">
-      <statement>The methodology fires on a named trigger (event, threshold, schedule). Vague triggers ('when needed') are rejected.</statement>
-      <rationale source="Operating-system / cron design patterns; trigger-action behavioural research">Methodologies without explicit triggers either fire constantly or never. A named trigger makes the cadence enforceable and lets reviewers audit whether the trigger actually fired.</rationale>
+  <section title="Rule set">
+
+    <rule id="r-file-size-histogram-with-threshold" testable="true" depth="essential">
+      <statement>The audit MUST report a line-count histogram over all source files and list every file above the line limit, sorted by size, each with a proposed split. The limit MUST be recorded in the artefact as an `inputs[]` entry `line_limit`; the default is 250 lines (the value `templates/llm-arch-audit.sh` uses) and it MUST NOT exceed 300. The decision names the specific files to split, never "reduce file sizes".</statement>
+      <rationale source="Methodology rubric (100-300 LOC per file); templates/llm-arch-audit.sh; widely established practice for agent-edited codebases">A 1,400-line component is where AI edits go wrong: the model reads the top, edits the middle and breaks the bottom it never saw. The histogram turns "our files are big" into a ranked list, and the recorded limit is what makes next quarter's audit comparable to this one.</rationale>
     </rule>
 
-    <rule id="r2-bounded-output" testable="true" depth="essential">
-      <statement>Output shape is fixed by `content/02-output-contract.xml` (JSON Schema). Free-form output is rejected at review.</statement>
-      <rationale source="Output-contract practice; methodology-design heuristics">Methodologies produce reusable assets only when their output is shaped. Free-form output is one-off and dies on completion.</rationale>
+    <rule id="r-directory-depth-cap" testable="true" depth="essential">
+      <statement>No source path MAY sit deeper than 3 directory levels below the source root (`src/a/b/c/file.ts` is the deepest allowed); feature folders are capped at 2 levels. The audit MUST list every violating path with its depth.</statement>
+      <rationale source="Methodology rubric (at most 3 directory levels); templates/claude-md-project.md structure section">Every extra level is another `ls` an agent has to spend context on before it can find the file, and another place a parallel `utils/` grows. Flat trees are what let a model guess the right path from the name.</rationale>
     </rule>
 
-    <rule id="r3-evidence-anchored" testable="true" depth="essential">
-      <statement>Every conclusion ties to evidence (data link, ticket, transcript, commit hash). Unevidenced conclusions are demoted to hypotheses.</statement>
-      <rationale source="Evidence-based delivery; validated-learning discipline">Without evidence, the artefact decays into folklore the moment the author rotates off. Evidence links are the cheapest mechanism that keeps the artefact reviewable months later.</rationale>
+    <rule id="r-no-barrel-reexports" testable="true" depth="essential">
+      <statement>Barrel files (`export * from`, `index.ts` that only re-exports) are forbidden. The audit MUST list every barrel file found (the `llm-arch-audit.sh` barrel section) and imports MUST point at the module that defines the symbol.</statement>
+      <rationale source="templates/llm-arch-audit.sh (barrel re-export detection); Next.js documentation on `optimizePackageImports` and barrel-file cost">A barrel hides where a symbol lives, so the agent opens `index.ts`, finds nothing, and either guesses or greps the whole tree. Bundlers dislike them for the same reason: `export *` defeats tree-shaking and makes every consumer pull the whole directory.</rationale>
     </rule>
 
-    <rule id="r4-named-owner" testable="true" depth="essential">
-      <statement>Every artefact instance has a named owner (`role:handle`) accountable for the next-step actions. Outputs without owners are tagged stale at the next cadence.</statement>
-      <rationale source="RACI practice; accountability literature (Wiseman, Multipliers)">Anonymous outputs do not produce change. The owner is the cheapest mechanism that connects artefact to behaviour and reviewable consequences.</rationale>
+    <rule id="r-explicit-imports-no-wildcards" testable="true" depth="essential">
+      <statement>Wildcard imports are forbidden: `from x import *` in Python, `import * as` and namespace imports in TypeScript except for a documented allow-list. The audit MUST run an import lint (Ruff `F403`/`F405` for Python; `eslint-plugin-import` `import/no-namespace` or an equivalent rule for TypeScript) and list every hit.</statement>
+      <rationale source="Ruff rule documentation (F403, F405); eslint-plugin-import rule documentation (no-namespace); methodology rubric (explicit imports)">A star import means the name the agent is about to use may or may not exist, and the only way to know is to open the other file. Explicit imports make every file self-describing in its first 20 lines, which is the part the model reads most carefully.</rationale>
     </rule>
 
-    <rule id="r5-iteration-loop" testable="true" depth="essential">
-      <statement>The methodology is reviewed against outcomes at a published cadence (monthly or quarterly). Methodologies that produce no measurable change are deprecated.</statement>
-      <rationale source="Continuous-improvement practice (Deming PDCA); OKR retros">Methodologies without an outcome review become folklore. The review loop is what keeps them honest and what gives the team the right to deprecate them when they stop earning their keep.</rationale>
+    <rule id="r-naming-clarity-score-lists-offenders" testable="true" depth="essential">
+      <statement>The naming-clarity score MUST be computed from a stated rubric (file name matches its primary export; kind-specific casing: PascalCase components, `use-*` hooks, kebab-case utils; no catch-all names such as `utils2`, `misc`, `helpers`, `common`, `stuff`; no unexplained abbreviations) and the audit MUST list the offending files, not only the score.</statement>
+      <rationale source="Martin, Clean Code (2008), ch. 2 'Meaningful Names'; templates/claude-md-project.md conventions section">A score of 71/100 is not actionable; `helpers2.ts` is. Names are the only index an agent has before it reads a file, so `format-currency.ts` finds the right place in one guess and `utils.ts` in six.</rationale>
     </rule>
+
+    <rule id="r-static-data-extracted-from-components" testable="true" depth="essential">
+      <statement>Static literal data (arrays or objects of constants, copy, config tables) MUST live in `src/data/` (or the project's declared equivalent), never inline in components or route files. Route entry points stay orchestrators of roughly 30 to 50 lines. The audit MUST list components carrying inline data blocks.</statement>
+      <rationale source="templates/claude-md-project.md (data extracted to src/data/, pages as orchestrators)">A 200-line array of menu items inside a component eats the file's line budget and the model's attention on every edit to the rendering logic. Moving data out is the cheapest split there is: it needs no refactor of behaviour and removes the largest block from the file.</rationale>
+    </rule>
+
+    <rule id="r-claude-md-matches-audit" testable="true" depth="essential">
+      <statement>A project `CLAUDE.md` (from `templates/claude-md-project.md`) MUST exist at the repo root and state the commands, the directory structure and the conventions the audit checks. The line limit written in `CLAUDE.md` MUST equal the `line_limit` used by the audit; a mismatch fails the audit.</statement>
+      <rationale source="Anthropic, 'Claude Code: Best practices for agentic coding' (CLAUDE.md as the project's standing instructions); methodology template claude-md-project.md">The audit finds the violations; `CLAUDE.md` is what stops the agent from creating new ones tomorrow. When the two disagree (audit says 250, `CLAUDE.md` says 400) the model follows the file it reads on every session, and the audit becomes a quarterly complaint.</rationale>
+    </rule>
+
+    <rule id="r-audit-is-reproducible-command" testable="true" depth="essential">
+      <statement>The audit MUST be produced by a committed script (`templates/llm-arch-audit.sh` or the project's equivalent) and the artefact's `evidence[]` MUST include the command run and the commit SHA it ran against. A hand-curated list of "big files" is rejected. The same command MUST run in CI on every pull request once the baseline is clean.</statement>
+      <rationale source="Widely established practice for lint-style checks; templates/llm-arch-audit.sh">A one-off audit is a snapshot nobody reruns; three months later the files are back to 900 lines and the audit says everything is fine because nobody updated it. Pinning the command and SHA makes the audit a diff between two known states instead of an opinion.</rationale>
+    </rule>
+
   </section>
-
-  <see-also>
-    <link path="content/02-output-contract.xml"/>
-    <link path="content/03-failure-modes.xml"/>
-    <link path="content/06-decision-tree.xml"/>
-  </see-also>
 </text>

@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: numeric RPO/RTO per tier, pattern from RPO/RTO and cost, DNS TTL and health check, DB replication mode and promotion, object-store replication verified, region-scoped dependencies, live drill with measured results, failback procedure | ~2000 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
