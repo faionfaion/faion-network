@@ -1,38 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Activation Framework Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Activation Framework. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Activation Framework Core Rules" version="2.0.0" est_tokens="1700" depth="essential">
+  <summary>8 testable rules every Activation Framework application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Activation Framework, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="reforge.com — activation programs">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-single-activation-event-with-window" testable="true" depth="essential">
+      <statement>The spec MUST name exactly one activation event, written as a tracked product event name plus a time window from signup (e.g. `project_created` within 7 days). Phrases such as "user is engaged", "sees value" or a list of several events are not an activation event and MUST be rejected.</statement>
+      <rationale source="Sean Ellis and Morgan Brown, Hacking Growth (2017), chapter on the aha moment; Facebook's '7 friends in 10 days' as reported by Chamath Palihapitiya">A definition without an event name cannot be queried, so every downstream number (baseline, funnel, experiment lift) is computed against a different reading of "activated". The window matters as much as the event: `project_created` at day 60 says nothing about onboarding.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-event-validated-against-d30-retention" testable="true" depth="essential">
+      <statement>The chosen event MUST be backed by a comparison table showing D30 retention for users who performed the candidate event inside the window versus users who did not, with both rates and both group sizes, on at least one closed signup cohort. A candidate whose retained group is not materially larger than the non-retained group MUST NOT be selected. The table MUST carry the note that the relationship is correlational.</statement>
+      <rationale source="Amplitude, 'Mastering Retention' playbook; Alistair Croll and Benjamin Yoskovitz, Lean Analytics (2013)">Teams routinely pick the event that is easiest to push users into rather than the one that predicts retention, then celebrate a rising activation rate while D30 stays flat. Recording both rates and sizes lets a reviewer see a 5-user "lift" for what it is, and the correlational note stops the spec from promising that forcing the event will create retention.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-baseline-before-experiments" testable="true" depth="essential">
+      <statement>The spec MUST state a baseline activation rate computed per signup-week cohort for at least four consecutive closed cohorts before any experiment is listed. A cohort is closed only when signup date plus the activation window is earlier than the data cutoff; open cohorts MUST NOT be included in the baseline.</statement>
+      <rationale source="Lean Analytics (Croll and Yoskovitz), cohort analysis; widely established growth-analytics practice">One week of data is noise, and an open cohort under-reports activation because its users have not had the full window yet. Both errors produce a baseline that a later experiment "beats" without changing anything.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-funnel-steps-map-to-events" testable="true" depth="essential">
+      <statement>Every funnel step between signup and the activation event MUST be mapped to a named tracked event. A step with no event MUST be listed as `uninstrumented` with an instrumentation task, and no conversion or drop-off figure may be reported for it.</statement>
+      <rationale source="Hacking Growth (Ellis and Brown), instrumenting the funnel; Amplitude and Mixpanel funnel documentation">Funnel maps drawn from the UI rather than from events invent steps that no query can measure, and the drop-off "found" at those steps is guesswork that the experiment backlog then optimises against.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-dropoffs-ranked-by-absolute-loss" testable="true" depth="essential">
+      <statement>Drop-off priorities MUST be ranked by absolute users lost per step (users entering the step minus users completing it) over the baseline cohorts, with the relative drop shown alongside. Ranking by percentage alone is not permitted.</statement>
+      <rationale source="widely established funnel-analysis practice; Lean Analytics (Croll and Yoskovitz)">A 60 percent drop on a step 40 users reach loses 24 users; a 15 percent drop on a step 2,000 users reach loses 300. Percentage ranking sends the team to fix the smaller problem first.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Activation Framework; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+
+    <rule id="r-ice-integer-scale-and-formula" testable="true" depth="essential">
+      <statement>Every experiment in the backlog MUST carry Impact, Confidence and Ease as integers from 1 to 10 and an ICE score equal to their arithmetic mean rounded to two decimals, exactly as computed by `templates/ice.py`. The backlog MUST be sorted by ICE descending.</statement>
+      <rationale source="Sean Ellis, GrowthHackers ICE prioritisation; Hacking Growth (Ellis and Brown)">Mixed scales (one experiment scored 1-5, another 1-10) and ad-hoc weighting make the ranking unreproducible, so the backlog order becomes whoever argued loudest. A single formula in a script makes the order checkable.</rationale>
     </rule>
+
+    <rule id="r-experiment-names-step-metric-threshold" testable="true" depth="essential">
+      <statement>Each experiment MUST name the funnel step it targets, a one-sentence hypothesis, the primary metric (activation rate within the window, or the targeted step's conversion), the current baseline value, and the minimum lift at which it ships. An experiment missing any of these MUST NOT enter the backlog.</statement>
+      <rationale source="Hacking Growth (Ellis and Brown); widely established A/B testing practice">Without a pre-declared ship threshold, every result gets rationalised after the fact and the "winning" changes accumulate with zero net effect on activation. Tying each experiment to a step keeps the backlog aligned with the drop-off ranking instead of with feature wishes.</rationale>
+    </rule>
+
+    <rule id="r-dashboard-reports-closed-cohorts-weekly" testable="true" depth="essential">
+      <statement>The weekly activation dashboard specified MUST report activation rate per signup-week cohort, only for closed cohorts, segmented by acquisition channel, and MUST show the same window as the activation event definition. Changing the event or window MUST produce a new dashboard series, never an in-place edit of history.</statement>
+      <rationale source="widely established cohort-reporting practice; Amplitude retention documentation">Mixing a 7-day and a 14-day window on one chart, or plotting last week's cohort at day 3, produces the dip at the right edge that teams misread as a regression every single week.</rationale>
+    </rule>
+
   </section>
-  <section title="Sources">
-    <reference>reforge.com — activation programs</reference>
-    <reference>andrewchen.com — activation</reference>
-    <reference>Reichheld — Net Promoter / retention</reference>
-    <reference>Pendo / Appcues — onboarding analytics</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>

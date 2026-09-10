@@ -48,7 +48,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules + self-routing anchors (run-the-checklist + skip-this-methodology) | ~1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: retainer shape named, 1.3x hourly-equivalent floor, scope inclusions/exclusions and turnaround, term/notice/price review, invoiced in advance, hourly phase-out plan, capacity not oversold, 6-month outcome review | ~2450 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example | ~900 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | ~900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on preconditions → rule from `01-core-rules.xml` | ~500 |

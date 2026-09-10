@@ -1,37 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Activation Framework Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Activation Framework Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable activation-funnel signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-event-defined">Is there a tracked product event name plus a window in days that the team calls activation, and an event table it can be queried from?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="event_name_and_window == false">
+      <conclusion ref="r-single-activation-event-with-window" verdict="define one event and one window before anything else; if no event table exists at all, skip"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="event_table_missing == true">
+      <conclusion ref="skip-this-methodology" verdict="no event data to diagnose; route to instrumentation work first"/>
+    </branch>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+    <branch when="event_name_and_window == true">
+      <question id="q-d30-table">Does a table show D30 retention for users who did versus did not perform the event, with group sizes?</question>
+
+      <branch when="d30_comparison == false">
+        <conclusion ref="r-event-validated-against-d30-retention" verdict="build the comparison on a closed cohort before accepting the event"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="d30_comparison == true">
+        <question id="q-baseline">Is a baseline activation rate available for at least four closed signup-week cohorts?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="closed_cohorts &lt; 4">
+          <conclusion ref="r-baseline-before-experiments" verdict="wait for cohorts to close or extend the history; no experiments yet"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="closed_cohorts &gt;= 4">
+          <question id="q-funnel-mapped">Does every funnel step between signup and the event map to a tracked event?</question>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          <branch when="all_steps_instrumented == false">
+            <conclusion ref="r-funnel-steps-map-to-events" verdict="mark gaps uninstrumented, add instrumentation tasks, report no numbers for them"/>
           </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          <branch when="all_steps_instrumented == true">
+            <conclusion ref="r-ice-integer-scale-and-formula" verdict="rank drop-offs by absolute loss, score experiments with ice.py, emit the spec"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +43,6 @@
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    event_name_and_window=true -&gt; d30_comparison=true -&gt; closed_cohorts=6 -&gt; all_steps_instrumented=true -&gt; conclusion ref=r-ice-integer-scale-and-formula
   </example>
 </text>

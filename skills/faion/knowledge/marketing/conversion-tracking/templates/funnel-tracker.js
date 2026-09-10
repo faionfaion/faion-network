@@ -5,7 +5,7 @@
  *   const checkout = new FunnelTracker('checkout');
  *   checkout.trackStep(1, 'cart_view', { items_count: 2 });
  *   checkout.trackStep(2, 'shipping_info');
- *   checkout.trackCompletion(99.99, 'USD');
+ *   checkout.trackCompletion('ORD-1001', 99.99, 'USD'); // transaction_id first: required for dedup
  */
 class FunnelTracker {
   constructor(funnelName) {
@@ -31,20 +31,22 @@ class FunnelTracker {
     });
   }
 
-  trackCompletion(value = 0, currency = 'USD') {
+  trackCompletion(transactionId, value = 0, currency = 'USD') {
+    if (!transactionId) throw new Error('trackCompletion: transaction_id is required (see r-monetary-conversion-carries-transaction-id)');
     const totalTime = this.startTime
       ? Math.floor((Date.now() - this.startTime) / 1000)
       : 0;
 
     gtag('event', 'funnel_complete', {
       funnel_name: this.funnelName,
+      transaction_id: transactionId,
       value,
       currency,
       total_time_seconds: totalTime
     });
     plausible('Funnel Complete', {
       revenue: { currency, amount: value },
-      props: { funnel: this.funnelName, time_seconds: totalTime }
+      props: { funnel: this.funnelName, transaction_id: transactionId, time_seconds: totalTime }
     });
   }
 

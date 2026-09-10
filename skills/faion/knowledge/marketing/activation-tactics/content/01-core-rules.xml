@@ -1,38 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Activation Tactics Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Activation Tactics. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Activation Tactics Core Rules" version="2.0.0" est_tokens="1750" depth="essential">
+  <summary>8 testable rules every Activation Tactics application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Activation Tactics, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="reforge.com — onboarding tactics">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-tactic-targets-named-dropoff-step" testable="true" depth="essential">
+      <statement>Every tactic in the playbook step MUST name the funnel step it targets, that step's current conversion rate, and the activation event it is meant to move users toward. A tactic with no target step (e.g. "improve onboarding") MUST NOT be included.</statement>
+      <rationale source="Sean Ellis and Morgan Brown, Hacking Growth (2017); widely established growth practice">Tactics chosen from a list of what other products do land on steps that were never the problem. Binding each tactic to a measured drop-off keeps the work on the step where users are actually lost, and gives the baseline the success check needs.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-checklist-single-activation-item" testable="true" depth="essential">
+      <statement>An activation checklist MUST contain between three and five items, exactly one of which is flagged `activation_event: true`, and that item MUST be `required: true`. Every item MUST resolve either to a navigable `action` path or to a tracked event that checks it automatically; no item may require the user to tick it by hand.</statement>
+      <rationale source="Kivetz, Urminsky and Zheng, 'The Goal-Gradient Hypothesis Resurrected', Journal of Marketing Research (2006); widely established onboarding practice (Appcues, Userpilot guides)">Progress toward a visible goal accelerates effort, but only while the goal is short: a nine-item checklist reads as work and gets abandoned. Manually ticked items decouple the checklist from behaviour, so "completed" stops meaning "activated".</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-email-one-cta-direct-link" testable="true" depth="essential">
+      <statement>Each lifecycle email MUST contain exactly one call to action, and that link MUST land on the screen where the targeted action is performed, not on the home page or a login wall. The email body MUST state the expected time to complete the action.</statement>
+      <rationale source="widely established email-marketing practice; templates/email-sequence.md.j2">Two links split intent and the click that matters loses. A link that drops the user on the dashboard adds a navigation step to the very funnel the email exists to shorten, and re-creates the drop-off the tactic targets.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-email-sequence-suppressed-on-activation" testable="true" depth="essential">
+      <statement>Every email after Day 0 MUST carry a send-time condition `not activated`, evaluated against the activation event at the moment of sending, not at enrolment. The sequence MUST NOT exceed four sends inside the activation window, and the schedule (Day 0 / 1 / 3 / 7 in the template) MUST be stated per email.</statement>
+      <rationale source="widely established lifecycle-messaging practice; CAN-SPAM and GDPR expectations on relevance and frequency">"Quick win: do this in 5 minutes" sent to a user who did it yesterday is the message that earns the unsubscribe. Enrolment-time evaluation is the usual bug: the user is checked once, then receives all four emails regardless.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-segmented-onboarding-keyed-at-signup" testable="true" depth="essential">
+      <statement>Segmented onboarding MAY be used only when the segment key (use case, role, or plan) is captured at signup or from a source available before the first session. Each segment MUST name its own first action and MUST map to the same activation event unless the spec explicitly defines a per-segment event. Segments with no distinct first action MUST be merged.</statement>
+      <rationale source="Hacking Growth (Ellis and Brown); widely established onboarding practice for multi-persona products">A segment inferred from behaviour arrives after the drop-off it was meant to prevent. Segments that share a first action are a maintenance cost with no activation benefit, and per-segment events without a spec make the activation rate incomparable across segments.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Activation Tactics; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+
+    <rule id="r-in-app-guide-at-dropoff-only" testable="true" depth="essential">
+      <statement>Tooltips and in-app guides MUST be attached to the screen of the targeted drop-off step, at most one active guide per screen, dismissible in one click, and MUST NOT be shown again to a user who has completed the step. A guide MUST NOT be placed on a screen with no measured drop-off.</statement>
+      <rationale source="widely established product-tour practice (Appcues, Pendo, Userpilot documentation); Nielsen Norman Group guidance on instructional overlays">Guides accumulate: every team adds one, none removes one, and the new user's first screen becomes a stack of dismissals. Placing them only where users are measured to stall, and removing them once the step is done, keeps the guide a fix for a known problem rather than decoration.</rationale>
     </rule>
+
+    <rule id="r-exit-criterion-states-metric-and-threshold" testable="true" depth="essential">
+      <statement>The `exit_criterion` of the rollout step for every tactic MUST state the metric (target step conversion or activation rate within the window), its pre-tactic baseline value, and the minimum lift at which the tactic stays. A tactic whose exit criterion is "shipped" or "reviewed" MUST NOT be accepted.</statement>
+      <rationale source="Hacking Growth (Ellis and Brown); Ron Kohavi, Diane Tang and Ya Xu, Trustworthy Online Controlled Experiments (2020)">Without a pre-stated threshold every tactic is declared a success by whoever built it, and the onboarding flow accretes checklists, tooltips and emails that each "helped" while the activation rate never moved.</rationale>
+    </rule>
+
+    <rule id="r-one-tactic-per-step-at-a-time" testable="true" depth="essential">
+      <statement>Two tactics targeting the same funnel step MUST NOT run in the same period unless they are arms of one controlled experiment. The `decision_branches` MUST include a branch that defers a tactic when its step already has a live tactic.</statement>
+      <rationale source="Trustworthy Online Controlled Experiments (Kohavi, Tang and Xu); widely established experimentation practice">A checklist and a tooltip launched on the same step in the same week produce one number that cannot be attributed to either, so the losing tactic is kept forever alongside the winning one.</rationale>
+    </rule>
+
   </section>
-  <section title="Sources">
-    <reference>reforge.com — onboarding tactics</reference>
-    <reference>Userflow / Appcues — onboarding playbooks</reference>
-    <reference>Lifecycle email — Customer.io patterns</reference>
-    <reference>Reichheld — engagement loops</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>

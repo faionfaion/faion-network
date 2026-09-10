@@ -1,44 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Growth Referral Programs Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Growth Referral Programs Decision Tree" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>Routing tree mapping observable referral-programme signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-infrastructure">Can the landing page and lifecycle email infrastructure accept and persist a per-user referral parameter, and is there a measured NPS from the last 90 days?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="referral_param_infra == false">
+      <conclusion ref="skip-this-methodology" verdict="no way to attribute referrals; build the referral parameter path first"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="referral_param_infra == true AND (nps_measured_90d == false OR nps &lt; 30)">
+      <conclusion ref="r-nps-gate-30-before-launch" verdict="measure NPS on active users; do not launch below 30"/>
+    </branch>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+    <branch when="referral_param_infra == true AND nps_measured_90d == true AND nps &gt;= 30">
+      <question id="q-signals">Which programme-design signal fails on inspection of the spec, the landing page, the emails and the fraud guard?</question>
+
+      <branch when="trigger_event_named == false OR trigger_event == signup">
+        <conclusion ref="r-trigger-event-at-value-moment" verdict="fire the prompt on a named value event and record its reach"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="reward_released_on == signup">
+        <conclusion ref="r-reward-on-qualifying-event-not-signup" verdict="release rewards on a qualifying purchase or activation with a stated minimum"/>
+      </branch>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
-        </branch>
+      <branch when="double_sided == false OR reward_per_qualified_referee &gt; paid_cac">
+        <conclusion ref="r-double-sided-incentive-within-unit-economics" verdict="make it double-sided and show reward cost against CAC and margin"/>
+      </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+      <branch when="self_referral_matching == false OR reward_idempotency_key == false OR reward_hold == false">
+        <conclusion ref="r-fraud-guard-self-referral-and-idempotent-rewards" verdict="add self-referral matching, a reward hold and the idempotency tuple before launch"/>
+      </branch>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
-          </branch>
+      <branch when="k_invites &lt; 500 OR k_referrers &lt; 50 OR (k &lt; 1 AND described_as_viral == true)">
+        <conclusion ref="r-k-factor-computed-on-500-plus-invites" verdict="do not report K yet, or present it as a 1/(1-K) multiplier net of reward cost"/>
+      </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
-          </branch>
-        </branch>
+      <branch when="per_user_code == false OR attribution_persisted_server_side == false">
+        <conclusion ref="r-referral-attribution-server-side" verdict="issue per-user codes and persist the link at referee account creation"/>
+      </branch>
+
+      <branch when="announcement_at_trigger == false OR reminder_to_referrers == true OR confirmation_email == false">
+        <conclusion ref="r-lifecycle-sequence-trigger-reminder-confirmation" verdict="announcement at trigger, one reminder to zero-referral users only, confirmation to both sides"/>
+      </branch>
+
+      <branch when="disclosure_on_share == false OR terms_published == false">
+        <conclusion ref="r-incentive-disclosure-and-published-terms" verdict="disclose the reward on shared content and publish programme terms"/>
+      </branch>
+
+      <branch when="all_signals_pass == true">
+        <conclusion ref="run-the-checklist" verdict="emit the spec artefact; surface ready_for_review=true"/>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    referral_param_infra=true, nps=42 (measured 30 days ago) -&gt; trigger_event=first_successful_export, reward_released_on=first_paid_order, double_sided=true, reward_per_qualified_referee=40 vs paid_cac=95, self_referral_matching=true, reward_idempotency_key=true, k_invites=4200, k=0.74, per_user_code=true, confirmation_email=true, terms_published=true -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

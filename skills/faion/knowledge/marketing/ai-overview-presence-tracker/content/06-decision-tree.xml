@@ -1,37 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="AI Overview Presence Tracker Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="AI Overview Presence Tracker Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable AIO-tracking signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-adapter-and-set">Is a scrape adapter (SE Ranking or equivalent) returning AIO panels for the chosen country and device, and is there a query set of at least 20 queries mapped to target URLs?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="adapter_returns_aio == false">
+      <conclusion ref="skip-this-methodology" verdict="no AIO data source, or AIO not available in this market; nothing to track"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="adapter_returns_aio == true and query_count &lt; 20">
+      <conclusion ref="r-fixed-versioned-query-set" verdict="extend the set to 20 mapped queries before starting the window"/>
+    </branch>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+    <branch when="adapter_returns_aio == true and query_count &gt;= 20">
+      <question id="q-series-stable">Have country, language, device and logged-out state stayed fixed for every week in the window?</question>
+
+      <branch when="scrape_config_stable == false">
+        <conclusion ref="r-fixed-locale-device-logged-out" verdict="split into series at the change point; report only the current series"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="scrape_config_stable == true">
+        <question id="q-rows-typed">Does every row carry the seven fields, with failed scrapes recorded as missing rather than as absence?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="rows_complete == false">
+          <conclusion ref="r-per-query-row-fields" verdict="re-type the rows and mark failed weeks missing before computing rates"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="rows_complete == true">
+          <question id="q-window-length">Are 8 weeks observed for the current query-set version?</question>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          <branch when="weeks_observed &lt; 8">
+            <conclusion ref="r-report-metrics-presence-citation-position" verdict="publish weekly metrics only; no retrofit list until the window closes"/>
           </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          <branch when="weeks_observed &gt;= 8">
+            <conclusion ref="r-retrofit-priority-rule" verdict="publish metrics and the ranked retrofit list; findings state co-occurrence only"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +43,6 @@
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    adapter_returns_aio=true -&gt; query_count=24 -&gt; scrape_config_stable=true -&gt; rows_complete=true -&gt; weeks_observed=8 -&gt; conclusion ref=r-retrofit-priority-rule
   </example>
 </text>

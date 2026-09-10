@@ -1,44 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Google Analytics 4 Setup Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Google Analytics 4 Setup Decision Tree" version="2.0.0" est_tokens="1000" depth="essential">
+  <summary>Routing tree mapping observable GA4 property signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-scope">Is a GA4 property being created or reconfigured (data streams, key events, export, consent) for a site the team controls?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="ga4_property_in_scope == false">
+      <conclusion ref="skip-this-methodology" verdict="no property to configure; pick the conversion-tracking or reporting methodology instead"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="ga4_property_in_scope == true">
+      <question id="q-ids">Does the config record the numeric property id and each stream's G- measurement id as separate fields?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="property_id_numeric == false OR measurement_id_missing == true">
+        <conclusion ref="r-property-id-and-measurement-id-distinct" verdict="record both ids; fix any API call or snippet using the wrong one"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="property_id_numeric == true AND measurement_id_missing == false">
+        <question id="q-signals">Which property signal fails on inspection of the config, the snippet and the property admin?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="bigquery_linked == false OR retention_months &lt; 14">
+          <conclusion ref="r-bigquery-export-linked-before-launch" verdict="link the export now and set 14-month retention; it does not backfill"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="consent_scope == true AND consent_default_before_config == false">
+          <conclusion ref="r-consent-mode-v2-defaults-before-config" verdict="push the four v2 consent defaults before gtag config"/>
+        </branch>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
-          </branch>
+        <branch when="enhanced_measurement_declared == false OR spa_double_page_view == true">
+          <conclusion ref="r-enhanced-measurement-declared-no-double-page-view" verdict="declare every toggle; one page_view source only"/>
+        </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
-          </branch>
+        <branch when="unregistered_report_params &gt; 0 OR custom_dimensions_over_limit == true">
+          <conclusion ref="r-custom-dimensions-registered-within-limits" verdict="register dimensions with the right scope before sending; track slot usage"/>
+        </branch>
+
+        <branch when="key_event_name_mismatch == true OR key_events_over_limit == true">
+          <conclusion ref="r-key-events-declared-by-exact-name" verdict="mark key events by exact event name with a counting method"/>
+        </branch>
+
+        <branch when="purchase_event == true AND transaction_id_present == false">
+          <conclusion ref="r-purchase-transaction-id-dedup" verdict="add transaction_id, value, currency and items to purchase"/>
+        </branch>
+
+        <branch when="measurement_protocol_used == true AND client_id_from_cookie == false">
+          <conclusion ref="r-measurement-protocol-reuses-client-id" verdict="reuse the _ga client_id and session_id; keep api_secret server-side"/>
+        </branch>
+
+        <branch when="internal_filter_active == false OR payment_domains_excluded == false">
+          <conclusion ref="r-internal-traffic-referral-and-cross-domain" verdict="activate the internal filter; exclude payment and auth referrals; set cross-domain list"/>
+        </branch>
+
+        <branch when="all_signals_pass == true">
+          <conclusion ref="run-the-checklist" verdict="emit the config artefact; surface ready_for_review=true"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    ga4_property_in_scope=true -&gt; property_id_numeric=true, measurement_id_missing=false -&gt; bigquery_linked=true, retention_months=14, consent_default_before_config=true, transaction_id_present=true, client_id_from_cookie=true, payment_domains_excluded=true -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

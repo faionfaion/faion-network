@@ -1,38 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Internal Link Audit Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Internal Link Audit. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Internal Link Audit Core Rules" version="2.0.0" est_tokens="2450" depth="essential">
+  <summary>8 testable rules every Internal Link Audit application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Internal Link Audit, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="Google — internal linking guidelines">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-crawl-scope-reconciled" testable="true" depth="essential">
+      <statement>The audit MUST be based on a full crawl of the site's indexable HTML pages (HTTP 200, no noindex, self-canonical), run within the audit period, with the crawler and crawl date named in the report. The crawled page count MUST be reconciled against the XML sitemap and the CMS published-page count, and every discrepancy larger than 5 percent MUST be explained (blocked by robots.txt, paginated, JS-rendered, sitemap stale).</statement>
+      <rationale source="Screaming Frog SEO Spider documentation (crawl configuration, sitemap comparison); Google Search Central, robots.txt and JavaScript SEO guidance">An audit on a partial crawl reports false orphans and false hubs: a robots-blocked section shows every page inside it as unlinked, and a crawler that does not render JavaScript misses every link in a client-rendered menu. The sitemap reconciliation is the cheapest check that the graph being analysed is the graph Google sees.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-incoming-count-excludes-boilerplate" testable="true" depth="essential">
+      <statement>The per-page incoming-link count MUST count unique linking pages whose link sits in the main content area, with sitewide navigation, footer, sidebar and breadcrumb links reported in a separate column. Orphans, hubs and the rewire plan MUST be computed on the contextual count, never on the total.</statement>
+      <rationale source="Google Search Central, link best practices (descriptive, contextual anchor text); Screaming Frog link position classification (content vs navigation)">On a 400-page site with a 60-link footer, every page has at least 400 incoming links and the audit finds nothing. The contextual count is the one that varies between pages, and it is the one where a single added paragraph link is an actual change. Crawlers classify link position for exactly this reason.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-orphan-gets-a-decision" testable="true" depth="essential">
+      <statement>An orphan is an indexable page with zero contextual incoming links from other indexable pages; pages found only via the sitemap or analytics MUST be included in the orphan check. Every orphan in the report MUST carry exactly one decision: rewire (with the source page and anchor named), redirect (301 to the named target), or deindex (noindex or removal). "Leave as is" is not a permitted decision.</statement>
+      <rationale source="Screaming Frog SEO Spider, orphan pages (crawl plus sitemap plus analytics sources); Google Search Central, Google can discover pages through links from other pages">A page with no internal links is discoverable only through the sitemap, receives no internal signal, and typically stops being crawled regularly; it is also invisible to users. An audit that lists 38 orphans and assigns no decision produces the same 38 orphans next quarter, which is the failure mode this methodology exists to end.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-pillar-cluster-reciprocity" testable="true" depth="essential">
+      <statement>For every declared topic cluster the report MUST show a link matrix: each cluster page links to the pillar with a contextual link, and the pillar links to every cluster page. Every missing edge is a finding with a rewire item; a cluster whose pillar receives contextual links from fewer than 5 cluster pages MUST be flagged as structurally incomplete.</statement>
+      <rationale source="HubSpot, topic cluster model (pillar page plus cluster content, 2017); Search Engine Journal, topic clusters">The cluster only works as a structure if the graph actually encodes it; a "cluster" that exists in a content calendar but not in the link graph is a folder name. Missing pillar-to-cluster edges leave the pillar unable to pass relevance to the pages that answer the long-tail queries, and missing cluster-to-pillar edges leave the pillar competing with its own children.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-anchor-text-descriptive" testable="true" depth="essential">
+      <statement>For every target page in the rewire plan and every page in the top 20 by incoming links, the report MUST list the anchor-text distribution (anchor, count, share). Generic anchors ("click here", "read more", "this article", a raw URL) and image links with empty alt MUST be counted and flagged for replacement. The rewire plan MUST NOT use one identical exact-match anchor for every new link to a target; anchors vary in wording while staying descriptive of the target page.</statement>
+      <rationale source="Google Search Central, link best practices (write good anchor text; avoid generic text and raw URLs as anchors)">Anchor text is how the link tells the crawler and the reader what the target is about. "Read more" x 120 tells them nothing, and 120 copies of the same keyword phrase read as a template, not as editorial linking. The distribution table makes both failures visible in one glance.</rationale>
+    </rule>
+
+    <rule id="r-link-targets-final-url" testable="true" depth="essential">
+      <statement>Every internal link that resolves to a 3xx, 4xx or 5xx, to a noindex page, to a URL whose canonical points elsewhere, or that carries rel="nofollow", MUST be listed as a hygiene finding with source URL, current target and the final resolved URL. The rewire plan MUST point every new link at the final, indexable, self-canonical URL; adding a link to a redirecting URL is a defect.</statement>
+      <rationale source="Screaming Frog SEO Spider, response codes and canonical reports; Google Search Central, Evolving nofollow (September 2019: nofollow treated as a hint)">Redirect chains and links into 404s waste crawl budget and dilute the signal the audit is trying to concentrate; nofollow on internal links throws away the site's own equity for no reason. Sites that migrated URLs a year ago routinely still carry thousands of internal links to the old paths, and the audit is the only place where that count is seen.</rationale>
+    </rule>
+
+    <rule id="r-rewire-item-fully-specified" testable="true" depth="essential">
+      <statement>Every item in the rewire plan MUST specify: source URL, target URL, exact anchor text, placement (the paragraph or section where the link goes), the action (add, change anchor, remove, redirect) and a named person and due date. Items phrased as "add more links to X" or "strengthen the cluster" are rejected. The plan MUST NOT add links to any page already flagged as an over-linked hub.</statement>
+      <rationale source="Widely established practice in technical SEO audit delivery; Ahrefs and Sitebulb internal-link audit guides">The rewire plan is the only part of the audit that changes the site, and it is executed by an editor who did not read the analysis. An item that can be pasted into a CMS task gets done; an item that requires interpretation gets deferred to the next quarter, when the same audit is rerun and finds the same gaps.</rationale>
+    </rule>
+
+    <rule id="r-pre-post-search-console-baseline" testable="true" depth="essential">
+      <statement>Before any rewire item is executed the report MUST record, for every rewire target, a baseline from Google Search Console: clicks, impressions and average position over the 28 days before the audit period end, plus the contextual incoming count. The report MUST name the re-measurement date at least 8 weeks after the last rewire item's due date and the same three GSC metrics to be compared.</statement>
+      <rationale source="Google Search Console Help, Performance report (data available for 16 months); AGENTS.md prerequisite: pre/post metrics commitment documented">Without a pre-period baseline the post-period read is "position went up, probably the links", which is unfalsifiable. Search Console retains 16 months of performance data, so the baseline is free at audit time and irrecoverable if not captured before the change ships. Eight weeks is the minimum for recrawl and ranking movement to settle on most content sites.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when the crawl and cluster signals hold.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Internal Link Audit; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when the site is too small or no crawl is available.</rationale>
     </rule>
   </section>
+
   <section title="Sources">
-    <reference>Google — internal linking guidelines</reference>
-    <reference>Ahrefs / Sitebulb — internal link research</reference>
-    <reference>Screaming Frog — crawl docs</reference>
-    <reference>Search Engine Journal — topic clusters</reference>
+    <reference>Google Search Central, link best practices; Evolving nofollow (2019); JavaScript SEO</reference>
+    <reference>Google Search Console Help, Performance report</reference>
+    <reference>Screaming Frog SEO Spider documentation (orphan pages, link position, response codes, canonicals)</reference>
+    <reference>HubSpot, topic cluster model; Search Engine Journal, topic clusters</reference>
+    <reference>Ahrefs and Sitebulb internal-link audit guides</reference>
   </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>

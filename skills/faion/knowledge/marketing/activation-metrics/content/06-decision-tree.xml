@@ -1,37 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Activation Metrics Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Activation Metrics Decision Tree" version="2.0.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable activation-data signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-event-and-signups">Is there a named activation event with a window in days, and a signup table that gives the full denominator per cohort?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="activation_event_defined == false">
+      <conclusion ref="skip-this-methodology" verdict="no activation event to measure; run activation-framework first"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="signup_table_available == false">
+      <conclusion ref="r-activation-rate-denominator-is-signups" verdict="no rate can be computed without the full signup denominator; obtain it before reporting"/>
+    </branch>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+    <branch when="activation_event_defined == true and signup_table_available == true">
+      <question id="q-closed-cohorts">Does every cohort inside period_start..period_end satisfy signup_date + window &lt;= data cutoff?</question>
+
+      <branch when="open_cohorts_present == true">
+        <conclusion ref="r-one-fixed-window-closed-cohorts-only" verdict="move period_end back to the last closed cohort or mark the partial metric"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="open_cohorts_present == false">
+        <question id="q-channel">Is a first-touch acquisition channel available per signup?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="channel_attribution == false">
+          <conclusion ref="r-segment-by-acquisition-channel" verdict="report aggregate only and state in findings that channel segmentation is unavailable"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="channel_attribution == true">
+          <question id="q-d30-age">Is the oldest cohort at least 30 days old at the cutoff?</question>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          <branch when="cohort_age_days &lt; 30">
+            <conclusion ref="r-d30-lift-table-with-sizes" verdict="omit the D30 lift table; report activation rate, time-to-activation and funnel only"/>
           </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          <branch when="cohort_age_days &gt;= 30">
+            <conclusion ref="r-findings-cite-metric-and-period" verdict="produce the full report; every finding cites a metric name and its comparison period"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +43,6 @@
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    activation_event_defined=true -&gt; signup_table_available=true -&gt; open_cohorts_present=false -&gt; channel_attribution=true -&gt; cohort_age_days=45 -&gt; conclusion ref=r-findings-cite-metric-and-period
   </example>
 </text>

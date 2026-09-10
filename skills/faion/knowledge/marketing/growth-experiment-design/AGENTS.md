@@ -47,7 +47,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: falsifiable hypothesis with effect size, one primary metric plus guardrails, ICE before build, sample size before launch, fixed stop date and SRM check, flag-randomised control, instrumentation playback, write-up for every experiment | 2300 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |

@@ -1,44 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Content Refresh SOP Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Content Refresh SOP Decision Tree" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>Routing tree mapping observable content-refresh signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-eligible">Is the URL tagged evergreen AND is `url_age_months` at least 12?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="evergreen == false OR url_age_months &lt; 12">
+      <conclusion ref="skip-this-methodology" verdict="not eligible for the refresh matrix; leave out of the queue and record why"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="evergreen == true AND url_age_months &gt;= 12">
+      <question id="q-dataset">Does the URL row carry GSC (clicks, impressions, position), GA4 (landing-page sessions, key events) and rank-tracker position over the same trailing window and the prior window?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="dataset_sources &lt; 3 OR windows_mismatch == true">
+        <conclusion ref="r-one-dataset-gsc-ga4-rank" verdict="do not score; complete the dataset from a persisted export first"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="dataset_sources == 3 AND windows_match == true">
+        <question id="q-verdict">Which verdict do the thresholded signals (impressions trend, top-position decay, intent shift) produce?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="thresholds_recorded == false">
+          <conclusion ref="r-three-signals-with-thresholds" verdict="write the numeric thresholds into decision_branches before scoring"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="verdict == consolidate">
+          <conclusion ref="r-consolidate-301-to-survivor" verdict="name survivor URL, redirect map (301) and internal-link rewrite"/>
+        </branch>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
-          </branch>
+        <branch when="verdict == kill">
+          <conclusion ref="r-kill-returns-410-never-homepage" verdict="410, drop from sitemap and navigation; no homepage redirect"/>
+        </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
-          </branch>
+        <branch when="verdict == leave">
+          <conclusion ref="r-four-verdicts-exhaustive" verdict="record leave with reason and next-review date"/>
+        </branch>
+
+        <branch when="verdict == refresh AND (url_unchanged == false OR date_bump_only == true)">
+          <conclusion ref="r-refresh-keeps-url-honest-date" verdict="keep the URL; change the date only with substantive edits"/>
+        </branch>
+
+        <branch when="verdict == refresh AND baseline_recorded == false">
+          <conclusion ref="r-baseline-and-90-day-reevaluation" verdict="record the 28-day baseline and schedule the day-90 re-score"/>
+        </branch>
+
+        <branch when="verdict == refresh AND url_unchanged == true AND baseline_recorded == true">
+          <conclusion ref="r-nine-step-checklist-complete" verdict="run all nine steps with exit criteria; log any skipped step"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    evergreen=true, url_age_months=19 -&gt; dataset_sources=3 -&gt; thresholds_recorded=true, verdict=refresh -&gt; url_unchanged=true, baseline_recorded=true -&gt; conclusion ref=r-nine-step-checklist-complete
   </example>
 </text>

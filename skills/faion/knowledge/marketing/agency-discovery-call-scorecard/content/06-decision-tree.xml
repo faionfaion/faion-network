@@ -1,37 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Agency Discovery Call Scorecard Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Agency Discovery Call Scorecard Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable scorecard signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-call-volume">Does the agency run more than one discovery call per week, with a written ICP to score fit against?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="calls_per_week &lt;= 1">
+      <conclusion ref="skip-this-methodology" verdict="one call a week does not need a comparative score; qualify by judgement and revisit at higher volume"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="calls_per_week &gt; 1 and written_icp == false">
+      <conclusion ref="r-anchors-are-observable-facts" verdict="write the ICP criteria first; fit anchors cannot be observable without them"/>
+    </branch>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+    <branch when="calls_per_week &gt; 1 and written_icp == true">
+      <question id="q-axes">Does the rubric contain fit, budget, urgency and decision_maker with weights summing to 1.0 and no axis above 0.5?</question>
+
+      <branch when="four_axes_and_weights_valid == false">
+        <conclusion ref="r-weights-sum-to-one-no-dominant-axis" verdict="add the missing axis or renormalise weights; bump rubric version"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="four_axes_and_weights_valid == true">
+        <question id="q-anchors">Is every anchor an observable fact (currency range, calendar window, role or confirmed authority, ICP criteria met)?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="anchors_observable == false">
+          <conclusion ref="r-anchors-are-observable-facts" verdict="replace adjective anchors before scoring any call"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="anchors_observable == true">
+          <question id="q-threshold">Is decision_threshold a single number strictly inside [0, 100] with a stated advance/reject rule?</question>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          <branch when="single_threshold == false">
+            <conclusion ref="r-single-threshold-inside-range" verdict="collapse bands to one threshold"/>
           </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          <branch when="single_threshold == true">
+            <conclusion ref="r-scored-within-24h-with-evidence" verdict="rubric is usable; score each call within 24h with an evidence note per axis"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +43,6 @@
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    calls_per_week=4 -&gt; written_icp=true -&gt; four_axes_and_weights_valid=true -&gt; anchors_observable=true -&gt; single_threshold=true -&gt; conclusion ref=r-scored-within-24h-with-evidence
   </example>
 </text>

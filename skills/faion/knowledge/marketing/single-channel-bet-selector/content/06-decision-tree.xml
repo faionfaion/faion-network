@@ -1,20 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Single Channel Bet Selector — Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable preconditions to a rule from `01-core-rules.xml`. Mandatory minimum tree for every methodology.</summary>
+<text id="06-decision-tree" title="Single Channel Bet Selector — Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable founder and channel signals (existing revenue channel, ICP sample, rubric scores, kill criterion) to a rule from `01-core-rules.xml`. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Are all Applies-If preconditions satisfied AND none of the Skip-If disqualifiers present?</root-question>
+    <root-question id="q-working-channel">Is any channel already producing measurable revenue (at least one paying customer per month attributable to it)?</root-question>
 
-    <branch when="preconditions == true">
-      <conclusion ref="run-the-checklist" verdict="execute the procedure in 04-procedure.xml and commit the artefact"/>
+    <branch when="working_channel_exists == true">
+      <conclusion ref="skip-this-methodology" verdict="do not re-pick; keep executing the working channel and revisit only when it saturates"/>
     </branch>
 
-    <branch when="preconditions == false">
-      <conclusion ref="skip-this-methodology" verdict="do not apply; route to the upstream / sibling methodology named in AGENTS.md Related"/>
+    <branch when="working_channel_exists == false">
+      <question id="q-icp-sample">Does the founder have at least 5 paying customers or 50 qualified conversations from which channel behaviour can be counted?</question>
+
+      <branch when="icp_sample_sufficient == false">
+        <conclusion ref="r-icp-density-cites-sample" verdict="no density evidence exists; run customer discovery until the sample threshold is met, then return"/>
+      </branch>
+
+      <branch when="icp_sample_sufficient == true">
+        <question id="q-rubric-clears">Does the written rubric contain 3 to 6 tactic-level candidates, and does the top candidate score at least 12 of 15 with every axis at 3 or above?</question>
+
+        <branch when="rubric_clears == false">
+          <conclusion ref="r-threshold-12-of-15-and-per-axis-floor" verdict="return no bet; instrument early traction on the highest scorer or widen the candidate set, do not pick the least-bad option"/>
+        </branch>
+
+        <branch when="rubric_clears == true">
+          <question id="q-kill-criterion-dated">Is a numeric week-12 kill criterion, the weekly unit of work and the week-4 / week-8 checkpoints written and dated on the same day as the selection?</question>
+
+          <branch when="kill_criterion_dated == false">
+            <conclusion ref="r-precommitted-kill-criterion" verdict="write the number, the follow-up action, the weekly unit and both checkpoints before the 90-day clock starts"/>
+          </branch>
+
+          <branch when="kill_criterion_dated == true">
+            <conclusion ref="run-the-checklist" verdict="commit to the single channel, park the rest with scores, and start the 90 days"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="precondition-check">
-    preconditions=true → run-the-checklist → artefact committed.
+  <example trace="happy-path">
+    working_channel_exists=false -&gt; icp_sample_sufficient=true -&gt; rubric_clears=true -&gt; kill_criterion_dated=true -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

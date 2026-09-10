@@ -1,44 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Growth Experiment Design Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Growth Experiment Design Decision Tree" version="2.0.0" est_tokens="950" depth="essential">
+  <summary>Routing tree mapping observable experiment-design signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-infrastructure">Does the product have at least 5,000 monthly active users AND a feature-flag platform that can randomise assignment on a stable user id?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="mau &lt; 5000 OR flag_platform == false">
+      <conclusion ref="skip-this-methodology" verdict="a controlled experiment cannot be powered or assigned; use qualitative research or ship-and-observe instead"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="mau &gt;= 5000 AND flag_platform == true">
+      <question id="q-hypothesis">Is the hypothesis in the form "If we [change] for [segment], then [one metric] changes by at least [X percent] because [mechanism]"?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="hypothesis_has_effect_size == false OR primary_metric_count != 1">
+        <conclusion ref="r-hypothesis-falsifiable-with-effect-size" verdict="rewrite the hypothesis with one metric and a numeric minimum effect before anything else"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="hypothesis_has_effect_size == true AND primary_metric_count == 1">
+        <question id="q-signals">Which design signal fails on inspection of the spec and the backlog?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="ice_score_recorded == false OR confidence_uncited_above_3 == true">
+          <conclusion ref="r-ice-scored-before-build" verdict="score ICE with written criteria and evidence before build"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="guardrails_with_thresholds == false">
+          <conclusion ref="r-one-primary-metric-plus-guardrails" verdict="name guardrail metrics with stop thresholds"/>
+        </branch>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
-          </branch>
+        <branch when="sample_size_recorded == false OR duration_weeks &lt; 1 OR duration_weeks &gt; 8">
+          <conclusion ref="r-sample-size-computed-before-launch" verdict="compute sample and whole-week duration; redesign if over eight weeks"/>
+        </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
-          </branch>
+        <branch when="assignment_hash_key != user_id OR control_group == false">
+          <conclusion ref="r-control-group-randomised-by-flag" verdict="assign by flag on user id with a concurrent control"/>
+        </branch>
+
+        <branch when="playback_done == false OR exposure_logged_at == assignment">
+          <conclusion ref="r-instrumentation-playback-before-ramp" verdict="run the playback; log exposure at the moment of seeing the variant"/>
+        </branch>
+
+        <branch when="stop_date_recorded == false OR srm_check_recorded == false">
+          <conclusion ref="r-fixed-stop-date-no-peeking-srm-check" verdict="fix the stop date; record the SRM check before reading results"/>
+        </branch>
+
+        <branch when="write_up_template_present == false">
+          <conclusion ref="r-write-up-every-experiment" verdict="attach the write-up template; losers get written up too"/>
+        </branch>
+
+        <branch when="all_signals_pass == true">
+          <conclusion ref="run-the-checklist" verdict="emit the spec artefact; surface ready_for_review=true"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    mau=12000, flag_platform=true -&gt; hypothesis_has_effect_size=true, primary_metric_count=1 -&gt; ice_score_recorded=true, guardrails_with_thresholds=true, sample_size_recorded=true, duration_weeks=3, assignment_hash_key=user_id, playback_done=true, stop_date_recorded=true, srm_check_recorded=true, write_up_template_present=true -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

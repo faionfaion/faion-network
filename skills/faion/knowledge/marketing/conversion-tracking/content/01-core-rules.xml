@@ -1,41 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Conversion Tracking Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Conversion Tracking. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Conversion Tracking Core Rules" version="2.0.0" est_tokens="2300" depth="essential">
+  <summary>8 testable rules every Conversion Tracking application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Conversion Tracking, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="GA4 docs — recommended events">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-event-registry-single-source" testable="true" depth="essential">
+      <statement>Every event name fired by any tag (`gtag`, `plausible`, `track`, server-side container) MUST exist in one registry file (`events.yml`: event name to required parameters) before the code that fires it is merged. CI MUST run `validate-events.py` and fail the build on an unregistered event name. The registry entry MUST also state which destination marks the event as a conversion (GA4 key event, Google Ads primary or secondary action, Meta standard or custom event).</statement>
+      <rationale source="Segment Protocols, tracking plans; templates/validate-events.py">Without a registry the same business event ships as `sign_up`, `signup` and `SignUp` from three teams, reports split three ways, and the conversion count in Google Ads never matches the one in GA4. Declaring the conversion role in the registry is what stops a secondary micro-conversion from being bid on as if it were a purchase.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-ga4-naming-and-parameter-limits" testable="true" depth="essential">
+      <statement>Event names MUST be snake_case, at most 40 characters, carry at most 25 parameters, with parameter names at most 40 characters and string values at most 100 characters. Names MUST NOT start with the reserved prefixes `google_`, `ga_`, `firebase_` or `_`. Recommended events (`purchase`, `sign_up`, `generate_lead`, `add_to_cart`) MUST use the exact recommended name and parameter names rather than a synonym.</statement>
+      <rationale source="Google Analytics 4 documentation, event and parameter limits; GA4 recommended events reference">GA4 silently truncates or drops events that exceed these limits, so a `checkout_step_completed_with_shipping_option_selected` event vanishes without an error. Using the recommended name unlocks the built-in ecommerce and lead-gen reports; a custom `order_completed` gets none of them and has to be rebuilt as explorations.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-monetary-conversion-carries-transaction-id" testable="true" depth="essential">
+      <statement>Every conversion event with monetary value MUST carry `value` (number), `currency` (ISO 4217 code) and a `transaction_id` that is unique per order and identical across every destination the event is sent to. The same identifier MUST be reused as the Meta `event_id` and as the Google Ads `transaction_id`. A revenue event without a transaction identifier MUST NOT be sent.</statement>
+      <rationale source="GA4 recommended events reference, purchase; Meta Conversions API documentation, deduplication; Google Ads conversion tracking documentation">A user refreshing the thank-you page fires `purchase` twice; GA4 deduplicates on `transaction_id` and counts one order, while a tag without it reports two and inflates ROAS. Sharing the id across GA4, Meta and Google Ads is the only way the three platforms can be reconciled against the order table in finance.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-browser-server-dedup-and-identifiers" testable="true" depth="essential">
+      <statement>When an event is sent from both the browser pixel and the server (Conversions API, GTM server container, Measurement Protocol), both copies MUST share the same event identifier and event name, and the server copy MUST forward the browser identifiers: `_fbp` and `_fbc` for Meta, the GA4 `client_id` read from the `_ga` cookie plus `session_id` for Measurement Protocol. Generating a fresh identifier server-side is forbidden.</statement>
+      <rationale source="Meta Conversions API documentation, deduplication and fbp/fbc parameters; GA4 Measurement Protocol reference">Server events with a fresh UUID create a new GA4 user per hit, so "new users" doubles overnight and every server-side conversion is attributed to `(direct)`. Meta only deduplicates browser and server copies when `event_id` and `event_name` match; without that pair every purchase counts twice in Ads Manager and the campaign optimises toward the wrong audience.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-consent-state-before-any-tag" testable="true" depth="essential">
+      <statement>For traffic from jurisdictions that require consent, no analytics or advertising tag MAY fire before the consent state is known. Consent Mode v2 defaults for `ad_storage`, `analytics_storage`, `ad_user_data` and `ad_personalization` MUST be pushed before the tag configuration call, regional defaults set with the `region` parameter, and the server-side container MUST honour the same consent signals as the browser.</statement>
+      <rationale source="Google, Consent Mode v2 documentation; Regulation (EU) 2016/679 (GDPR) and the ePrivacy Directive">Tags that fire before the banner answer set cookies without a legal basis, and from March 2024 Google Ads stops building EEA audiences and measuring conversions for tags that do not send the two v2 signals. Server-side tagging that ignores consent is the same violation with better plumbing.</rationale>
+    </rule>
+
+    <rule id="r-no-pii-in-parameters" testable="true" depth="essential">
+      <statement>Event parameters, user properties and page URLs sent to GA4 or Google Ads MUST NOT contain personally identifiable information (email, name, phone, address, government id). Identifiers sent for ad-platform matching (Meta `user_data`, Google enhanced conversions) MUST be normalised (lower-cased, trimmed) and SHA-256 hashed before transmission. The validation script MUST reject a fixture whose payload contains an `@` sign or a phone-shaped string.</statement>
+      <rationale source="Google Analytics Help, 'Best practices to avoid sending Personally Identifiable Information'; Meta Conversions API documentation, customer information parameters">Sending PII violates the Google Analytics terms and can terminate the property, deleting the history with it. The usual leak is an email in a query string on a confirmation URL that Enhanced Measurement collects automatically as `page_location`.</rationale>
+    </rule>
+
+    <rule id="r-server-endpoint-first-party-domain" testable="true" depth="essential">
+      <statement>The server-side tagging endpoint MUST be served from a first-party subdomain of the site (for example `gtm.example.com` or `t.example.com`), and cookies it sets MUST be first-party `HttpOnly` cookies. Running the server container on the vendor default domain is forbidden.</statement>
+      <rationale source="Google Tag Manager server-side documentation, custom domain setup; WebKit, Intelligent Tracking Prevention">Safari caps cookies written by script to 7 days and blocks third-party requests, so a server container on a vendor domain is still a third party to the browser and gains nothing. A first-party endpoint sets the cookie from an HTTP response, which is what keeps returning visitors recognised beyond a week.</rationale>
+    </rule>
+
+    <rule id="r-qa-fixtures-per-tracking-change" testable="true" depth="essential">
+      <statement>Every change to tracking code or tag configuration MUST ship with a QA fixture per affected event (expected event name and parameters), and the fixtures MUST be executed before merge in Chrome, Safari and Firefox, plus one profile with a mainstream ad blocker enabled. The run result (event seen or not seen, per browser, per destination) MUST be recorded with the change.</statement>
+      <rationale source="WebKit, Intelligent Tracking Prevention; Mozilla, Enhanced Tracking Protection; widely established practice in analytics QA">A tag validated only in Chrome DevTools passes while Safari drops the cookie and Firefox blocks the request, so 30 to 40 percent of conversions vanish on launch and the loss is discovered in the monthly report. The ad-blocker profile is what proves the server-side path actually carries the event when the pixel is blocked.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when every tracking signal checks out.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Conversion Tracking; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when no conversion destination exists to track into.</rationale>
     </rule>
   </section>
-  <section title="Sources">
-    <reference>GA4 docs — recommended events</reference>
-    <reference>Facebook CAPI docs</reference>
-    <reference>GTM Server-side docs</reference>
-    <reference>Mixpanel/Amplitude tracking plan templates</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

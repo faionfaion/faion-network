@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Cohort Implementation Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Cohort Implementation Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable warehouse and event-table signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-warehouse-and-events">Is there a warehouse (BigQuery, Snowflake, Postgres or Redshift) with a users table carrying signup timestamps and an events table carrying per-user events?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="warehouse_with_users_and_events == false">
+      <conclusion ref="skip-this-methodology" verdict="no warehouse or no event table; use the analytics vendor's built-in cohort report instead"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="warehouse_with_users_and_events == true">
+      <question id="q-user-id">Do events carry a stable post-identification user_id rather than only an anonymous or device id?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="stable_user_id == false">
+        <conclusion ref="r-stable-user-id-not-anonymous" verdict="resolve identity in staging first; do not build cohorts on anonymous ids"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="stable_user_id == true">
+        <question id="q-timestamps">Are signup and event timestamps stored in UTC, or convertible to UTC with a known source zone?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="utc_timestamps == false">
+          <conclusion ref="r-cohort-key-signup-week-monday-utc" verdict="add UTC columns in staging before truncating to cohort_week"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="utc_timestamps == true">
+          <question id="q-event-declared">Is one retention event named in schema.yml and in settings.retention_event, with day_offsets declared?</question>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          <branch when="retention_event_declared == false">
+            <conclusion ref="r-retention-event-defined-once" verdict="declare the event and offsets once; then generate the model"/>
           </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          <branch when="retention_event_declared == true">
+            <conclusion ref="r-incremental-key-partition-and-lookback" verdict="generate the incremental model with composite key, 90-day lookback, tests, and null immature cells in the chart spec"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +39,6 @@
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    warehouse_with_users_and_events=true -&gt; stable_user_id=true -&gt; utc_timestamps=true -&gt; retention_event_declared=true -&gt; conclusion ref=r-incremental-key-partition-and-lookback
   </example>
 </text>

@@ -1,38 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Agency Discovery Call Scorecard Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Agency Discovery Call Scorecard. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Agency Discovery Call Scorecard Core Rules" version="2.0.0" est_tokens="1750" depth="essential">
+  <summary>8 testable rules every Agency Discovery Call Scorecard application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Agency Discovery Call Scorecard, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="Goldratt — The Goal (binary decisions)">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-four-axes-fit-budget-urgency-decision-maker" testable="true" depth="essential">
+      <statement>`axes[]` MUST contain the four axes `fit`, `budget`, `urgency` and `decision_maker`. Additional axes are permitted only when the agency can name a closed deal that the four did not explain; an artefact missing any of the four MUST be rejected.</statement>
+      <rationale source="BANT qualification framework (originated at IBM); MEDDIC (Jack Napoli, PTC)">Every qualification framework in use converges on the same questions: can we help them, can they pay, do they need it now, and are we talking to the person who signs. A scorecard that drops one of these advances leads that later stall on the missing question, typically budget or signatory.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-weights-sum-to-one-no-dominant-axis" testable="true" depth="essential">
+      <statement>Axis `weight` values MUST sum to 1.0 within 0.001, and no single axis MUST exceed 0.5. Weights MUST be recorded to at most two decimals.</statement>
+      <rationale source="widely established rubric-design practice">Weights that do not sum to one make the 0-100 score unreachable or overflow, so the threshold no longer means what it says. An axis above 0.5 turns the scorecard into a single-question filter with three decorative columns.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-anchors-are-observable-facts" testable="true" depth="essential">
+      <statement>Each axis MUST have its `anchors[]` ordered from lowest to highest score, and every anchor MUST be a fact the caller can quote from the call: `budget` anchors as currency ranges, `urgency` anchors as calendar windows, `decision_maker` anchors as roles or a confirmed sign-off, `fit` anchors as named ICP criteria met (industry, size, service line). Adjective anchors such as "poor / good / excellent" MUST NOT be used.</statement>
+      <rationale source="widely established practice in behaviourally anchored rating scales (Smith and Kendall, 1963); inter-rater reliability in sales qualification">Two people scoring the same call against "good fit" disagree by an axis level; against "matches two of three ICP criteria" they do not. Adjective anchors are what produce the calibration drift the weekly retro exists to catch.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-score-formula-0-100" testable="true" depth="essential">
+      <statement>`score_range` MUST be `[0, 100]`. The lead score MUST be computed as the sum over axes of `weight × (anchor_index ÷ (anchor_count − 1))`, multiplied by 100, where `anchor_index` is 0 for the lowest anchor. No axis may be scored between anchors, and the formula MUST be written into the rubric so a second person can recompute any score.</statement>
+      <rationale source="widely established rubric-scoring practice">A scorecard whose arithmetic lives in someone's head yields different totals from the same anchor picks. With three anchors per axis and the template weights, the formula makes 60 reachable only by scoring at least "middle" on the heavy axes, which is exactly the behaviour the threshold is supposed to encode.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-single-threshold-inside-range" testable="true" depth="essential">
+      <statement>`decision_threshold` MUST be a single number strictly inside `score_range`, and the rubric MUST state the binary rule: score at or above the threshold advances, below is rejected or nurtured. A "maybe" band, a second threshold, or a per-rep threshold MUST NOT be introduced.</statement>
+      <rationale source="Eliyahu Goldratt, The Goal (1984), on binary decision points; AGENTS.md scope: score consumed for a binary decision">The scorecard exists to give one comparable axis across leads. A grey band re-opens the judgement call for every lead in it, which in practice is most leads, and the pipeline review turns back into anecdotes.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Agency Discovery Call Scorecard; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+
+    <rule id="r-decision-maker-scored-on-verified-authority" testable="true" depth="essential">
+      <statement>The `decision_maker` axis MUST be scored on who was present on the call and what sign-off authority was confirmed in the prospect's own words (e.g. "I approve spend up to X"), not on a title in a CRM record or the prospect's self-description as "the decision maker". If authority was not discussed, the lowest anchor MUST be used.</statement>
+      <rationale source="MEDDIC (Economic Buyer, Champion); BANT (Authority)">The most common lost deal is the one that scored high on a champion who then "needs to run it by" someone who never joined a call. Scoring authority on what was verified, and defaulting to the bottom when it was not, keeps that deal from consuming proposal hours.</rationale>
     </rule>
+
+    <rule id="r-scored-within-24h-with-evidence" testable="true" depth="essential">
+      <statement>The scorecard MUST be filled in by a person who was on the call, within 24 hours of it, and each axis MUST carry a one-line evidence note quoting or paraphrasing what the prospect said. A score with an empty evidence note on any axis MUST NOT be used for the advance/reject decision.</statement>
+      <rationale source="widely established sales-operations practice; memory-decay findings in cognitive psychology">Scores entered days later regress toward the rep's overall impression of the lead, which is the bias the axes were meant to decompose. The evidence note is what lets the weekly retro see whether the anchor was applied or guessed.</rationale>
+    </rule>
+
+    <rule id="r-versioned-weekly-calibration" testable="true" depth="essential">
+      <statement>Anchors and weights MUST change only through a version bump of the rubric with the date and the reason recorded, never by editing a live rubric in place. The weekly retro MUST compare, for the leads scored under the current version, the advance rate and the subsequent close rate of advanced leads against the previous period; scores from different rubric versions MUST NOT be compared on one axis.</statement>
+      <rationale source="AGENTS.md scope: weekly retro reviews scorecard calibration drift; widely established measurement practice">A rubric whose weights are tweaked mid-week produces scores that look comparable and are not. Versioning is what allows the retro to say "under v3 we advanced 40 percent and closed 10 percent of them" and act on it.</rationale>
+    </rule>
+
   </section>
-  <section title="Sources">
-    <reference>Goldratt — The Goal (binary decisions)</reference>
-    <reference>Sandler / SPIN — discovery frameworks</reference>
-    <reference>Hammer &amp; Champy — explicit branches</reference>
-    <reference>Atlassian — documentation standards</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>

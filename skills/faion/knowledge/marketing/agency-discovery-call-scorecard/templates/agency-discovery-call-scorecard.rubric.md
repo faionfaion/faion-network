@@ -11,7 +11,7 @@
 ## Axes (>=3)
 | Name | Weight | Anchors |
 |------|--------|---------|
-| fit | 0.3 | poor / good / excellent |
+| fit | 0.3 | outside ICP / meets 1-2 ICP criteria / meets all ICP criteria and core service line |
 | budget | 0.3 | <budget>20k |
 | urgency | 0.2 | browsing / this quarter / this month |
 | decision_maker | 0.2 | IC / manager / owner |

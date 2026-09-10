@@ -1,41 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Content Refresh SOP Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Content Refresh SOP. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Content Refresh SOP Core Rules" version="2.0.0" est_tokens="2600" depth="essential">
+  <summary>9 testable rules every Content Refresh SOP application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Content Refresh SOP, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="Google — Helpful Content guidelines">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-eligibility-evergreen-12-months" testable="true" depth="essential">
+      <statement>Only URLs tagged evergreen with `url_age_months >= 12` enter the scoring matrix. News, dated announcements, release notes and campaign landing pages are excluded from the refresh queue regardless of traffic decline.</statement>
+      <rationale source="Animalz, content decay research; Google Search Central, 'Creating helpful, reliable, people-first content'">A page under a year old has not lived through one full seasonal cycle, so its impressions curve cannot be separated from launch effects and seasonality; scoring it produces a `kill` verdict for a page that is simply young. Dated content decays by design, and refreshing a 2024 conference recap inflates the queue without recoverable traffic behind it.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-one-dataset-gsc-ga4-rank" testable="true" depth="essential">
+      <statement>Every scored URL row MUST carry, over the same trailing window and the equivalent prior window: Search Console clicks, impressions and average position; GA4 sessions and key events with the URL as landing page; and rank-tracker position for the page's target query. A verdict computed from a single source is invalid. Because the Search Console UI keeps 16 months of performance data, any comparison wider than that MUST read from a persisted export (bulk data export or scheduled API pull), not from the UI.</statement>
+      <rationale source="Google Search Console Help, 'Performance report'; Google Search Central, 'Bulk data export'">GSC alone shows impressions falling but cannot tell whether the page still converts; GA4 alone shows sessions falling but cannot tell whether the query itself is disappearing. A page that lost 40 percent of impressions because the query volume dropped is a `leave`, not a `refresh`; only the rank-tracker column exposes that. Teams that compare 12 months to the prior 12 months from the UI silently compare 12 months to 4 and call it a trend.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-three-signals-with-thresholds" testable="true" depth="essential">
+      <statement>The verdict MUST be derived from three named signals, each with a numeric threshold written into the artefact before scoring: impressions trend (period-over-period percentage change), top-position decay (change in average position for the page's top queries), and intent shift (change in the query mix or SERP features for the target query). An artefact whose decision_branches do not state the thresholds is invalid.</statement>
+      <rationale source="Ahrefs, content decay research; widely established practice in SEO content operations">Without written thresholds the matrix collapses into editor taste, and the same page gets `refresh` from one reviewer and `leave` from the next. Intent shift is the signal most often skipped: a how-to page whose query now returns product listings cannot be rescued by rewriting, and a refresh spends a writer-week to confirm it.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-four-verdicts-exhaustive" testable="true" depth="essential">
+      <statement>Every URL that enters the matrix MUST receive exactly one verdict from the closed set `refresh`, `consolidate`, `kill`, `leave`. `leave` is a positive decision recorded with its reason and a next-review date; no URL exits the scoring unclassified or tagged "later".</statement>
+      <rationale source="Widely established practice in content audit operations">An unclassified URL is re-scored every cycle at full cost and never acted on. Recording `leave` with a reason is what lets the next audit skip it in seconds instead of re-pulling three data sources for a page nobody intends to touch.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-consolidate-301-to-survivor" testable="true" depth="essential">
+      <statement>A `consolidate` verdict MUST name the single surviving canonical URL, list every merged URL, and specify a 301 (or 308) redirect from each merged URL to the survivor, plus the rewrite of every internal link that pointed at a merged URL. Merging content and deleting the source pages without redirects is forbidden.</statement>
+      <rationale source="Google Search Central, 'Redirects and Google Search'">Permanent redirects are the strongest signal Google accepts that the merged page's ranking signals now belong to the survivor; without them the backlinks and query history of the deleted pages are simply lost and the survivor starts from zero. The typical incident is a cluster of five thin posts merged into one guide, the five deleted, and organic traffic for the topic falling below the pre-merge total.</rationale>
+    </rule>
+
+    <rule id="r-kill-returns-410-never-homepage" testable="true" depth="essential">
+      <statement>A `kill` verdict MUST make the URL return 410 Gone (404 is acceptable), remove it from the XML sitemap and from internal navigation, and drop inbound internal links. A killed URL MUST NOT be redirected to the homepage or to an unrelated hub page; redirect only when a genuinely equivalent page exists, in which case the verdict is `consolidate`.</statement>
+      <rationale source="Google Search Console Help, 'Soft 404 errors'; Google Search Central, 'HTTP status codes, network and DNS errors'">Google treats a redirect from a specific page to the homepage as a soft 404, so the "keep the link equity" trick buys nothing and adds a Search Console error class to monitor. Leaving killed pages in the sitemap keeps them crawled and reported as errors for months.</rationale>
+    </rule>
+
+    <rule id="r-refresh-keeps-url-honest-date" testable="true" depth="essential">
+      <statement>A `refresh` MUST keep the URL unchanged. `dateModified` in structured data and the visible byline date MUST be updated only when the substantive body content changed; bumping the date on a page with no material edit is forbidden. Title and H1 may change only to match the current query intent recorded in the intent-shift signal.</statement>
+      <rationale source="Google Search Central, guidance on page dates and structured data; Google Search Central, 'Redirects and Google Search'">Renaming the slug during a refresh converts a refresh into a migration: every backlink now hits a redirect and the page is re-evaluated from scratch. Date-only bumps are the most common fake refresh; Google's guidance explicitly asks not to update the date without significant new information, and readers who notice a "2026" date on 2021 screenshots stop trusting the whole domain.</rationale>
+    </rule>
+
+    <rule id="r-nine-step-checklist-complete" testable="true" depth="essential">
+      <statement>A `refresh` MUST execute all nine checklist steps, each with an exit criterion recorded in the artefact's steps array: (1) re-run query and intent research for the target query; (2) update every fact, statistic, price and date with a dated source; (3) rewrite title, meta description and intro to the current intent; (4) add or replace sections for subtopics the top-ranking pages cover and this page does not; (5) refresh screenshots, media and examples; (6) update internal links in and out, including links from newer pages; (7) fix technical issues found on the URL (broken links, missing alt text, structured-data errors, Core Web Vitals failures); (8) update `dateModified` and append a changelog entry; (9) request re-indexing and record the baseline snapshot. A refresh that skips a step MUST record which step and why in the deviation log.</statement>
+      <rationale source="Widely established practice in SEO content operations; Google Search Central, 'Creating helpful, reliable, people-first content'">A "refresh" that only edits the intro and the date is the pattern behind refreshes that produce no measurable lift. Steps 4 and 6 are the ones that move rankings and the ones most often skipped because they take the longest; making every step an explicit exit criterion is what turns the SOP from advice into a checklist a reviewer can fail.</rationale>
+    </rule>
+
+    <rule id="r-baseline-and-90-day-reevaluation" testable="true" depth="essential">
+      <statement>Every `refresh` and `consolidate` MUST record a baseline snapshot (clicks, impressions, average position, GA4 sessions and key events for the trailing 28 days) on the day of publication, and MUST schedule a re-evaluation at day 90 that re-scores the URL against that baseline and the same thresholds. A URL with no baseline cannot be declared a success or a failure.</statement>
+      <rationale source="Google Search Central, 'Ask Google to recrawl your URLs'; widely established practice in SEO content operations">Re-crawl and re-ranking take days to weeks, and seasonal noise dominates any window shorter than a quarter, so reading results at day 14 rewards and punishes randomly. Without a recorded baseline the 90-day review compares against memory, and the same page is refreshed again the next cycle because nobody can show the last refresh worked.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when the URL is eligible and the dataset is complete.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Content Refresh SOP; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when the URL is not eligible for the refresh matrix.</rationale>
     </rule>
   </section>
-  <section title="Sources">
-    <reference>Google — Helpful Content guidelines</reference>
-    <reference>Google — E-E-A-T</reference>
-    <reference>Ahrefs — content decay research</reference>
-    <reference>Search Console / GA4 docs</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -47,7 +47,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 9 rules: evergreen 12-month eligibility, GSC+GA4+rank dataset, thresholded signals, exhaustive verdicts, consolidate 301, kill 410, URL and honest date, nine-step checklist, 90-day baseline | 2600 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |

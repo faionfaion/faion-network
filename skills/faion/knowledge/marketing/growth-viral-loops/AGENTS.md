@@ -47,7 +47,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: K decomposed as i x c, cycle time measured and projected, K target anchored to baseline, inherent share moment, friction capped at 3 steps, five joinable loop events, reward on activation, consent and disclosure | 2450 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |

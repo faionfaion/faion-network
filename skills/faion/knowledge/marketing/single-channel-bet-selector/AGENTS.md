@@ -47,7 +47,7 @@
 ## Content (load on demand)
 | File | What's inside |
 |------|---------------|
-| `content/01-core-rules.xml` | 5 testable rules: written rubric, three-axis scoring, minimum threshold, 90-day commitment, kill criterion |
+| `content/01-core-rules.xml` | 8 rules: written single-page rubric, 3 to 6 candidates from a named list, three-axis scoring, ICP density cites sample, 12 of 15 plus per-axis floor, one channel with parking lot, weekly unit and checkpoints, pre-committed kill criterion |
 | `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
 | `content/02-output-contract.xml` | JSON Schema the artefact must satisfy. |
 | `content/06-decision-tree.xml` | Routes observable inputs to a rule; read before drafting. |

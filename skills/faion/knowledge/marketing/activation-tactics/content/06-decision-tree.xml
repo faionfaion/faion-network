@@ -1,44 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Activation Tactics Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Activation Tactics Decision Tree" version="2.0.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable onboarding-funnel signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-dropoff-known">Is there a measured top drop-off step with its current conversion rate and a defined activation event?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="top_dropoff_measured == false">
+      <conclusion ref="skip-this-methodology" verdict="no measured drop-off to target; run activation-framework or activation-metrics first"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="top_dropoff_measured == true">
+      <question id="q-live-tactic">Does the target step already have a tactic running in the current period?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="live_tactic_on_step == true">
+        <conclusion ref="r-one-tactic-per-step-at-a-time" verdict="defer; wait for the live tactic to hit or miss its exit criterion"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="live_tactic_on_step == false">
+        <question id="q-tactic-type">Where is the user when they drop: inside the product, or gone before returning?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="drop_location == in-product">
+          <question id="q-segment-key">Is a use-case or role key captured at signup for the affected users?</question>
+
+          <branch when="segment_key_at_signup == true">
+            <conclusion ref="r-segmented-onboarding-keyed-at-signup" verdict="branch onboarding per segment with a distinct first action; same activation event"/>
+          </branch>
+
+          <branch when="segment_key_at_signup == false">
+            <conclusion ref="r-checklist-single-activation-item" verdict="deploy a 3-5 item checklist or a single guide on the drop-off screen; exit criterion states baseline and lift"/>
+          </branch>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
-
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
-          </branch>
-
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
-          </branch>
+        <branch when="drop_location == not-returned">
+          <conclusion ref="r-email-sequence-suppressed-on-activation" verdict="run the 4-email sequence with send-time suppression and one direct CTA per email"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    top_dropoff_measured=true -&gt; live_tactic_on_step=false -&gt; drop_location=in-product -&gt; segment_key_at_signup=false -&gt; conclusion ref=r-checklist-single-activation-item
   </example>
 </text>

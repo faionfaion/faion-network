@@ -1,38 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI Overview Presence Tracker Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding AI Overview Presence Tracker. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="AI Overview Presence Tracker Core Rules" version="2.0.0" est_tokens="1800" depth="essential">
+  <summary>8 testable rules every AI Overview Presence Tracker application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running AI Overview Presence Tracker, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="Google Search Central — AI Overviews">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-fixed-versioned-query-set" testable="true" depth="essential">
+      <statement>The tracked query set MUST contain at least 20 queries, each mapped to one target URL on the tracked domain, and MUST stay fixed for the whole 8-week window. Adding or removing queries MUST start a new query-set version with its own window; a report MUST NOT mix rows from two versions in one trend.</statement>
+      <rationale source="AGENTS.md scope: at least 20 indexed pages targeting AIO queries, 8-week trend view; widely established rank-tracking practice">An AIO presence rate over a set whose membership changed mid-window measures the editing of the list, not Google. Twenty is the floor at which a one-query change moves the rate by less than five points.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-per-query-row-fields" testable="true" depth="essential">
+      <statement>Every weekly observation MUST be a row with `query`, `observed_at` (date), `aio_present` (boolean), `citations` (list of URLs, empty when no panel), `our_domain_cited` (boolean), `selected_snippet` (text or null) and `panel_position` (integer or null). `citations`, `selected_snippet` and `panel_position` MUST be null or empty only when `aio_present` is false; a present panel with an unrecorded citation list MUST be logged as a scrape failure, not as zero citations.</statement>
+      <rationale source="AGENTS.md scope: per-query fields aio_present, citations, our_domain_cited, selected_snippet, panel_position">"No citations" and "did not capture citations" are different facts; conflating them produces a citation rate that falls every time the scraper has a bad week. Typing the fields keeps the downstream retrofit ranking honest.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-fixed-locale-device-logged-out" testable="true" depth="essential">
+      <statement>All scrapes in a window MUST use one fixed country, language, device type and a logged-out, personalisation-free session, recorded in the report. Changing any of these MUST start a new series. AI Overview availability MUST be checked for the chosen country and language before the window starts.</statement>
+      <rationale source="Google Search Central, 'AI features and your website' (AI Overviews availability varies by country and language)">AI Overviews roll out by market and language and differ between mobile and desktop; a mobile-US scrape one week and a desktop-UK scrape the next produce a presence swing that has nothing to do with the tracked pages.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-weekly-same-day-no-interpolation" testable="true" depth="essential">
+      <statement>Each query MUST be scraped once per week on the same weekday, within a 48-hour tolerance. A week whose scrape failed for a query MUST be recorded as missing and MUST NOT be filled from the adjacent weeks; presence rates for that week MUST use the reduced denominator and say so.</statement>
+      <rationale source="AGENTS.md scope: weekly Search Console and analytics review cadence; widely established time-series practice">AIO panels appear and disappear day to day. Interpolating a missing week invents a stability the SERP does not have, and the 8-week retrofit priority then rests on rows that were never observed.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-our-domain-cited-exact-host-match" testable="true" depth="essential">
+      <statement>`our_domain_cited` MUST be true only when at least one URL in `citations` has a registrable domain equal to the tracked domain (subdomains included only when listed in the tracker config). A brand mention in `selected_snippet` text, a citation of a syndicated copy, or a competitor page quoting ours MUST NOT set it to true.</statement>
+      <rationale source="widely established web-analytics practice for referrer and citation attribution">The finding the report exists to produce is "our page is cited or it is not". Counting brand mentions inflates the citation rate and hides exactly the queries where a retrofit would earn the link.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run AI Overview Presence Tracker; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+
+    <rule id="r-report-metrics-presence-citation-position" testable="true" depth="essential">
+      <statement>`metrics[]` MUST include, per week and for the window, `aio_presence_rate` (queries with `aio_present` true ÷ queries observed, `unit: ratio`), `our_citation_rate` (queries with `our_domain_cited` true ÷ queries with `aio_present` true, `unit: ratio`) and `median_panel_position` (`unit: count`, over present panels). Rates MUST be ratios between 0 and 1; a metric with the wrong denominator MUST be rejected.</statement>
+      <rationale source="AGENTS.md scope; widely established SEO-reporting practice">Citation rate over all queries, rather than over queries with a panel, drops whenever panels disappear and rises whenever they return, and the team reads it as their pages gaining or losing citations. The denominators have to be written down.</rationale>
     </rule>
+
+    <rule id="r-no-click-attribution-to-aio" testable="true" depth="essential">
+      <statement>Findings MUST NOT attribute Search Console click or impression changes to AI Overview presence or citation. Search Console data MAY be shown alongside presence data for the same query, but the finding MUST describe it as co-occurring, and a causal claim MUST be rejected.</statement>
+      <rationale source="Google Search Console documentation: AI Overview impressions and clicks are counted inside the Web search type with no separate filter">Because Search Console does not break out AIO traffic, "clicks fell 12 percent after we lost the citation" cannot be verified from the data available and is exactly the sentence that ends up in a client deck. Co-occurrence is all the tracker can honestly report.</rationale>
+    </rule>
+
+    <rule id="r-retrofit-priority-rule" testable="true" depth="essential">
+      <statement>A query MAY enter the retrofit list only when `aio_present` was true in at least 5 of the 8 weeks and `our_domain_cited` was false in each of the last 4 weeks. The list MUST be ranked by the query's Search Console impressions for the window, and each entry MUST name the target URL and the domains cited instead.</statement>
+      <rationale source="AGENTS.md scope: 8-week trend view per query for retrofit prioritisation; widely established SEO prioritisation practice">Retrofitting a page for a query whose panel appears two weeks in eight chases a SERP feature that is not stable for that query. Naming the domains currently cited is what tells the writer what the panel is drawing on.</rationale>
+    </rule>
+
   </section>
-  <section title="Sources">
-    <reference>Google Search Central — AI Overviews</reference>
-    <reference>SE Ranking / Semrush — AIO tracking</reference>
-    <reference>Internal AIO research</reference>
-    <reference>schema.org / structured data</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>

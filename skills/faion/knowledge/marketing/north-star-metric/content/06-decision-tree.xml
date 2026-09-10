@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="North Star Metric Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="North Star Metric Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable NSM signals (event data available, value-event candidate, cohort validation, input tree) to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-event-data">Does the product have at least 8 weeks of per-account usage events and retention (or paid-conversion) data queryable in a warehouse or analytics tool?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="event_data_available == false">
+      <conclusion ref="skip-this-methodology" verdict="no data to validate a candidate against; instrument core events first and return with cohorts"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="event_data_available == true">
+      <question id="q-value-event-candidate">Is the leading candidate a count of a customer value event (usage or outcome), rather than revenue, signups, pageviews or undifferentiated MAU?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="value_event_candidate == false">
+        <conclusion ref="r-nsm-counts-value-delivered" verdict="reject the candidate; regenerate at least three value-event candidates and score them against the five criteria"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="value_event_candidate == true">
+        <question id="q-cohort-validated">Has a cohort analysis on the product's own data shown that accounts above the candidate's threshold retain or convert materially better than those below, with cohort size and delta recorded?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="cohort_validated == false">
+          <conclusion ref="r-nsm-validated-against-retention" verdict="run the above-vs-below threshold cohort comparison and record it in the validation section before adoption"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="cohort_validated == true">
+          <question id="q-input-tree">Are three to five input metrics defined, each with an owning team, current value and target that the team can move within a quarter?</question>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          <branch when="input_tree_defined == false">
+            <conclusion ref="r-input-metrics-tree" verdict="decompose the NSM along breadth, depth, frequency and efficiency and assign owners before publishing the record"/>
           </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          <branch when="input_tree_defined == true">
+            <conclusion ref="run-the-checklist" verdict="write the decision record with the computable definition, scored candidates, validation numbers, gaming guards and dashboard link"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +39,6 @@
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    event_data_available=true -&gt; value_event_candidate=true -&gt; cohort_validated=true -&gt; input_tree_defined=true -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

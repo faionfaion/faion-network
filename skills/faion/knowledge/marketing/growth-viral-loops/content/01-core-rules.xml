@@ -1,38 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Growth Viral Loops Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Growth Viral Loops. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Growth Viral Loops Core Rules" version="2.0.0" est_tokens="2450" depth="essential">
+  <summary>8 testable rules every Growth Viral Loops application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Growth Viral Loops, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="Andrew Chen — viral loops">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-k-factor-decomposed" testable="true" depth="essential">
+      <statement>The spec MUST state K as the product of two separately measured numbers: invites sent per active user (i) and accept rate per invite (c), each with its measurement window and sample size. A single asserted K ("we think K is 0.6") with no i and c behind it is rejected.</statement>
+      <rationale source="Adam Penenberg, Viral Loop (2009); David Skok, Lessons Learned – Viral Marketing (forentrepreneurs.com)">K = i x c is the whole model. A team that only tracks the product cannot tell whether a drop came from fewer users sharing or from a landing page that stopped converting, and the two problems have different owners and different fixes. Decomposed K also exposes the common fake: a high K driven by one power user sending 400 invites.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-cycle-time-measured-and-projected" testable="true" depth="essential">
+      <statement>Cycle time MUST be measured in days from the inviter's send event to the invitee's first send event, using event timestamps, not estimated. The spec MUST include a growth projection computed from the measured K and cycle time (templates/loop-projection.py or equivalent) and MUST state that the projection ignores churn.</statement>
+      <rationale source="David Skok, Lessons Learned – Viral Marketing (forentrepreneurs.com)">Skok's model shows cycle time dominates: K 0.5 with a 2-day cycle outgrows K 0.9 with a 30-day cycle over a quarter. Teams that only chase K ship incentive experiments when the real lever is the 11 days an invite sits unopened. A projection without the churn caveat gets pasted into a board deck as a forecast.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-k-target-anchored-to-baseline" testable="true" depth="essential">
+      <statement>The K-factor target MUST be stated next to the current measured K over at least two full cycles and next to a category benchmark with the benchmark's source named. A target above 1.0 is only allowed when current K is at least 0.4; below that the spec targets a K increment, not self-sustaining growth.</statement>
+      <rationale source="Andrew Chen, essays on viral coefficient and The Cold Start Problem (2021); widely cited practitioner benchmarks (consumer 0.1 to 0.3, B2B SaaS 0.05 to 0.2)">Almost no product sustains K above 1; the famous cases (early Hotmail, Dropbox, Slack) held it briefly and at a specific stage. A spec that promises K 1.2 from a 0.15 baseline commits the team to a fantasy and discredits the loop when it delivers a real, useful 0.3. Anchoring to the baseline keeps the target falsifiable.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-share-moment-is-inherent" testable="true" depth="essential">
+      <statement>The invitation moment MUST be a named product event where sharing creates or increases value for the inviter (sending a document, inviting a collaborator, publishing an artifact, splitting a bill). A post-signup "invite your friends" modal or a standalone referral page MUST NOT be the primary loop; it may appear only as a secondary, incentivised loop with its own K.</statement>
+      <rationale source="Andrew Chen, The Cold Start Problem (2021); Reforge growth series (Brian Balfour) on loop types">Inherent loops fire every time the product is used; invite modals fire once, at the moment of lowest trust. Products that bolt a referral page onto a single-player workflow report K near zero and conclude "virality does not work for us", when the actual finding is that no sharing moment existed to instrument. Naming the event also makes the loop instrumentable (see r-loop-events-instrumented).</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-friction-steps-capped" testable="true" depth="essential">
+      <statement>The spec MUST list every step from the invitee's first exposure to the artifact to an activated account, with the measured drop-off at each step. The path MUST be at most 3 steps (for example: open link, create account, first value action); every friction-removal experiment MUST name the step it targets and the step conversion it expects to move.</statement>
+      <rationale source="Reforge growth series on loop friction; templates/loop-anatomy.md (friction target: 3 steps or fewer)">Accept rate c is multiplicative across steps: five steps at 70 percent each yield 17 percent, three steps at 70 percent yield 34 percent, so removing two steps doubles K without touching the invite. Experiments described as "improve onboarding" cannot be graded; experiments described as "remove the email verification gate between steps 2 and 3, expect step-2 conversion from 55 to 75 percent" can.</rationale>
+    </rule>
+
+    <rule id="r-loop-events-instrumented" testable="true" depth="essential">
+      <statement>The spec MUST name at least five instrumented events covering the full loop: invite_shown, invite_sent, invite_opened, invite_accepted (account created), invitee_activated (first value action). Every event MUST carry an invite_id and the inviter's user_id so that i, c, cycle time and invitee retention can be joined per invite. Invitee D30 retention MUST be reported separately from organic D30.</statement>
+      <rationale source="Sean Ellis and Morgan Brown, Hacking Growth (2017); templates/loop-anatomy.md (minimum five events)">Without invite_id on both ends, "invites sent" and "signups" are two unrelated totals and K becomes a ratio of unrelated numbers. Without the inviter id, cycle time cannot be computed at all. The separate retention cut is what catches incentivised loops that import users who churn at 3x the organic rate and would otherwise look like growth.</rationale>
+    </rule>
+
+    <rule id="r-reward-on-activation-not-signup" testable="true" depth="essential">
+      <statement>In any incentivised loop, both the referrer's and the invitee's reward MUST be triggered by the invitee reaching a named activation milestone within a stated window, never by signup alone. The spec MUST state the milestone, the window in days, the maximum rewards per referrer per 12 months, and the self-referral block (same device fingerprint, IP, or payment instrument invalidates the reward). Invitees who are existing or past users MUST NOT qualify.</statement>
+      <rationale source="Dropbox referral program (widely documented: storage credited after the referred user installs and syncs, not on registration); widely established practice in referral-program fraud control">Rewards on signup are an invitation to fraud: throwaway emails, scripted registrations and referral-swap forums appear within days, and the finance team discovers a reward liability against users who never opened the product. Paying on activation aligns the reward with the value the loop is supposed to import and makes r-loop-events-instrumented the fraud detector.</rationale>
+    </rule>
+
+    <rule id="r-referral-consent-and-disclosure" testable="true" depth="essential">
+      <statement>Referral messages MUST go only to recipients the sender is entitled to contact: email invites require the invitee's address to be entered by the inviter for that purpose, never harvested from an uploaded contact list without consent; Canadian recipients require express consent under CASL and EU recipients require a lawful basis under GDPR. Wherever a referrer receives compensation, the referral content MUST disclose it in the message or landing page.</statement>
+      <rationale source="FTC Endorsement Guides, 16 CFR Part 255 (material connection disclosure); Canada's Anti-Spam Legislation (CASL); GDPR Art. 6">Address-book scraping was the classic growth hack of 2010 and is the classic regulatory action of 2020: contact-import invites sent without consent have produced class actions and CASL penalties, and an undisclosed paid referral is an undisclosed endorsement under the FTC guides. The compliance section is why templates/referral-program.md ends with a GDPR / CASL / FTC checklist; a spec without it is not shippable.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when the loop signals hold.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Growth Viral Loops; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when no sharing moment exists or the loop cannot be instrumented.</rationale>
     </rule>
   </section>
+
   <section title="Sources">
-    <reference>Andrew Chen — viral loops</reference>
-    <reference>Reforge — viral mechanics</reference>
-    <reference>Adam Penenberg — viral coefficient</reference>
-    <reference>Slack / WhatsApp viral case studies</reference>
+    <reference>Adam Penenberg, Viral Loop (2009)</reference>
+    <reference>David Skok, Lessons Learned – Viral Marketing (forentrepreneurs.com)</reference>
+    <reference>Andrew Chen, The Cold Start Problem (2021) and essays on viral coefficient</reference>
+    <reference>Sean Ellis and Morgan Brown, Hacking Growth (2017)</reference>
+    <reference>Reforge growth series (Brian Balfour), loop types and friction</reference>
+    <reference>FTC Endorsement Guides, 16 CFR Part 255; CASL; GDPR</reference>
   </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>

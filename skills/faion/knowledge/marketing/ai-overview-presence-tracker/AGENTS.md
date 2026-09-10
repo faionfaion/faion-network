@@ -47,7 +47,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: fixed 20-query set, typed per-query rows, fixed locale and device, weekly no-interpolation, exact host match for citation, presence and citation-rate denominators, no click attribution, 5-of-8 retrofit rule | 1800 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |

@@ -1,44 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Conversion Tracking Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Conversion Tracking Decision Tree" version="2.0.0" est_tokens="900" depth="essential">
+  <summary>Routing tree mapping observable conversion-tracking signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-destinations">Does the site send conversion events to at least one analytics or advertising destination (GA4, Google Ads, Meta, Plausible)?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="destinations == 0">
+      <conclusion ref="skip-this-methodology" verdict="nothing to track into; pick an analytics setup methodology first"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="destinations &gt;= 1">
+      <question id="q-registry">Is every event name in the tracking calls present in `events.yml` with its required parameters, and does CI run `validate-events.py`?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="unregistered_events &gt; 0 OR ci_validation == false">
+        <conclusion ref="r-event-registry-single-source" verdict="register every event and its conversion role; wire the validator into CI before any other change"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="unregistered_events == 0 AND ci_validation == true">
+        <question id="q-signals">Which tracking signal fails on inspection of the config, the tag code and the QA record?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="consent_defaults_before_config == false">
+          <conclusion ref="r-consent-state-before-any-tag" verdict="push Consent Mode v2 defaults before the config call; mirror consent server-side"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="event_name_over_40_chars OR params_over_25 OR reserved_prefix_used">
+          <conclusion ref="r-ga4-naming-and-parameter-limits" verdict="rename to snake_case within limits; use the recommended event name"/>
+        </branch>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
-          </branch>
+        <branch when="monetary_event == true AND transaction_id_present == false">
+          <conclusion ref="r-monetary-conversion-carries-transaction-id" verdict="add value, currency and a per-order transaction_id shared across destinations"/>
+        </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
-          </branch>
+        <branch when="dual_send == true AND (shared_event_id == false OR browser_ids_forwarded == false)">
+          <conclusion ref="r-browser-server-dedup-and-identifiers" verdict="share event id; forward _fbp/_fbc and the _ga client_id plus session_id"/>
+        </branch>
+
+        <branch when="pii_in_payload == true">
+          <conclusion ref="r-no-pii-in-parameters" verdict="strip identifying query params; hash matching identifiers with SHA-256"/>
+        </branch>
+
+        <branch when="server_endpoint_first_party == false">
+          <conclusion ref="r-server-endpoint-first-party-domain" verdict="move the server container to a first-party subdomain"/>
+        </branch>
+
+        <branch when="qa_browsers &lt; 3 OR adblock_profile_tested == false">
+          <conclusion ref="r-qa-fixtures-per-tracking-change" verdict="run fixtures in Chrome, Safari, Firefox plus an ad-blocker profile; record results"/>
+        </branch>
+
+        <branch when="all_signals_pass == true">
+          <conclusion ref="run-the-checklist" verdict="emit the config artefact; surface ready_for_review=true"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    destinations=2 -&gt; unregistered_events=0, ci_validation=true -&gt; consent_defaults_before_config=true, transaction_id_present=true, shared_event_id=true, pii_in_payload=false, server_endpoint_first_party=true, qa_browsers=3 -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

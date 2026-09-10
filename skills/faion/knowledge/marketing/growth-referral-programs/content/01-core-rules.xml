@@ -1,41 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Growth Referral Programs Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Growth Referral Programs. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Growth Referral Programs Core Rules" version="2.0.0" est_tokens="2500" depth="essential">
+  <summary>9 testable rules every Growth Referral Programs application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Growth Referral Programs, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="Dropbox / Airbnb referral case studies">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-nps-gate-30-before-launch" testable="true" depth="essential">
+      <statement>A referral programme MUST NOT launch unless the product's NPS, measured on a sample of active users within the previous 90 days, is at least 30, or an equivalent measured willingness-to-recommend signal is recorded in the spec with its sample size and date. Anecdotal "our users love us" does not satisfy the gate.</statement>
+      <rationale source="Frederick Reichheld, 'The One Number You Need to Grow' (Harvard Business Review, 2003); AGENTS.md trigger condition">An incentive does not create advocacy; it pays existing advocates and, below the threshold, pays detractors to send lukewarm invitations that convert poorly and cost the reward anyway. The 90-day window matters because NPS moves with releases and outages; a score from last year is not evidence.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-trigger-event-at-value-moment" testable="true" depth="essential">
+      <statement>The referral prompt MUST fire on a named, instrumented value event (first successful outcome, activation milestone, positive survey response), never at sign-up or on the first screen, and the spec MUST record the trigger event name and the share of users who reach it.</statement>
+      <rationale source="Dropbox and Airbnb referral programme case studies (widely cited); Reforge, referral mechanics">Asking for a referral before the user has received value produces near-zero share rates and trains users to dismiss the prompt. Dropbox prompted after the product had synced files; Airbnb after a completed trip. Recording the reach of the trigger event is what makes the invitation-per-user projection honest.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-reward-on-qualifying-event-not-signup" testable="true" depth="essential">
+      <statement>Rewards for referrer and referee MUST be released only when the referee completes a qualifying event (first paid order at or above a stated minimum, or a stated activation milestone), never on account creation. The qualifying condition MUST appear verbatim on the landing page and in every programme email.</statement>
+      <rationale source="Widely established practice in referral programme operations; templates/landing-page.md.j2 FAQ">Reward-on-signup is the fraud vector: throwaway accounts cost nothing to create and every one is paid. Paying on a purchase above a minimum makes the abuse cost more than the reward. Stating the condition on the page is what prevents the support queue of "where is my $20" from users whose friend only registered.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-double-sided-incentive-within-unit-economics" testable="true" depth="essential">
+      <statement>The incentive MUST be double-sided (referrer and referee both receive something), and the spec MUST show that total reward cost per qualified referee is at or below the blended paid CAC and at or below a stated fraction of first-order gross margin or expected LTV. A programme whose reward per qualified referee exceeds paid CAC MUST NOT launch as designed.</statement>
+      <rationale source="Dropbox and Airbnb referral programme case studies (widely cited); David Skok, 'SaaS Metrics 2.0' (For Entrepreneurs)">A one-sided reward gives the invitee no reason to click and the referrer the feeling of selling a friend; both sides paid is what made the classic programmes work. The economics check exists because "$20 give, $20 get" on a $30 average order is a programme that loses money on every success and is only noticed when finance reconciles credits.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-fraud-guard-self-referral-and-idempotent-rewards" testable="true" depth="essential">
+      <statement>The programme MUST implement, before launch: referee-must-be-new-account enforcement (each email address and each payment instrument referable once); self-referral detection matching referrer and referee on payment instrument, device fingerprint, IP and normalised email (plus-addressing and dot variants collapsed); a reward hold until the refund or chargeback window closes; and idempotent reward fulfilment keyed on the unique tuple (referrer_id, referee_id, qualifying_event). A retry without that key is forbidden.</statement>
+      <rationale source="Widely established practice in referral fraud prevention; templates/k_factor.py notes">Every referral programme with cash-equivalent rewards is attacked within days: one person, forty plus-addressed emails, one card. Without the idempotency key a queue retry after a timeout pays the same reward twice, and the duplicate is discovered by the customer who kept quiet about it.</rationale>
+    </rule>
+
+    <rule id="r-k-factor-computed-on-500-plus-invites" testable="true" depth="essential">
+      <statement>The K-factor projection MUST be computed as invites per active referrer multiplied by conversion per invite, on at least 500 invites and at least 50 active referrers, with the cycle time (median days from trigger event to referee qualifying event) stated alongside. K below 1 MUST be presented as a multiplier of 1 / (1 - K) on other acquisition, not as viral growth, and the projection MUST net out reward cost.</statement>
+      <rationale source="David Skok, 'Lessons Learned: Viral Marketing' (For Entrepreneurs, 2009); templates/k_factor.py">Twenty invites and four sign-ups is a K of 0.2 with a confidence interval that spans zero to one; a launch decision on it is a coin flip. Referral programmes almost never exceed K of 1, and the value of a K of 0.3 is real (it lowers blended CAC by roughly 30 percent) but is not the growth curve that "viral" implies to the board.</rationale>
+    </rule>
+
+    <rule id="r-referral-attribution-server-side" testable="true" depth="essential">
+      <statement>Every share surface MUST issue a unique per-user referral code or link, the landing page and email infrastructure MUST accept the referral parameter, and the referrer-to-referee link MUST be persisted server-side at referee account creation (from the parameter, a first-party cookie set on landing, or a code entered at sign-up). Attribution inferred from `utm_source=referral` or from the referrer's word is forbidden.</statement>
+      <rationale source="AGENTS.md prerequisite on lifecycle and landing infrastructure; widely established practice in referral programme operations">The referee opens the link on a phone and signs up on a laptop two days later; without a persisted code the referral is lost, the referrer is not paid, and the programme's reported K undercounts what actually happened. UTM-only attribution is overwritten by the next campaign click and cannot identify which referrer to pay.</rationale>
+    </rule>
+
+    <rule id="r-lifecycle-sequence-trigger-reminder-confirmation" testable="true" depth="essential">
+      <statement>The lifecycle sequence MUST contain at minimum: an announcement sent at the trigger event, a single reminder sent only to users with zero referrals after a stated interval (the template uses 14 days), and a reward confirmation to both referrer and referee when the qualifying event completes. Reminders MUST NOT be sent to users who have already referred, and no message MAY promise a reward before the qualifying event.</statement>
+      <rationale source="Widely established practice in lifecycle email; templates/emails.md.j2">Reminding a user who has already referred three friends reads as broken and drives unsubscribes from the whole lifecycle stream, not just the referral messages. The confirmation email is what turns a referrer into a repeat referrer; programmes that skip it see one invitation per user and stop there.</rationale>
+    </rule>
+
+    <rule id="r-incentive-disclosure-and-published-terms" testable="true" depth="essential">
+      <statement>Shared content generated by the programme MUST disclose that the referrer receives a reward, and the programme page MUST publish terms covering the qualifying event, reward timing, exclusions (existing accounts, self-referral), and the right to withhold or reverse rewards for fraud. Any earnings claim in programme copy ("top referrer earned $300") MUST be true for the period stated.</statement>
+      <rationale source="FTC Guides Concerning the Use of Endorsements and Testimonials in Advertising, 16 CFR Part 255">A paid referral is an endorsement with a material connection, and undisclosed ones are what regulators act on. Published terms are also the operational defence: withholding a fraudulent reward without a published rule is a chargeback and a public complaint, with a published rule it is a support macro.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when every referral-programme signal checks out.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Growth Referral Programs; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when the lifecycle or landing infrastructure cannot carry a referral parameter.</rationale>
     </rule>
   </section>
-  <section title="Sources">
-    <reference>Dropbox / Airbnb referral case studies</reference>
-    <reference>Reforge — referral mechanics</reference>
-    <reference>ReferralCandy / Friendbuy — operational guides</reference>
-    <reference>Anti-fraud — referral abuse patterns</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

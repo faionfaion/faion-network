@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011, batch 3 of 4: `marketing` — 19 methodologies.** `google-analytics`,
+  the CR's headline example, now has nine rules about GA4: `transaction_id`
+  deduplication on purchase, custom dimensions registered within the property
+  limits, BigQuery export linked before launch because it does not backfill,
+  Consent Mode v2 defaults before any `gtag('config')`. Its `gtag-snippet.html`
+  had no consent defaults at all and now sets them first; `conversion-tracking`'s
+  `funnel-tracker.js` sent revenue events without a `transaction_id` and now
+  requires one. `cohort-implementation` was carrying copy-pasted GA4 keys in its
+  own config and examples (`property_id`, `consent_mode`), and
+  `ai-overview-presence-tracker` a borrowed `activation_rate`; both replaced with
+  the artefacts the slug is actually about. `growth-experiment-design` cites
+  Kohavi, Tang and Xu and the KDD 2017 peeking paper; the activation and pricing
+  families cite Lean Analytics, Hacking Growth, Rafi Mohammed's good-better-best.
+  Two pro slugs already had real rules without ids or sources; those were kept
+  and completed, not replaced. One wrong attribution fixed in passing
+  (Predictably Irrational is Ariely, not "Williams").
+
 - **CR-011, batch 2 of 4: `dev` — 24 methodologies.** The largest concentration
   of the stamp. Now `hipaa-phi-data-flow-design` cites §164.312 and the HHS
   unsecured-PHI guidance instead of semver; `latency-budget-allocation` states

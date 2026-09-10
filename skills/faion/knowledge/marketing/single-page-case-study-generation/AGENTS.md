@@ -47,7 +47,7 @@
 ## Content (load on demand)
 | File | What's inside |
 |------|---------------|
-| `content/01-core-rules.xml` | 5 testable rules: six required slots, numeric outcome floor, pull-quote from client, NDA fallback, one-week deadline |
+| `content/01-core-rules.xml` | 8 rules: six slots on one page, numbers as baseline/final/delta, evidence source named and kept, verbatim quote with written permission, NDA fallback never dropped, 7-day draft / 14-day publish, outcome-first headline, single tracked CTA |
 | `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
 | `content/02-output-contract.xml` | JSON Schema the artefact must satisfy. |
 | `content/06-decision-tree.xml` | Routes observable inputs to a rule; read before drafting. |

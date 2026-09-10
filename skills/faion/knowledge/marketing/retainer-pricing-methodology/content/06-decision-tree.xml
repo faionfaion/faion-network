@@ -1,20 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Retainer Pricing Methodology — Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable preconditions to a rule from `01-core-rules.xml`. Mandatory minimum tree for every methodology.</summary>
+<text id="06-decision-tree" title="Retainer Pricing Methodology — Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable engagement signals (recurring scope, shape chosen, price against hourly-equivalent, capacity) to a rule from `01-core-rules.xml`. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Are all Applies-If preconditions satisfied AND none of the Skip-If disqualifiers present?</root-question>
+    <root-question id="q-recurring-scope">Does the client have recurring work in the same scope for at least 3 months ahead (maintenance, ongoing feature stream, on-call availability), rather than a single bounded project?</root-question>
 
-    <branch when="preconditions == true">
-      <conclusion ref="run-the-checklist" verdict="execute the procedure in 04-procedure.xml and commit the artefact"/>
+    <branch when="recurring_scope == false">
+      <conclusion ref="skip-this-methodology" verdict="no capacity to retain; price it as a fixed-scope project and revisit when a second engagement appears"/>
     </branch>
 
-    <branch when="preconditions == false">
-      <conclusion ref="skip-this-methodology" verdict="do not apply; route to the upstream / sibling methodology named in AGENTS.md Related"/>
+    <branch when="recurring_scope == true">
+      <question id="q-shape-named">Does the draft name exactly one retainer shape (block-of-hours, outcome-based, availability) with its defining term (rollover and overage, deliverable list, or response time and maximum load)?</question>
+
+      <branch when="shape_named == false">
+        <conclusion ref="r-retainer-shape-named" verdict="pick the shape from the client's actual request pattern before pricing anything"/>
+      </branch>
+
+      <branch when="shape_named == true">
+        <question id="q-price-above-floor">Is the monthly price shown as expected hours x hourly rate x multiple, with the multiple at or above 1.3 (or a named client concession justifying less)?</question>
+
+        <branch when="price_above_floor == false">
+          <conclusion ref="r-rate-floor-1-3x-hourly-equivalent" verdict="re-price with the three numbers visible; if the client refuses the floor, shrink the block rather than the rate"/>
+        </branch>
+
+        <branch when="price_above_floor == true">
+          <question id="q-capacity-fits">Do total committed hours across all active retainers, including this one at maximum load, stay within available billable hours?</question>
+
+          <branch when="capacity_fits == false">
+            <conclusion ref="r-capacity-not-oversold" verdict="do not sign; end or re-scope another retainer first, or reduce this one's maximum load"/>
+          </branch>
+
+          <branch when="capacity_fits == true">
+            <conclusion ref="run-the-checklist" verdict="write the artefact with scope lists, turnaround, term and notice, advance billing, cutover date if converting from hourly, and the 6-month review"/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 
-  <example trace="precondition-check">
-    preconditions=true → run-the-checklist → artefact committed.
+  <example trace="happy-path">
+    recurring_scope=true -&gt; shape_named=true -&gt; price_above_floor=true -&gt; capacity_fits=true -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

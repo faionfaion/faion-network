@@ -1,41 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Growth Experiment Design Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Growth Experiment Design. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Growth Experiment Design Core Rules" version="2.0.0" est_tokens="2300" depth="essential">
+  <summary>8 testable rules every Growth Experiment Design application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Growth Experiment Design, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="Sean Ellis — Hacking Growth">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-hypothesis-falsifiable-with-effect-size" testable="true" depth="essential">
+      <statement>The hypothesis MUST be written as "If we [change] for [segment], then [primary metric] will change by at least [X percent] because [mechanism]". It MUST name one change, one segment, one primary metric and a numeric minimum effect. A hypothesis without a number, or with "improve engagement" as the metric, is rejected.</statement>
+      <rationale source="Sean Ellis and Morgan Brown, Hacking Growth (2017); Kohavi, Tang and Xu, Trustworthy Online Controlled Experiments (2020)">Without a stated minimum effect the experiment cannot be sized and cannot lose: any positive movement is declared a win and any flat result "needs more time". The mechanism clause is what turns a losing test into a learning, because it says which belief was wrong.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-one-primary-metric-plus-guardrails" testable="true" depth="essential">
+      <statement>The experiment MUST have exactly one primary decision metric and a named list of guardrail metrics (at minimum: revenue or conversion downstream of the change, retention, and a performance or error-rate metric) each with a stop threshold. The ship decision MUST be made on the primary metric; a guardrail breach vetoes a ship regardless of the primary result.</statement>
+      <rationale source="Kohavi, Tang and Xu, Trustworthy Online Controlled Experiments (2020), on the Overall Evaluation Criterion and guardrails">With five primary metrics at 95 percent confidence, roughly one is significant by chance, and the write-up picks that one. Guardrails are what catch the sign-up form change that lifts sign-ups 12 percent and drops paid conversion 20 percent because the extra sign-ups never intended to buy.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-ice-scored-before-build" testable="true" depth="essential">
+      <statement>Every experiment MUST carry an ICE score (Impact, Confidence, Ease, each 1 to 10, with the scoring criteria written once for the team) recorded in the backlog before any build work starts, and the backlog MUST be worked in ICE order unless a deviation is logged. Confidence MUST cite its evidence (prior test, user research, analytics) or be scored at most 3.</statement>
+      <rationale source="Sean Ellis and Morgan Brown, Hacking Growth (2017)">ICE exists to stop the loudest idea from being built first. Without written criteria, Confidence becomes a vote of enthusiasm, and without an evidence citation every idea scores 8; the cap at 3 for uncited confidence is what keeps the ranking honest.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-sample-size-computed-before-launch" testable="true" depth="essential">
+      <statement>Before launch the spec MUST record the baseline rate of the primary metric, the minimum detectable effect from the hypothesis, alpha 0.05 and power 0.8, the resulting required sample per variant, and the run duration derived from eligible daily traffic, rounded up to whole weeks with a minimum of one full week. If the required duration exceeds eight weeks the experiment MUST be redesigned (larger effect, broader segment, proxy metric) rather than launched.</statement>
+      <rationale source="Kohavi, Tang and Xu, Trustworthy Online Controlled Experiments (2020); widely established practice in statistical power analysis">An underpowered test reads as "no effect" for a change that works, and the idea is discarded. Whole weeks cover the weekday and weekend mix; a test read on a Thursday after nine days is biased toward the weekday population. The eight-week cap is a pragmatic limit: past it, seasonality and product drift contaminate the comparison.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-fixed-stop-date-no-peeking-srm-check" testable="true" depth="essential">
+      <statement>The stop date from the sample-size calculation MUST be recorded before launch and results MUST be read only at that date, unless the spec declares a sequential testing method up front. Before any result is read, the spec MUST record a sample ratio mismatch check (observed allocation versus planned, chi-square p below 0.001 invalidates the run).</statement>
+      <rationale source="Johari, Koning, Pekelis and Walsh, 'Peeking at A/B Tests: Why it matters, and what to do about it' (KDD 2017); Kohavi, Tang and Xu, Trustworthy Online Controlled Experiments (2020)">Checking daily and stopping at the first significant day inflates the false-positive rate several-fold; the "winner" then fails to replicate in production. A sample ratio mismatch (49/51 planned as 50/50 on a large sample) means the assignment or logging is broken, and every downstream number is meaningless however significant it looks.</rationale>
+    </rule>
+
+    <rule id="r-control-group-randomised-by-flag" testable="true" depth="essential">
+      <statement>Assignment MUST be done by the feature-flag platform with deterministic hashing on a stable user identifier (not session or device), with a control group that receives the unchanged current experience, and the allocation percentages recorded in the spec. Before-and-after comparisons, geo splits without randomisation and "everyone new gets the variant" designs are not experiments and MUST NOT be written up as such.</statement>
+      <rationale source="Kohavi, Tang and Xu, Trustworthy Online Controlled Experiments (2020); feature-flag platform documentation (LaunchDarkly, Statsig, Unleash)">Session-level hashing shows the same user both variants across visits and dilutes the effect toward zero. A pre/post comparison launched the week of a marketing push credits the variant with the campaign; the control group is the only thing that removes everything that is not the change.</rationale>
+    </rule>
+
+    <rule id="r-instrumentation-playback-before-ramp" testable="true" depth="essential">
+      <statement>Before ramping above the smoke-test allocation, the team MUST run an instrumentation playback: trigger the exposure event and every primary and guardrail metric event in each variant on a staging or 1 percent cohort, and confirm each lands in the analytics destination with the experiment id and variant id attached. The exposure event MUST fire at the moment the user actually sees the variant, not at assignment.</statement>
+      <rationale source="Kohavi, Tang and Xu, Trustworthy Online Controlled Experiments (2020), on triggering; Statsig and GrowthBook documentation on exposure logging">Logging exposure at assignment counts users who never reached the changed screen, diluting a 10 percent lift into a 2 percent one. The playback is the only step that catches the missing variant id before four weeks of traffic have been collected without it.</rationale>
+    </rule>
+
+    <rule id="r-write-up-every-experiment" testable="true" depth="essential">
+      <statement>Every experiment, including losers and inconclusive runs, MUST get a write-up within one week of the stop date in the shared experiment log, recording the decision (ship, iterate, kill), the observed effect on the primary metric with its confidence interval, guardrail results, the SRM check, and one sentence on what the team now believes differently. Experiments without a write-up MUST NOT be counted toward the quarterly velocity target.</statement>
+      <rationale source="Sean Ellis and Morgan Brown, Hacking Growth (2017); Reforge, experimentation program design">A team that runs two experiments a quarter and writes up only the winners re-runs the losers a year later under a new name. Excluding unwritten experiments from velocity is what makes the write-up happen; otherwise the count is the incentive and the learning is optional.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when every experiment-design signal checks out.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Growth Experiment Design; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when traffic or assignment infrastructure cannot support a controlled experiment.</rationale>
     </rule>
   </section>
-  <section title="Sources">
-    <reference>Sean Ellis — Hacking Growth</reference>
-    <reference>Reforge — experiment design</reference>
-    <reference>Kohavi et al. — Trustworthy Online Experiments</reference>
-    <reference>GrowthBook / Statsig design docs</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

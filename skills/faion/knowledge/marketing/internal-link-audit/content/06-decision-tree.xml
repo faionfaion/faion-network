@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Internal Link Audit Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
+<text id="06-decision-tree" title="Internal Link Audit Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable crawl and link-graph signals (site size, crawl reconciliation, link position split, cluster reciprocity) to a rule from 01-core-rules.xml. Every leaf references a rule id.</summary>
 
   <decision-tree>
-    <root-question id="q-preconditions">Do ALL `Applies If` items evaluate true AND no `Skip If` item evaluates true?</root-question>
+    <root-question id="q-site-size">Does the site have at least 30 published indexable content pages and at least one declared topic cluster (pillar plus 5 or more cluster pages)?</root-question>
 
-    <branch when="preconditions_hold == false">
-      <conclusion ref="skip-this-methodology" verdict="return action=skip with reason; yield to parent workflow"/>
+    <branch when="site_qualifies == false">
+      <conclusion ref="skip-this-methodology" verdict="too small for a graph audit; fix links by hand while publishing and return when the site passes 30 pages"/>
     </branch>
 
-    <branch when="preconditions_hold == true">
-      <question id="q-owner">Is the artefact owner named with a review_deadline &lt;= 90 days?</question>
+    <branch when="site_qualifies == true">
+      <question id="q-crawl-reconciled">Is there a full rendered crawl from within the audit period whose indexable page count reconciles with the XML sitemap and CMS count within 5 percent, or with every gap explained?</question>
 
-      <branch when="owner_named == false">
-        <conclusion ref="named-owner" verdict="refuse to synthesise until owner + review_deadline supplied"/>
+      <branch when="crawl_reconciled == false">
+        <conclusion ref="r-crawl-scope-reconciled" verdict="rerun or rescope the crawl and reconcile counts before any orphan, hub or cluster analysis"/>
       </branch>
 
-      <branch when="owner_named == true">
-        <question id="q-schema">Does the synthesised artefact validate against 02-output-contract.xml?</question>
+      <branch when="crawl_reconciled == true">
+        <question id="q-link-position-split">Are incoming links split by position so that contextual (main content) counts are available separately from navigation, footer, sidebar and breadcrumb links?</question>
 
-        <branch when="schema_valid == false">
-          <conclusion ref="output-contract-binding" verdict="iterate up to 3 times; on 3rd failure escalate to human"/>
+        <branch when="position_split == false">
+          <conclusion ref="r-incoming-count-excludes-boilerplate" verdict="export link position from the crawler and recompute every per-page count on the contextual column"/>
         </branch>
 
-        <branch when="schema_valid == true">
-          <question id="q-signoff">Has the named human reviewer signed off?</question>
+        <branch when="position_split == true">
+          <question id="q-cluster-matrix">Has the pillar-to-cluster and cluster-to-pillar link matrix been built for every declared cluster?</question>
 
-          <branch when="signoff == false">
-            <conclusion ref="human-checkpoint" verdict="surface ready_for_review=true; DO NOT auto-publish"/>
+          <branch when="cluster_matrix_built == false">
+            <conclusion ref="r-pillar-cluster-reciprocity" verdict="build the matrix per cluster; every missing edge becomes a rewire item"/>
           </branch>
 
-          <branch when="signoff == true">
-            <conclusion ref="deviation-log" verdict="log any deviations in deviation_log_reference; release artefact"/>
+          <branch when="cluster_matrix_built == true">
+            <conclusion ref="run-the-checklist" verdict="graph is trustworthy; produce orphan decisions, anchor distribution, hygiene findings, fully specified rewire plan and the Search Console baseline"/>
           </branch>
         </branch>
       </branch>
@@ -39,6 +39,6 @@
   </decision-tree>
 
   <example trace="happy-path">
-    preconditions_hold=true -&gt; owner_named=true -&gt; schema_valid=true -&gt; signoff=true -&gt; conclusion ref=deviation-log (release)
+    site_qualifies=true -&gt; crawl_reconciled=true -&gt; position_split=true -&gt; cluster_matrix_built=true -&gt; conclusion ref=run-the-checklist
   </example>
 </text>

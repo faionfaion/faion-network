@@ -1,41 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Google Analytics 4 Setup Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Six testable rules grounding Google Analytics 4 Setup. Each rule pairs a binary statement, a rationale, and a source. Decision tree branches in 06-decision-tree.xml reference these ids.</summary>
+<text id="01-core-rules" title="Google Analytics 4 Setup Core Rules" version="2.0.0" est_tokens="2500" depth="essential">
+  <summary>9 testable rules every Google Analytics 4 Setup application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+
   <section title="Rule set">
-    <rule id="preconditions-hold" testable="true" depth="essential">
-      <statement>Before running Google Analytics 4 Setup, every item in the AGENTS.md 'Applies If' list must hold; if any fails, the methodology must be skipped.</statement>
-      <rationale source="GA4 official docs — implementation">Methodologies executed outside their preconditions produce plausible-looking but invalid output. Running the gate prevents wasted cycles.</rationale>
+
+    <rule id="r-property-id-and-measurement-id-distinct" testable="true" depth="essential">
+      <statement>The config MUST record the numeric property id and every data stream's measurement id (`G-` prefix) as separate fields. The `gtag` snippet and Measurement Protocol use the measurement id; the Data API, Admin API and BigQuery dataset name use the numeric property id. Using one where the other is expected is a config error.</statement>
+      <rationale source="Google Analytics Data API documentation; GA4 Measurement Protocol reference">The ids look interchangeable and are not: a Data API call with `properties/G-XXXX` returns a permission error that reads like a credentials problem and costs an afternoon, and a Measurement Protocol hit with the numeric id is accepted with HTTP 204 and silently discarded.</rationale>
     </rule>
-    <rule id="output-contract-binding" testable="true" depth="essential">
-      <statement>The producing agent MUST emit an artefact validating against content/02-output-contract.xml's JSON Schema; any field outside the schema is rejected.</statement>
-      <rationale source="Internal — F-066 content-completion design">Hard schema is the only mechanical interlock between a synthesising LLM and downstream consumers; prose contracts get reinterpreted.</rationale>
+
+    <rule id="r-enhanced-measurement-declared-no-double-page-view" testable="true" depth="essential">
+      <statement>The config MUST list the state of each enhanced measurement toggle (page views, scrolls, outbound clicks, site search, video engagement, file downloads, form interactions). On single-page applications, either the browser-history page view option is on or the app sends `page_view` manually with `send_page_view: false` in the config call; never both.</statement>
+      <rationale source="Google Analytics Help, 'Enhanced event measurement'; gtag.js reference, send_page_view">Enhanced measurement is on by default, so an SPA that also pushes its own `page_view` on route change reports two page views per screen and halves every per-page engagement metric. Form interactions and site search fire on parameters the team never chose; undeclared toggles are the usual source of "where did this event come from" tickets.</rationale>
     </rule>
-    <rule id="named-owner" testable="true" depth="essential">
-      <statement>Every output produced by this methodology MUST name a single human owner with edit rights and a review deadline.</statement>
-      <rationale source="Atlassian — documentation governance">Orphan artefacts rot; named ownership is the only durable mechanism for keeping the artefact current.</rationale>
+
+    <rule id="r-custom-dimensions-registered-within-limits" testable="true" depth="essential">
+      <statement>Every custom event parameter or user property that any report will read MUST be registered as a custom dimension or metric with the correct scope (event, user, item) before the first event that carries it is sent. Standard properties allow 50 event-scoped and 25 user-scoped custom dimensions and 50 custom metrics; check the current limit for your plan before registering, and record the used count in the config.</statement>
+      <rationale source="Google Analytics Help, 'Custom dimensions and metrics'">Custom dimensions populate only from the date of registration; a parameter sent for three months before anyone registered it is unreportable for those three months, and the BigQuery export is the only place it survives. Teams that register one dimension per experiment hit the 50 cap within a year and cannot delete without losing the report history that referenced the slot.</rationale>
     </rule>
-    <rule id="deviation-log" testable="true" depth="essential">
-      <statement>Any deviation from the canonical procedure MUST be logged with a one-line rationale and surfaced at the next retro.</statement>
-      <rationale source="Deming — Out of the Crisis (PDCA)">Undocumented deviations destroy institutional memory; PDCA requires a written delta.</rationale>
+
+    <rule id="r-key-events-declared-by-exact-name" testable="true" depth="essential">
+      <statement>Conversions MUST be declared as key events by exact event name in the config, and only events present in the property's event list MAY be marked. Standard properties allow 30 key events; check the current limit for your plan. Each key event MUST state its counting method (once per event or once per session).</statement>
+      <rationale source="Google Analytics Help, 'Key events'">Marking `Purchase` as a key event when the site sends `purchase` creates a conversion that never fires, and the mismatch is invisible because the mark saves without error. The counting method decides whether a user who submits a form twice is one lead or two, which is the first number sales will dispute.</rationale>
     </rule>
-    <rule id="human-checkpoint" testable="true" depth="essential">
-      <statement>Before any binding downstream action driven by this output (publish, send, rollout, commit), a named human reviewer MUST sign off.</statement>
-      <rationale source="Internal — F-066 safety design">LLM outputs are first drafts; the human checkpoint is the safety gate against hallucinated commitments.</rationale>
+
+    <rule id="r-purchase-transaction-id-dedup" testable="true" depth="essential">
+      <statement>Every `purchase` event MUST carry `transaction_id`, `value`, `currency` and an `items` array using the recommended item parameters. The `transaction_id` MUST be the order identifier, unique per order and stable across retries, browser and server sends.</statement>
+      <rationale source="GA4 recommended events reference, purchase; Google Analytics Help, 'Set up ecommerce measurement'">GA4 deduplicates purchases that share a `transaction_id`, which is the only defence against the user who reloads the confirmation page or the server that retries a Measurement Protocol hit. Without it revenue in GA4 runs ahead of the order table and every ROAS figure downstream inherits the error.</rationale>
+    </rule>
+
+    <rule id="r-consent-mode-v2-defaults-before-config" testable="true" depth="essential">
+      <statement>Where users from consent jurisdictions are in scope, the snippet MUST push `gtag('consent', 'default', ...)` with `ad_storage`, `analytics_storage`, `ad_user_data` and `ad_personalization` before the `gtag('config', ...)` call, scoped with `region` where defaults differ, and the consent management platform MUST send `gtag('consent', 'update', ...)` on user choice. The config MUST record the consent mode implementation (basic or advanced).</statement>
+      <rationale source="Google, Consent Mode v2 documentation; Google Ads Help, EU user consent policy">Defaults pushed after `config` arrive after the first hit has already set cookies, so the implementation is non-compliant while appearing complete. Since March 2024 Google requires the two v2 signals to build EEA audiences and measure conversions in Google Ads; a property without them loses that data without any warning in GA4 itself.</rationale>
+    </rule>
+
+    <rule id="r-bigquery-export-linked-before-launch" testable="true" depth="essential">
+      <statement>The BigQuery export MUST be linked before the property receives production traffic, with the daily export enabled and the dataset location recorded in the config. Event data retention MUST be set to 14 months (the maximum for standard properties). Any report used for a business decision that would exceed the sampling threshold in explorations (10 million events per query for standard properties; check the current limit for your plan) MUST be built from BigQuery, not from a sampled exploration.</statement>
+      <rationale source="Google Analytics Help, 'BigQuery Export'; Google Analytics Help, 'Data retention'; Google Analytics Help, 'About data sampling'">The export does not backfill: linking it in month six means the first six months exist only inside GA4's interface. Retention defaults to 2 months, after which explorations quietly stop returning older users. Sampled explorations disagree with themselves run to run, and a decision made on a sampled cohort cannot be reproduced the next day.</rationale>
+    </rule>
+
+    <rule id="r-measurement-protocol-reuses-client-id" testable="true" depth="essential">
+      <statement>Server-side events sent through the Measurement Protocol MUST reuse the `client_id` read from the browser's `_ga` cookie and include the current `session_id` and `engagement_time_msec`; generating a fresh `client_id` server-side is forbidden. The Measurement Protocol `api_secret` MUST be stored server-side only and never shipped to the browser.</statement>
+      <rationale source="GA4 Measurement Protocol reference; templates/mp_track.py">A fresh id per hit turns every server event into a new user with no session, so server-side purchases attribute to `(direct)` and the new-user count doubles. The `api_secret` in client code lets anyone inject events into the property; the standard first sign is a spike of fake purchases from a single country.</rationale>
+    </rule>
+
+    <rule id="r-internal-traffic-referral-and-cross-domain" testable="true" depth="essential">
+      <statement>The config MUST define the internal-traffic filter (IP rules, and the filter set to active, not testing), the unwanted-referral list covering every payment and authentication domain the checkout passes through (for example the payment provider and the SSO provider), and the cross-domain measurement list when the journey spans more than one domain.</statement>
+      <rationale source="Google Analytics Help, 'Filter out internal traffic'; Google Analytics Help, 'Identify unwanted referrals'; Google Analytics Help, 'Set up cross-domain measurement'">Without the referral exclusion every purchase that returns from the payment provider starts a new session attributed to `paypal.com / referral`, and the paid campaign that actually drove it gets zero credit. The internal filter defaults to testing mode, which does nothing until someone flips it; office traffic then inflates engagement on every internal tool page.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Conclusion targets used by the decision tree">
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Run the full procedure; emit an artefact passing the output contract.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when every property signal checks out.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If 'Applies If' evaluates false OR 'Skip If' evaluates true, the agent MUST NOT run Google Analytics 4 Setup; it returns an action=skip envelope and yields control to the parent workflow.</statement>
-      <rationale source="Internal — F-066 decision-tree contract">Explicit skip exit prevents agents from forcing the methodology into incompatible contexts.</rationale>
+      <statement>Skip; surface the missing precondition; do not synthesize.</statement>
+      <rationale source="decision-tree-target">Terminal target used by 06-decision-tree when no GA4 property is being created or reconfigured.</rationale>
     </rule>
   </section>
-  <section title="Sources">
-    <reference>GA4 official docs — implementation</reference>
-    <reference>Google — BigQuery export schema</reference>
-    <reference>Simo Ahava — GA4 deep dives</reference>
-    <reference>Privacy/consent mode docs</reference>
-  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>
