@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-013 §1 closed: the repair had already landed, and the documented repair
+  path would have regressed 55 templates.** The backlog set 161 templates / 1,055
+  tokens as an open target and said *"the scanner fix landed; the corpus repair did
+  not"*. Verified by running the converter over all 161 — restore the pre-migration
+  `.md`, re-migrate once, compare the regenerated `.md.j2` against `HEAD`:
+
+  | | |
+  |---|--:|
+  | already byte-identical to a fresh conversion | **104** |
+  | differs **only in the header**, braces identical | **55** |
+  | differs in braces, and the reconvert leaves one *more* literal | 1 |
+  | refused by the converter (`flow mappings are not supported`) | 1 |
+
+  The repair landed in `3700e6566`, `ae71dde1e` and `5f1dd8b9d`, all before the
+  commit the backlog says it measured at. The 1,055 residual tokens are what the
+  corrected scanner deliberately leaves literal — prose, per-row cells,
+  collisions — which is its documented behaviour.
+
+  **And the recommended path is a regression.** Restoring a pre-migration source
+  discards every fix made after that template's migration commit, and three later
+  commits added or repaired the five-key header. Following the instruction deletes
+  the header from 55 templates: measured at 1,006 deletions against 34 insertions
+  across 140 files before reverting. The backlog now carries that warning beside
+  the instruction.
+
+  Second wrong premise behind a correct number this week, after CR-010. This one
+  even shipped the command that reproduces the count — which made the count
+  trustworthy and the sentence no more true. **Ship the query with the claim, not
+  only with the count.**
+
 - **CR-010's stopgap landed: 177 rows over 69 slugs, and a gate.** Every
   `content/*.xml` in the corpus now has a row in its envelope's `## Content`
   table, and `scripts/list-unlisted-content.py --check` is in `FAST_IDS`, so a

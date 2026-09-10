@@ -36,7 +36,54 @@ templating it would break the gate that guards it.
 
 ## Open work — no decision needed, only execution
 
-### 1. CR-013 §1 — mixed-case brace placeholders still on disk
+### 1. CR-013 §1 — CLOSED 2026-09-10: the repair had already landed, and the path recommended below would have regressed 55 templates
+
+> **Correction.** This section said *"the scanner fix landed; the corpus repair did not"* and set
+> **161 templates / 1,055 tokens** as the repair target. Both halves were wrong, and the repair it
+> recommended is actively harmful. Verified by running the converter, not by re-running the regex.
+>
+> **The repair landed.** In `3700e6566 fix: see a mixed-case brace placeholder`,
+> `ae71dde1e fix: reconvert 158 templates with braces` and
+> `5f1dd8b9d fix: re-convert 45 templates under new rules` — all three **before** `88946ebac`, the
+> commit this document says it measured at. The residual 1,055 tokens are not unrepaired files.
+> They are **what the corrected scanner deliberately leaves literal**, which is the documented
+> behaviour: a prose placeholder, a per-row cell, a collision and a code-fence placeholder are each
+> reported by reason and left alone.
+>
+> **Method.** For each of the 161: restore the pre-migration `.md` (`git show <add-commit>^:<path>`),
+> re-run `--migrate` once with the current scanner, compare the regenerated `.md.j2` against
+> `git show HEAD:<path>`.
+>
+> | | |
+> |---|--:|
+> | already byte-identical to the fresh conversion | **104** |
+> | differs, but **only in the header** — braces identical | **55** |
+> | differs in braces — and the reconvert would leave one **more** literal (`{Month}`) | 1 |
+> | refused: `header line 3: flow mappings are not supported` | 1 |
+>
+> **So the recommended path is a regression on 55 files.** Restoring a pre-migration source
+> discards every fix made to that template *after* its migration commit — and
+> `d7e6222fd fix: require the header to be commented`, `dce921cda` and `51328ea21` are exactly
+> that. Following this section's own instructions deletes the five-key header from 55 templates and
+> leaves validator 5 failing on each declared one. Measured: 1,006 deletions against 34 insertions
+> across 140 files.
+>
+> **What remains, and it is a queue not a bug.** 452 distinct residual tokens. Some are
+> unmistakably prose (`{Restate the methodology goal in one sentence.}` ×11,
+> `{named human; never 'team' / 'we' / 'us'}` ×11). Others read like parameters — `{artefact_id}`
+> ×40, `{name}` ×37, `{description}` ×21, `{Title}` ×15 — and are left literal by §2's refusal rule
+> because they bind more than one substitution site under different headings. That is the
+> asymmetry §2 chose on purpose: **a false negative costs one line in a queue a human is already
+> reading; a false positive ships a document with the wrong value in it.** Promoting any of them is
+> per-file editorial judgement, which is §2's work below, not a mechanical pass.
+>
+> **The lesson, stated because it is the second time this week.** The 161/1,055 figure was measured
+> correctly and attached to a premise nobody checked — the same failure as CR-010's "never
+> delivered". This document even supplied the command to reproduce the number, which made the
+> number trustworthy and the *sentence* no more true. **Ship the query with the claim, not only
+> with the count.**
+
+The original text follows, for the record.
 
 **161 templates, 1,055 tokens.** The scanner fix landed; the corpus repair did not. These files
 were converted by the *old* scanner, which recognised only ALL-CAPS `{BRACE}`, so a `{Product}`
@@ -84,6 +131,12 @@ feeding a generated output back in as source.
 
 Restore each affected template from its **pre-migration** source (`git show <commit>:<path>`)
 and convert that, once, with the corrected scanner.
+
+**And that instruction is itself a trap — see the correction in §1.** A pre-migration source
+predates every fix applied to the template afterwards, so restoring it silently reverts them. On
+this corpus it would have stripped the five-key header from 55 templates. If a template genuinely
+needs re-conversion, restore the pre-migration source, re-apply the post-migration fixes to it
+first, and only then convert.
 
 ## Blocked on the owner
 
