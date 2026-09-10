@@ -5,8 +5,8 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | Item | Value |
 |------|-------|
 | Repo | `faionfaion/faion-network` |
-| Corpus | **2,520** methodology dirs over 22 domains, **443** playbook dirs, 6 workflows, 6 skill dirs (recounted on disk 2026-08-15 after CR-009) |
-| Gating | `skills/tier-manifest.json` **v14, 2,988 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (regenerated 2026-08-16). The generator walks **seven** roots; a dir under `skills/faion/` it does not name is never read and inherits a tier silently |
+| Corpus | **2,519** methodology dirs over 22 domains, **443** playbook dirs, 6 workflows, 6 skill dirs (recounted on disk 2026-09-10 after CR-006 merged the `sdd/templates` pair) |
+| Gating | `skills/tier-manifest.json` **v14, 2,987 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (regenerated 2026-09-10). The generator walks **seven** roots; a dir under `skills/faion/` it does not name is never read and inherits a tier silently |
 | Composable | 25 fragments over 6 packs, 4 recipes, **13 tool packs / 29 tools**, 1 variable dictionary. Fragments, recipes and the dictionary are tier **free**; tool packs are gated per pack — `browser`/`deploy`/`python-web`/`research`/`static-web`/`template-builder` free, `cloudflare`/`env-topology`/`game-dev`/`web-parse` solo, `github-ci`/`hetzner`/`sdd-sync` pro |
 | Tiers | free / solo / pro / geek (cumulative) |
 | Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH`; not bundled into the public `faion` plugin |

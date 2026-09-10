@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Counts and one stale path refreshed.** Root `AGENTS.md`: 2,520 → 2,519
+  methodology dirs and manifest 2,988 → 2,987 entries after CR-006. The
+  `ai-sdlc-landscape-2026` placement note pointed at
+  `readiness-checklist/content/01-checklist.xml`, which CR-008 folded into
+  `01-core-rules.xml`; the `i8-spec-delta` rule id it anchors on was kept
+  verbatim, so only the path needed to move.
+
 - **CR-006 follow-up: the old `sdd/templates-planning` path is gone.** The
   previous commit landed the merge, the archive copy and the manifest, but the
   deletions of the original 28 files had been unstaged by an index reset and the
