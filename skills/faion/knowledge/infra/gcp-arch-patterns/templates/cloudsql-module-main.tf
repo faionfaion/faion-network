@@ -42,10 +42,22 @@ resource "google_sql_database_instance" "main" {
       query_string_length    = 1024
     }
 
-    database_flags { name = "log_checkpoints";   value = "on" }
-    database_flags { name = "log_connections";   value = "on" }
-    database_flags { name = "log_disconnections"; value = "on" }
-    database_flags { name = "log_lock_waits";    value = "on" }
+    database_flags {
+      name  = "log_checkpoints"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_connections"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_disconnections"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_lock_waits"
+      value = "on"
+    }
   }
 }
 

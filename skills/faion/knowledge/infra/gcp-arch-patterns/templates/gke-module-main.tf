@@ -64,7 +64,7 @@ resource "google_container_cluster" "main" {
     channel = var.environment == "prod" ? "STABLE" : "REGULAR"
   }
 
-  datapath_provider   = "ADVANCED_DATAPATH"
+  datapath_provider     = "ADVANCED_DATAPATH"
   enable_shielded_nodes = true
 
   monitoring_config {
@@ -91,7 +91,10 @@ resource "google_container_node_pool" "pools" {
     location_policy = each.value.spot ? "ANY" : "BALANCED"
   }
 
-  management { auto_repair = true; auto_upgrade = true }
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
 
   node_config {
     spot         = each.value.spot

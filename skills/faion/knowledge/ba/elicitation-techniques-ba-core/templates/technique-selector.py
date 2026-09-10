@@ -1,10 +1,10 @@
+#!/usr/bin/env python3
 # purpose: CLI selector mapping (info_type, stakeholder_count) → technique.
 # consumes: see content/02-output-contract.xml inputs
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200-1000 tokens when loaded as context
 
-#!/usr/bin/env python3
 """technique-selector.py — map (info_type, stakeholder_count) to elicitation technique."""
 from __future__ import annotations
 import sys

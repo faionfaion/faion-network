@@ -43,7 +43,10 @@ resource "google_cloud_run_v2_service" "services" {
 
       dynamic "env" {
         for_each = each.value.env_vars
-        content { name = env.key; value = env.value }
+        content {
+          name  = env.key
+          value = env.value
+        }
       }
 
       dynamic "env" {
@@ -51,7 +54,10 @@ resource "google_cloud_run_v2_service" "services" {
         content {
           name = env.key
           value_source {
-            secret_key_ref { secret = env.value; version = "latest" }
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
           }
         }
       }

@@ -1,9 +1,9 @@
+#!/usr/bin/env python3
 # purpose: Single-flight primitive used inside cache-aside miss path
 # consumes: key
 # produces: single in-flight result shared across callers
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200 tokens when loaded
-#!/usr/bin/env python3
 """cache-singleflight.py — Async cache-aside with thundering-herd protection.
 
 On cache miss, only one coroutine fetches from the origin; others poll until

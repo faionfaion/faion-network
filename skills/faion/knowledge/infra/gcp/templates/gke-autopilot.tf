@@ -2,34 +2,46 @@
 # Autopilot: Google manages nodes, automatic resource requests, enforced security
 terraform {
   required_providers {
-    google = { source = "hashicorp/google"; version = "~> 5.0" }
+    google = { source = "hashicorp/google", version = "~> 5.0" }
   }
 }
 
 variable "project_id" { type = string }
-variable "region" { type = string; default = "us-central1" }
-variable "cluster_name" { type = string; default = "autopilot-cluster" }
-variable "network" { type = string; default = "default" }
-variable "subnetwork" { type = string; default = "default" }
+variable "region" {
+  type    = string
+  default = "us-central1"
+}
+variable "cluster_name" {
+  type    = string
+  default = "autopilot-cluster"
+}
+variable "network" {
+  type    = string
+  default = "default"
+}
+variable "subnetwork" {
+  type    = string
+  default = "default"
+}
 
 # Autopilot cluster — recommended over Standard for most workloads
 resource "google_container_cluster" "autopilot" {
   name     = var.cluster_name
   project  = var.project_id
-  location = var.region   # regional (multi-zone) for HA
+  location = var.region # regional (multi-zone) for HA
 
   enable_autopilot = true
 
   # Private cluster: nodes have no public IPs
   private_cluster_config {
     enable_private_nodes    = true
-    enable_private_endpoint = false          # keep public API endpoint (use authorized networks)
+    enable_private_endpoint = false # keep public API endpoint (use authorized networks)
     master_ipv4_cidr_block  = "172.16.0.0/28"
   }
 
   master_authorized_networks_config {
     cidr_blocks {
-      cidr_block   = "10.0.0.0/8"           # allow internal VPC
+      cidr_block   = "10.0.0.0/8" # allow internal VPC
       display_name = "internal"
     }
     # Add your CI/CD NAT IP here for kubectl access from pipelines
@@ -56,7 +68,7 @@ resource "google_container_cluster" "autopilot" {
   # Shield nodes from rootkit/bootkit attacks
   # (Autopilot: shielded nodes always enabled, config here for documentation)
   release_channel {
-    channel = "REGULAR"  # RAPID for latest, STABLE for conservative
+    channel = "REGULAR" # RAPID for latest, STABLE for conservative
   }
 
   maintenance_policy {
@@ -79,11 +91,11 @@ resource "google_container_cluster" "autopilot" {
   monitoring_config {
     enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
     managed_prometheus {
-      enabled = true    # Google-managed Prometheus (no operator needed)
+      enabled = true # Google-managed Prometheus (no operator needed)
     }
   }
 
-  deletion_protection = true   # prevent accidental terraform destroy
+  deletion_protection = true # prevent accidental terraform destroy
 }
 
 # GCP Service Account for workloads (linked to K8s SA via WI)

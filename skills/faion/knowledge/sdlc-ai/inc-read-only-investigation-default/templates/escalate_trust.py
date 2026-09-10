@@ -1,10 +1,10 @@
+#!/usr/bin/env python3
 # purpose: Trust ratchet manager
 # consumes: see content/02-output-contract.xml inputs
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200-500 tokens when loaded as context
 
-#!/usr/bin/env python3
 # purpose: trust ratchet manager — records first authorised write per action class
 # consumes: audit log + signed approval
 # produces: ratchet entry

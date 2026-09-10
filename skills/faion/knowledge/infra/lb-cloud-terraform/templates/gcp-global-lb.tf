@@ -5,10 +5,10 @@
 # token-budget-impact: ~700 tokens when loaded as context
 
 variable "project" { type = string }
-variable "domain"  { type = string }
+variable "domain" { type = string }
 
 resource "google_compute_managed_ssl_certificate" "default" {
-  name    = "managed-cert-${var.domain}"
+  name = "managed-cert-${var.domain}"
   managed { domains = [var.domain] }
 }
 
@@ -42,7 +42,10 @@ resource "google_compute_security_policy" "armor" {
       conform_action = "allow"
       exceed_action  = "deny(429)"
       enforce_on_key = "IP"
-      rate_limit_threshold { count = 600 interval_sec = 60 }
+      rate_limit_threshold {
+        count        = 600
+        interval_sec = 60
+      }
     }
     description = "rate limit 600/min/IP"
   }

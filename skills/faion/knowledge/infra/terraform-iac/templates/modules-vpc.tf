@@ -9,7 +9,7 @@ resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags = { Name = "${var.project_name}-${var.environment}-vpc" }
+  tags                 = { Name = "${var.project_name}-${var.environment}-vpc" }
 }
 
 resource "aws_internet_gateway" "main" {
@@ -59,11 +59,14 @@ variable "project_name" { type = string }
 variable "environment" { type = string }
 variable "vpc_cidr" { type = string }
 variable "availability_zones" { type = list(string) }
-variable "enable_nat_gateway" { type = bool; default = true }
+variable "enable_nat_gateway" {
+  type    = bool
+  default = true
+}
 
 # modules/vpc/outputs.tf
-output "vpc_id"             { value = aws_vpc.main.id }
-output "vpc_cidr"           { value = aws_vpc.main.cidr_block }
-output "public_subnet_ids"  { value = aws_subnet.public[*].id }
+output "vpc_id" { value = aws_vpc.main.id }
+output "vpc_cidr" { value = aws_vpc.main.cidr_block }
+output "public_subnet_ids" { value = aws_subnet.public[*].id }
 output "private_subnet_ids" { value = aws_subnet.private[*].id }
-output "nat_gateway_ip"     { value = var.enable_nat_gateway ? aws_eip.nat[0].public_ip : null }
+output "nat_gateway_ip" { value = var.enable_nat_gateway ? aws_eip.nat[0].public_ip : null }

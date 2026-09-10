@@ -2,7 +2,7 @@ resource "aws_kms_key" "terraform_state" {
   description             = "KMS key for Terraform state encryption"
   deletion_window_in_days = 30
   enable_key_rotation     = true
-  tags = { Name = "terraform-state-key", ManagedBy = "terraform" }
+  tags                    = { Name = "terraform-state-key", ManagedBy = "terraform" }
 }
 
 resource "aws_kms_alias" "terraform_state" {
@@ -53,7 +53,10 @@ resource "aws_dynamodb_table" "terraform_locks" {
   name         = "terraform-locks"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
-  attribute { name = "LockID", type = "S" }
-  tags     = { Name = "terraform-locks", ManagedBy = "terraform" }
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+  tags = { Name = "terraform-locks", ManagedBy = "terraform" }
   lifecycle { prevent_destroy = true }
 }

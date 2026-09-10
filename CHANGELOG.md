@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Every template now parses in its own language** (CR-012, the systemic set).
+  Verified by running the real tool, not by reading.
+
+  **Terraform: 10 files, 0 of 58 failing.** `terraform fmt` in a container
+  rejected them with its own explanation — *"The ';' character is not valid. Use
+  newlines to separate arguments and blocks, and commas to separate items in
+  collection values."* The corpus wrote multi-argument single-line blocks three
+  ways — `;`, `,`, and a bare space — so the fix does not split on a separator at
+  all; it splits on the only real boundary, an `identifier =` at brace depth zero
+  outside a string. An object *value* keeps commas, a block body gets newlines,
+  which is the distinction terraform's message draws. `terraform fmt` then
+  canonicalised the ten. Proof the rewrite is structural only: comment counts are
+  unchanged and, with whitespace, `;` and `,` removed, every file's tokens hash
+  identically before and after.
+
+  **JavaScript: 2 files, 0 of 44 failing `node --check`.** `#` is not a comment in
+  JavaScript, so a five-key header written with `#` is a SyntaxError on line 1.
+  Three more files that looked like the same defect were shebangs, which node
+  accepts, and were left alone.
+
+  **Shebangs: 22 more, and now 0 corpus-wide across every extension.** 21 `.py`
+  and one `.mjs` still carried the shebang below the header. Python's parser does
+  not care — `#` is a comment — but `./script.py` and a systemd `ExecStart` both
+  go through `execve`, which reads the first two bytes and raises
+  `Exec format error`. Same defect as the 51 shell templates, hidden behind a
+  language that tolerates it.
+
+  Nine `.py` templates still fail `compile()` and that is correct: they are Django
+  skeletons whose placeholders are `<Entity>` and `<Model>`.
+
 - **The corpus ships a `.dockerignore` for the first time** (CR-012 #6). Five
   methodologies carried a Dockerfile with `COPY . .` and there was **not one
   `.dockerignore` in the whole corpus**, so following the template bakes the build

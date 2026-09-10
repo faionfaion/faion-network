@@ -1,10 +1,10 @@
+#!/usr/bin/env python3
 # purpose: Reference runbook parser
 # consumes: see content/02-output-contract.xml inputs
 # produces: artefact conforming to content/02-output-contract.xml
 # depends-on: content/01-core-rules.xml
 # token-budget-impact: ~200-500 tokens when loaded as context
 
-#!/usr/bin/env python3
 # purpose: parse tagged-step runbook markdown into JSON step list
 # consumes: runbook markdown
 # produces: JSON step list

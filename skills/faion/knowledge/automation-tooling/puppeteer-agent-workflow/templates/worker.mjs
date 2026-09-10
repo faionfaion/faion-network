@@ -1,10 +1,10 @@
+#!/usr/bin/env node
 // purpose: Bash-invoked worker script with hard timeout + artifact capture
 // consumes: input artefacts described in AGENTS.md ## Prerequisites
 // produces: artefact conforming to content/02-output-contract.xml for puppeteer-agent-workflow
 // depends-on: content/01-core-rules.xml
 // token-budget-impact: ~200-1200 tokens when loaded as context
 
-#!/usr/bin/env node
 // Usage: timeout 60 node worker.mjs <url> > /tmp/agent-run/result.json
 import puppeteer from 'puppeteer';
 import fs from 'node:fs';

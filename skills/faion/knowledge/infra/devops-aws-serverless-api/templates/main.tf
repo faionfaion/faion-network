@@ -5,14 +5,14 @@
 # token-budget-impact: ~350 tokens when loaded
 
 module "lambda" {
-  source        = "terraform-aws-modules/lambda/aws"
-  version       = "~> 7.0"
-  function_name = "${var.project}-handler"
-  handler       = "app.handler"
-  runtime       = "python3.12"
-  architectures = ["arm64"]
-  tracing_mode  = "Active"
-  publish       = true
+  source                = "terraform-aws-modules/lambda/aws"
+  version               = "~> 7.0"
+  function_name         = "${var.project}-handler"
+  handler               = "app.handler"
+  runtime               = "python3.12"
+  architectures         = ["arm64"]
+  tracing_mode          = "Active"
+  publish               = true
   environment_variables = { TABLE = aws_dynamodb_table.main.name }
 }
 
@@ -38,8 +38,14 @@ resource "aws_dynamodb_table" "main" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "pk"
   range_key    = "sk"
-  attribute { name = "pk" type = "S" }
-  attribute { name = "sk" type = "S" }
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+  attribute {
+    name = "sk"
+    type = "S"
+  }
   point_in_time_recovery { enabled = true }
 }
 
