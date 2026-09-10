@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-014 filed: 62 templates deliver nothing, and the header is why the gate
+  passes them.** Found while sweeping CR-012's parse set. 37 are empty or `{}`,
+  1 has keys with no values, 24 are a single placeholder line; **40 of the 62 are
+  advertised in a `## Templates` row**. Median body after the five-key header
+  comes off: **2 bytes**.
+
+  Validator 5's B3.2 checks "non-empty" as `stat().st_size > 50` — the whole file,
+  header included — and the header alone is 200-300 bytes, so a template that is
+  *only* a header passes a non-emptiness check by four to six times. Sixth vacuous
+  gate in this corpus, after the `pipefail` path race, `validate-recipes.py`, the
+  lexicon self-attestation, `content_id`, and CR-011's constant `testable="true"`.
+
+  34 of the 62 are in `ux/`, in three families (`spatial-*`, `vui-*`, `*-a11y`)
+  that read as one generation run. Two are zero-byte files whose names claim to be
+  the header of a JSON file that does not exist beside them.
+
+  The CR records what is deliberately **not** in the set: 70 more files under 80
+  bytes of body that are correct — a `CLAUDE.md.template` that is exactly
+  `@AGENTS.md`, CSV templates that are their header row, four real sorbet flags.
+  That is why the rule cannot be a byte count, and why the recommendation is
+  content first and the tightened gate last: tightening first turns 40 slugs red
+  and the baseline would have to absorb them, which is how the other five vacuous
+  gates became permanent.
+
 - **20 generated validators stop warning, and stop being able to drift** (found
   while sweeping CR-012's parse set). Each carried
   `f"artefact_id must match ^eh\-[a-z0-9-]+$, …"` — an unraw f-string, so `\-` is
