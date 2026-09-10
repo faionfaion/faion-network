@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The bootstrap no longer locks you out of a fresh VPS** (CR-012 #2).
+  `backend/server-init-bootstrap/templates/bootstrap.sh` set `ufw default deny
+  incoming`, allowed `${SSH_PORT}` (2222), `80` and `443`, then `ufw --force
+  enable` — while sshd was still on 22, because the port change was deferred to
+  an `echo "TODO: edit /etc/ssh/sshd_config"` twenty lines further down. The
+  session you run it in survives on conntrack, so it looks fine until you
+  reconnect and cannot.
+
+  Phase 4 now opens 22 **and** the target port, writes the hardening as a
+  `/etc/ssh/sshd_config.d/99-hardening.conf` drop-in (Port, `PermitRootLogin no`,
+  `PasswordAuthentication no`, `AllowUsers`), runs `sshd -t`, handles the
+  socket-activated case on Ubuntu 24.04+ where reloading the service leaves the
+  listener on the old port, makes you prove a login on the new port, and only
+  then revokes 22. The fail2ban jail it writes said `port = ssh` — 22 via
+  `/etc/services` — while the sibling `fail2ban-jail.local` said `2222`; both now
+  interpolate `${SSH_PORT}`, so brute-force protection watches the port sshd
+  actually listens on.
+
 - **The nightly backup can succeed now** (CR-012 #1).
   `backend/backup-recovery/templates/backup.sh` ran `docker exec -t … pg_dump -Fc`,
   and the `-t` allocates a TTY, whose line discipline inserts `0x0D` before every
