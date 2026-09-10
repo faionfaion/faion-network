@@ -73,8 +73,6 @@
 | `templates/_smoke-test.md.j2` | Minimum viable options matrix. |
 | `templates/_smoke-test.md` | Minimum viable options matrix. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,18 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/cr-options-matrix-template.json`
-
-```json
-{
-  "artefact_id": "cr-options-matrix-template-001",
-  "owner": "ruslan@faion.net",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23"
-}
-```

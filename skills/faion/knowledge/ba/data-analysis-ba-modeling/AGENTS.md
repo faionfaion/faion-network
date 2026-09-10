@@ -72,7 +72,6 @@
 | `templates/data-dictionary.md` | Markdown skeleton with field/source/type/owner/DQ columns Generated from `templates/data-dictionary.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable data-dictionary fixture |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/data-quality-assessment.md.j2` | DQ baseline skeleton scoring six dimensions per entity |
 | `templates/data-quality-assessment.md` | DQ baseline skeleton scoring six dimensions per entity Generated from `templates/data-quality-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/data-requirements.md.j2` | data requirements skeleton (per-feature entity + field shortlist) |
@@ -90,57 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes on observable signals (source-system count, DQ baseline presence, compliance flag) to the right rule. Use when in doubt whether the dictionary is ready to hand off to developers.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "dictionary_id": "smoke-customer",
-  "version_tag": "v0.1.0",
-  "entities": [
-    {
-      "name": "customer",
-      "owner_name": "Maria Lopes",
-      "owner_role": "Data Steward",
-      "fields": [
-        {
-          "name": "customer_id",
-          "type": "uuid",
-          "source_system": "crm",
-          "source_ref": "crm.customers.id",
-          "nullable": false,
-          "pii": false
-        },
-        {
-          "name": "email",
-          "type": "string",
-          "source_system": "crm",
-          "source_ref": "crm.customers.email",
-          "nullable": false,
-          "pii": true
-        }
-      ],
-      "dq_baseline": {
-        "accuracy": 90,
-        "completeness": 85,
-        "consistency": 80,
-        "timeliness": 95,
-        "validity": 92,
-        "uniqueness": 100
-      }
-    }
-  ],
-  "business_rules": [
-    {
-      "id": "br-01",
-      "entity": "customer",
-      "predicate": "regex(email, '^[^@]+@[^@]+$')",
-      "severity": "block"
-    }
-  ]
-}
-```

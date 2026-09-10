@@ -70,8 +70,6 @@
 | `templates/sprint-ba-activities.md.j2` | Per-sprint BA activity checklist — refinement, planning, in-sprint, review and retrospective duties. |
 | `templates/sprint-ba-activities.md` | Per-sprint BA activity checklist — refinement, planning, in-sprint, review and retrospective duties. Generated from `templates/sprint-ba-activities.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,48 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/agile-ba-frameworks.json`
-
-```json
-{
-  "framework": "REPLACE",
-  "version_tag": "REPLACE",
-  "ceremonies": []
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "framework": "scrum",
-  "version_tag": "v1.0.0",
-  "ceremonies": [
-    {
-      "name": "refinement",
-      "activities": [
-        {
-          "type": "refine",
-          "description": "Refine AC + stories",
-          "owner": "Maria Lopes"
-        }
-      ]
-    },
-    {
-      "name": "review",
-      "activities": [
-        {
-          "type": "validate",
-          "description": "Run UAT vs AC",
-          "owner": "Maria Lopes"
-        }
-      ]
-    }
-  ]
-}
-```

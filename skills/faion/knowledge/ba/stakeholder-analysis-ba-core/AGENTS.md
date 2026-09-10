@@ -71,8 +71,6 @@
 | `templates/stakeholder-profile.md` | Per-key-stakeholder profile with engagement strategy. Generated from `templates/stakeholder-profile.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/raci-lint.sh` | Shell helper checking RACI has exactly one A per row. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -82,18 +80,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/raci-lint.sh`
-
-```bash
-#!/usr/bin/env bash
-# RACI lint: exactly one A per row.
-set -euo pipefail
-[ -f "${1:-}" ] || { echo 'usage: raci-lint.sh <raci.json>'; exit 2; }
-jq -e 'all(.raci[]; (.accountable | type == "string" and length > 0))' "$1" >/dev/null \
-  && echo 'OK: all rows have exactly one Accountable' || { echo 'FAIL'; exit 1; }
-```

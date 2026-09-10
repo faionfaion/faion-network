@@ -71,7 +71,6 @@
 | `templates/ac-checklist.md.j2` | Checklist-form acceptance criteria — functional, validation, error-handling, performance and security criteria for one story. |
 | `templates/ac-checklist.md` | Checklist-form acceptance criteria — functional, validation, error-handling, performance and security criteria for one story. Generated from `templates/ac-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/ac-bdd.md.j2` | Given/When/Then acceptance-criteria skeleton for one story |
 | `templates/ac-bdd.md` | Given/When/Then acceptance-criteria skeleton for one story Generated from `templates/ac-bdd.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
@@ -92,66 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/acceptance-criteria.json`
-
-```json
-{
-  "story_id": "REPLACE",
-  "author": "REPLACE",
-  "version_tag": "REPLACE",
-  "criteria": []
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "story_id": "STORY-101",
-  "author": "Maria Lopes",
-  "version_tag": "v1.0.0",
-  "criteria": [
-    {
-      "id": "ac-1",
-      "format": "gwt",
-      "body": "Given a logged-in patient When they pick a slot Then a confirmation SMS is sent",
-      "test_case_ids": [
-        "TC-101"
-      ],
-      "coverage_type": "happy"
-    },
-    {
-      "id": "ac-2",
-      "format": "gwt",
-      "body": "Given a slot becomes unavailable mid-flow When the patient submits Then the system offers next 3 slots",
-      "test_case_ids": [
-        "TC-102"
-      ],
-      "coverage_type": "alternative"
-    },
-    {
-      "id": "ac-3",
-      "format": "gwt",
-      "body": "Given an invalid insurance When booking Then the system surfaces 'insurance required' error",
-      "test_case_ids": [
-        "TC-103"
-      ],
-      "coverage_type": "negative"
-    },
-    {
-      "id": "ac-4",
-      "format": "rule",
-      "body": "p95 latency for booking endpoint < 500ms under 50 rps sustained load",
-      "test_case_ids": [
-        "TC-104"
-      ],
-      "coverage_type": "non_functional"
-    }
-  ]
-}
-```

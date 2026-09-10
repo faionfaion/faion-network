@@ -80,8 +80,6 @@
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in process analysis. |
 | `templates/_smoke-test.md` | Minimum viable filled-in process analysis. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -100,28 +98,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/rank-portfolio.py`
-
-```python
-"""
-from __future__ import annotations
-
-import json
-import sys
-
-
-def run() -> int:
-    payload = json.load(sys.stdin)
-    # Skeleton: replace with business-process-analysis scoring / processing logic.
-    print(json.dumps({"ok": True, "echo": payload}))
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(run())
-```

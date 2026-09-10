@@ -82,8 +82,6 @@
 | `templates/post-implementation-review.md.j2` | Post-implementation review — business outcomes vs projected, adoption metrics, issues, lessons learned, recommendations. |
 | `templates/post-implementation-review.md` | Post-implementation review — business outcomes vs projected, adoption metrics, issues, lessons learned, recommendations. Generated from `templates/post-implementation-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -102,19 +100,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/requirement-compliance-table.csv`
-
-```csv
-requirement_id,verdict,evidence_url,sample_size,sources
-```
-
-### `templates/business-value-rows.csv`
-
-```csv
-requirement_id,verdict,evidence_url,sample_size,sources
-```

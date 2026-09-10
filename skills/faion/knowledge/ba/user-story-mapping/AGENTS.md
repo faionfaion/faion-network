@@ -75,8 +75,6 @@
 | `templates/user-story.md.j2` | One user story from the story map — As-a/I-want/So-that, Given-When-Then acceptance criteria, INVEST check, release/priority/size. |
 | `templates/user-story.md` | One user story from the story map — As-a/I-want/So-that, Given-When-Then acceptance criteria, INVEST check, release/priority/size. Generated from `templates/user-story.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -95,13 +93,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/story-row.csv`
-
-```csv
-story_id,journey_step_id,release,ac
-```

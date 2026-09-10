@@ -70,8 +70,6 @@
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,31 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (capability, forecast, vendor shortlist, build estimate)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/tco-model.json`
-
-```json
-{
-  "horizon_years": 3,
-  "build": {
-    "initial_engineering_weeks": 24,
-    "weekly_engineering_cost_usd": 10000,
-    "yearly_maintenance_fraction": 0.2,
-    "yearly_infra_usd": 12000
-  },
-  "buy": {
-    "yearly_license_usd": 60000,
-    "integration_weeks": 4,
-    "yearly_admin_cost_usd": 15000
-  },
-  "hybrid": {
-    "yearly_license_usd": 30000,
-    "build_extension_weeks": 8,
-    "yearly_maintenance_fraction": 0.1
-  }
-}
-```

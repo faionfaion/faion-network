@@ -78,8 +78,6 @@
 | `templates/_smoke-test.md.j2` | Minimum filled-in routing record. |
 | `templates/_smoke-test.md` | Minimum filled-in routing record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -98,19 +96,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/ka-route.sh`
-
-```bash
-set -euo pipefail
-
-echo "[knowledge-areas-detail] skeleton helper — replace with real logic."
-
-# Example: list candidate frameworks for the current KA.
-KA="${1:-KA-1}"
-echo "KA: $KA"
-```

@@ -67,8 +67,6 @@
 | `templates/framework-decision-record.md` | ADR-style framework selection record. Generated from `templates/framework-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ba-framework-select.sh` | Shell helper running the scoring matrix. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -78,18 +76,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/ba-framework-select.sh`
-
-```bash
-#!/usr/bin/env bash
-# Helper running the scoring matrix.
-set -euo pipefail
-echo 'Score axes: rigour speed regulation (1-10 each)'
-read -p 'rigour: ' R; read -p 'speed: ' S; read -p 'regulation: ' G
-if (( R > S )); then echo 'BABOK'; elif (( S > R )); then echo 'Lean-BA'; else echo 'Hybrid'; fi
-```

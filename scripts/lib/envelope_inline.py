@@ -167,11 +167,24 @@ def strip_section(envelope_text: str) -> str:
 
 
 def trailing_heading_after_section(envelope_text: str) -> str | None:
-    """The first `## ` heading below `## Template Contents`, if any."""
+    """The first real `## ` heading below `## Template Contents`, if any.
+
+    Fence-aware, and that is the whole difficulty: 29 of the 30 headings a naive
+    line scan reports are `## Inputs` / `## Context` / `## Gates` *inside* an
+    inlined markdown template — the section is a heading in the template, not in
+    the envelope. Cutting to end of file is safe there and destructive in the one
+    remaining case, `ba/ba-governance`, whose real `## Decision Authority`,
+    `## Change Control`, `## Communication` and `## Owners` sections sit below the
+    inlined region.
+    """
     match = SECTION_HEADING.search(envelope_text)
     if not match:
         return None
+    fenced = False
     for line in envelope_text[match.end():].split("\n"):
-        if line.startswith("## "):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if not fenced and line.startswith("## "):
             return line.strip()
     return None

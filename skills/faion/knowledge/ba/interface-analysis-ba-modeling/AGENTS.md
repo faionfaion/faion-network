@@ -71,7 +71,6 @@
 | `templates/interface-spec.md` | Markdown skeleton (per interface: protocol, payload, errors, SLA, owner) Generated from `templates/interface-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable interface-inventory fixture |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/interface-catalog.md.j2` | solution-wide interface catalog (one-row-per-interface index) |
 | `templates/interface-catalog.md` | solution-wide interface catalog (one-row-per-interface index) Generated from `templates/interface-catalog.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
@@ -87,61 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on contract completeness + named owner per interface to the rule firing.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "inventory_id": "smoke",
-  "version_tag": "v0.1.0",
-  "interfaces": [
-    {
-      "id": "payment-webhook",
-      "protocol": "http-webhook",
-      "contract": {
-        "type": "openapi-3.1",
-        "ref": "contracts/payment-webhook.yaml"
-      },
-      "owners": {
-        "producer": {
-          "name": "Stripe Vendor",
-          "role": "Vendor"
-        },
-        "consumer": {
-          "name": "Pedro Silva",
-          "role": "Payments Lead"
-        }
-      },
-      "error_codes": [
-        {
-          "http": 400,
-          "code": "invalid_signature",
-          "retry": false
-        },
-        {
-          "http": 500,
-          "code": "internal_error",
-          "retry": true,
-          "backoff": "exp,1s,3x"
-        }
-      ],
-      "sla": {
-        "latency_p95_ms": 500,
-        "availability_pct": 99.9,
-        "throughput_rps": 50,
-        "degradation_policy": "queue+replay"
-      },
-      "fixtures": {
-        "happy_path": "fixtures/wh-happy.json",
-        "failure_paths": [
-          "fixtures/wh-400.json"
-        ]
-      }
-    }
-  ]
-}
-```

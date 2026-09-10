@@ -77,8 +77,6 @@
 | `templates/uc-spec.md.j2` | Full use-case specification — actor, goal, pre/postconditions, main/alternate/exception flows, business rules. |
 | `templates/uc-spec.md` | Full use-case specification — actor, goal, pre/postconditions, main/alternate/exception flows, business rules. Generated from `templates/uc-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -97,13 +95,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, ownership clarity, regulatory context, scope size) to a rule from `01-core-rules.xml`. Use it when in doubt about whether to run, skip, or split this methodology.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/exception-flows.csv`
-
-```csv
-use_case_id,branch_at,desc,severity
-```

@@ -73,8 +73,6 @@
 | `templates/sign-off-form.md` | Sign-off form with reviewer + date + verdict. Generated from `templates/sign-off-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/req-value-trace.sh` | Shell helper linking requirements to value drivers. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -85,17 +83,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/req-value-trace.sh`
-
-```bash
-#!/usr/bin/env bash
-# Trace requirements to value drivers; emit JSON.
-set -euo pipefail
-[ -f "${1:-}" ] || { echo 'usage: req-value-trace.sh <requirements.json>'; exit 2; }
-jq '[.requirements[] | {req_id, value_drivers}]' "$1"
-```

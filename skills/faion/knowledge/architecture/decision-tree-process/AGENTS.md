@@ -75,8 +75,6 @@
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in artefact for sanity-checking the schema. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -95,37 +93,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the decision a high-impact or one-way-door choice that meets the prerequisites?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/tradeoff-matrix.json`
-
-```json
-{
-  "criteria": [
-    {
-      "name": "fit_to_problem",
-      "weight": 0.3
-    },
-    {
-      "name": "tco_12mo",
-      "weight": 0.25
-    },
-    {
-      "name": "team_familiarity",
-      "weight": 0.2
-    },
-    {
-      "name": "reversibility",
-      "weight": 0.15
-    },
-    {
-      "name": "ecosystem_maturity",
-      "weight": 0.1
-    }
-  ],
-  "scores": {}
-}
-```

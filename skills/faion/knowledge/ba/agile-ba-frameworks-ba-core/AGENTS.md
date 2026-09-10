@@ -74,8 +74,6 @@
 | `templates/sprint-ba-activities.md.j2` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) |
 | `templates/sprint-ba-activities.md` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) Generated from `templates/sprint-ba-activities.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -87,83 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/decision-instance.json`
-
-```json
-{
-  "initiative_id": "init-2026-Q3-checkout",
-  "anchor_framework": "iiba-ae",
-  "scrum_ba_phases": {
-    "sprint_planning": [
-      "ac-author",
-      "story-split"
-    ],
-    "daily": [
-      "impediments"
-    ],
-    "refinement": [
-      "example-mapping",
-      "spike-review"
-    ],
-    "review": [
-      "acceptance-witness"
-    ],
-    "retro": [
-      "deviation-log-review"
-    ]
-  },
-  "safe_level_mapping": {
-    "team": "team-ba",
-    "program": "ba-coordinator",
-    "portfolio": "n/a"
-  },
-  "da_lifecycle": {
-    "primary": "agile-da",
-    "alternative": "lean-da"
-  },
-  "principle_scores": [
-    {
-      "principle": "P1",
-      "score": 4,
-      "evidence_quote": "team retro 2026-04-15: '... evidence for P1 ...'"
-    },
-    {
-      "principle": "P2",
-      "score": 3,
-      "evidence_quote": "team retro 2026-04-15: '... evidence for P2 ...'"
-    },
-    {
-      "principle": "P3",
-      "score": 4,
-      "evidence_quote": "team retro 2026-04-15: '... evidence for P3 ...'"
-    },
-    {
-      "principle": "P4",
-      "score": 3,
-      "evidence_quote": "team retro 2026-04-15: '... evidence for P4 ...'"
-    },
-    {
-      "principle": "P5",
-      "score": 4,
-      "evidence_quote": "team retro 2026-04-15: '... evidence for P5 ...'"
-    },
-    {
-      "principle": "P6",
-      "score": 3,
-      "evidence_quote": "team retro 2026-04-15: '... evidence for P6 ...'"
-    },
-    {
-      "principle": "P7",
-      "score": 4,
-      "evidence_quote": "team retro 2026-04-15: '... evidence for P7 ...'"
-    }
-  ],
-  "owner": "jane@team.io",
-  "last_reviewed": "2026-05-23"
-}
-```

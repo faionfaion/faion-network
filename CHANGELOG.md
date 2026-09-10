@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 un-inlined: `architecture`, `automation-tooling`, `ba`.** Also fixes the
+  guard that stopped the batch: `trailing_heading_after_section` scanned lines
+  without tracking fences, so it reported 30 envelopes as carrying a section below
+  the inlined region. Twenty-nine were `## Inputs` / `## Context` / `## Gates`
+  *inside* an inlined markdown template, and the thirtieth — `ba/ba-governance` —
+  was `## Decision Authority` inside a shell heredoc inside an inlined `.sh`. All
+  30 were false positives; the fence-aware count is **0**, and every envelope in
+  the corpus has a balanced fence count. The guard stays, because "cut to end of
+  file" is only safe while that number is zero.
+
 - **The bootstrap verifier stopped green-lighting a vulnerable server** (CR-012 #3).
   `verify-bootstrap.sh` checked SSH hardening with
   `grep -q 'PermitRootLogin no' /etc/ssh/sshd_config`, which matches the

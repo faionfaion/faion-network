@@ -71,8 +71,6 @@
 | `templates/automation-assessment.md` | Report skeleton: variants ranked, candidate automations, feasibility. Generated from `templates/automation-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pm-feasibility-audit.py` | Stdlib audit checking event-log integrity before mining. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -82,29 +80,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/pm-feasibility-audit.py`
-
-```python
-#!/usr/bin/env python3
-"""pm-feasibility-audit.py — verify event-log integrity (case_id, activity, timestamp)."""
-from __future__ import annotations
-import csv, sys
-
-REQUIRED = {'case_id', 'activity', 'timestamp'}
-
-def main(path: str) -> int:
-    with open(path) as f:
-        r = csv.DictReader(f)
-        missing = REQUIRED - set(r.fieldnames or [])
-        if missing:
-            sys.stderr.write(f'missing columns: {sorted(missing)}\n'); return 1
-    return 0
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1]))
-```
