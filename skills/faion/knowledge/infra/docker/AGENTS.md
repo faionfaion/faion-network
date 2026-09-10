@@ -62,7 +62,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config-instance.json` | JSON instance of a filled config artefact |
+| `templates/Dockerfile.python` | Multi-stage Python production image — non-root user, health check, exec-form entrypoint. |
+| `templates/docker-compose.yml` | Compose file for the same service plus its dependencies. |
+| `templates/.dockerignore` | **Ships with the Dockerfile or `COPY . .` bakes `.env` into the image.** |
 
 ## Scripts
 

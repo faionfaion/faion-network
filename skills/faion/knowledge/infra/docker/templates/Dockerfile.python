@@ -1,3 +1,8 @@
+# purpose: Multi-stage Python production image — non-root user, health check, exec-form entrypoint
+# consumes: see content/02-output-contract.xml inputs
+# produces: a container image with no build toolchain and no secrets in it
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~250 tokens when loaded as context
 # Multi-stage Python production Dockerfile
 # Stage 1: builder — install deps, compile
 # Stage 2: runtime — minimal image, non-root user, health check
@@ -22,6 +27,10 @@ COPY --from=builder /install /usr/local
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Copy application source
+# The build context is filtered by the .dockerignore beside this file. Without
+# it this line bakes .env, private keys and the whole .git history into a
+# pushed image, and `docker history` reads them back out of the layer — a
+# later RUN rm does not remove them.
 COPY --chown=appuser:appuser . .
 
 # Switch to non-root user

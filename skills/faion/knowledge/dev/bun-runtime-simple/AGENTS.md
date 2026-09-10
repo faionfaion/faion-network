@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/bun-service-skeleton.ts` | Hello-world Bun + Hono entry |
 | `templates/bun-test-skeleton.ts` | bun:test skeleton |
+| `templates/dockerfile.bun` | Bun production image, multi-stage. |
+| `templates/.dockerignore` | **Ships with the Dockerfile or `COPY . .` bakes `.env` into the image.** |
 
 ## Scripts
 

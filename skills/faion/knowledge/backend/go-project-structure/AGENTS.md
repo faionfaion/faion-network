@@ -66,6 +66,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/Dockerfile` | Multi-stage distroless Dockerfile for Go services |
+| `templates/.dockerignore` | **Ships with the Dockerfile or `COPY . .` bakes `.env` into the image.** |
 | `templates/Makefile` | Build / run / test / lint / tidy targets |
 | `templates/new-resource.sh` | Scaffold handler/service/repository/model for a new resource |
 | `templates/scaffold-go.sh` | Bootstrap the whole tree: cmd/, internal/, pkg/, migrations/, go.mod |

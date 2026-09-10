@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The corpus ships a `.dockerignore` for the first time** (CR-012 #6). Five
+  methodologies carried a Dockerfile with `COPY . .` and there was **not one
+  `.dockerignore` in the whole corpus**, so following the template bakes the build
+  context into a pushed image. Reproduced here with two real `docker build` runs
+  against a context holding a `.env`: without the file, `cat /app/.env` inside the
+  image printed the database URL and the Stripe key; with it, the file is not in
+  the image. `docker history` and `docker save` read a layer back, so deleting the
+  file in a later `RUN` does not help — the exclusion list is the only place this
+  can be prevented, and it has to sit beside the Dockerfile because the daemon
+  reads it from the context root.
+
+  `infra/docker`, `backend/go-project-structure`, `dev/bun-runtime`,
+  `dev/bun-runtime-simple`, `dev/pnpm-package-management` each get one, with a
+  shared secrets/VCS/editor section and a per-stack tail. Each `COPY . .` now
+  carries the four-line comment saying what the file next to it is for.
+
+  Two of `infra/docker`'s templates were also undeclared — `Dockerfile.python`,
+  the file this finding is about, was in no `## Templates` row at all, so validator
+  5 never header-checked it and no reader was pointed at it. Declared, headered,
+  and `docker-compose.yml` with it.
+
 - **The HAR scrubber stopped labelling the leak `[REDACTED]`** (CR-012 #5).
   `automation-tooling/puppeteer-output-capture/templates/scrubber.ts` matched
   `/Authorization:\s*[^\s]+/gi`, which stops at the first whitespace — so it

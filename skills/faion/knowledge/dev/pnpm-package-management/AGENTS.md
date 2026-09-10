@@ -64,6 +64,7 @@
 | `templates/pnpm-bootstrap.sh` | Bootstrap script — corepack enable + install + verify. |
 | `templates/gh-actions-ci.yml` | GitHub Actions CI with pnpm cache + frozen-lockfile, plus the `--filter '...[origin/main]'` monorepo variant. |
 | `templates/dockerfile-pnpm` | Multi-stage Dockerfile using `pnpm fetch` so the dependency layer caches on the lockfile alone. |
+| `templates/.dockerignore` | **Ships with the Dockerfile or `COPY . .` bakes `.env` into the image.** |
 | `templates/pnpm-workspace.yaml` | Workspace definition for an apps / packages / tools layout. |
 
 ## Scripts

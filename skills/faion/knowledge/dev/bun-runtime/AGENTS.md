@@ -63,6 +63,7 @@
 |------|---------|
 | `templates/bunfig.toml` | Bun runtime config with frozen-lockfile and coverage enabled. |
 | `templates/dockerfile` | Bun production Dockerfile (multi-stage, distroless). |
+| `templates/.dockerignore` | **Ships with the Dockerfile or `COPY . .` bakes `.env` into the image.** |
 | `templates/drizzle-schema.ts` | Drizzle ORM schema template wired to Bun. |
 | `templates/hono-server.ts` | Hono HTTP server template on Bun.serve. |
 | `templates/package.json` | Pinned Bun version + dev/start/test/build scripts. |
