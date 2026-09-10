@@ -70,8 +70,6 @@
 | `templates/solo-go-no-go-criteria.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/solo-go-no-go-criteria.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/solo-go-no-go-criteria.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,25 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/solo-go-no-go-criteria.json`
-
-```json
-{
-  "artefact_id": "solo-go-no-go-criteria-example",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "release_id": "release_id value",
-  "build_quality": true,
-  "scope_vs_promise": true,
-  "comms_ready": true,
-  "rollback_tested": true,
-  "metric_instrumented": true,
-  "verdict": "go",
-  "owner": "@solo-founder"
-}
-```

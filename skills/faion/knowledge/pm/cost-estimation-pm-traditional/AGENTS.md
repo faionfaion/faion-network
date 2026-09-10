@@ -68,8 +68,6 @@
 | `templates/cost-worksheet.md` | Bottom-up cost worksheet with three-point PERT per package + contingency stack Generated from `templates/cost-worksheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/risk-contingency.py` | Risk register → contingency reserve via expected monetary value |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -81,14 +79,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/risk-contingency.py`
-
-```python
-if __name__ == "__main__":
-    pass
-```

@@ -77,8 +77,6 @@
 | `templates/weekly-dashboard.md.j2` | Creep-vs-change weekly summary template |
 | `templates/weekly-dashboard.md` | Creep-vs-change weekly summary template Generated from `templates/weekly-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -98,21 +96,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/triage-record.schema.yaml`
-
-```yaml
-# Schema for per-ticket triage record
-
-__faion_header__:
-  methodology: scope-change-vs-scope-creep-detection
-  version: 1.1.0
-  template: triage-record.schema.yaml
-
-# Fill the entries below per artefact instance.
-entries: []
-```

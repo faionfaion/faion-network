@@ -67,8 +67,6 @@
 | `templates/a11y-bug-template.md.j2` | Bug-report template (Jira / Linear) |
 | `templates/a11y-bug-template.md` | Bug-report template (Jira / Linear) Generated from `templates/a11y-bug-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,43 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by launch context (pre-launch / post-launch maintenance) and enforces tier completeness. Missing AT-user-quarterly downgrades compliance. Each leaf cites a rule from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/at-testing-config.json`
-
-```json
-{
-  "tiers": {
-    "automated_ci": {
-      "tools": [
-        "axe-core",
-        "lighthouse"
-      ],
-      "fail_on_new_violations": true,
-      "owner": "fe-team"
-    },
-    "manual_release": {
-      "screen_readers": [
-        "voiceover",
-        "nvda"
-      ],
-      "keyboard_only": true,
-      "owner": "qa-lead"
-    },
-    "at_user_quarterly": {
-      "partner": "AbilityTech Research",
-      "users_per_quarter": 2,
-      "owner": "a11y-lead"
-    }
-  },
-  "bug_report_format": {
-    "wcag_sc": true,
-    "repro": true,
-    "apg_pattern": true,
-    "scope": true
-  }
-}
-```

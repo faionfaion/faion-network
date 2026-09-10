@@ -70,8 +70,6 @@
 | `templates/prompt-spec.md.j2` | Single voice prompt spec with reprompt variants and A/B copy |
 | `templates/prompt-spec.md` | Single voice prompt spec with reprompt variants and A/B copy Generated from `templates/prompt-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,34 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by intent reversibility + utterance coverage; enforces confirmation for irreversible actions and 3-tier ladder for the rest. Each leaf cites a rule from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/voice-spec.json`
-
-```json
-{
-  "platform": "custom-llm",
-  "intents": [
-    {
-      "name": "intent-name",
-      "sample_utterances": [
-        "u1",
-        "u2",
-        "u3"
-      ],
-      "slots": [],
-      "prompt": "What next?",
-      "error_ladder": [
-        "Try again?",
-        "Say one of...",
-        "Handing off."
-      ],
-      "irreversible": false
-    }
-  ],
-  "barge_in": true
-}
-```

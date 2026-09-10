@@ -70,8 +70,6 @@
 | `templates/framework-decision.md.j2` | Decision-record skeleton (goal + candidates + verdict + rationale) |
 | `templates/framework-decision.md` | Decision-record skeleton (goal + candidates + verdict + rationale) Generated from `templates/framework-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,28 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/framework-router.sh`
-
-```bash
-#!/usr/bin/env bash
-# framework-router.sh — pick frameworks based on the decision being made
-# Usage: ./framework-router.sh <idea|validate|size|position|pivot>
-# Output: space-separated list of framework names to load
-set -euo pipefail
-
-mode="${1:?mode required: idea|validate|size|position|pivot}"
-
-case "$mode" in
-  idea)     echo "7ps paul-graham niche-evaluation" ;;
-  validate) echo "validation-criteria jtbd problem-interviews" ;;
-  size)     echo "tam-sam-som competitor-analysis" ;;
-  position) echo "value-prop-canvas competitor-analysis jtbd" ;;
-  pivot)    echo "niche-evaluation tam-sam-som value-prop-canvas" ;;
-  *)        echo "unknown mode: $mode" >&2; exit 1 ;;
-esac
-```

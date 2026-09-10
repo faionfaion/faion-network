@@ -76,8 +76,6 @@
 | `templates/pricing-report.md.j2` | Full pricing research report — value analysis, competitor analysis, Van Westendorp synthesis, recommended tiers, validation plan and risk assessment. |
 | `templates/pricing-report.md` | Full pricing research report — value analysis, competitor analysis, Van Westendorp synthesis, recommended tiers, validation plan and risk assessment. Generated from `templates/pricing-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -89,32 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (applies_if + skip_if check, then the next observable input), routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/pricing-research.schema.json`
-
-```json
-{
-  "artefact_id": "REPLACE-WITH-ULID",
-  "trigger": "Pricing Research (Market Researcher) engagement",
-  "rules_applied": [
-    "REPLACE-WITH-RULE-ID"
-  ],
-  "evidence": [
-    {
-      "rule_id": "REPLACE-WITH-RULE-ID",
-      "citation": "REPLACE-WITH-VERIFIABLE-CITATION",
-      "source_type": "url"
-    }
-  ],
-  "output_payload": {
-    "status": "draft"
-  },
-  "consumer": "REPLACE-WITH-NAMED-CONSUMER",
-  "owner": "REPLACE-WITH-NAMED-OWNER",
-  "last_touched": "2026-05-23T10:00:00Z"
-}
-```

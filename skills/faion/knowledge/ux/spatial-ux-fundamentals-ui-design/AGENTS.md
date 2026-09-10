@@ -71,8 +71,6 @@
 | `templates/spatial-ux-fundamentals.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/spatial-ux-fundamentals.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/spatial-ux-fundamentals.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -83,26 +81,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/spatial-ux-fundamentals.json`
-
-```json
-{
-  "artefact_id": "spatial-ux-fundamentals-example",
-  "owner": "@solo-founder",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "device_target": "device_target value",
-  "field_of_view_deg": 1,
-  "zones": {
-    "key": "value"
-  },
-  "affordance_method": "depth",
-  "motion_velocity_cap_mps": 1.0,
-  "session_duration_minutes": 1
-}
-```

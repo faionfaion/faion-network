@@ -73,8 +73,6 @@
 | `templates/quality-checklist.md.j2` | Pre-ship quality checklist (code, testing, performance, security, accessibility) |
 | `templates/quality-checklist.md` | Pre-ship quality checklist (code, testing, performance, security, accessibility) Generated from `templates/quality-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -92,21 +90,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/dod.yaml`
-
-```yaml
-# Machine-readable Definition of Done with must/should items and scope tags
-
-__faion_header__:
-  methodology: quality-management
-  version: 1.1.0
-  template: dod.yaml
-
-# Fill the entries below per artefact instance.
-entries: []
-```

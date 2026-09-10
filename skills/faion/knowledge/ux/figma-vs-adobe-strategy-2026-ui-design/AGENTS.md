@@ -65,8 +65,6 @@
 | `templates/score-rubric.md` | Five-axis scoring rubric definition. Generated from `templates/score-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled figma+firefly recommendation example. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -77,43 +75,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/decision-record.json`
-
-```json
-{
-  "recommendation": "FILL_ME",
-  "scores": {
-    "collaboration": 9,
-    "asset_gen": 8,
-    "handoff": 9,
-    "agent_api": 7,
-    "total_cost": 7
-  },
-  "migration_cost_usd": 18000,
-  "revisit_date": "FILL_ME",
-  "rationale": "FILL_ME"
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "recommendation": "FILL_ME",
-  "scores": {
-    "collaboration": 9,
-    "asset_gen": 8,
-    "handoff": 9,
-    "agent_api": 7,
-    "total_cost": 7
-  },
-  "migration_cost_usd": 18000,
-  "revisit_date": "FILL_ME",
-  "rationale": "FILL_ME"
-}
-```

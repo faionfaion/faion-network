@@ -68,8 +68,6 @@
 | `templates/vpat-acr-skeleton.md` | VPAT-ACR template (WCAG 2.2 AA). Generated from `templates/vpat-acr-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/accessibility-statement.txt` | EU EAA accessibility statement skeleton. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -81,13 +79,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/accessibility-statement.txt`
-
-```text
-Regulatory Compliance 2026 — fill per artefact. See AGENTS.md.
-```

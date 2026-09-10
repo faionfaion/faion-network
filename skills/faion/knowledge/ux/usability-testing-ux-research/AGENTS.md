@@ -79,8 +79,6 @@
 | `templates/finding.md.j2` | Single usability finding with severity rating and recommended fix |
 | `templates/finding.md` | Single usability finding with severity rating and recommended fix Generated from `templates/finding.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -91,35 +89,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/usability-testing.json`
-
-```json
-{
-  "artefact_id": "usability-testing-example",
-  "method": "Method used for the report (e.g. interview / heuristic / test).",
-  "sample_size": 6,
-  "findings": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "severity_breakdown": {
-    "high": 1,
-    "medium": 2,
-    "low": 0
-  },
-  "recommendations": [
-    "item-1",
-    "item-2"
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "lint_status": "pass",
-  "owner": "@solo-founder"
-}
-```

@@ -74,8 +74,6 @@
 | `templates/retro-log.md.j2` | Per-engagement deviation log with planned-vs-actual per task-class |
 | `templates/retro-log.md` | Per-engagement deviation log with planned-vs-actual per task-class Generated from `templates/retro-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -94,46 +92,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps three observable signals (past-throughput-available, task-novel-or-regulated, buyer-accepts-multiplier-disclosure) to either apply the rubric, fall back to PERT, or skip entirely. Each leaf references a rule from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/leverage-estimate.json`
-
-```json
-{
-  "engagement_id": "REPLACE-engagement-slug",
-  "band_version": "2026-Q2",
-  "tasks": [
-    {
-      "leaf_id": "wbs-1.1-example",
-      "task_class": "glue",
-      "raw_hours": 6.0,
-      "multiplier_band": {
-        "low": 2.0,
-        "mid": 3.0,
-        "high": 4.0
-      },
-      "evidence_rows": [
-        {
-          "log_task_id": "task-0000",
-          "date": "2026-01-01",
-          "planned_hours": 8.0,
-          "actual_hours": 2.5
-        }
-      ],
-      "adjusted_hours": {
-        "low": 3.0,
-        "mid": 2.0,
-        "high": 1.5
-      }
-    }
-  ],
-  "totals": {
-    "mid_hours": 2.0,
-    "low_hours": 1.5,
-    "high_hours": 3.0
-  }
-}
-```

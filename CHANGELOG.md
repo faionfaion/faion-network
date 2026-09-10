@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **F-077 un-inlined: `pm`, `product`, `research`, `security`, `ux`.** 700 blocks
+  from 513 envelopes.
+
 - **F-077 un-inlined: `infra`, `llm-integration`, `marketing`, `ml-engineering`.**
   1,002 blocks from 536 envelopes.
 

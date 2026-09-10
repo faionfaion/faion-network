@@ -70,8 +70,6 @@
 | `templates/formula-card.md.j2` | One-pager: 5 canonical formulas |
 | `templates/formula-card.md` | One-pager: 5 canonical formulas Generated from `templates/formula-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,28 +87,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by plan interval handling, refund treatment, snapshot freshness, formula multiplicity, and customer definition onto a rule from `content/01-core-rules.xml`. Walk it on the 5th of every month before publishing investor updates.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/dashboard-spec.json`
-
-```json
-{
-  "month": "2026-04",
-  "mrr_usd": 0,
-  "gross_churn_pct": 0,
-  "net_churn_pct": 0,
-  "arpu_usd": 0,
-  "ltv_usd": 0,
-  "customer_count": 0,
-  "annual_handling": "divide-by-12",
-  "refund_handling": "subtract-in-month-only",
-  "snapshot_frozen_on": "2026-05-05",
-  "definitions": {
-    "customer_definition": "one-paid-subscription",
-    "churn_definition": "gross"
-  }
-}
-```

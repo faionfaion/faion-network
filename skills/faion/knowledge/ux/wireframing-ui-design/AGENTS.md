@@ -75,8 +75,6 @@
 | `templates/wireframe-doc.md.j2` | Full-page wireframe with annotations, states, interactions and responsive notes |
 | `templates/wireframe-doc.md` | Full-page wireframe with annotations, states, interactions and responsive notes Generated from `templates/wireframe-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -87,38 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/wireframing.json`
-
-```json
-{
-  "artefact_id": "wireframing-example",
-  "owner": "@solo-founder",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "screen_name": "screen_name value",
-  "information_hierarchy": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "layout_grid": {
-    "key": "value"
-  },
-  "primary_actions": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "content_slots": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "fidelity_level": "wireframe"
-}
-```

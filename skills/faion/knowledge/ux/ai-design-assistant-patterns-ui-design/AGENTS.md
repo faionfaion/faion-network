@@ -66,8 +66,6 @@
 | `templates/_smoke-test.md.j2` | Filled review-mode decision record example. |
 | `templates/_smoke-test.md` | Filled review-mode decision record example. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -78,25 +76,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/score-table.json`
-
-```json
-{
-  "pattern": "FILL_ME",
-  "tool": "FILL_ME",
-  "rationale": "FILL_ME",
-  "trigger_source": "FILL_ME",
-  "telemetry_events": [
-    "accept",
-    "reject",
-    "ignore",
-    "rubric_score"
-  ],
-  "fallback_behavior": "FILL_ME"
-}
-```

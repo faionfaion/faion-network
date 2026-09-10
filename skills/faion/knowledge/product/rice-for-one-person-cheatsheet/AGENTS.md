@@ -69,8 +69,6 @@
 | `templates/rice-for-one-person-cheatsheet.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/rice-for-one-person-cheatsheet.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/rice-for-one-person-cheatsheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,25 +85,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/rice-for-one-person-cheatsheet.json`
-
-```json
-{
-  "artefact_id": "rice-for-one-person-cheatsheet-example",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "week_of": "2026-05-23",
-  "bets": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "committed_bet_id": "committed_bet_id value",
-  "owner": "@solo-founder"
-}
-```

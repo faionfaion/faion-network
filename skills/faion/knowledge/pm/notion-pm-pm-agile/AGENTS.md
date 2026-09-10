@@ -70,8 +70,6 @@
 | `templates/task-template.md.j2` | Notion task page template — description, context, acceptance criteria, sub-tasks, update log. |
 | `templates/task-template.md` | Notion task page template — description, context, acceptance criteria, sub-tasks, update log. Generated from `templates/task-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -82,32 +80,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/notion-pm.json`
-
-```json
-{
-  "artefact_id": "notion-pm-2026-q2",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "workspace_url": "https://notion.so/faion",
-  "tasks_db_id": "<tasks_db_id>",
-  "projects_db_id": "<projects_db_id>",
-  "sprints_db_id": "<sprints_db_id>",
-  "property_count": 14,
-  "integrations": {
-    "status_type": "status",
-    "pagination_enabled": true,
-    "rate_limit_delay_ms": 350,
-    "n8n_workflows": [
-      "standup-digest",
-      "sprint-closure"
-    ]
-  },
-  "owner": "@ruslan"
-}
-```

@@ -72,8 +72,6 @@
 | `templates/rebalance-proposal.md.j2` | Rebalance proposal skeleton. |
 | `templates/rebalance-proposal.md` | Rebalance proposal skeleton. Generated from `templates/rebalance-proposal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -95,78 +93,3 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/output-schema.json`
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://faion.net/schemas/multi-project-allocation-tracker.json",
-  "type": "object",
-  "required": [
-    "snapshot_id",
-    "snapshot_date",
-    "people",
-    "rebalance_proposals"
-  ],
-  "properties": {
-    "snapshot_id": {
-      "type": "string"
-    },
-    "snapshot_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "people": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": [
-          "person_id",
-          "capacity",
-          "allocations",
-          "total_allocated"
-        ],
-        "properties": {
-          "person_id": {
-            "type": "string"
-          },
-          "capacity": {
-            "type": "number"
-          },
-          "allocations": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "object",
-              "required": [
-                "project_id",
-                "fraction",
-                "evidence"
-              ]
-            }
-          },
-          "total_allocated": {
-            "type": "number"
-          }
-        }
-      }
-    },
-    "rebalance_proposals": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "proposal",
-          "owner_of_decision"
-        ]
-      }
-    }
-  }
-}
-```

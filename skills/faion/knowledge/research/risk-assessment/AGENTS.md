@@ -74,8 +74,6 @@
 | `templates/risk-register.md` | 1-page risk register template Generated from `templates/risk-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/risk-register.yaml` | Authoring source (YAML) for risk-register.md |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,24 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/risk-register.yaml`
-
-```yaml
-risks:
-  - id: R-001
-    title: Single-vendor LLM provider lock-in
-    likelihood:
-      p10: 0.10
-      p50: 0.35
-      p90: 0.70
-    severity: 4
-    owner: cto
-    trigger: provider raises price >40% YoY OR availability < 99.5%
-    decision: mitigate
-    mitigation: dual-provider abstraction layer; quarterly bake-off
-```

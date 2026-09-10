@@ -66,8 +66,6 @@
 | `templates/clickup-setup.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/clickup-setup.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/clickup-setup.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,41 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/clickup-setup.json`
-
-```json
-{
-  "artefact_id": "clickup-setup-2026-q2",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "workspace_url": "https://app.clickup.com/123",
-  "spaces": [
-    "eng",
-    "ops",
-    "sales"
-  ],
-  "statuses": [
-    "backlog",
-    "todo",
-    "in-progress",
-    "blocked",
-    "review",
-    "done",
-    "cancelled"
-  ],
-  "automations_count": 7,
-  "clickapps": [
-    "time-tracking",
-    "custom-fields",
-    "dependencies",
-    "sprints"
-  ],
-  "views_per_list": 4,
-  "owner": "@ruslan"
-}
-```

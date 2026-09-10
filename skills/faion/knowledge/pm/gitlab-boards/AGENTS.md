@@ -75,8 +75,6 @@
 | `templates/mr-default.md.j2` | GitLab default merge-request description template. |
 | `templates/mr-default.md` | GitLab default merge-request description template. Generated from `templates/mr-default.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -94,64 +92,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observables (gitlab_tier, scoped_labels_available, issue_volume_per_month) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/gitlab-board-config.yaml`
-
-```yaml
-group: REPLACE
-project: REPLACE
-scoped_labels:
-  status:
-    - status::todo
-    - status::doing
-    - status::review
-    - status::done
-  type:
-    - type::bug
-    - type::feature
-    - type::chore
-  priority:
-    - priority::high
-    - priority::medium
-    - priority::low
-milestones:
-  cadence: biweekly   # weekly | biweekly | monthly
-  active:
-    - REPLACE-2026-Q2-S1
-board_lists:
-  - name: Todo
-    scoped_label_value: status::todo
-  - name: Doing
-    scoped_label_value: status::doing
-  - name: Review
-    scoped_label_value: status::review
-  - name: Done
-    scoped_label_value: status::done
-token_scope:
-  scope:
-    - api
-    - read_repository
-  expiry_days: 90
-```
-
-### `templates/scoped-labels.yaml`
-
-```yaml
-status:
-  - status::todo
-  - status::doing
-  - status::review
-  - status::done
-type:
-  - type::bug
-  - type::feature
-  - type::chore
-priority:
-  - priority::high
-  - priority::medium
-  - priority::low
-```

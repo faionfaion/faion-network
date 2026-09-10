@@ -64,8 +64,6 @@
 | `templates/skeleton.md` | Handoff protocol skeleton: per-transition DoR + artifact list + sign-off block + carry-forward. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,16 +81,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to adopt the protocol (≥4 roles + failures + PM + sign-off), block (no sign-off mechanism), or skip (small role set). Run before the next multi-week flow kickoff.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/header.yaml`
-
-```yaml
-version: 0.1.0           # bump on every refresh; semver
-owner: <role>:<person>   # named person, never a team
-last_reviewed: YYYY-MM-DD
-evidence_root: <link>    # URL or file path that anchors body claims
-```

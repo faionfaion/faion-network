@@ -66,8 +66,6 @@
 | `templates/skeleton.md.j2` | Weekly sentiment-run report skeleton with per-stakeholder block + alarm block. |
 | `templates/skeleton.md` | Weekly sentiment-run report skeleton with per-stakeholder block + alarm block. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,18 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` gates the run on consent + project length + register stability, then branches on whether the current week shows a 2-week decline or single-week hostile signal. If consent is missing → block; if window too short → skip; if a decline triggers → fire alarm and require an action plan within 72h before the next run.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/header.yaml`
-
-```yaml
-version: "1.0.0"
-owner: "pm:<person>"             # person + role; team-level ownership forbidden
-last_reviewed: "2026-05-22"
-consent_root: "rescue/consent/"  # path under repo where consent records live
-rubric_path: "rescue/rubric.yaml"
-run_date: "2026-05-22"           # ISO date of this weekly run
-```

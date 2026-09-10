@@ -68,8 +68,6 @@
 | `templates/_smoke-test.md.j2` | Filled minimum-viable spec for a single gaze→voice→controller surface. |
 | `templates/_smoke-test.md` | Filled minimum-viable spec for a single gaze→voice→controller surface. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -80,28 +78,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/prompt-xaur-gap-analysis.txt`
-
-```text
-Prompt template — Prompt asking agent for clause-by-clause XAUR gap analysis with confidence labels.
-
-Fill the slots below per task.
-
-[CONTEXT]
-...
-
-[TASK]
-...
-
-[OUTPUT_FORMAT]
-...
-
-[CONSTRAINTS]
-- Follow content/01-core-rules.xml.
-- Output MUST validate against content/02-output-contract.xml.
-```

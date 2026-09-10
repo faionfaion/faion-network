@@ -73,8 +73,6 @@
 | `templates/adr.md.j2` | PM tool-selection ADR — evaluation scorecard, decision, consequences, migration plan. |
 | `templates/adr.md` | PM tool-selection ADR — evaluation scorecard, decision, consequences, migration plan. Generated from `templates/adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,26 +91,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observables (active_users, budget_band, current_tool_satisfaction) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/scorecard.yaml`
-
-```yaml
-weights:
-  ecosystem: 0.20
-  governance: 0.15
-  integrations: 0.25
-  agent_api: 0.20
-  tco: 0.20
-options:
-  - vendor: REPLACE
-    scorecard:
-      ecosystem: REPLACE
-      governance: REPLACE
-      integrations: REPLACE
-      agent_api: REPLACE
-      tco: REPLACE
-```

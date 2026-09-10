@@ -67,8 +67,6 @@
 | `templates/task-template.md.j2` | Task-writing template |
 | `templates/task-template.md` | Task-writing template Generated from `templates/task-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,33 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by study goal (single vs comparative IA) and enforces depth + metric completeness. Each leaf cites a rule from `01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/tree-test-config.json`
-
-```json
-{
-  "tree": {
-    "nodes": [
-      "home",
-      "products"
-    ],
-    "depth": 1
-  },
-  "tasks": [],
-  "sample_plan": {
-    "n_per_arm": 50,
-    "arms": [
-      "A"
-    ]
-  },
-  "metrics": [
-    "success_rate",
-    "directness",
-    "first_click"
-  ]
-}
-```

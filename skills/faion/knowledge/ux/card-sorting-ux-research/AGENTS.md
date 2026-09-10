@@ -76,8 +76,6 @@
 | `templates/results-report.md.j2` | Card-sort results report — agreement matrix, placement results, label and IA recommendations |
 | `templates/results-report.md` | Card-sort results report — agreement matrix, placement results, label and IA recommendations Generated from `templates/results-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Related
 
 <!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
@@ -88,63 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/card-sorting.json`
-
-```json
-{
-  "artefact_id": "card-sorting-2026-05-23",
-  "owner": "ruslan@faion.net",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "inputs_used": [
-    {
-      "name": "prerequisite-doc",
-      "source": "docs/prereq.md"
-    }
-  ],
-  "sections": [
-    {
-      "heading": "Context",
-      "body": "bounded scope per Applies-If; named owner"
-    },
-    {
-      "heading": "Decision",
-      "body": "apply rules from 01-core-rules.xml end-to-end"
-    }
-  ],
-  "decision": "Adopt the methodology as the engagement standard."
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "artefact_id": "card-sorting-smoke-2026-05-23",
-  "owner": "ruslan@faion.net",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "inputs_used": [
-    {
-      "name": "smoke-fixture",
-      "source": "templates/_smoke-test.json"
-    }
-  ],
-  "sections": [
-    {
-      "heading": "Context",
-      "body": "smoke-test"
-    },
-    {
-      "heading": "Decision",
-      "body": "smoke-test"
-    }
-  ],
-  "decision": "smoke-test artefact"
-}
-```

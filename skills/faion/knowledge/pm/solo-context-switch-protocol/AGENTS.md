@@ -69,8 +69,6 @@
 | `templates/handoff-note.md.j2` | 5-minute handoff template |
 | `templates/handoff-note.md` | 5-minute handoff template Generated from `templates/handoff-note.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,38 +86,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by mode order, notification silence, handoff-note completeness, and weekly violation count onto a rule from `content/01-core-rules.xml`. Walk it at end of day for review and end of week for structural action.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/daily-blocks.yaml`
-
-```yaml
-date: 2026-05-20
-blocks:
-  - mode: builder
-    window: 09:00-12:00
-    notifications: silenced
-    handoff_note: |
-      Open:
-      Next decision:
-      Operator must remember:
-  - mode: operator
-    window: 13:00-15:00
-    notifications: open
-    handoff_note: |
-      Open:
-      Next decision:
-      Builder must remember:
-  - mode: inbox
-    window: 15:00-16:00
-    notifications: open
-    handoff_note: |
-      Open:
-      Next decision:
-      Tomorrow Builder agenda:
-first_block_mode: builder
-violations_today: 0
-urgency_overrides_today: 0
-```

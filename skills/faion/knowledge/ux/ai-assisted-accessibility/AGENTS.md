@@ -66,8 +66,6 @@
 | `templates/conformance-report.md` | Markdown narrative skeleton accompanying JSON. Generated from `templates/conformance-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Filled faion.net partial-conformance example. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,55 +82,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/conformance-report.json`
-
-```json
-{
-  "site_id": "FILL_ME",
-  "wcag_target": "FILL_ME",
-  "automated_findings": [
-    {
-      "id": "axe-color-contrast-1",
-      "evidence": "scan:2026-05-22:run42"
-    }
-  ],
-  "at_findings": [
-    {
-      "id": "at-nvda-headings",
-      "evidence": "tester:viktoria:transcript-42"
-    }
-  ],
-  "conformance_verdict": "FILL_ME",
-  "signed_by": "FILL_ME",
-  "next_audit_date": "FILL_ME"
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "site_id": "FILL_ME",
-  "wcag_target": "FILL_ME",
-  "automated_findings": [
-    {
-      "id": "axe-color-contrast-1",
-      "evidence": "scan:2026-05-22:run42"
-    }
-  ],
-  "at_findings": [
-    {
-      "id": "at-nvda-headings",
-      "evidence": "tester:viktoria:transcript-42"
-    }
-  ],
-  "conformance_verdict": "FILL_ME",
-  "signed_by": "FILL_ME",
-  "next_audit_date": "FILL_ME"
-}
-```

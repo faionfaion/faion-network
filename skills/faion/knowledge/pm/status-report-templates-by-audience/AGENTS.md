@@ -80,8 +80,6 @@
 | `templates/leadership-template.md` | Internal leadership narrative report Generated from `templates/leadership-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audience-map.yaml` | Stakeholder → template map |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -99,31 +97,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by stakeholder role, source-spreadsheet presence, CEO-line-count, RAG-position, and technical-language-leak onto a rule from `content/01-core-rules.xml`. Walk it before every Friday distribution.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/audience-map.yaml`
-
-```yaml
-project: acme-migration
-week_iso: 2026-W21
-stakeholders:
-  - name: alice@client.com
-    audience: CEO
-    template: ceo-template
-    channel: email
-  - name: bob@client.com
-    audience: PMO
-    template: pmo-template
-    channel: email
-  - name: carol@client.com
-    audience: Technical Sponsor
-    template: sponsor-template
-    channel: slack
-  - name: dave@internal
-    audience: Internal Leadership
-    template: leadership-template
-    channel: portal
-```

@@ -69,8 +69,6 @@
 | `templates/invoice-row.md.j2` | Per-client invoice row skeleton with evidence + reason fields. |
 | `templates/invoice-row.md` | Per-client invoice row skeleton with evidence + reason fields. Generated from `templates/invoice-row.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -92,80 +90,3 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/output-schema.json`
-
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://faion.net/schemas/freelance-weekly-invoice-cadence.json",
-  "type": "object",
-  "required": [
-    "batch_id",
-    "week_ending",
-    "rows",
-    "reminders_scheduled",
-    "escalations_due",
-    "status"
-  ],
-  "properties": {
-    "batch_id": {
-      "type": "string",
-      "pattern": "^fwic-\\d{4}-W\\d{2}$"
-    },
-    "week_ending": {
-      "type": "string",
-      "format": "date"
-    },
-    "rows": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": [
-          "client_id",
-          "amount",
-          "currency",
-          "evidence"
-        ]
-      }
-    },
-    "reminders_scheduled": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "invoice_id",
-          "fires_on",
-          "rung"
-        ],
-        "properties": {
-          "rung": {
-            "enum": [
-              "nudge",
-              "follow-up",
-              "pause-notice"
-            ]
-          }
-        }
-      }
-    },
-    "escalations_due": {
-      "type": "array"
-    },
-    "status": {
-      "enum": [
-        "draft",
-        "ready_for_review",
-        "approved_to_send",
-        "sent",
-        "archived"
-      ]
-    }
-  }
-}
-```

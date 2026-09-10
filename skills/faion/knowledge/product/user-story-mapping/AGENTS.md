@@ -79,8 +79,6 @@
 | `templates/storymap-check.py` | Checks one-task-per-activity skeleton coverage and full-backbone release spans (stdin JSON). |
 | `templates/validate-story-map.py` | Checks backbone size, task→backbone referential integrity and skeleton coverage (YAML input). |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -98,45 +96,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/user-story-mapping.json`
-
-```json
-{
-  "artefact_id": "user-story-mapping-example",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "persona": "persona value",
-  "backbone": [
-    "Sign up",
-    "Create Project",
-    "Invite Teammate",
-    "Track Task",
-    "Close Project"
-  ],
-  "tasks": [
-    "magic-link signup",
-    "blank project",
-    "email invite",
-    "plain task list",
-    "one-click close"
-  ],
-  "walking_skeleton": [
-    "magic-link signup",
-    "blank project",
-    "email invite",
-    "plain task list",
-    "one-click close"
-  ],
-  "release_slices": [
-    "walking-skeleton",
-    "release-1",
-    "later"
-  ],
-  "owner": "@solo-founder"
-}
-```

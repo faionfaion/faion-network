@@ -73,7 +73,6 @@
 | `templates/card-sorting.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/card-sorting.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/card-sorting.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/card-sort-plan.md.j2` | Card sort study plan — method, participants, card set, analysis thresholds |
 | `templates/card-sort-plan.md` | Card sort study plan — method, participants, card set, analysis thresholds Generated from `templates/card-sort-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/results-report.md.j2` | Card-sort results report — clusters, borderline items, outliers, proposed IA |
@@ -95,35 +94,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/card-sorting.json`
-
-```json
-{
-  "artefact_id": "card-sorting-example",
-  "method": "Method used for the report (e.g. interview / heuristic / test).",
-  "sample_size": 6,
-  "findings": [
-    "item-1",
-    "item-2",
-    "item-3"
-  ],
-  "severity_breakdown": {
-    "high": 1,
-    "medium": 2,
-    "low": 0
-  },
-  "recommendations": [
-    "item-1",
-    "item-2"
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "lint_status": "pass",
-  "owner": "@solo-founder"
-}
-```

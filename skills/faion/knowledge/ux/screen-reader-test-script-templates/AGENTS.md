@@ -67,8 +67,6 @@
 | `templates/sr-test-script.md` | Markdown skeleton for SR test script. Generated from `templates/sr-test-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/sr-test-script.json` | JSON schema-conformant script. |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,13 +84,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/sr-test-script.json`
-
-```json
-{}
-```

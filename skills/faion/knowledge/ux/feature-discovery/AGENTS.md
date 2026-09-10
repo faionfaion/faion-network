@@ -76,8 +76,6 @@
 | `templates/feature-request-log.md` | Single feature request record with impact assessment Generated from `templates/feature-request-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-feature-discovery.py --self-test` |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -94,63 +92,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/feature-discovery.json`
-
-```json
-{
-  "artefact_id": "feature-discovery-2026-05-23",
-  "owner": "ruslan@faion.net",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "inputs_used": [
-    {
-      "name": "prerequisite-doc",
-      "source": "docs/prereq.md"
-    }
-  ],
-  "sections": [
-    {
-      "heading": "Context",
-      "body": "bounded scope per Applies-If; named owner"
-    },
-    {
-      "heading": "Decision",
-      "body": "apply rules from 01-core-rules.xml end-to-end"
-    }
-  ],
-  "decision": "Adopt the methodology as the engagement standard."
-}
-```
-
-### `templates/_smoke-test.json`
-
-```json
-{
-  "artefact_id": "feature-discovery-smoke-2026-05-23",
-  "owner": "ruslan@faion.net",
-  "version": "1.1.0",
-  "last_reviewed": "2026-05-23",
-  "inputs_used": [
-    {
-      "name": "smoke-fixture",
-      "source": "templates/_smoke-test.json"
-    }
-  ],
-  "sections": [
-    {
-      "heading": "Context",
-      "body": "smoke-test"
-    },
-    {
-      "heading": "Decision",
-      "body": "smoke-test"
-    }
-  ],
-  "decision": "smoke-test artefact"
-}
-```

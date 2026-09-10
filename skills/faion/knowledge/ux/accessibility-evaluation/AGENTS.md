@@ -71,8 +71,6 @@
 | `templates/audit-report.md` | POUR-grouped findings report skeleton with W3C-technique citations Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/scan.mjs` | axe-core + Pa11y + Lighthouse runner emitting normalised JSON |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,24 +88,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/scan.mjs`
-
-```javascript
-// Run: node scan.mjs <url>
-import axe from 'axe-core';
-import pa11y from 'pa11y';
-import lighthouse from 'lighthouse';
-// pseudocode — implementation hooks into puppeteer or playwright
-async function scan(url) {
-  // 1. axe-core via puppeteer
-  // 2. pa11y
-  // 3. lighthouse a11y category only
-  // emit normalised: [{id, sc, location, raw, source}]
-}
-scan(process.argv[2]).then(r => console.log(JSON.stringify(r, null, 2)));
-```

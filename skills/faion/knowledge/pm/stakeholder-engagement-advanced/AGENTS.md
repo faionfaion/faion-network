@@ -75,8 +75,6 @@
 | `templates/meeting-prep.md` | Pre/post meeting brief for a single stakeholder interaction Generated from `templates/meeting-prep.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/assessment-matrix.csv` | Power × Interest × Current × Desired × Gap × Next-Activity schema |
 
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
-
 ## Scripts
 
 | File | Purpose | When to call |
@@ -95,14 +93,3 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
-
-## Template Contents
-
-Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
-
-### `templates/assessment-matrix.csv`
-
-```csv
-id,column1,column2,column3
-R1,,,
-```
