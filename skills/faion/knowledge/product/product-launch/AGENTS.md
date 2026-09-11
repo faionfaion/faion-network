@@ -48,14 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 8 testable rules + skip + run rules: stage gates, segmented cadence, rollback, armed monitors, +14d window, one positioning segment, per-channel runbook, three-channel floor | 1200 |
-| `content/01-planning.xml` | medium | Launch types, the T-8 to T+2 timeline, asset checklist, channel matrix, launch-day-of-week, pre-written rollback narrative | 1000 |
-| `content/02-execution.xml` | medium | Launch-day DRI + human-held kill switch, monitoring thresholds, testimonials in 48h, 7-day retro, banned launch-copy words, press unreliability | 1050 |
+| `content/01-core-rules.xml` | essential | 19 testable rules + skip + run rules: stage gates, segmented cadence, rollback, armed monitors, +14d window, one positioning segment, per-channel runbook, three-channel floor, launch type, locked date, five-asset floor, channel sequence, launch day-of-week, rollback narrative, single DRI + human kill switch, verify flows first, alert thresholds, testimonials in 48h, 7-day retro | 2950 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: press-release launch, no rollback plan, metrics vacuum, multi-segment mush, single-channel launch | 1000 |
-| `content/04-procedure.xml` | essential | 6-step procedure: position -> pre-launch -> dry-run -> launch day -> first 72h -> +14d review | 1000 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: press-release launch, no rollback plan, metrics vacuum, multi-segment mush, single-channel launch (press unreliability), auto-publish without human gate, banned launch-copy words | 1150 |
+| `content/04-procedure.xml` | essential | 7-step procedure: T-8..T+2 timeline -> position -> pre-launch -> dry-run -> launch day -> first 72h -> +14d review; launch-pulse.sh reference | 750 |
 | `content/05-examples.xml` | essential | Worked examples: a concrete indie-dev launch hitting its metric, plus a stage-gated paid-plan launch | 900 |
-| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (launch type, locked date, asset floor) to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 

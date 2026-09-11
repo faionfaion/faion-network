@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1, batch 6 of 8: three `product`, five `research`, two `sdd`.**
+  27 files folded, preservation 0 on each. The research family
+  (`business-model-research`, `competitive-intelligence`, `competitor-analysis`,
+  `continuous-discovery`, `user-research-at-scale`) had the pattern in its purest
+  form: six to eight generated rules that paraphrased the hand-written extras,
+  which now replace the paraphrase under the existing ids; and the agentic
+  pipelines, subagent roles and tool lists that lived only in extras now sit in
+  `04-procedure.xml`. `competitor-analysis`'s Crunchbase-hallucination and G2
+  paid-placement gotchas — CR-010's own example of withheld content — are
+  antipatterns in `03`. One substantive disagreement is kept visible rather than
+  resolved: `design-docs-big-tech`'s canonical r5 says an LLM must not author
+  alternatives, its folded extras say to use one for 2-3; both stand, r5's
+  rationale names the conflict and r5 governs until the owner decides. Sixty down.
+
 - **CR-010 option 1, batch 5 of 8: nine `pm` slugs and `product/feature-
   prioritization-rice-product-ops`.** 23 files folded, preservation 0 on each.
   `mlp-planning` and `stakeholder-management-product-ops` gained real

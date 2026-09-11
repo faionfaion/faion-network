@@ -51,15 +51,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules + skip gate | ~1200 |
+| `content/01-core-rules.xml` | essential | 16 testable rules + skip gate (frozen codebook + versioning, N-floor, HITL + draft/published gate, ZDR, interviewer strip, idempotent writes, parallel coder/auditor, model tiers, kappa, Whisper gate, prompt caching, disconfirming quotes, behavioral strata, triangulation, Presidio + consent, no synthetic users) | ~2250 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | 8-step procedure end-to-end | ~900 |
-| `content/05-examples.xml` | essential | Worked example trace | ~900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
-| `content/01-pipeline-and-subagents.xml` | recommended | Nine-stage pipeline, ten-subagent table with model assignments, and the frozen-codebook pattern for preventing theme drift. | ~1250 |
-| `content/02-tools-and-services.xml` | recommended | CLI tools for transcription and analysis, platform service landscape, and operational best practices for large-scale research pipelines. | ~1050 |
-| `content/03-gotchas.xml` | recommended | Research at Scale Agent Gotchas and Limitations | ~1000 |
+| `content/03-failure-modes.xml` | essential | 11 antipatterns (symptom/root-cause/fix) incl. language routing, dropped non-English sessions, hallucinated participant IDs, uncached recoding, unchunked bundles, position bias, mixed timestamps | ~1500 |
+| `content/04-procedure.xml` | essential | 8-step procedure end-to-end + nine-stage view, ten-subagent table, CLI tools, platform services, codebook/code-batch references | ~1700 |
+| `content/05-examples.xml` | essential | Worked example trace + theme-coder prompt with frozen codebook | ~450 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals (incl. panel strata, transcript confidence) → rule id | ~550 |
 
 ## Task Routing
 

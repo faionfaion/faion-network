@@ -43,14 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source; review types, three AI assistance levels, multi-model strategy | ~1900 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
 | `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
-| `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
-| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
-| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
-| `content/01-principles.xml` | recommended | Review type taxonomy, three AI assistance levels, multi-model strategy, and AI tool landscape for 2026. | ~900 |
-| `content/02-workflow.xml` | recommended | Review Workflow and SDD Integration | ~900 |
+| `content/04-procedure.xml` | essential | 4 step procedure + eight-item pipeline view, best practices by role, prompt-review.txt reference | ~750 |
+| `content/05-examples.xml` | essential | Worked end-to-end example + SDD checkpoint and reflexion YAML blocks | ~700 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching (incl. cross-model check) to rule-id conclusions | ~450 |
 
 ## Task Routing
 

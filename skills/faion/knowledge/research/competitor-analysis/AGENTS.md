@@ -50,15 +50,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules + skip gate | ~1200 |
+| `content/01-core-rules.xml` | essential | 8 testable rules + skip gate; discovery sources, matrix axes, eight dimensions, five gap types | ~1700 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
-| `content/05-examples.xml` | essential | Worked example trace | ~900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
-| `content/01-framework.xml` | recommended | Five-step systematic framework: identify competitor types, map positioning, analyse across 8 dimensions, find gaps, define differentiation. | ~1100 |
-| `content/02-examples.xml` | recommended | Two worked examples (note-taking app, email marketing) and a common-mistakes table showing the correct fix for each failure mode. | ~850 |
-| `content/03-gotchas.xml` | recommended | Critical agent failure modes: hallucinated numbers, pricing-page footnotes, geography drift, context overflow on 10+ competitors. | ~850 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns (symptom/root-cause/fix) incl. sticker-price, future-competitor inflation, context overflow, no refresh, feature parity | ~1450 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end + human-in-the-loop checkpoints | ~600 |
+| `content/05-examples.xml` | essential | Worked example trace + positioning statement template, note-taking matrix, email-marketing gap | ~850 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals (incl. unsourced futures, missing positioning statement) → rule id | ~600 |
 
 ## Task Routing
 

@@ -50,16 +50,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 10 testable rules (format selection, horizons, confidence, cadence, audience split, not-doing) + skip + run rules | 1200 |
+| `content/01-core-rules.xml` | essential | 19 testable rules (format selection, horizons, confidence + 30% distribution floor, Now cap 5, 3–5 themes, objective links, cadence, audience split, human review of external, not-doing, one-screen, LLM prompt constraints) + skip + run rules; format catalogue + selection matrix | 3600 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
-| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
-| `content/01-formats.xml` | recommended | Four roadmap types with a selection matrix based on uncertainty, external-sharing needs, commitment level, and team maturity. | 600 |
-| `content/02-process.xml` | recommended | Five-step process from strategy input through stakeholder communication, including theme definition and confidence levels. | 900 |
-| `content/03-rules.xml` | recommended | Concrete rules for roadmap maintenance, audience publishing, and agent-specific gotchas. | 950 |
-| `content/04-examples.xml` | recommended | B2B SaaS and solo product Now-Next-Later roadmap examples, and common roadmap antipatterns with fixes. | 650 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom + root-cause + fix (dated features, missing confidence, external leak, audience-forced format, never revisited, orphaned initiatives, Later graveyard, one roadmap for all audiences) | 1200 |
+| `content/04-procedure.xml` | essential | 9-step procedure: strategy inputs -> uncertainty -> format -> outcomes -> themes -> horizons -> external view -> cadence -> publish; lint-roadmap.py reference | 1000 |
+| `content/05-examples.xml` | essential | Worked example end-to-end + B2B SaaS and solo product Now-Next-Later sketches | 850 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (format, external view, human review, not-doing, objective links, Now cap, theme count) to a rule id in 01-core-rules.xml | 700 |
 
 ## Task Routing
 

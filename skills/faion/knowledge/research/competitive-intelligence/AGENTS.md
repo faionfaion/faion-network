@@ -50,15 +50,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules + skip gate | ~1200 |
+| `content/01-core-rules.xml` | essential | 10 testable rules + skip gate; signal sources and frequencies, CI platform comparison, output cadence, reactive-to-predictive background | ~2150 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | 7-step procedure end-to-end | ~900 |
-| `content/05-examples.xml` | essential | Worked example trace | ~900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
-| `content/01-monitoring-framework.xml` | recommended | Signal sources, monitoring frequencies, platform landscape, and CI evolution from reactive to predictive. | ~950 |
-| `content/02-agentic-pipeline.xml` | recommended | Six-subagent pipeline separating mechanical collection from strategic synthesis, with fact-checker and prompt patterns. | ~1150 |
-| `content/03-tools-and-services.xml` | recommended | CLI tools, agent-friendly services, limitations, and operational best practices for a production CI pipeline. | ~950 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns (symptom/root-cause/fix) incl. paywall false silence, recency bias, build-hash diff noise, rate-limit loops, LinkedIn ToS, vendor win-rate claims | ~1400 |
+| `content/04-procedure.xml` | essential | 7-step procedure end-to-end + six subagent roles, CLI tool list, collector/watchlist template references | ~1200 |
+| `content/05-examples.xml` | essential | Worked example trace + collector and threat-analyst prompt patterns | ~500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals (incl. platform choice, threat calibration) → rule id | ~600 |
 
 ## Task Routing
 

@@ -43,13 +43,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source; company practices (Google, Amazon, Uber, Spotify, Stripe, Meta, Microsoft, Shopify, Atlassian), when-to-write table, LLM effectiveness | ~2400 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/03-failure-modes.xml` | essential | 7 failure modes with detector + repair (incl. doc-as-spec, no alternatives, doc after code, >10 approvers) | ~1000 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
-| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
-| `content/01-company-practices.xml` | recommended | Design Doc Practices by Company | ~1100 |
-| `content/02-when-and-patterns.xml` | recommended | Decision table for when a design doc is required; LLM assistance effectiveness by task type; common mistakes; and agent-specific gotchas. | ~1050 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching (incl. RFC/ADR split, LLM alternatives cap) to rule-id conclusions | ~550 |
 
 ## Task Routing
 

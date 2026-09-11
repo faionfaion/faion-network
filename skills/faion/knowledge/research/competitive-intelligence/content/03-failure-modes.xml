@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Competitive Intelligence Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+<text id="03-failure-modes" title="Competitive Intelligence Failure Modes" version="1.1.1" est_tokens="1400" depth="essential">
   <summary>Antipatterns observed in real deployments of Competitive Intelligence. Each ties a symptom to a root cause and a concrete fix.</summary>
   <section title="Antipatterns">
     <antipattern id="citation-hallucination" severity="high">
-      <symptom>Battlecard cites /pricing/enterprise that returns 404.</symptom>
-      <root-cause source="Internal Q3 2025 audit">Synthesizer invents URLs; fact-checker skipped.</root-cause>
+      <symptom>Battlecard cites /pricing/enterprise that returns 404. Citation hallucination: model invents URLs. Fact-checker must HEAD every URL before publishing. Skipping the fact-checker to save tokens on the synthesis pass.</symptom>
+      <root-cause source="Internal Q3 2025 audit">Synthesizer invents URLs; fact-checker skipped. A single hallucinated feature claim in a battlecard that contradicts the competitor's actual product will be caught by a prospect, not the agent.</root-cause>
       <fix>Run fact-checker on every digest/battlecard; HEAD every URL, reject 4xx.</fix>
     </antipattern>
     <antipattern id="empty-body-trap" severity="medium">
-      <symptom>JS-rendered SPA returns shell page; collector logs 'no change'.</symptom>
-      <root-cause source="Crayon engineering blog">Author used raw curl without JS rendering.</root-cause>
+      <symptom>JS-rendered SPA returns shell page; collector logs 'no change'. Empty-body trap: JS-rendered SPAs return shells; Firecrawl/Jina or Playwright required. Alert on body-length variance &gt; 80%. LLM synthesis when the scraped page is paywalled or JS-rendered and returns an empty body.</symptom>
+      <root-cause source="Crayon engineering blog">Author used raw curl without JS rendering. Agents invent competitor features from training data when the source page is empty. Always require source citation per claim; reject unsourced assertions.</root-cause>
       <fix>Use Firecrawl / Jina / Playwright; alert on body-length variance &gt; 80%.</fix>
     </antipattern>
     <antipattern id="compounded-summarization" severity="medium">
@@ -21,6 +21,36 @@
       <symptom>Prompt 'Is X a threat?' returns yes 100% of the time.</symptom>
       <root-cause source="Internal — prompt-bias audit">Closed yes/no prompt with no evidence floor.</root-cause>
       <fix>Default threat score 1; require evidence accumulation to raise it.</fix>
+    </antipattern>
+    <antipattern id="paywall-false-silence" severity="medium">
+      <symptom>Cookie/paywall: SaaS pricing pages 302-redirect to login. Treat 30x/40x as a signal, not silence. Daily monitors on pricing pages hidden behind "Contact Sales" generating false silence.</symptom>
+      <root-cause source="Internal — collector audit">These pages never change for anonymous crawlers. Cross-check G2/Capterra and customer reviews instead for pricing signal.</root-cause>
+      <fix>Emit a redirect/status event for every 30x/40x; route pricing signal for gated pages through review sites, not the page itself.</fix>
+    </antipattern>
+    <antipattern id="recency-bias-digest" severity="medium">
+      <symptom>Recency bias: weekly digest over-weights last 2 days. Normalize event volume per day before clustering.</symptom>
+      <root-cause source="Internal — digest audit">The synthesizer sees events in arrival order and the most recent ones dominate the context window.</root-cause>
+      <fix>Bucket events per day and normalise volume before the synthesizer clusters them.</fix>
+    </antipattern>
+    <antipattern id="build-hash-diff-noise" severity="low">
+      <symptom>Stop-words in change detection: HTML diff catches CSS/build-hash churn. Strip script/style tags before fingerprinting.</symptom>
+      <root-cause source="Internal — collector audit">Fingerprint computed over the raw HTML instead of the rendered text.</root-cause>
+      <fix>Strip script/style tags and asset hashes, fingerprint the visible text only.</fix>
+    </antipattern>
+    <antipattern id="rate-limit-loop" severity="medium">
+      <symptom>Rate limits: wrap fetches with exponential backoff and a circuit breaker. Agent loops on 429 burn tokens.</symptom>
+      <root-cause source="Internal — collector audit">Fetch retried inside the agent loop with no backoff and no stop condition.</root-cause>
+      <fix>Exponential backoff plus a circuit breaker around every fetch; a tripped breaker emits an error event and stops the loop.</fix>
+    </antipattern>
+    <antipattern id="linkedin-tos-ban" severity="high">
+      <symptom>LinkedIn ToS: scraping at scale can ban the company account. Use compliant providers only.</symptom>
+      <root-cause source="Internal — ToS / legal audit">Hiring signals scraped directly from LinkedIn under the company account.</root-cause>
+      <fix>Source hiring signals through compliant providers only (rule source-order-api-rss-scrape).</fix>
+    </antipattern>
+    <antipattern id="vendor-win-rate-claims" severity="low">
+      <symptom>Trusting win-rate improvement claims (e.g., 16% to 45%) from vendor case studies without auditing methodology.</symptom>
+      <root-cause source="Vendor case-study review">Win-rate improvements conflate CI rollout with simultaneous sales enablement and pricing changes. Survivorship bias is severe.</root-cause>
+      <fix>Measure CI impact against your own lost deals on the quarterly calibration (rule quarterly-threat-calibration), not against vendor claims.</fix>
     </antipattern>
   </section>
 </text>

@@ -51,15 +51,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules + skip gate | ~1200 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip gate; Canvas blocks, revenue archetypes, core formulas, five stress tests | ~2000 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | ~900 |
-| `content/05-examples.xml` | essential | Worked example trace | ~900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
-| `content/01-canvas-and-revenue-models.xml` | recommended | Nine-block Business Model Canvas with Hard/Soft cell tagging and five revenue archetypes with variant tables and best-fit signals. | ~1000 |
-| `content/02-unit-economics.xml` | recommended | CAC/LTV/payback formulas, P10/P50/P90 scenario model, churn floor rules, and five stress tests that define model viability. | ~1000 |
-| `content/03-agentic-pipeline.xml` | recommended | Eight-step workflow, subagents, prompt patterns for build and validate passes, SDD integration, and agent gotchas. | ~1050 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns (symptom/root-cause/fix) incl. churn hallucination, ARPU/ARR mixing, target reverse-engineering, output drift | ~1300 |
+| `content/04-procedure.xml` | essential | 7-step procedure end-to-end + eight-step pipeline at a glance, SDD integration, template references | ~1200 |
+| `content/05-examples.xml` | essential | Worked example trace + P10/P50/P90 bands + build and validate prompts | ~700 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals (incl. flat churn input) → rule id | ~400 |
 
 ## Task Routing
 

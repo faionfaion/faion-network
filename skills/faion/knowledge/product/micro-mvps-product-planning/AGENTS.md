@@ -43,14 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules + skip + run rules; experiment catalogue (six types, effort, what each validates) | 1150 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
-| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
-| `content/01-experiment-types.xml` | recommended | Six micro-MVP experiment types mapped to effort range and what each one validates. | 500 |
-| `content/02-process.xml` | recommended | Six-step process for designing, running, and acting on a micro-MVP experiment. | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix (incl. over-testing, post-hoc thresholds) | 700 |
+| `content/04-procedure.xml` | essential | 4-step procedure end-to-end + six-step experiment design loop | 950 |
+| `content/05-examples.xml` | essential | Worked example end-to-end + Dropbox video-demo example | 400 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (incl. experiment-type match) to a rule id in 01-core-rules.xml | 400 |
 
 ## Task Routing
 

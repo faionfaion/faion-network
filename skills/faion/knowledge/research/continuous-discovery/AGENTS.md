@@ -51,15 +51,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 8 testable rules + skip gate | ~1200 |
+| `content/01-core-rules.xml` | essential | 12 testable rules + skip gate (cadence, model tiers, vocabulary, N>=5, intake, scoring, jargon lint, kill list, scheduling, prompt structure, root outcome, delivery linkage); cadence table | ~2050 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
-| `content/05-examples.xml` | essential | Worked example trace | ~900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | ~600 |
-| `content/01-cadence-and-agents.xml` | recommended | Teresa Torres weekly cadence table, eight-subagent pipeline with model assignments, and scheduling via cron/systemd. | ~950 |
-| `content/02-prompt-pattern.xml` | recommended | Continuous Discovery Prompt Pattern and Key Rules | ~1000 |
-| `content/03-gotchas-and-tools.xml` | recommended | CLI tools, service landscape, best practices for OST hygiene, and agent failure modes specific to continuous discovery pipelines. | ~1150 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns (symptom/root-cause/fix) incl. ship-and-measure, synthesizer overflow, duplicate notes on retry | ~1100 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end + eight-subagent pipeline, CLI tools, services, template references | ~1350 |
+| `content/05-examples.xml` | essential | Worked example trace + canonical cadence agent prompt | ~600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals (incl. root outcome, scheduling) → rule id | ~600 |
 
 ## Task Routing
 

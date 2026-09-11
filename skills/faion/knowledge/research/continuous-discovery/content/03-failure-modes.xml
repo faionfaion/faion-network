@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Continuous Discovery Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+<text id="03-failure-modes" title="Continuous Discovery Failure Modes" version="1.1.1" est_tokens="1100" depth="essential">
   <summary>Antipatterns observed in real deployments of Continuous Discovery. Each ties a symptom to a root cause and a concrete fix.</summary>
   <section title="Antipatterns">
     <antipattern id="recruiting-fatigue" severity="high">
@@ -8,8 +8,8 @@
       <fix>Stand up in-app prompt + Userinterviews panel + scheduled recruiter agent before week 1.</fix>
     </antipattern>
     <antipattern id="hallucinated-insight-small-N" severity="high">
-      <symptom>Agent declares 'insight' from &lt;5 interviews without cross-tag.</symptom>
-      <root-cause source="Internal schema-enforcement">Schema did not enforce N&gt;=5.</root-cause>
+      <symptom>Agent declares 'insight' from &lt;5 interviews without cross-tag. LLMs inventing "insights" from thin signal without enforcing the N&gt;=5 rule in the schema.</symptom>
+      <root-cause source="Internal schema-enforcement">Schema did not enforce N&gt;=5. Reject completions that violate N&gt;=5. Schema enforcement is the only reliable guard — prompt instructions alone are insufficient for this rule.</root-cause>
       <fix>Reject completions violating N&gt;=5 across &gt;=2 sources; enforce in JSON Schema.</fix>
     </antipattern>
     <antipattern id="ost-graveyard" severity="high">
@@ -23,9 +23,24 @@
       <fix>Strip interviewer turns from transcript before synthesis; only user turns feed the synthesizer.</fix>
     </antipattern>
     <antipattern id="daily-watcher-overwrite" severity="medium">
-      <symptom>Concurrent watcher runs overwrite insight-log.md.</symptom>
-      <root-cause source="Internal — Q1 2026 corruption incident">Author used Write instead of atomic append + lock.</root-cause>
+      <symptom>Concurrent watcher runs overwrite insight-log.md. Daily Haiku watchers overwriting the insight log instead of appending atomically.</symptom>
+      <root-cause source="Internal — Q1 2026 corruption incident">Author used Write instead of atomic append + lock. Use atomic append + lock file, never Write. Concurrent watcher runs without locking corrupt the log and lose the audit trail.</root-cause>
       <fix>Use atomic append + lock file; never Write the log.</fix>
+    </antipattern>
+    <antipattern id="ship-and-measure-as-test" severity="high">
+      <symptom>Assumption-tester proposing "ship and measure" as a valid test type.</symptom>
+      <root-cause source="Torres, assumption-testing chapter">That is delivery, not discovery. Constrain allowed test types: smoke test, fake door, prototype, Wizard of Oz, concierge, Mom Test interview, data dive.</root-cause>
+      <fix>Enumerate the allowed test types in the assumption-tester prompt; step 3 of `content/04-procedure.xml` rejects 'ship and measure'.</fix>
+    </antipattern>
+    <antipattern id="synth-context-overflow" severity="medium">
+      <symptom>Bi-weekly synthesizer receiving full week's raw context exceeding the context window.</symptom>
+      <root-cause source="Internal — synthesizer truncation audit">Pre-summarize per-day outputs with Haiku, feed the summaries to Opus. Full-week raw context overflows and silently truncates, losing the later days.</root-cause>
+      <fix>Daily Haiku summaries are the synthesizer's input, never raw logs; assert every day of the window is represented before the Opus run.</fix>
+    </antipattern>
+    <antipattern id="duplicate-notes-on-retry" severity="medium">
+      <symptom>Subagents writing to Dovetail/Notion via API creating duplicate notes on retry.</symptom>
+      <root-cause source="Internal — duplicate-record incident">Require idempotency keys (hash of source URL + date) for all API writes. Retries without idempotency keys multiply notes and pollute the repository.</root-cause>
+      <fix>Every API write carries an idempotency key hashed from source URL + date; the receiver rejects duplicates.</fix>
     </antipattern>
   </section>
 </text>

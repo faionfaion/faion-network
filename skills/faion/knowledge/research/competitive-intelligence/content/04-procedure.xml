@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Competitive Intelligence Procedure" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Step-by-step procedure to apply the Competitive Intelligence methodology end-to-end. Each step lists input, action, output, and an optional decision gate.</summary>
+<text id="04-procedure" title="Competitive Intelligence Procedure" version="1.1.1" est_tokens="1200" depth="essential">
+  <summary>Step-by-step procedure to apply the Competitive Intelligence methodology end-to-end. Each step lists input, action, output, and an optional decision gate. Folds in the former agentic-pipeline and tools files: Six-subagent pipeline separating mechanical collection from strategic synthesis, with fact-checker and prompt patterns. CLI tools, agent-friendly services, limitations, and operational best practices for a production CI pipeline. Prompt patterns are in `content/05-examples.xml`; limitations and gotchas in `content/03-failure-modes.xml`.</summary>
   <section title="Procedure">
     <step n="1" name="watchlist-init">
       <input>Seed competitor list + URLs</input>
@@ -40,4 +40,32 @@
       <decision-gate>If fail, return to upstream step; do not distribute.</decision-gate>
     </step>
   </section>
+
+  <section title="Subagent roles">
+    <list>
+      <item>ci-collector (Haiku): Polls YAML watchlist (URLs, keywords, RSS, review sites). Emits normalized JSON events. No reasoning, no synthesis.</item>
+      <item>ci-classifier (Haiku/Sonnet): Tags each event as pricing | feature | hire | funding | review | content. Discards noise.</item>
+      <item>ci-synthesizer (Sonnet): Clusters week-of events per competitor, drafts digest with cited sources.</item>
+      <item>ci-threat-analyst (Opus): Generates threat assessment, "so what" recommendations, scenario planning. Run weekly or on funding/M&amp;A signals.</item>
+      <item>ci-battlecard-writer (Sonnet): Regenerates per-competitor battlecards from latest digest + win/loss notes. Output to Salesforce, Highspot, or Slack.</item>
+      <item>ci-fact-checker (Sonnet): Adversarial pass — every claim must cite a fetched URL with a date. Flags unsupported claims before distribution.</item>
+    </list>
+  </section>
+
+  <section title="Tooling">
+    <list>
+      <item>firecrawl / jina reader: LLM-ready page extraction with JS rendering — primary fallback for SPA pages</item>
+      <item>playwright: Custom JS-rendered scrape when API and jina both fail</item>
+      <item>rss-parser (npm) / feedparser (py): Newsroom + blog ingestion — use RSS before scraping</item>
+      <item>visualping: Diff alerts on rendered pages — cheap raw signal, no synthesis</item>
+      <item>phantombuster: LinkedIn hiring/post extraction — use with proxy rotation and respect ToS</item>
+      <item>apify actors: Headless scrape for G2, LinkedIn, Product Hunt — pay-per-run</item>
+      <item>crunchbase API: Funding/M&amp;A/leadership — ground truth for firmographic data</item>
+      <item>ahrefs / semrush API: SEO/SEM moves, top pages, keyword shifts</item>
+      <item>g2 Buyer Intent API: Review velocity and intent signals</item>
+    </list>
+  </section>
+
+  <reference path="templates/ci-collector.py">Minimal collector loop with Jina reader and NDJSON event store.</reference>
+  <reference path="templates/watchlist.yaml">Watchlist config for ci-collector.</reference>
 </text>

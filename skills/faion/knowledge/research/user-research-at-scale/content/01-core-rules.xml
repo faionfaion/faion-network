@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="User Research at Scale Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+<text id="01-core-rules" title="User Research at Scale Core Rules" version="1.1.1" est_tokens="2250" depth="essential">
   <summary>Testable rules grounding the User Research at Scale methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
   <section title="Rule set">
     <rule id="frozen-codebook-plus-overflow" testable="true" depth="essential">
-      <statement>Coding MUST apply a frozen codebook; novel themes go to a proposed_codes overflow channel for weekly review, never auto-applied.</statement>
-      <rationale source="Internal — coding-drift audit Q4 2025">Auto-extending the codebook produces theme drift; the overflow channel preserves novelty without polluting the book.</rationale>
+      <statement>Coding MUST apply a frozen codebook; novel themes go to a proposed_codes overflow channel for weekly review, never auto-applied. Lock the codebook before collection; version it (v1.0.0) and bump only with documented diffs; use a separate proposed_codes overflow channel instead of modifying the codebook mid-study.</statement>
+      <rationale source="Internal — coding-drift audit Q4 2025">Auto-extending the codebook produces theme drift; the overflow channel preserves novelty without polluting the book. Theme drift across batches is the #1 AI coding failure mode. A frozen codebook with a version + proposed_codes channel surfaces emergent themes for human review without corrupting the existing taxonomy. The theme-coder prompt that enforces this is in `content/05-examples.xml`.</rationale>
     </rule>
     <rule id="n-fifty-per-finding" testable="true" depth="essential">
       <statement>Any published finding MUST be supported by &gt;=50 coded observations across &gt;=10 sessions and &gt;=2 segments.</statement>
       <rationale source="Internal — finding-floor policy">Below the floor, findings reflect noise or coding bias.</rationale>
     </rule>
     <rule id="hitl-gate-before-publish" testable="true" depth="essential">
-      <statement>Findings MUST pass a human-in-the-loop review before publish; no auto-publish.</statement>
-      <rationale source="Internal — Q3 2025 publish-incident">AI coding mistakes propagate; HITL catches them.</rationale>
+      <statement>Findings MUST pass a human-in-the-loop review before publish; no auto-publish. Add a "draft/published" gate on every finding — dashboards auto-update faster than humans can vet.</statement>
+      <rationale source="Internal — Q3 2025 publish-incident">AI coding mistakes propagate; HITL catches them. Unvetted AI findings reaching a product meeting without a human review can redirect roadmap decisions based on hallucinated patterns.</rationale>
     </rule>
     <rule id="zdr-only-for-pii" testable="true" depth="essential">
       <statement>Interview transcripts and any PII MUST be processed through ZDR-eligible LLM endpoints only.</statement>
@@ -25,6 +25,46 @@
     <rule id="idempotent-api-writes" testable="true" depth="essential">
       <statement>All writes to Dovetail/Notion/CRM via API MUST use idempotency keys (hash of source + date).</statement>
       <rationale source="Internal — Q2 2025 duplicate-record incident">Without idempotency, retries multiply records.</rationale>
+    </rule>
+    <rule id="parallel-coder-auditor-hitl-gate" testable="true" depth="essential">
+      <statement>Run theme-coder and bias-auditor in parallel; gate report-writer on a researcher human-in-loop checkpoint at step 8.</statement>
+      <rationale source="Anthropic — orchestrator-workers pattern (2024)">AI synthesis can proceed while bias audit runs — they are independent. But publishing without a human checkpoint after synthesis lets AI-invented "insights" reach stakeholders without review.</rationale>
+    </rule>
+    <rule id="model-tier-assignment" testable="true" depth="essential">
+      <statement>Assign Haiku to mechanical tasks (panel-sampler, protocol-runner, transcript-cleaner, dashboard-publisher); Sonnet to structured synthesis (theme-coder, quote-curator, bias-auditor); Opus to cross-segment pattern mining and executive synthesis.</statement>
+      <rationale source="Anthropic — Building Effective Agents">This assignment minimizes cost while matching model capability to task complexity. Inverting it — Opus on transcript cleaning, Haiku on pattern mining — either burns tokens or degrades quality. The subagent table is in `content/04-procedure.xml`.</rationale>
+    </rule>
+    <rule id="kappa-recalibration" testable="true" depth="essential">
+      <statement>Sample 10% of AI-coded segments for human re-coding every batch; track inter-rater agreement (Cohen's kappa &gt;= 0.7) and recalibrate when it drops below threshold.</statement>
+      <rationale source="Internal — coding-drift audit Q4 2025">AI coding accuracy drifts as transcripts vary in quality and subject matter. Kappa tracking catches drift before it contaminates an entire study's findings.</rationale>
+    </rule>
+    <rule id="whisper-confidence-gate" testable="true" depth="essential">
+      <statement>Gate on Whisper confidence score &gt;= 0.6 per transcript before coding — low-quality audio produces confident-but-wrong text that the coder cannot distinguish from accurate transcription.</statement>
+      <rationale source="Internal — transcription QA">Downstream coding errors from bad transcription are undetectable at the finding layer. The confidence gate catches the problem at the source.</rationale>
+    </rule>
+    <rule id="prompt-cache-codebook" testable="true" depth="essential">
+      <statement>Cache full transcripts in the LLM context using prompt caching when coding hundreds of quotes against the same codebook — the savings are substantial at scale.</statement>
+      <rationale source="Anthropic prompt caching docs">Repeated codebook context is identical across all transcript coding calls. Prompt caching eliminates the redundant token cost of loading the codebook on every call.</rationale>
+    </rule>
+    <rule id="publish-disconfirming-quotes" testable="true" depth="essential">
+      <statement>Publish disconfirming quotes alongside confirming ones — outliers are signal, not noise.</statement>
+      <rationale source="Internal — quote-bank policy">LLM summarization compresses outliers. The most valuable insights often come from the user who had the unexpected reaction. Requiring outlier inclusion in the quote bank prevents systematic suppression.</rationale>
+    </rule>
+    <rule id="stratify-by-behavior" testable="true" depth="essential">
+      <statement>Stratify panels by behavior (active/lapsed/new), not just demographics — demographic-only sampling hides usage truth.</statement>
+      <rationale source="Internal — sampling policy">Demographic similarity does not predict usage similarity. Active and churned users of the same age have opposite perspectives on the product's value.</rationale>
+    </rule>
+    <rule id="triangulate-three-sources" testable="true" depth="essential">
+      <statement>Triangulate every finding with AI sentiment + behavioral analytics + verbatim quote — never report from one source alone.</statement>
+      <rationale source="Internal — finding-floor policy">Single-source findings have low reliability at scale. Three-source triangulation with confidence tiers (high &gt;= 3 types, medium = 2, low = 1) enables stakeholders to calibrate trust. Complements n-fifty-per-finding: that rule sets the observation floor, this one the source-type floor.</rationale>
+    </rule>
+    <rule id="presidio-redaction-and-consent" testable="true" depth="essential">
+      <statement>Redact PII with Presidio before any external LLM call; confirm that platform recordings have consented to AI processing before feeding into the pipeline.</statement>
+      <rationale source="GDPR + platform ToS">Sending raw PII to a non-zero-retention LLM endpoint violates GDPR and platform ToS. Presidio redaction runs locally before any external call. Consent flags must be read by the transcript-cleaner before quoting. Complements zdr-only-for-pii: redaction happens before the ZDR endpoint is even reached.</rationale>
+    </rule>
+    <rule id="no-synthetic-users" testable="true" depth="essential">
+      <statement>Never present synthetic users or AI-generated personas as real research findings.</statement>
+      <rationale source="Internal — research-integrity policy">Synthetic personas leak training-data clichés and introduce systematic bias toward the modal user in the training set. They are planning tools, not research evidence.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>

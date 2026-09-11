@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="User Research at Scale Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Antipatterns observed in real deployments of User Research at Scale. Each ties a symptom to a root cause and a concrete fix.</summary>
+<text id="03-failure-modes" title="User Research at Scale Failure Modes" version="1.1.1" est_tokens="1500" depth="essential">
+  <summary>Antipatterns observed in real deployments of User Research at Scale. Each ties a symptom to a root cause and a concrete fix. Folds in the former gotchas file: Known AI failure modes in scaled research: sentiment accuracy, hallucination risks, cost traps, privacy requirements, and cross-platform normalization.</summary>
   <section title="Antipatterns">
     <antipattern id="codebook-drift" severity="high">
-      <symptom>Weekly codes grew from 80 to 240 in 3 weeks; comparability lost.</symptom>
-      <root-cause source="Internal — Q4 2025 audit">Auto-extension without HITL.</root-cause>
+      <symptom>Weekly codes grew from 80 to 240 in 3 weeks; comparability lost. Letting the theme-coder invent codes when the codebook is unclear rather than using the proposed_codes overflow channel.</symptom>
+      <root-cause source="Internal — Q4 2025 audit">Auto-extension without HITL. Invented codes contaminate the taxonomy and produce theme drift across batches. Strict allow-list enforcement with a separate proposed_codes channel keeps the codebook clean.</root-cause>
       <fix>Freeze book; route novelty to proposed_codes; require HITL accept before merge.</fix>
     </antipattern>
     <antipattern id="hallucinated-finding" severity="high">
@@ -21,6 +21,41 @@
       <symptom>Same note appears 3x in Dovetail after retries.</symptom>
       <root-cause source="Internal — duplicate-record incident">API writes lacked idempotency keys.</root-cause>
       <fix>Hash (source_url + date) as idempotency key; reject duplicates.</fix>
+    </antipattern>
+    <antipattern id="sentiment-without-language-routing" severity="high">
+      <symptom>Running sentiment analysis on non-English transcripts without routing by language.</symptom>
+      <root-cause source="Internal — multilingual QA">Sentiment models miss sarcasm, code-switching, and culture-specific affect in non-English text. Polarity flips on negation in low-resource languages without language-aware routing.</root-cause>
+      <fix>Detect language in transcript-cleaner; route non-English sessions to a language-specific model or translation step before sentiment scoring.</fix>
+    </antipattern>
+    <antipattern id="silent-non-english-drop" severity="high">
+      <symptom>Agents quietly dropping non-English sessions when the prompt does not explicitly handle them.</symptom>
+      <root-cause source="Internal — multilingual QA">Silently dropping sessions produces a biased corpus. Assert language coverage in tests and route non-English sessions to a translation step before coding.</root-cause>
+      <fix>Count sessions per language in and out of every stage; a mismatch fails the batch.</fix>
+    </antipattern>
+    <antipattern id="hallucinated-participant-ids" severity="high">
+      <symptom>Hallucinating participant IDs in the report when citing quotes.</symptom>
+      <root-cause source="Internal — publish-incident">Agents invent participant IDs that do not exist in the corpus. Require verbatim span offsets (start_char, end_char) tied to a specific session file, not paraphrases.</root-cause>
+      <fix>Every cited quote carries session file + span offsets; the publish gate resolves each one against the corpus.</fix>
+    </antipattern>
+    <antipattern id="uncached-recoding" severity="medium">
+      <symptom>Re-running coding on the same transcript without caching, burning 10x tokens.</symptom>
+      <root-cause source="Internal — cost audit">Hash the transcript content and cache the coded output. Skip transcripts that already have a cached result. Uncached re-runs are pure waste.</root-cause>
+      <fix>`templates/code-batch.sh` dedupes on content hash; see rule prompt-cache-codebook for the codebook side.</fix>
+    </antipattern>
+    <antipattern id="unchunked-transcript-bundle" severity="high">
+      <symptom>Feeding full transcript bundles &gt; 200k tokens into a long-context model without chunking.</symptom>
+      <root-cause source="Internal — synthesis truncation audit">Long-context models silently truncate at token boundaries. Chunk at session boundaries with overlap and verify completeness before synthesis.</root-cause>
+      <fix>Chunk at session boundaries with overlap; assert every session id appears in the synthesis input before the Opus call.</fix>
+    </antipattern>
+    <antipattern id="segment-position-bias" severity="medium">
+      <symptom>Pattern-analyst over-indexing on the first segment in the prompt.</symptom>
+      <root-cause source="Internal — synthesis QA">LLMs weight earlier context more heavily. Randomize segment order across runs and compare findings to detect position bias.</root-cause>
+      <fix>Run pattern-analyst twice with shuffled segment order; findings that survive both orders pass.</fix>
+    </antipattern>
+    <antipattern id="mixed-timestamp-formats" severity="medium">
+      <symptom>Mixing timestamp formats from different platforms (Maze milliseconds, UserTesting ISO, Otter seconds) without normalization.</symptom>
+      <root-cause source="Internal — cross-platform QA">Mixed timestamps break quote offset matching and prevent cross-platform de-duplication. Normalize in the transcript-cleaner stage before any downstream use.</root-cause>
+      <fix>transcript-cleaner converts every timestamp to ISO 8601 with milliseconds before emitting clean VTT/JSON.</fix>
     </antipattern>
   </section>
 </text>
