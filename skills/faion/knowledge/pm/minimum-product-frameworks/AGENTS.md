@@ -51,13 +51,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules + skip-this-methodology: DR recorded, 9-framework coverage, differentiator test, revisit triggers, framework-vs-product separation, downstream routing | 1150 |
-| `content/01-frameworks.xml` | essential | Catalogue of the nine frameworks — purpose + primary use condition for each | 550 |
-| `content/02-decision-matrix.xml` | essential | Market-condition to framework mapping (blue/red ocean, enterprise, consumer, technical uncertainty) + selection antipatterns | 650 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for framework-decision-record | 850 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns: default-MVP bias, conflated framework/feature, missing triggers, unmeasured differentiator, frame-without-routing, acronym-soup | 1000 |
-| `content/04-procedure.xml` | essential | 5-step procedure: signals -> matrix -> pick -> proof -> DR | 800 |
-| `content/06-decision-tree.xml` | essential | Apply/skip routing on existence of DR + product status | 650 |
+| `content/01-core-rules.xml` | essential | 13 testable rules + skip-this-methodology: DR recorded, 9-framework coverage, differentiator test, revisit triggers, framework-vs-product separation, downstream routing, choose-before-scoping, crowded-market bar, five market-condition to framework mappings; background: catalogue of the nine frameworks | 2050 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for framework-decision-record | 1100 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: default-MVP bias, conflated framework/feature, missing triggers, unmeasured differentiator, frame-without-routing, acronym-soup, MVP-regardless-of-market, delight-before-validation | 1150 |
+| `content/04-procedure.xml` | essential | 5-step procedure: signals -> matrix -> pick -> proof -> DR | 500 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on existence of DR + product status, then market-condition branches to the matrix rules | 600 |
 
 ## Task Routing
 

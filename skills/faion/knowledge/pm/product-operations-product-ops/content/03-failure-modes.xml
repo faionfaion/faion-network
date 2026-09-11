@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Product Operations Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Product Operations Failure Modes" version="1.1.1" est_tokens="1250" depth="essential">
+  <summary>10 antipatterns observed across deployments, including the agent gotchas of Product Ops automation. Each pairs symptom + root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern id="pm-owns-tool-plumbing" severity="high">
@@ -22,6 +22,36 @@
       <symptom>Ops headcount doubles in a year; processes still manual.</symptom>
       <root-cause source="Reforge — Product Operations 2024">Default response to new pain is hiring, not automating.</root-cause>
       <fix>Require an automation attempt + result before any Ops headcount request.</fix>
+    </antipattern>
+    <antipattern id="automating-unstable-process" severity="high">
+      <symptom>Automating an unstable process in the first 30 days of a new product or team.</symptom>
+      <root-cause source="v1-source">Automating before workflows stabilize locks in the wrong shape. Wait for at least one full delivery cycle before encoding any process as an agent flow.</root-cause>
+      <fix>Apply rule enforce-maturity-progression; no agent flow before one full delivery cycle has completed.</fix>
+    </antipattern>
+    <antipattern id="metric-rederived-from-prose" severity="high">
+      <symptom>Agent metric definitions that re-derive "DAU" from prose instead of reading pinned SQL.</symptom>
+      <root-cause source="v1-source">LLMs hallucinate metric definitions. Always pin metric SQL in metric_kpi.definition_sql; never let the agent re-derive a definition from narrative context.</root-cause>
+      <fix>Pin every metric in metric_kpi.definition_sql (templates/ops-schema.sql) and make agents read it.</fix>
+    </antipattern>
+    <antipattern id="status-update-theatre" severity="medium">
+      <symptom>Status-update theatre: AI-generated status updates that no one reads.</symptom>
+      <root-cause source="v1-source">Tie every automated post to a named consumer, or do not generate it. Signal-to-noise collapse kills trust in the entire ops function.</root-cause>
+      <fix>Apply rule named-consumer-per-automation.</fix>
+    </antipattern>
+    <antipattern id="nightly-sync-overwrites-pm-edit" severity="high">
+      <symptom>Roadmap merge conflicts when nightly agent sync overwrites a concurrent PM edit.</symptom>
+      <root-cause source="v1-source">Use updated_at watermarks and conflict logs, not last-write-wins. Cross-system ID collisions (same feature in Productboard, Jira, and Linear) require an explicit mapping table.</root-cause>
+      <fix>Apply rules one-canonical-store-for-agents and pr-style-writes-for-agents; add the ID mapping table to the ops store.</fix>
+    </antipattern>
+    <antipattern id="askuserquestion-in-cron" severity="medium">
+      <symptom>Scheduled rollups using AskUserQuestion in a headless cron context.</symptom>
+      <root-cause source="v1-source">Cron jobs have no human; design every automation as headless-first with Slack-based async confirmations for write actions.</root-cause>
+      <fix>Make scheduled layer-1 jobs headless; route write confirmations to Slack.</fix>
+    </antipattern>
+    <antipattern id="unbounded-historical-pull" severity="medium">
+      <symptom>Unbounded historical pulls without a since/limit/max_pages guard.</symptom>
+      <root-cause source="v1-source">"Show me all incidents this quarter" silently fetches tens of thousands of tickets and blows the context window. Always pass explicit bounds.</root-cause>
+      <fix>Require since/limit/max_pages on every scraper call.</fix>
     </antipattern>
   </section>
 </text>

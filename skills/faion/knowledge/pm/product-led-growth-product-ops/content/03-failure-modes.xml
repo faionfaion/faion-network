@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Product-Led Growth (PLG) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Product-Led Growth (PLG) Failure Modes" version="1.1.1" est_tokens="1400" depth="essential">
+  <summary>11 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix. Hard rules for agent-safe PLG work, limitations of PLG in specific contexts, and AI-agent failure modes with mitigations. The hard rules themselves live in 01-core-rules.xml.</summary>
 
   <section title="Antipatterns">
     <antipattern id="aha-over-five-minutes" severity="high">
@@ -22,6 +22,41 @@
       <symptom>Upgrade emails sent on day 7 / 14 / 21 regardless of usage; reply: 'unsubscribe'.</symptom>
       <root-cause source="OpenView PLG benchmarks 2024">Triggers based on calendar, not on hitting usage limits.</root-cause>
       <fix>Fire upgrade prompts on limit-hit events only; deprecate calendar campaigns for PLG accounts.</fix>
+    </antipattern>
+    <antipattern id="plg-on-pre-pmf-product" severity="high">
+      <symptom>Running PLG optimization on a pre-PMF product with insufficient retention signal.</symptom>
+      <root-cause source="v1-source">PLG amplifies a working loop; on a broken product it industrialises churn. Establish product-market fit before instrumenting the PLG funnel.</root-cause>
+      <fix>Apply rule skip-this-methodology until retention signal exists.</fix>
+    </antipattern>
+    <antipattern id="cold-start-personalization" severity="medium">
+      <symptom>AI onboarding personalization attempting to reference user behavior data before any events have been captured (cold start in first 60 seconds).</symptom>
+      <root-cause source="v1-source">Enforce a "no behavioural reference before event N" rule. Cold-start personalization that references unavailable data produces error messages or hallucinated user attributes.</root-cause>
+      <fix>Gate personalization on a minimum captured-event count.</fix>
+    </antipattern>
+    <antipattern id="consent-gaps-distort-funnels" severity="medium">
+      <symptom>Privacy regimes (GDPR, India DPDP) restricting event tracking that PLG analytics depend on, with consent-mode gaps distorting funnels.</symptom>
+      <root-cause source="v1-source">Instrument consent-mode handling before running PLG analytics. Funnels measured without accounting for consent gaps systematically under-count users in regulated markets.</root-cause>
+      <fix>Apply rules instrument-before-optimizing and agents-never-touch-consent-logic.</fix>
+    </antipattern>
+    <antipattern id="winner-called-on-small-sample" severity="high">
+      <symptom>Agents over-fitting on small samples: calling a winner with fewer than 1k users per variant or fewer than 7 days of runtime.</symptom>
+      <root-cause source="v1-source">Enforce the minimum exposure and runtime gates at the agent output layer, not just in the prompt. Agents will call winners on day 2 with 200 users per variant if not blocked.</root-cause>
+      <fix>Apply rule srm-and-mde-gate-per-experiment as a hard output gate.</fix>
+    </antipattern>
+    <antipattern id="invented-metrics" severity="medium">
+      <symptom>LLMs inventing metrics ("engagement score 0-100") that have no source event in the analytics schema.</symptom>
+      <root-cause source="v1-source">Constrain output to a known event vocabulary loaded from the analytics schema. Invented metrics cannot be tracked or validated.</root-cause>
+      <fix>Load the event vocabulary into the prompt and reject any metric outside it.</fix>
+    </antipattern>
+    <antipattern id="tour-builder-adds-steps" severity="medium">
+      <symptom>Tour-builder agents adding steps rather than removing them, even when prompted to optimize onboarding.</symptom>
+      <root-cause source="v1-source">Prompt explicitly with "subtract first" and a step-count budget. Monitor step-count delta as a guardrail metric alongside activation rate.</root-cause>
+      <fix>Apply rule subtract-before-addition.</fix>
+    </antipattern>
+    <antipattern id="pql-scoring-drift" severity="medium">
+      <symptom>PQL scoring drift: static model becomes wrong as the product evolves but continues to be used without recalibration.</symptom>
+      <root-cause source="v1-source">Schedule quarterly PQL model recalibration as a standing SDD task. Flag if the model has not been recalibrated in 90+ days.</root-cause>
+      <fix>Apply rule quarterly-pql-recalibration.</fix>
     </antipattern>
   </section>
 </text>

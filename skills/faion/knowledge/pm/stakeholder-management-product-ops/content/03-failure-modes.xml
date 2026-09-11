@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Stakeholder Management Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Stakeholder Management Failure Modes" version="1.1.1" est_tokens="1300" depth="essential">
+  <summary>9 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix. Register-rot prevention rules, decision-log pairing requirement, agent safety constraints, and AI-agent failure modes with mitigations. The rules live in 01-core-rules.xml; the agent failure modes are below.</summary>
 
   <section title="Antipatterns">
     <antipattern id="grid-without-attitude" severity="high">
@@ -23,5 +23,32 @@
       <root-cause source="Internal — escalation audit 2026-Q1">No re-engagement protocol; silence treated as acceptance.</root-cause>
       <fix>Within 7 days of silence, schedule a 1:1 (not email) and log the outcome.</fix>
     </antipattern>
+    <antipattern id="hallucinated-stakeholders" severity="high">
+      <symptom>LLM hallucinating stakeholders that "should" exist for a project type ("Compliance Officer", "Data Privacy Lead") without a source.</symptom>
+      <root-cause source="v1-source">Require the model to cite an actual source — meeting notes, org chart, CODEOWNERS — before adding a row. Hallucinated stakeholders lead to wasted engagement cycles on non-existent relationships.</root-cause>
+      <fix>Apply rule cite-source-per-classification; no source, no row.</fix>
+    </antipattern>
+    <antipattern id="sycophantic-supporter-default" severity="high">
+      <symptom>Models defaulting to Supporter for attitude when asked "is this exec a supporter?" because of sycophantic training.</symptom>
+      <root-cause source="v1-source">Force the model to mark Unknown unless evidence is cited; the stakeholder-lint.py script enforces this at commit time. Unknown attitudes must be resolved through 1:1 conversation, not LLM inference.</root-cause>
+      <fix>Apply rule attitude-column-never-blank with Unknown as the default; run templates/stakeholder-lint.py at commit.</fix>
+    </antipattern>
+    <antipattern id="title-based-power-classification" severity="medium">
+      <symptom>Power/interest classifications inferred from title alone in a matrix org where a "Senior Manager" has more real influence than a "VP".</symptom>
+      <root-cause source="v1-source">Feed actual org-chart text or interview snippets rather than job titles. Title-based classification is wrong in consensus-driven and matrix orgs.</root-cause>
+      <fix>Give the classifier org-chart text or interview notes as input, never a title list.</fix>
+    </antipattern>
+    <antipattern id="sentiment-scan-auto-escalation" severity="high">
+      <symptom>Cron-driven weekly stakeholder sentiment scan of Slack messages auto-escalating on mis-classified Resistor signals.</symptom>
+      <root-cause source="v1-source">Queue sentiment findings for human review, never auto-escalate. A false Resistor classification triggering an escalation can damage a relationship the system was meant to protect.</root-cause>
+      <fix>Route sentiment findings to a review queue; apply rule resistor-escalation-protocol only after a human confirms.</fix>
+    </antipattern>
+    <antipattern id="full-register-in-every-prompt" severity="medium">
+      <symptom>Long-context dumps of the full register into every agent prompt, wasting tokens and leaking PII to downstream agents.</symptom>
+      <root-cause source="v1-source">Pass only the relevant slice (one quadrant, or one engagement tier) to each agent. The register as a whole is a program-management artifact, not an agent context blob.</root-cause>
+      <fix>Slice the register per agent call; apply rule scrub-pii-before-commit to anything that leaves the register.</fix>
+    </antipattern>
   </section>
+
+  <reference path="templates/stakeholder-lint.py">Lint register for rot patterns: unknown attitudes, missing owners, high-power under-engagement</reference>
 </text>

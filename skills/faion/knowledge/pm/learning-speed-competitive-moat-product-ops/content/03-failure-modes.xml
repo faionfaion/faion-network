@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Learning Speed as Competitive Moat Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Learning Speed as Competitive Moat Failure Modes" version="1.1.1" est_tokens="1250" depth="essential">
+  <summary>10 antipatterns observed across deployments, including the agent gotchas of the belief-update pipeline. Each pairs symptom + root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern id="implicit-beliefs" severity="high">
@@ -22,6 +22,36 @@
       <symptom>Beliefs only re-scored at annual planning; competitor cycles 4x.</symptom>
       <root-cause source="Internal — competitive cycle audit">No weekly cadence; learning lives in the annual offsite only.</root-cause>
       <fix>Hold weekly 30-min belief-update ritual; missed weeks count as moat erosion.</fix>
+    </antipattern>
+    <antipattern id="digest-of-digest-compression" severity="medium">
+      <symptom>Synthesizer generating insights at digest-of-digest-of-digest compression, losing original wording.</symptom>
+      <root-cause source="v1-source">Re-grounding every synthesizer run on the raw events.ndjson is mandatory. Previous digests anchor on prior framing and lose the original signal over time.</root-cause>
+      <fix>Feed the weekly-synthesizer the raw events.ndjson every run, never last week's digest.</fix>
+    </antipattern>
+    <antipattern id="belief-updater-memory-rot" severity="high">
+      <symptom>Memory rot: belief-updater pulled into context-window compaction loses last week's reasoning.</symptom>
+      <root-cause source="v1-source">Persist beliefs.yaml and beliefs.history.ndjson outside the LLM and re-inject on every run. Never rely on LLM memory for belief continuity across sessions.</root-cause>
+      <fix>Apply rule beliefs-as-code; the file on disk is the memory, the model is stateless.</fix>
+    </antipattern>
+    <antipattern id="evidence-laundering" severity="high">
+      <symptom>Evidence laundering: sonnet rewrites the same event into 3 different "independent" supports for a belief.</symptom>
+      <root-cause source="v1-source">Dedupe by event_id hash before counting independent signals. Three occurrences of the same event do not count as three independent signals.</root-cause>
+      <fix>Apply rule belief-mutation-threshold on deduplicated event_ids only.</fix>
+    </antipattern>
+    <antipattern id="hallucinated-event-ids" severity="high">
+      <symptom>Hallucinated event_ids: model invents event_42 that does not exist in events.ndjson.</symptom>
+      <root-cause source="v1-source">Run a fact-checker pass that looks up every cited id in events.ndjson before publishing. Uncited event_ids are fabrications.</root-cause>
+      <fix>Add the fact-checker pass as a gate before any belief diff is merged.</fix>
+    </antipattern>
+    <antipattern id="opus-token-blow-up" severity="medium">
+      <symptom>Token blow-up from dumping 10k events directly into Opus weekly.</symptom>
+      <root-cause source="v1-source">Pre-cluster with haiku, hand 50–100 archetypal events to opus. Full event streams at opus cost is wasteful and counterproductively degrades reasoning quality.</root-cause>
+      <fix>Apply rule separate-mechanical-from-judgment-work; haiku clusters, opus judges.</fix>
+    </antipattern>
+    <antipattern id="action-less-insight-loop" severity="high">
+      <symptom>Action-less insight loop: agent surfaces 200 insights per week, no decision_owner, nobody acts.</symptom>
+      <root-cause source="v1-source">Force schema field decision_owner on every event that reaches the belief-updater. Drop events without an owner rather than surfacing them without action.</root-cause>
+      <fix>Make decision_owner a required schema field; apply rule decision-count-and-reversal-metric to measure output, not insights.</fix>
     </antipattern>
   </section>
 </text>

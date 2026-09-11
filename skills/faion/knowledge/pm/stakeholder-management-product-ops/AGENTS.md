@@ -48,15 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
-| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
-| `content/01-framework.xml` | recommended | Stakeholder types, Power/Interest grid with mandatory attitude dimension, engagement levels, and the four-step identification-to-execution process. | ~800 |
-| `content/02-templates-and-examples.xml` | recommended | Stakeholder Management: Register, Communication Plan, and Examples | ~1000 |
-| `content/03-rules-and-gotchas.xml` | recommended | Register-rot prevention rules, decision-log pairing requirement, agent safety constraints, and AI-agent failure modes with mitigations. | ~1350 |
+| `content/01-core-rules.xml` | essential | 16 testable rules with rationale + source (grid with attitude, named owner, approval gates, no broadcast, resistor protocol, attitude never blank, cadence never ad-hoc, register columns, cited sources, named escalation path, register review cadence, former-stakeholder archive, decision-log pairing, no agent downgrades, PII scrub, register separate from CRM); background: stakeholder types, grid quadrants, engagement levels | ~2950 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom/root-cause/fix, including AI-agent failure modes (hallucinated stakeholders, sycophantic Supporter, title-based power, sentiment auto-escalation, full-register prompts); stakeholder-lint.py reference | ~1300 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates; four-step identify/analyze/plan/execute process | ~950 |
+| `content/05-examples.xml` | essential | End-to-end worked example; communication plan matrix; SaaS launch, solo product and bad-register examples; register, comms-plan and meeting template references | ~1000 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml, including source-citation and agent-downgrade branches | ~650 |
 
 ## Task Routing
 

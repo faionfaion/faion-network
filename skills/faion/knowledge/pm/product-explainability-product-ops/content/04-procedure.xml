@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Product Explainability Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Step-by-step procedure for Product Explainability. Required because complexity=medium. Each step has input / action / output and (where applicable) a decision-gate.</summary>
+<text id="04-procedure" title="Product Explainability Procedure" version="1.1.1" est_tokens="900" depth="essential">
+  <summary>Step-by-step procedure for Product Explainability. Required because complexity=medium. Each step has input / action / output and (where applicable) a decision-gate. Then: Extractor → generator → probe → drift agent pipeline, prompt patterns for KB extraction and AI-answer probing, and critical gotchas. Prompts live in 05-examples.xml, gotchas in 03-failure-modes.xml.</summary>
 
   <section title="Procedure">
 
@@ -37,5 +37,15 @@
       <decision-gate>If exit != 0, return artefact for revision; do not advance.</decision-gate>
     </step>
 
+  </section>
+
+  <section title="Agent pipeline">
+    <step n="6" name="run-four-stage-pipeline">
+      <input>Live product surfaces (homepage, docs, OpenAPI spec, changelog, in-app strings); product-kb.json per rule kb-json-single-source-of-truth.</input>
+      <action>Stage 1 (extractor): reads live product (homepage, docs, OpenAPI spec, changelog, in-app strings), emits structured product-kb.json. Stage 2 (generator): renders KB into public surfaces — llms.txt, schema.org JSON-LD, sitemap, docs "is not" section. Stage 3 (probe): queries ChatGPT, Claude, Perplexity, Gemini with canonical questions and diffs answers against KB. Stage 4 (drift): cron job comparing live site, docs, and KB — opens tickets when fields disagree.</action>
+      <output>product-kb.json, rendered surfaces, weekly probe scorecard, drift tickets; stages 1–2 in CI and 3–4 on cron per rule pipeline-stages-in-ci.</output>
+      <decision-gate>If product-kb.json fails templates/product-kb-validate.sh, stop the release; do not render surfaces from an invalid KB.</decision-gate>
+    </step>
+    <reference path="templates/product-kb-validate.sh">JSON Schema validator for product-kb.json; wire into pre-commit</reference>
   </section>
 </text>

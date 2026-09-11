@@ -48,13 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
-| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
-| `content/01-kb-structure.xml` | recommended | The product-kb.json canonical structure, explainability components for humans and AI, and the dominant failure mode of KB drift. | ~1200 |
-| `content/02-agent-usage.xml` | recommended | Extractor → generator → probe → drift agent pipeline, prompt patterns for KB extraction and AI-answer probing, and critical gotchas. | ~1200 |
+| `content/01-core-rules.xml` | essential | 14 testable rules with rationale + source (schema markup, capability boundary, readability, changelog, owner cadence, KB single source of truth, limits first-class, versioned capabilities, customer language, is-not section, KB co-located with code, weekly multi-model probe, accuracy metric, pipeline in CI) | ~2100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~750 |
+| `content/03-failure-modes.xml` | essential | 13 antipatterns with symptom/root-cause/fix, including KB drift modes and agent-pipeline gotchas | ~1650 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates; four-stage extractor/generator/probe/drift agent pipeline | ~900 |
+| `content/05-examples.xml` | recommended | KB extraction and AI-answer probe prompt patterns; product-kb-validate.sh reference | ~500 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml, including single-source and limits branches | ~650 |
 
 ## Task Routing
 

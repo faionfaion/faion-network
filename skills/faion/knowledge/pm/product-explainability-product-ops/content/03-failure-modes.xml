@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Product Explainability Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed across deployments. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Product Explainability Failure Modes" version="1.1.1" est_tokens="1650" depth="essential">
+  <summary>13 antipatterns observed across deployments: KB drift modes and the gotchas of the explainability agent pipeline. Each pairs symptom + root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern id="no-schema-markup" severity="high">
@@ -22,6 +22,51 @@
       <symptom>AI surfaces serve last quarter's feature set; reps lose deals on outdated info.</symptom>
       <root-cause source="JSON Feed v1.1 spec">No machine-readable changelog; updates only land in marketing posts.</root-cause>
       <fix>Publish RSS + JSON Feed changelog within 24h of every release.</fix>
+    </antipattern>
+    <antipattern id="kb-drift-as-default" severity="high">
+      <symptom>KB drift as default: marketing site, docs, pricing page, schema feed, and llms.txt diverge within weeks.</symptom>
+      <root-cause source="v1-source">Each surface is edited by a different team on a different cadence. Without a single-source pipeline, contradiction is the natural state, not the exception.</root-cause>
+      <fix>Apply rule kb-json-single-source-of-truth; generate every surface from product-kb.json.</fix>
+    </antipattern>
+    <antipattern id="schema-theater" severity="medium">
+      <symptom>Schema theater: teams add Product JSON-LD but description, audience, and feature fields repeat the marketing tagline.</symptom>
+      <root-cause source="v1-source">Retrieval systems get no new signal from paraphrased copy. The schema markup must carry information not already in the page text.</root-cause>
+      <fix>Apply rule purpose-in-customer-language to every schema field; reject markup whose fields duplicate page copy.</fix>
+    </antipattern>
+    <antipattern id="capability-version-skew" severity="high">
+      <symptom>Capability-version skew: capability statements with no validFrom/validUntil dates.</symptom>
+      <root-cause source="v1-source">Deprecated features keep getting recommended by AI assistants because there is no signal in the KB that they no longer exist. Date-bounded capability status is the fix.</root-cause>
+      <fix>Apply rules capability-versioned-with-status and kb-co-located-with-code.</fix>
+    </antipattern>
+    <antipattern id="adjective-heavy-generator-copy" severity="medium">
+      <symptom>Generator agents producing adjective-heavy copy ("best-in-class", "leading", "revolutionary").</symptom>
+      <root-cause source="v1-source">Force a "no adjectives, no superlatives" constraint in the system prompt and lint generated output. These tokens provide no retrieval signal and reduce trust.</root-cause>
+      <fix>Add the no-adjectives constraint to the generator prompt and a lint step on its output.</fix>
+    </antipattern>
+    <antipattern id="extractor-fabricates-capabilities" severity="high">
+      <symptom>Extractor agent fabricating capabilities to fill empty fields.</symptom>
+      <root-cause source="v1-source">Refuse-on-unknown must be enforced via prompt and post-hoc validator that cross-checks capability names against the feature flag registry or source code. Invented capabilities create support and legal liability.</root-cause>
+      <fix>Keep the "never fabricate" clause in the extraction prompt (05-examples.xml) and add the registry cross-check validator.</fix>
+    </antipattern>
+    <antipattern id="limits-lost-in-summarization" severity="high">
+      <symptom>Limit array lost across multi-step pipeline summarization passes.</symptom>
+      <root-cause source="v1-source">Preserve the limits[] array verbatim across every pipeline stage. Never re-summarize limits — they carry legal and trust-critical precision that compression loses.</root-cause>
+      <fix>Apply rule limits-first-class; pass limits[] through untouched at every stage.</fix>
+    </antipattern>
+    <antipattern id="cached-probe-responses" severity="medium">
+      <symptom>Probe agents producing the same response across runs due to same prompt and cached model state.</symptom>
+      <root-cause source="v1-source">Vary question phrasing, user role, and timing across probe runs. Stable scores are an artifact of caching, not real representation quality.</root-cause>
+      <fix>Rotate phrasing, role and timing per run; apply rule probe-three-frontier-models-weekly.</fix>
+    </antipattern>
+    <antipattern id="autonomous-deprecation-flip" severity="high">
+      <symptom>Agent autonomously flipping a capability status to deprecated without human review.</symptom>
+      <root-cause source="v1-source">Deprecated status removes a capability from AI-mediated discovery and directly impacts revenue. Always require product-owner sign-off; agents propose, humans approve the status change.</root-cause>
+      <fix>Gate every status change behind product-owner approval.</fix>
+    </antipattern>
+    <antipattern id="confidential-info-in-published-kb" severity="high">
+      <symptom>Confidential information (unreleased features, internal vendor names, beta-only flags) in published KB.</symptom>
+      <root-cause source="v1-source">Capability docs frequently leak internal details. Run a scrubber agent before any external publish — especially before pushing llms.txt or schema.org markup.</root-cause>
+      <fix>Insert a scrubber step before every external publish in the generator stage.</fix>
     </antipattern>
   </section>
 </text>

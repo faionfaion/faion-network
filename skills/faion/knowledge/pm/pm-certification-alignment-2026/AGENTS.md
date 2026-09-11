@@ -48,13 +48,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + `skip-this-methodology` | 900 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 850 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 750 |
-| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
-| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals | 600 |
-| `content/01-domain-weights.xml` | recommended | 2026 PMP ECO domain weight deltas versus PMBOK 7, five exam themes, the anchor-citation requirement, and study-allocation rule. | 750 |
-| `content/02-coverage-gaps.xml` | recommended | Coverage Gap Analysis and Alignment Matrix Rules | 800 |
+| `content/01-core-rules.xml` | essential | 13 testable rules + `skip-this-methodology`: ECO tagging, coverage vs weights, five themes, gap actions, evidence-based study plan, weight-times-gap allocation, anchor citation, sustainability standards, scenario practice, BE priority areas, CSV matrix in git, re-run on ECO refresh; background: 2026 domain weight deltas and the five exam themes | 2000 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden | 950 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom/root-cause/fix, including agent failure modes (weight-proportional plan, verbatim exam content, hard-coded dates) | 1000 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end; step 6 re-runs the mapping on ECO refresh via coverage_gaps.py | 600 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on observable signals, plus anchor and Business Environment gap branches | 450 |
 
 ## Task Routing
 

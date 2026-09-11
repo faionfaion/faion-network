@@ -48,14 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
-| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
-| `content/01-responsibilities.xml` | recommended | The five areas Product Ops owns, the three-level maturity model, AI-native ops patterns, and 2026 adoption stats. | ~1000 |
-| `content/02-agent-usage.xml` | recommended | Three-layer agent architecture for Product Ops, prompt patterns for the most common use cases, and critical gotchas. | ~1000 |
+| `content/01-core-rules.xml` | essential | 12 testable rules with rationale + source (tool plumbing, canonical rollup, fixed template, canonical process docs, automation first, one canonical store, named consumer, two-week TTL, maturity progression, templates as code, PR-style writes, three-layer architecture); background: maturity model, AI-native patterns, 2026 adoption stats | ~2100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~800 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns with symptom/root-cause/fix, including agent gotchas (unstable-process automation, re-derived metrics, status theatre, sync overwrites, cron prompts, unbounded pulls) | ~1250 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~550 |
+| `content/05-examples.xml` | essential | End-to-end worked example; rollup, template-enforcement and stakeholder-pack prompt patterns; ops-rollup.sh and ops-schema.sql references | ~950 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml, including maturity and named-consumer branches | ~650 |
 
 ## Task Routing
 

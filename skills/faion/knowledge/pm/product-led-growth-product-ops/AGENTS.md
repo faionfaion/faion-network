@@ -48,15 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
-| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
-| `content/01-plg-principles.xml` | recommended | Product-Led Growth: Core Principles and Metrics | ~900 |
-| `content/02-onboarding-and-experiments.xml` | recommended | Product-Led Growth: Experiment Design and PQL Scoring | ~950 |
-| `content/03-rules-and-gotchas.xml` | recommended | Hard rules for agent-safe PLG work, limitations of PLG in specific contexts, and AI-agent failure modes with mitigations. | ~1050 |
+| `content/01-core-rules.xml` | essential | 19 testable rules with rationale + source (aha under 5 min, PQL on usage, no sales gate, limit-hit upgrades, JTBD-complete free tier, four principles, activation predicts D30, free-tier limits, sales-assist above SMB, instrument first, one north star, SRM/MDE gate, subtract first, retention guardrail, PQL weights, quarterly recalibration, three agent-safety rules); background: 2026 target metrics and PLG evolution | ~3150 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~750 |
+| `content/03-failure-modes.xml` | essential | 11 antipatterns with symptom/root-cause/fix, including PLG limitations and AI-agent failure modes | ~1400 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~550 |
+| `content/05-examples.xml` | essential | End-to-end worked example; PLG onboarding pattern; pql-scorer.py reference | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml, including instrumentation and pricing-approval branches | ~650 |
 
 ## Task Routing
 

@@ -48,14 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
-| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
-| `content/01-framework.xml` | recommended | Learning Velocity Framework | ~1150 |
-| `content/02-agent-usage.xml` | recommended | Daily/weekly agent pipeline for maintaining versioned beliefs.yaml, prompt patterns with XML structure, and critical gotchas. | ~1100 |
+| `content/01-core-rules.xml` | essential | 14 testable rules with rationale + source (belief register, outside view, decision journal, kill criteria, weekly ritual, beliefs-as-code, bounded watchlist, external corpus, mutation threshold, calibration, default-kill, haiku/opus split); background: Learning Velocity formula and weekly rituals | ~2250 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~650 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns with symptom/root-cause/fix, including belief-update agent gotchas (memory rot, evidence laundering, hallucinated event_ids, token blow-up, action-less loop) | ~1250 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates; agent pipeline (collector, classifier, updater, synthesizer, reviewer, logger) | ~900 |
+| `content/05-examples.xml` | essential | End-to-end worked example; belief-updater and strategy-reviewer prompt patterns; belief_update.py reference | ~750 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml, including external-corpus and mutation-threshold branches | ~650 |
 
 ## Task Routing
 

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1, batch 5 of 8: nine `pm` slugs and `product/feature-
+  prioritization-rice-product-ops`.** 23 files folded, preservation 0 on each.
+  `mlp-planning` and `stakeholder-management-product-ops` gained real
+  procedures (five and four steps) that had lived only in topical files;
+  `product-explainability-product-ops` gained its first `05-examples.xml`.
+  Near-duplicate rule pairs were kept verbatim rather than merged, because the
+  preservation rule demands the sentence; the pairs are named in the commit's
+  reviewer notes and are the second-pass dedupe CR-010 always implied. Fifty
+  down, thirty to go.
+
 - **CR-010 option 1, batch 4 of 8: the paid-ads family and four more** —
   `ads-analytics-setup`, `ads-attribution-models`, `ads-budget-optimization`,
   `ads-conversion-tracking`, `ads-google-campaign-setup`, `google-pmax`,
