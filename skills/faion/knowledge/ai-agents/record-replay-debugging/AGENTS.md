@@ -39,14 +39,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-record-all-calls; r2-deterministic-replay; r3-redact-secrets; r4-version-recording-format; r5-replay-in-ci. | ~900 |
+| `content/01-core-rules.xml` | essential | Background (what record must capture, why replay is a fix-verification harness) + 9 testable rules: r1-record-all-calls; r2-deterministic-replay; r3-redact-secrets; r4-version-recording-format; r5-replay-in-ci; r6-replay-zero-network; r7-tag-side-effects; r8-mutate-one-axis; r9-promote-trace-to-eval; source links. | ~1650 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the config artefact. | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns (sampled recording, silent mismatch, secrets in trace, no version, partial recording, replay-once). | ~550 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
-| `content/05-examples.xml` | recommended | Worked example. | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
-| `content/01-modes-contract.xml` | recommended | Record captures every nondeterministic boundary; replay serves them back from disk so the agent's decision path is bit-for-bit reproducible. | ~1000 |
-| `content/02-mutation-replay.xml` | recommended | Mutation-replay: verifying a fix by changing one variable | ~900 |
+| `content/05-examples.xml` | recommended | Worked spec example; ReplayLLM strict-guard vs silent-fallthrough; mutation-replay one-axis vs three-axes (python). | ~850 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids (r1, r7, r9, r5). | ~450 |
 
 ## Task Routing
 

@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="clean-architecture — Worked Examples" version="1.0.0" est_tokens="2700" depth="recommended">
+  <summary>Project folder layout, then one bounded context walked through the four layers in Python. Domain: User entity, Email value object, UserRepository abstract interface, domain events — all without framework imports. Application: CreateUserUseCase, GetUserUseCase, UnitOfWork interface, and UserDTO — orchestrating domain entities without ORM or HTTP. Infrastructure: SQLAlchemyUserRepository implementing the domain interface, SQLAlchemyUnitOfWork, and ORM model mapping. Closes with the two critical violations in code.</summary>
+
+  <section title="Folder layout">
+    <example type="good" title="Four layer folders">
+      <code lang="text"><![CDATA[
+src/
+├── domain/             # Entities layer
+│   ├── entities/
+│   ├── value_objects/
+│   ├── events/
+│   ├── exceptions/
+│   └── interfaces/     # Repository + service interfaces
+├── application/        # Use cases layer
+│   ├── use_cases/
+│   ├── interfaces/     # UnitOfWork, EventPublisher
+│   └── dto/
+├── infrastructure/     # Frameworks layer
+│   ├── persistence/    # Repository implementations, ORM models
+│   └── services/       # Email, payment, external APIs
+└── presentation/       # Interface adapters
+    ├── api/            # Controllers, schemas, middleware
+    └── cli/            # CLI commands
+]]></code>
+      <note>One folder per layer (r3-r6); the import-linter contract in `templates/import-linter.ini` pins the inward-only direction (r1, r2).</note>
+    </example>
+  </section>
+
+  <section title="Domain layer">
+    <example type="good" title="Entity: User">
+      <code lang="python"><![CDATA[
+@dataclass
+class User:
+    id: UUID = field(default_factory=uuid4)
+    name: str = ""
+    email: Email = None
+    role: str = "member"
+    is_active: bool = True
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    _events: list = field(default_factory=list, repr=False)
+
+    @classmethod
+    def create(cls, name: str, email: str) -> "User":
+        if len(name) < 2:
+            raise DomainError("Name must be at least 2 characters")
+        user = cls(name=name, email=Email(email))
+        user._events.append(UserCreated(user.id, email))
+        return user
+
+    def change_email(self, new_email: str) -> None:
+        old = self.email.value
+        self.email = Email(new_email)
+        self._events.append(UserEmailChanged(self.id, old, new_email))
+
+    def collect_events(self) -> list:
+        events = self._events.copy()
+        self._events.clear()
+        return events
+]]></code>
+      <note>No ORM imports. No FastAPI imports. Testable with plain Python.</note>
+    </example>
+
+    <example type="good" title="Value Object: Email">
+      <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class Email:
+    value: str
+
+    def __post_init__(self):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, self.value):
+            raise DomainError(f"Invalid email: {self.value}")
+        object.__setattr__(self, 'value', self.value.lower())
+]]></code>
+      <note>Frozen dataclass: validation and normalisation happen once, at construction.</note>
+    </example>
+
+    <example type="good" title="Repository Interface">
+      <code lang="python"><![CDATA[
+class UserRepository(ABC):
+    """Defined in domain. Implemented in infrastructure. Domain never imports implementation."""
+
+    @abstractmethod
+    async def find_by_id(self, user_id: UUID) -> Optional[User]: ...
+
+    @abstractmethod
+    async def find_by_email(self, email: str) -> Optional[User]: ...
+
+    @abstractmethod
+    async def save(self, user: User) -> None: ...
+
+    @abstractmethod
+    async def delete(self, user: User) -> None: ...
+]]></code>
+      <note>Template: `templates/repository-interface.py`.</note>
+    </example>
+  </section>
+
+  <section title="Application layer">
+    <example type="good" title="Use Case: CreateUser">
+      <code lang="python"><![CDATA[
+@dataclass
+class CreateUserInput:
+    name: str
+    email: str
+
+@dataclass
+class CreateUserOutput:
+    user: "UserDTO"
+
+class CreateUserUseCase:
+    def __init__(self, user_repository: UserRepository, unit_of_work: UnitOfWork,
+                 event_publisher: EventPublisher):
+        self._user_repository = user_repository
+        self._unit_of_work = unit_of_work
+        self._event_publisher = event_publisher
+
+    async def execute(self, input_data: CreateUserInput) -> CreateUserOutput:
+        existing = await self._user_repository.find_by_email(input_data.email)
+        if existing:
+            raise ApplicationError("User with this email already exists")
+
+        user = User.create(name=input_data.name, email=input_data.email)
+
+        async with self._unit_of_work:
+            await self._user_repository.save(user)
+            await self._unit_of_work.commit()
+
+        for event in user.collect_events():
+            await self._event_publisher.publish(event)
+
+        return CreateUserOutput(user=UserDTO.from_entity(user))
+]]></code>
+      <note>No HTTP, no ORM, no framework imports. Accepts repository interface; works with any implementation. Testable with in-memory fakes.</note>
+    </example>
+
+    <example type="good" title="UserDTO">
+      <code lang="python"><![CDATA[
+@dataclass
+class UserDTO:
+    id: UUID
+    name: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    @classmethod
+    def from_entity(cls, user: User) -> "UserDTO":
+        return cls(
+            id=user.id, name=user.name, email=user.email.value,
+            role=user.role, is_active=user.is_active, created_at=user.created_at,
+        )
+]]></code>
+      <note>Output DTO flattens the value object; presentation never touches the entity.</note>
+    </example>
+
+    <example type="good" title="UnitOfWork Interface">
+      <code lang="python"><![CDATA[
+class UnitOfWork(ABC):
+    @abstractmethod
+    async def __aenter__(self): ...
+
+    @abstractmethod
+    async def __aexit__(self, exc_type, exc_val, exc_tb): ...
+
+    @abstractmethod
+    async def commit(self) -> None: ...
+
+    @abstractmethod
+    async def rollback(self) -> None: ...
+]]></code>
+      <note>Template: `templates/use-case.py`.</note>
+    </example>
+  </section>
+
+  <section title="Infrastructure layer">
+    <example type="good" title="Repository Implementation">
+      <code lang="python"><![CDATA[
+class SQLAlchemyUserRepository(UserRepository):
+    """Implements the domain interface. Domain code never imports this class."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def find_by_id(self, user_id: UUID) -> Optional[User]:
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.id == user_id)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def save(self, user: User) -> None:
+        model = self._to_model(user)
+        self._session.add(model)
+
+    def _to_entity(self, model: "UserModel") -> User:
+        return User(
+            id=model.id, name=model.name, email=Email(model.email),
+            role=model.role, is_active=model.is_active, created_at=model.created_at,
+        )
+
+    def _to_model(self, entity: User) -> "UserModel":
+        return UserModel(
+            id=entity.id, name=entity.name, email=entity.email.value,
+            role=entity.role, is_active=entity.is_active, created_at=entity.created_at,
+        )
+]]></code>
+      <note>_to_entity and _to_model perform the translation. The domain entity never imports UserModel. UserModel never enters the domain or application layers.</note>
+    </example>
+
+    <example type="good" title="SQLAlchemy Unit of Work">
+      <code lang="python"><![CDATA[
+class SQLAlchemyUnitOfWork(UnitOfWork):
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        await self._session.commit()
+
+    async def rollback(self) -> None:
+        await self._session.rollback()
+]]></code>
+      <note>Implements the application-layer interface; the session type never leaks inward.</note>
+    </example>
+  </section>
+
+  <section title="Antipatterns in code">
+    <example type="bad" title="Domain logic in controller">
+      <code lang="python"><![CDATA[
+@router.post("/users")
+async def create_user(request: CreateUserRequest, session=Depends(get_session)):
+    if await session.execute(select(User).where(User.email == request.email)).scalar():
+        raise HTTPException(400, "Email exists")
+    user = User(name=request.name, email=request.email)
+    session.add(user)
+    await session.commit()
+    return user
+]]></code>
+      <note>fm-controller-business-logic: the uniqueness rule and entity construction live in the route.</note>
+    </example>
+    <example type="good" title="Controller delegates to the use case">
+      <code lang="python"><![CDATA[
+@router.post("/users", response_model=UserResponse, status_code=201)
+async def create_user(
+    request: CreateUserRequest,
+    use_case: CreateUserUseCase = Depends(get_create_user_use_case),
+):
+    try:
+        output = await use_case.execute(CreateUserInput(name=request.name, email=request.email))
+        return UserResponse.from_dto(output.user)
+    except ApplicationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+]]></code>
+      <note>Thin glue: translate request to Input DTO, call one use case, translate Output DTO to response (r5).</note>
+    </example>
+
+    <example type="bad" title="Framework coupling in domain">
+      <code lang="python"><![CDATA[
+from sqlalchemy import Column, String
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class User(Base):  # Domain entity inheriting from ORM base — violation
+    __tablename__ = "users"
+    email = Column(String, unique=True)
+]]></code>
+      <note>fm-orm-in-entity: the entity is a persistence model.</note>
+    </example>
+    <example type="good" title="Pure Python entity">
+      <code lang="python"><![CDATA[
+@dataclass
+class User:  # Pure Python, no framework imports
+    email: Email
+    name: str
+    id: UUID = field(default_factory=uuid4)
+# ORM model lives in infrastructure/persistence/orm/models.py — separate class
+]]></code>
+      <note>Entity and ORM model are two classes in two layers; the repository maps between them (r3, r6).</note>
+    </example>
+  </section>
+</text>

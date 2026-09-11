@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Record-Replay Debugging Core Rules" version="2.0.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every record-replay-debugging spec MUST enforce.</summary>
+<text id="01-core-rules" title="Record-Replay Debugging Core Rules" version="2.0.1" est_tokens="1650" depth="essential">
+  <summary>9 testable rules every record-replay-debugging spec MUST enforce. Record captures every nondeterministic boundary; replay serves them back from disk so the agent's decision path is bit-for-bit reproducible.</summary>
+
+  <section title="Background">
+    <p>What record must capture:</p>
+    <list>
+      <item>Every LLM request: full messages array, model, temperature, seed, tool definitions, response, timestamps.</item>
+      <item>Every tool call: tool name, arguments, return value (or exception), wallclock timestamp.</item>
+      <item>Every clock read, RNG draw, and uuid generation — the agent's "small" sources of nondeterminism.</item>
+      <item>Every external state read (file mtime, environment variable, MCP server handshake) used in a decision.</item>
+    </list>
+    <p>Replay is more useful as a fix-verification harness than as a reproduction tool: you change one variable in a recorded trace and re-run to confirm the bug path is gone.</p>
+    <p>Once a trace reproduces a bug, the value of replay is that you can mutate any single boundary and observe whether the bug persists — without re-running the full agent against live infrastructure.</p>
+  </section>
 
   <section title="Rule set">
     <rule id="r1-record-all-calls" testable="true" depth="essential">
@@ -23,10 +35,32 @@
       <statement>The spec MUST wire one or more recorded runs into CI as deterministic integration tests.</statement>
       <rationale source="domain knowledge">Without CI replay, recordings rot.</rationale>
     </rule>
+    <rule id="r6-replay-zero-network" testable="true" depth="essential">
+      <statement>In replay mode, the agent process must make zero outbound network calls; LLM and tool boundaries are served from the recorded trace, and an attempt to call an unrecorded boundary must raise immediately.</statement>
+      <rationale source="01-modes-contract">Silent fallthrough to live network calls is the failure mode that destroys reproducibility — Sakura Sky's 2026 trustworthy-AI primer flags this as the single most common bug in DIY replay harnesses.</rationale>
+    </rule>
+    <rule id="r7-tag-side-effects" testable="true" depth="essential">
+      <statement>Tools that mutate external state (send email, charge card, post webhook) must be tagged side_effect=true in the trace; replay short-circuits these to a recorded stub return value and never re-executes the side effect.</statement>
+      <rationale source="01-modes-contract">Without the tag, replaying a production trace re-sends real emails or re-charges real cards. Tagging is required by every mature replay system (Phoenix, AgentOps, LangGraph time-travel).</rationale>
+    </rule>
+    <rule id="r8-mutate-one-axis" testable="true" depth="essential">
+      <statement>Treat each recorded trace as a fixture and parametrise the replay harness over four mutation axes: prompt text, tool stub return value, model identifier, system instruction. Each fix is verified by mutating exactly ONE axis and asserting the bug path is gone while other paths remain unchanged.</statement>
+      <rationale source="02-mutation-replay">One-variable mutations isolate cause from coincidence. Mutating multiple axes at once produces correlated changes that look like a fix but mask the real defect — the same lesson as one-variable-at-a-time experiments in classical debugging.</rationale>
+    </rule>
+    <rule id="r9-promote-trace-to-eval" testable="true" depth="essential">
+      <statement>Whenever a recorded trace surfaces a real production bug, promote it to the eval suite as a regression case: keep the trace plus the asserted "must-not-happen" event signature; the regression test is replay + assertion.</statement>
+      <rationale source="02-mutation-replay">Eval suites grow most reliably from real incidents (Anthropic's eval guide). Replay traces are already the perfect, deterministic, full-fidelity test fixture.</rationale>
+    </rule>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/06-decision-tree.xml"/>
+    <link path="content/05-examples.xml">Using replay to verify a fix by mutating one variable at a time.</link>
+    <link path="templates/trace-schema.json">JSON-schema for a recorded run with explicit nondeterminism markers.</link>
+    <link href="https://www.sakurasky.com/blog/missing-primitives-for-trustworthy-ai-part-8/">Sakura Sky 2026 — record/replay as a missing primitive. Sakura Sky — replay loops in trustworthy-AI primitives.</link>
+    <link href="https://debugg.ai/resources/deterministic-replay-meets-debug-ai-time-travel-debugging-llm-reproduce">debugg.ai 2025 — time-travel debugging for LLM agents. debugg.ai — mutation replay as the primary fix-verification flow.</link>
+    <link href="https://dev.to/sreeni5018/debugging-non-deterministic-llm-agents-implementing-checkpoint-based-state-replay-with-langgraph-5171">LangGraph checkpoint-based state replay tutorial.</link>
+    <link href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic — eval-from-incident growth pattern.</link>
   </see-also>
 </text>

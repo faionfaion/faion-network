@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Terse Default Tool Output Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
+<text id="03-failure-modes" title="Terse Default Tool Output Failure Modes" version="1.1.1" est_tokens="650" depth="essential">
   <summary>3 antipatterns the response-envelope validator catches. Each pairs symptom + root cause + fix.</summary>
 
   <section title="Antipatterns">
 
     <antipattern id="summary-without-id" severity="high">
-      <symptom>Summary mode emits headline-only rows; agent has to re-call to discover IDs before escalating to `full`.</symptom>
+      <symptom>Summary mode emits headline-only rows; agent has to re-call to discover IDs before escalating to `full`. Summary mode that drops the IDs the agent needs to escalate to full mode.</symptom>
       <root-cause source="Internal — search_logs first-cut design Q1 2026">Author optimised the visible width of the table and dropped the id column to fit the terminal. The round-trip cost on the next call exceeded the saved tokens.</root-cause>
-      <fix>Make `id` the first column in every summary row. Validator rejects responses where any summary entry lacks an `id` field.</fix>
+      <fix>Make `id` the first column in every summary row. Validator rejects responses where any summary entry lacks an `id` field. If the summary is not pointable, the agent has to re-search to get the same row. Always include the primary key in the terse shape.</fix>
     </antipattern>
 
     <antipattern id="silent-truncation" severity="high">
-      <symptom>Tool cuts result set to `limit` but returns no `truncated` flag and no `total_hits`.</symptom>
+      <symptom>Tool cuts result set to `limit` but returns no `truncated` flag and no `total_hits`. Implicit truncation — silently cutting output to N tokens without telling the agent.</symptom>
       <root-cause source="Harness — Agent loop OS; pagination postmortems">Author thought "limit" was a feature, not state. Model interprets "12 hits returned" as "12 hits exist" and stops searching.</root-cause>
-      <fix>Always return `truncated: bool` + `total_hits: int` (or upper-bound estimate). CI fails any tool whose response lacks both keys.</fix>
+      <fix>Always return `truncated: bool` + `total_hits: int` (or upper-bound estimate). CI fails any tool whose response lacks both keys. Model thinks it saw all results. Always return an explicit `truncated: true` flag plus the count it would have returned.</fix>
     </antipattern>
 
     <antipattern id="format-full-default-creep" severity="medium">

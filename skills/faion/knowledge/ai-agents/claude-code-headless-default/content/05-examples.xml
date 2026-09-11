@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Claude Code Headless Default — Worked Examples" version="1.0.0" est_tokens="550" depth="recommended">
+  <summary>The `claude -p` invocation pattern that orchestrators should standardise on for non-interactive runs. Also a quickcheck of the CLI-vs-SDK decision on one task.</summary>
+
+  <section title="Decision quickcheck">
+    <example type="good" title="Coding task, no trigger — CLI">
+      <code lang="text"><![CDATA[
+Task: "fix flaky test in tests/test_auth.py"
+Domain? coding ✓
+Triggers? none ✓
+→ use `claude -p` (CLI default)
+      ]]></code>
+      <note>Coding task, no SDK trigger fired — CLI is correct.</note>
+    </example>
+
+    <example type="bad" title="Same task, hand-rolled SDK loop">
+      <code lang="text"><![CDATA[
+Task: "fix flaky test in tests/test_auth.py"
+Decision: write a 400-line Python loop using anthropic.Anthropic()
+calling tools manually.
+      ]]></code>
+      <note>Re-implements file/edit/bash/git tools that the CLI already ships. No SDK trigger justifies this.</note>
+    </example>
+  </section>
+
+  <section title="Good vs bad invocation">
+    <example type="good" title="Canonical headless argv">
+      <code lang="bash"><![CDATA[
+claude -p "Fix failing test in tests/test_auth.py" \
+  --output-format stream-json --verbose \
+  --allowedTools "Read,Edit,Bash(pytest:*)" \
+  --max-turns 20 \
+  < /dev/null
+      ]]></code>
+      <note>Explicit allowlist, capped turns, closed stdin, stream-json output for orchestrator events.</note>
+    </example>
+
+    <example type="bad" title="Unbounded invocation">
+      <code lang="bash"><![CDATA[
+claude --dangerously-skip-permissions "$TASK"
+      ]]></code>
+      <note>No allowlist, no turn cap, no stream-json — the orchestrator cannot react to mid-run events and tool access is unbounded.</note>
+    </example>
+
+    <note>`templates/run-headless.sh`: Reference wrapper that wires every required flag and budget logic.</note>
+    <note>See also `../stream-json-orchestration/AGENTS.md`: How to drive an orchestrator state-machine off stream-json events.</note>
+  </section>
+</text>

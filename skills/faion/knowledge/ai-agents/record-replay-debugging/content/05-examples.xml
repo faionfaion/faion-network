@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Record-Replay Debugging Worked Example" version="2.0.0" est_tokens="600" depth="recommended">
-  <summary>Canonical happy-path spec emitted from the smoke-test input.</summary>
+<text id="05-examples" title="Record-Replay Debugging Worked Example" version="2.0.1" est_tokens="850" depth="recommended">
+  <summary>Canonical happy-path spec emitted from the smoke-test input, then the replay-boundary guard and the mutation-replay harness in code.</summary>
 
   <example type="good">
     <note>Smoke-test driver values flow through the decision tree to the default leaf (r1-record-all-calls). The emitted JSON satisfies the schema in 02-output-contract.xml.</note>
@@ -41,5 +41,57 @@
   }
 }
 ]]></code>
+  </example>
+
+  <example type="good" title="Replay LLM boundary with strict input-match guard">
+    <code lang="python"><![CDATA[
+class ReplayLLM:
+    def __init__(self, trace):
+        self._events = iter(trace["llm_calls"])
+    def call(self, messages, **kw):
+        ev = next(self._events)
+        if ev["request"]["messages"] != messages:
+            raise ReplayMismatch("LLM input drifted from trace")
+        return ev["response"]
+      ]]></code>
+    <note>Strict input-match guard catches drift the moment a prompt edit changes the path.</note>
+  </example>
+
+  <example type="bad" title="Replay LLM boundary with silent live fallthrough">
+    <code lang="python"><![CDATA[
+class ReplayLLM:
+    def call(self, messages, **kw):
+        try:
+            return self._cache[hash(messages)]
+        except KeyError:
+            return live_anthropic.call(messages, **kw)  # silent fallthrough
+      ]]></code>
+    <note>Cache miss falls back to a live call; replay is no longer deterministic and silently drifts.</note>
+  </example>
+
+  <example type="good" title="Mutation-replay: one axis, one assertion">
+    <code lang="python"><![CDATA[
+def replay_with_mutation(trace, *, prompt=None, tool_stub=None, model=None):
+    h = ReplayHarness(trace)
+    if prompt is not None: h.override_system_prompt(prompt)
+    if tool_stub is not None: h.override_tool(tool_stub.name, tool_stub.fn)
+    if model is not None: h.override_model(model)
+    return h.run()
+
+# Verify fix: only the system prompt changed
+fixed = replay_with_mutation(bug_trace, prompt=NEW_PROMPT)
+assert "WrongToolCall" not in fixed.events
+      ]]></code>
+    <note>One mutation, one assertion — clean causal claim.</note>
+  </example>
+
+  <example type="bad" title="Mutation-replay: three axes at once">
+    <code lang="python"><![CDATA[
+fixed = replay_with_mutation(
+    bug_trace, prompt=NEW_PROMPT, model="opus", tool_stub=stub
+)
+assert fixed.success
+      ]]></code>
+    <note>Three variables changed at once; you cannot tell which one removed the bug.</note>
   </example>
 </text>

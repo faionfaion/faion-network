@@ -45,13 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: two-pass-required, strong-model-free-text, extractor-deterministic, transcript-bounded, ab-vs-single-pass — plus the 2026-08-04 causal correction | 1350 |
+| `content/01-core-rules.xml` | essential | Background (why split, cost intuition) + 7 testable rules: two-pass-required, strong-model-free-text, extractor-deterministic, transcript-bounded, ab-vs-single-pass, strong-reasons-cheap-extracts, extractor-accuracy-gate — plus the 2026-08-04 causal correction, when-to-skip list, source links | 2800 |
 | `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix (incl. extractor-input-bloat) | 1300 |
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
-| `content/01-rule.xml` | recommended | Run hard reasoning in free text on the strong model, then extract into the strict schema with a cheap model. | 1300 |
-| `content/02-cost-model.xml` | recommended | Cost trade-offs: when two-pass beats single-pass and how to size the extraction prompt. | 750 |
+| `content/05-examples.xml` | recommended | Two-pass call pair (Opus thinking + Haiku strict) vs single-pass forced JSON; cache-friendly extractor prompt (python) | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on difficulty → latency → A/B delta → extractor accuracy → rule from 01-core-rules.xml | 550 |
 
 ## Task Routing
 

@@ -46,13 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 rules: CLI default, four guards, switch-triggers, log line-by-line | ~800 |
-| `content/01-cli-vs-sdk-decision.xml` | essential | Companion narrative for the switch-triggers | ~400 |
+| `content/01-core-rules.xml` | essential | Background (why the CLI harness is the default, docs links) + 3 rules: CLI default, four guards, the four switch-triggers | ~800 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the CLI-vs-SDK decision record | ~700 |
-| `content/02-invocation-shape.xml` | essential | Canonical argv shape for `claude -p` headless | ~400 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns | ~700 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (SDK-first, one-shot stdout parsing, wildcard tools, no turn cap) | ~650 |
 | `content/04-procedure.xml` | medium | 5-step procedure | ~900 |
-| `content/06-decision-tree.xml` | essential | Tree: coding-ish? → tools fit MCP? → shell ok? → CLI/SDK | ~600 |
+| `content/05-examples.xml` | recommended | Decision quickcheck (good/bad) and canonical `claude -p` argv vs unbounded invocation | ~550 |
+| `content/06-decision-tree.xml` | essential | Tree: coding-ish? → tools fit MCP? → shell ok? → CLI/SDK | ~400 |
 
 ## Task Routing
 

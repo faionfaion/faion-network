@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) — Worked Example" version="1.1.0" est_tokens="600" depth="recommended">
-  <summary>One end-to-end worked example illustrating the full procedure for `go-http-handlers` against a representative task.</summary>
+<text id="05-examples" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) — Worked Example" version="1.1.1" est_tokens="1150" depth="recommended">
+  <summary>One end-to-end worked example illustrating the full procedure for `go-http-handlers` against a representative task, followed by Gin reference code for middleware order, the DI handler struct and request binding.</summary>
 
   <section title="Scenario">
     <p>Gin handler for `POST /orders` that takes a JSON DTO, validates, calls `OrderService.Create`, returns 201 with a typed response. Owner: tl:alex; reviewer: tl:bob; cadence: per-release.</p>
@@ -48,5 +48,69 @@
       <item>The decision tree in `content/06-decision-tree.xml` saved one round at step 1 by ruling out a duplicate artefact.</item>
       <item>Without the self-check at step 4 the rationale would have shipped without input citations.</item>
     </list>
+  </section>
+
+  <section title="Router setup: middleware order">
+    <example type="good" title="Gin — Recovery, RequestID, Logger, then Auth on the protected group">
+      <code lang="go"><![CDATA[
+// Gin — correct middleware order
+r := gin.New()
+r.Use(middleware.Recovery())   // outermost
+r.Use(middleware.RequestID())
+r.Use(middleware.Logger())
+
+// Protected routes with auth
+v1 := r.Group("/api/v1")
+v1.Use(middleware.Auth())
+v1.GET("/users", h.ListUsers)
+]]></code>
+      <note>Recovery outermost, Logger after RequestID, Auth only on the group that needs it (r-middleware-order, r-explicit-middleware-composition).</note>
+    </example>
+  </section>
+
+  <section title="Handler struct with injected dependencies">
+    <example type="good" title="Handlers as methods on a DI struct">
+      <code lang="go"><![CDATA[
+type UserHandler struct {
+    service UserService
+    logger  *slog.Logger
+}
+
+func NewUserHandler(svc UserService, logger *slog.Logger) *UserHandler {
+    return &UserHandler{service: svc, logger: logger}
+}
+
+func (h *UserHandler) ListUsers(c *gin.Context) {
+    users, err := h.service.List(c.Request.Context())
+    if err != nil {
+        _ = c.Error(err)
+        return
+    }
+    c.JSON(http.StatusOK, users)
+}
+]]></code>
+      <note>Dependencies arrive at construction time; the request context is threaded into the service call; errors go to middleware (r-struct-handler, r-ctx-from-request, r-rfc-7807-on-error).</note>
+    </example>
+  </section>
+
+  <section title="Request binding">
+    <example type="good" title="DTO with binding tags and ShouldBindJSON">
+      <code lang="go"><![CDATA[
+type CreateUserRequest struct {
+    Name  string `json:"name"  binding:"required,min=2,max=100"`
+    Email string `json:"email" binding:"required,email"`
+}
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        _ = c.Error(apperror.AsValidation(err.Error()))
+        return
+    }
+    // ...
+}
+]]></code>
+      <note>ShouldBindJSON returns the error without writing a response, so the handler owns the single write (r-dto-with-validation, r-should-bind-not-bind).</note>
+    </example>
   </section>
 </text>

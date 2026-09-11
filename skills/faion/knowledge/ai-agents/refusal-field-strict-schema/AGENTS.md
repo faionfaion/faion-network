@@ -38,13 +38,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-top-level-refusal; r2-strict-mode; r3-branch-on-refusal; r4-log-refusal-text; r5-no-refusal-in-prompt. | ~900 |
+| `content/01-core-rules.xml` | essential | Background (mirror the OpenAI refusal contract) + 6 testable rules: r1-top-level-refusal; r2-strict-mode; r3-branch-on-refusal; r4-log-refusal-text; r5-no-refusal-in-prompt; r6-refusal-first-nullable-payload; source links. | ~850 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the spec artefact. | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with detector + repair. | ~700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (no refusal field, non-strict, ignored refusal, forced refusal phrasing, string-matching refusals). | ~450 |
 | `content/04-procedure.xml` | recommended | Step-by-step procedure. | ~600 |
-| `content/05-examples.xml` | recommended | Worked example. | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids. | ~500 |
-| `content/01-rule.xml` | recommended | Declare nullable refusal first so safety declines parse cleanly into a typed branch instead of breaking strict-mode JSON. | ~750 |
+| `content/05-examples.xml` | recommended | Worked spec example; refusal-first Pydantic schema with typed branch vs required payload with no refusal channel (python). | ~600 |
+| `content/06-decision-tree.xml` | essential | Decision branches mapped to rule ids (r2, r6, r1). | ~350 |
 
 ## Task Routing
 

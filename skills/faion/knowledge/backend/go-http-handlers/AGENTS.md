@@ -48,15 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 11 testable rules with rationale + source | ~1500 |
+| `content/01-core-rules.xml` | essential | 14 testable rules with rationale + source (adds r-middleware-order, r-stdlib-mux-default, r-should-bind-not-bind; framework lock, DI struct, ctx, httptest and timeout rules enriched) | ~2850 |
 | `content/02-output-contract.xml` | essential | artefact JSON Schema + server/handler shape contract + valid / invalid examples | ~1600 |
-| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom / root-cause / fix | ~1300 |
+| `content/03-failure-modes.xml` | essential | 12 antipatterns with symptom / root-cause / fix (adds raw err.Error() in JSON, missing Body.Close, validator per request, wrong path-param accessor) | ~1550 |
 | `content/04-procedure.xml` | essential | 5-step artefact procedure + 5-step scaffold sub-procedure | ~1500 |
-| `content/01-router-setup.xml` | recommended | Middleware order + stdlib 1.22 muxer as the zero-dependency default | ~500 |
-| `content/02-handler-pattern.xml` | recommended | Handler struct DI, ShouldBindJSON, context propagation | ~600 |
-| `content/03-rules.xml` | recommended | Framework consistency, server timeouts, httptest discipline, agent gotchas | ~600 |
-| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
+| `content/05-examples.xml` | recommended | one end-to-end worked example + Gin reference code: middleware order, DI handler struct, ShouldBindJSON request binding | ~1150 |
+| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids; stdlib-muxer branch when no team framework standard | ~750 |
 
 ## Task Routing
 

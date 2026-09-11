@@ -45,12 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: verb-object-snake-case, namespace-on-multi-server, forbid-padding, rename-after-eval, name-schema-alignment | 1100 |
+| `content/01-core-rules.xml` | essential | Background (names are prompt; one-line form of the naming rule) + 6 testable rules: verb-object-snake-case, namespace-on-multi-server, forbid-padding, rename-after-eval, name-schema-alignment, atomic-verb-per-tool; source links | 1250 |
 | `content/02-output-contract.xml` | essential | JSON Schema for rubric + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix (incl. polymorphic-action-enum) | 700 |
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
-| `content/01-naming-rule.xml` | recommended | verb_object names with namespace prefix | 850 |
+| `content/05-examples.xml` | recommended | Namespaced verb_object catalog vs opaque single-token catalog (json) | 400 |
+| `content/06-decision-tree.xml` | essential | Routing tree on tool count → multi-server → action enum → padding → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
 

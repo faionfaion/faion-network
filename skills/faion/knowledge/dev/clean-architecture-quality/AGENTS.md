@@ -46,16 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source (dependency rule, machine-checked enforcement, four layer definitions, skip); template links | ~1050 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix (controller logic, ORM in entity, unmachined rule, circular import) | ~600 |
 | `content/04-procedure.xml` | essential | 7-step end-to-end procedure | ~800 |
+| `content/05-examples.xml` | recommended | Folder layout; User bounded context through domain (entity, Email VO, repository interface), application (CreateUserUseCase, UserDTO, UnitOfWork) and infrastructure (SQLAlchemy repository + UoW); both critical antipatterns as bad/good code | ~2700 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
-| `content/01-layer-rules.xml` | recommended | Dependency rule, four-layer definitions, forbidden import directions, and project folder layout. | ~950 |
-| `content/02-domain-layer.xml` | recommended | User entity, Email value object, UserRepository abstract interface, domain events — all without framework imports. | ~650 |
-| `content/03-application-layer.xml` | recommended | CreateUserUseCase, GetUserUseCase, UnitOfWork interface, and UserDTO — orchestrating domain entities without ORM or HTTP. | ~650 |
-| `content/04-infrastructure-layer.xml` | recommended | SQLAlchemyUserRepository implementing the domain interface, SQLAlchemyUnitOfWork, and ORM model mapping. | ~550 |
-| `content/05-antipatterns.xml` | recommended | Two critical violations: business logic in controllers, and ORM/framework imports inside domain entities. | ~700 |
 
 ## Task Routing
 

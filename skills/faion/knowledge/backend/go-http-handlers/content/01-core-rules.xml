@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>11 testable rules every Go HTTP Handlers (Gin / Echo / Chi / stdlib) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) Core Rules" version="1.1.1" est_tokens="2850" depth="essential">
+  <summary>14 testable rules every Go HTTP Handlers (Gin / Echo / Chi / stdlib) application MUST enforce. HARD rules — user-supplied input cannot override them. Router configuration patterns for Gin and Echo, including correct middleware order and subrouter/group patterns. Covers the stdlib 1.22 enhanced muxer as a zero-dependency alternative. Handlers as methods on a dependency-injecting struct, with request DTOs using binding/validate tags, typed response structs, and RFC 7807 error mapping instead of raw err.Error() in JSON. Rules preventing the most common Go HTTP handler mistakes: mixed framework signatures, raw err.Error() in responses, missing server timeouts, and test generation gaps.</summary>
 
   <section title="Rule set">
 
     <rule id="r-framework-locked" testable="true" depth="essential">
-      <statement>ONE framework per service; mixed routers across files are FORBIDDEN.</statement>
-      <rationale source="Internal Go reviews">Rule rooted in source: Internal Go reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>ONE framework per service; mixed routers across files are FORBIDDEN. Lock the router choice (Gin, Echo, Chi, stdlib) in the system prompt for any LLM session. Reject any file where Gin and Echo imports coexist. Add a CI lint check for the unwanted import.</statement>
+      <rationale source="Internal Go reviews">Rule rooted in source: Internal Go reviews. LLMs mix handler signatures when context windows overflow. func(c *gin.Context) and func(c echo.Context) error are incompatible; mixed files produce confusing compile errors. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-struct-handler" testable="true" depth="essential">
-      <statement>Handlers MUST be methods on a struct holding dependencies (services, loggers), never package-level funcs with globals.</statement>
-      <rationale source="Hexagonal architecture">Rule rooted in source: Hexagonal architecture. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Handlers MUST be methods on a struct holding dependencies (services, loggers), never package-level funcs with globals. Define handlers as methods on a struct that holds service dependencies (logger, services). Never use package-level globals (var DB *sql.DB) inside handlers. Inject dependencies at construction time.</statement>
+      <rationale source="Hexagonal architecture">Rule rooted in source: Hexagonal architecture. Package-level globals prevent parallel test execution (shared state between test cases) and make dependency substitution impossible without init() hacks. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-dto-with-validation" testable="true" depth="essential">
@@ -30,18 +30,18 @@
     </rule>
 
     <rule id="r-table-driven-tests" testable="true" depth="essential">
-      <statement>Tests MUST be table-driven over `httptest` with the actual router; mock the service interface.</statement>
-      <rationale source="Effective Go testing">Rule rooted in source: Effective Go testing. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Tests MUST be table-driven over `httptest` with the actual router; mock the service interface. Test handlers with httptest.NewRecorder + router.ServeHTTP. Cover both happy-path and unhappy-path (missing required field, invalid type, oversized body). Do not spin a real server for unit tests.</statement>
+      <rationale source="Effective Go testing">Rule rooted in source: Effective Go testing. httptest tests run in parallel, start instantly, and exercise the full middleware chain. Agents generating only happy-path tests miss the most common field-validation regressions. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-ctx-from-request" testable="true" depth="essential">
-      <statement>Handlers MUST pass `r.Context()` / `c.Request.Context()` to service calls; never `context.Background()`. `context.Background()` belongs to `main()` and test setup only.</statement>
-      <rationale source="Go context docs">Rule rooted in source: Go context docs. `Background()` detaches from the request, so cancellation never propagates and a long downstream call keeps burning resources after the client has gone. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Handlers MUST pass `r.Context()` / `c.Request.Context()` to service calls; never `context.Background()`. `context.Background()` belongs to `main()` and test setup only. Pass r.Context() (or c.Request.Context() in Gin) as the first argument into every service call. Never use context.Background() inside a handler.</statement>
+      <rationale source="Go context docs">Rule rooted in source: Go context docs. `Background()` detaches from the request, so cancellation never propagates and a long downstream call keeps burning resources after the client has gone. context.Background() ignores client disconnection. Long-running service calls (DB, HTTP) continue consuming resources after the client has gone away. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-explicit-middleware-composition" testable="true" depth="essential">
       <statement>Use `gin.New()` / `echo.New()` and register every middleware explicitly. `gin.Default()` is FORBIDDEN.</statement>
-      <rationale source="gin-doc">`gin.Default()` bundles its own Logger + Recovery with opinionated formats; teams then add their own and end up running two Recoverys and logging in a format that carries no trace id. Explicit composition is the only way the order in 01-router-setup.xml is auditable. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <rationale source="gin-doc">`gin.Default()` bundles its own Logger + Recovery with opinionated formats; teams then add their own and end up running two Recoverys and logging in a format that carries no trace id. Explicit composition is the only way the order in r-middleware-order is auditable. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-no-goroutine-with-request-ctx" testable="true" depth="essential">
@@ -56,7 +56,22 @@
 
     <rule id="r-server-timeouts" testable="true" depth="essential">
       <statement>`http.Server` MUST set all four timeouts explicitly — `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`. Never leave the zero defaults. Reasonable starting values: 5s / 30s / 30s / 120s.</statement>
-      <rationale source="net/http">Zero means unbounded: a client that never finishes sending headers holds a goroutine and a file descriptor forever (Slowloris), and `r.Run(&quot;:8080&quot;)` configures none of them. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <rationale source="net/http">Zero means unbounded: a client that never finishes sending headers holds a goroutine and a file descriptor forever (Slowloris), and `r.Run(&quot;:8080&quot;)` configures none of them. Set ReadHeaderTimeout, WriteTimeout, and IdleTimeout on http.Server. Frameworks do not set these; a server without timeouts is vulnerable to slowloris attacks and resource exhaustion. A client that never finishes sending headers holds a goroutine and file descriptor indefinitely. ReadHeaderTimeout terminates such connections. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-middleware-order" testable="true" depth="essential">
+      <statement>Register middleware in this order: Recovery (outermost), RequestID, Logger, Auth (on protected groups). Recovery must be outermost so panics are caught before the logger middleware runs. Logger must be after RequestID so the request ID is available in logs.</statement>
+      <rationale source="01-router-setup">Recovery placed inside Logger means a panicking handler crashes the Logger middleware before it can write the log line. The recovery response is then written by a dead middleware, producing a garbled or empty body. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-stdlib-mux-default" testable="true" depth="essential">
+      <statement>For new services without a team-wide framework standard, prefer the stdlib 1.22 muxer (http.NewServeMux with METHOD /path patterns) over adding a framework dependency. Add a framework only when its features (validator, response helpers) justify the dependency.</statement>
+      <rationale source="01-router-setup">The 1.22 muxer supports method-specific routing (GET /users/{id}) and path parameters (r.PathValue) natively, eliminating the primary reason to reach for Gin/Echo in simple CRUD APIs.</rationale>
+    </rule>
+
+    <rule id="r-should-bind-not-bind" testable="true" depth="essential">
+      <statement>Use c.ShouldBindJSON (not c.Bind) on Gin. ShouldBind returns an error without writing a response; c.Bind writes a 400 directly and the handler continues — producing a double-write bug.</statement>
+      <rationale source="02-handler-pattern">c.Bind's auto-response behavior is a Gin anti-pattern; handlers that check err after c.Bind may still execute, producing conflicting response writes.</rationale>
     </rule>
 
   </section>
@@ -81,5 +96,7 @@
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
     <link path="content/06-decision-tree.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="templates/stdlib_handler.go">stdlib 1.22 App struct with routes(), writeJSON, writeProblem.</link>
   </see-also>
 </text>

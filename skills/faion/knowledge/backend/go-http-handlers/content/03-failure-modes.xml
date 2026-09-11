@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>8 antipatterns specific to Go HTTP Handlers (Gin / Echo / Chi / stdlib). Each has a symptom, root cause, and concrete fix.</summary>
+<text id="03-failure-modes" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) Failure Modes" version="1.1.1" est_tokens="1550" depth="essential">
+  <summary>12 antipatterns specific to Go HTTP Handlers (Gin / Echo / Chi / stdlib). Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -50,6 +50,30 @@
       <symptom>Slow-client connections hold file descriptors; fd exhaustion under sustained load (Slowloris).</symptom>
       <root-cause>`http.Server` timeouts default to zero — unbounded — and the one-line `r.Run(&quot;:8080&quot;)` sets none of them.</root-cause>
       <fix>Build the server from `templates/server.go`: set ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout, then `srv.ListenAndServe`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-raw-error-in-json" severity="high">
+      <symptom>c.JSON(status, gin.H{"error": err.Error()}) for error responses.</symptom>
+      <root-cause>Handler serialises the internal error instead of handing it to the error middleware.</root-cause>
+      <fix>Exposes database DSNs, constraint names, and internal hostnames. Use the RFC 7807 error mapping from error-handling/ and return via c.Error(appErr).</fix>
+    </antipattern>
+
+    <antipattern id="fm-body-close-missing" severity="medium">
+      <symptom>Forgetting defer r.Body.Close() in stdlib handlers.</symptom>
+      <root-cause>Without Close(), the underlying TCP connection is not returned to the pool, leaking file descriptors under sustained load.</root-cause>
+      <fix>`defer r.Body.Close()` as the first line of every stdlib handler that reads the body.</fix>
+    </antipattern>
+
+    <antipattern id="fm-validator-per-request" severity="medium">
+      <symptom>Creating validator.New() per request instead of once at package level.</symptom>
+      <root-cause>validator.New() is expensive (reflection over all struct tags). A per-request instance adds measurable latency under load. Cache at package or handler-struct level.</root-cause>
+      <fix>One validator instance per process, held on the handler struct or a package-level var.</fix>
+    </antipattern>
+
+    <antipattern id="fm-wrong-path-param-accessor" severity="high">
+      <symptom>Using path param accessor from the wrong router: c.Param("id") in Chi or r.PathValue("id") in Gin.</symptom>
+      <root-cause>Each router has its own path-param API. Wrong accessor returns an empty string, silently breaking 404 logic and tests.</root-cause>
+      <fix>Use the accessor of the locked framework (r-framework-locked): Gin `c.Param`, Chi `chi.URLParam`, stdlib 1.22 `r.PathValue`; an unhappy-path test with a bad id catches the empty string.</fix>
     </antipattern>
 
   </section>

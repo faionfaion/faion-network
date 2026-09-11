@@ -45,12 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: terse-default-required, primary-key-in-summary, explicit-truncation-flag, tokens-budget-doc, full-mode-justification | 1100 |
+| `content/01-core-rules.xml` | essential | Background (why verbose output poisons the loop) + 5 testable rules: terse-default-required, primary-key-in-summary, explicit-truncation-flag, tokens-budget-doc, full-mode-justification; source links | 1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for tool-response envelope + valid/invalid examples | 800 |
-| `content/03-failure-modes.xml` | essential | 3 antipatterns: summary-without-id, silent-truncation, format-full-default-creep | 700 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns: summary-without-id, silent-truncation, format-full-default-creep | 650 |
 | `content/04-procedure.xml` | essential | 4-step retrofit procedure measure → design → implement → wire-eval | 700 |
+| `content/05-examples.xml` | recommended | search_logs retrofit: summary default with `format` opt-in vs full rows every call (python) | 350 |
 | `content/06-decision-tree.xml` | essential | Branches on p95-tokens + tool-role + primary-key-availability | 500 |
-| `content/01-terse-default.xml` | recommended | Default to one-line-per-result summary; expose a `format` parameter so the agent opts into the full payload only when needed. | 850 |
 
 ## Task Routing
 

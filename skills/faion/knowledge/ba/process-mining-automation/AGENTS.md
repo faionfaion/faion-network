@@ -51,15 +51,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules with rationale + source citations | ~1100 |
+| `content/01-core-rules.xml` | essential | Background (BA competencies, mining tools, RPA vs intelligent automation, vendors, market context) + 10 testable rules: 5 procedure gates, logs-before-interviews, four-step-mining-sequence, six-criterion-scoring-matrix, rpa-vs-intelligent-automation, skip | ~2250 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the produced artefact + valid/invalid examples | ~900 |
-| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix (incl. volume-without-standardization, vendor-before-assessment) | ~750 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~900 |
-| `content/05-examples.xml` | essential | Worked end-to-end example | ~700 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
-| `content/01-process-mining.xml` | recommended | Process mining definition, BA competencies required, four-step workflow, and tool landscape. | ~700 |
-| `content/02-automation-assessment.xml` | recommended | Six-criterion scoring matrix for automation readiness, RPA vs. intelligent automation comparison, and key vendor landscape. | ~700 |
-| `content/03-examples.xml` | recommended | Scored automation assessment example and recommendation threshold interpretation. | ~650 |
+| `content/05-examples.xml` | essential | Worked end-to-end example + scored six-criterion assessment of AP invoice matching (markdown) | ~750 |
+| `content/06-decision-tree.xml` | essential | Routing tree on logs/schema, score threshold, RPA vs intelligent automation → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 

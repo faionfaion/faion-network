@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Core Rules" version="1.2.0" est_tokens="1350" depth="essential">
-  <summary>5 testable rules grounding the two-pass-reason-then-extract methodology. Each rule pairs a binary check + sourced rationale. Corrected 2026-08-04: the accuracy loss this methodology recovers is caused by the FORMAT INSTRUCTION in the prompt, not by the decoder's grammar mask — see the correction section at the end.</summary>
+<text id="01-core-rules" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Core Rules" version="1.2.1" est_tokens="2800" depth="essential">
+  <summary>Run hard reasoning in free text on the strong model, then extract into the strict schema with a cheap model. 7 testable rules grounding the two-pass-reason-then-extract methodology. Each rule pairs a binary check + sourced rationale. Corrected 2026-08-04: the accuracy loss this methodology recovers is caused by the FORMAT INSTRUCTION in the prompt, not by the decoder's grammar mask — see the correction section at the end.</summary>
+
+  <section title="Background">
+    <p>For tasks where reasoning quality matters more than output format, never lock the reasoning step into strict structured output. Split the work into two passes: pass 1 produces free-form reasoning on the strong model, pass 2 extracts the structured answer with a cheap model.</p>
+    <p>Cost trade-offs: when two-pass beats single-pass and how to size the extraction prompt. Two-pass adds a second model call but the extractor is small (Haiku class) and its prompt is short. The strong-model output stays roughly the same length whether wrapped in strict JSON or not, so the marginal cost of pass 2 is the extractor's input/output tokens — a small fraction of the strong-model bill.</p>
+  </section>
 
   <section title="Rule set">
 
@@ -24,6 +29,14 @@
       <statement>Before deploying two-pass, run an A/B vs single-pass on ≥50 representative tasks. Adopt only when accuracy delta ≥ 5% absolute and cost delta ≤ 2x.</statement>
       <rationale source="Internal — two-pass adoption checklist">Two-pass is an investment; A/B keeps the decision data-driven and prevents cargo-culting on tasks where single-pass is fine.</rationale>
     </rule>
+    <rule id="strong-reasons-cheap-extracts" testable="true" depth="essential">
+      <statement>When a task requires deep reasoning AND a strict schema, run the strong model in free-text or extended-thinking mode for the reasoning step, then run a cheap extractor model with strict structured output to fill the schema from the strong model's transcript.</statement>
+      <rationale source="arXiv:2604.03616, The Format Tax, 2026-04-04">Corrected 2026-08-04. The cost is the FORMAT INSTRUCTION in the prompt, not the grammar mask: The Format Tax (arXiv:2604.03616, 2026-04-04) separates the format request from the constrained decode and finds 92 percent of statistically significant degradations already present with the instruction alone, before any decoder constraint. A format instruction compresses the visible reasoning channel before the model has finished solving, so it commits early. Two-pass restores accuracy — +6.8 pp on average, improving 42 of 72 model x task x format combinations — because pass 1 sees no format request at all, and the extraction step is easy enough that a small model meets the spec at a fraction of the cost. Earlier SLOT / vendor-guide figures of 10–15 percent describe the combined effect and do not isolate the cause.</rationale>
+    </rule>
+    <rule id="extractor-accuracy-gate" testable="true" depth="essential">
+      <statement>Use two-pass when (a) the task is reasoning-heavy AND (b) extraction-only accuracy on the cheap model exceeds 95 percent on a held-out sample. If extraction quality is below that threshold, either thicken the schema descriptions or fall back to single-pass on the strong model with an embedded scratchpad.</statement>
+      <rationale source="02-cost-model">Reasoning improvement on the strong model dominates the bill. The extractor is cheap enough that its only constraint is correctness; if a Haiku-class model meets 95+ percent on extraction-only inputs, the savings from preserving the strong model's accuracy justify the second call.</rationale>
+    </rule>
 
   </section>
 
@@ -32,10 +45,26 @@
     <statement>Retained but reframed: the extended-thinking variant (hidden scratchpad, then format) recovers +9.2 pp on average but worsens 15% of combinations (arXiv:2604.03616) — higher mean, higher variance than the two-pass split. Prefer two-pass when a regression on any single task class is unacceptable.</statement>
   </section>
 
+  <section title="When to skip two-pass">
+    <list>
+      <item>Latency budget under one second total — two calls cannot fit.</item>
+      <item>Schema is so simple (single enum, single number) that the strong model's accuracy gap with strict mode is negligible.</item>
+      <item>Extractor accuracy on extraction-only is below 95 percent — fix that first or stay single-pass.</item>
+      <item>Task volume is so high that the extra call cost dominates — measure end-to-end before optimising.</item>
+    </list>
+  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
     <link path="content/06-decision-tree.xml"/>
+    <link path="content/05-examples.xml">When two-pass actually saves money vs single-pass strict SO.</link>
+    <link path="templates/two_pass.py">Reusable two-pass function with Opus reasoning and Haiku extraction.</link>
+    <link href="https://arxiv.org/html/2604.03616">The Format Tax (arXiv:2604.03616, 2026-04-04) — separates the format instruction from the grammar constraint; the source of the corrected causal story.</link>
+    <link href="https://arxiv.org/html/2505.04016v1">SLOT — Structuring the Output of Large Language Models (arXiv 2505.04016). Combined-effect figures; superseded on causality.</link>
+    <link href="https://www.buildmvpfast.com/blog/structured-output-llm-json-mode-function-calling-production-guide-2026">BuildMVPFast — Structured output 2026 guide (10–15% accuracy gap).</link>
+    <link href="https://platform.claude.com/docs/en/build-with-claude/extended-thinking">Anthropic — Extended thinking documentation.</link>
+    <link href="https://arxiv.org/abs/2305.05176">FrugalGPT — cascade and confidence routing pattern (related cost-saving technique).</link>
   </see-also>
 </text>

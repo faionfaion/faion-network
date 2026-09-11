@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Two-Pass: Free-Form Reasoning Then Structured Extraction — Worked Examples" version="1.0.0" est_tokens="800" depth="recommended">
+  <summary>The two-pass call pair in code (Opus reasons freely, Haiku extracts), the single-pass shape it replaces, and a cache-friendly extractor prompt.</summary>
+
+  <section title="Two-pass vs single-pass">
+    <example type="good" title="Pass 1 free text with thinking, pass 2 strict extraction">
+      <code lang="python"><![CDATA[
+# Pass 1: Opus thinks freely.
+raw = anthropic.messages.create(
+    model="claude-opus-4-7",
+    thinking={"type": "enabled", "budget_tokens": 16000},
+    messages=[{"role": "user", "content": question}],
+).content[-1].text
+
+# Pass 2: Haiku extracts into strict schema.
+verdict = haiku.responses.parse(
+    model="claude-haiku-4-7",
+    input=[{"role": "user", "content": f"Extract verdict from analysis:\n{raw}"}],
+    text_format=Verdict,  # strict Pydantic model
+)
+      ]]></code>
+      <note>Reasoning is unconstrained and benefits from extended thinking. Note what the prompt does NOT contain: no schema, no "reply as JSON", no field list — removing the decoder constraint while leaving the format instruction keeps almost the whole cost. Extraction is mechanical, so a Haiku-class model meets the schema reliably and cheaply.</note>
+    </example>
+
+    <example type="bad" title="Single pass: strong model forced into strict JSON while reasoning">
+      <code lang="python"><![CDATA[
+# Single pass: Opus forced into strict JSON during reasoning.
+verdict = anthropic.messages.create(
+    model="claude-opus-4-7",
+    tools=[{"name": "submit_verdict", "input_schema": Verdict.model_json_schema()}],
+    tool_choice={"type": "tool", "name": "submit_verdict"},
+    messages=[{"role": "user", "content": question}],
+)
+      ]]></code>
+      <note>Two problems, and the smaller one is the grammar. The schema is described to the model in the same turn it must reason in, which is where 92 percent of the measured degradation lives (arXiv:2604.03616, 2026-04-04); the decoder mask on top adds little further harm. Frontier closed models absorb most of this tax, so measure before assuming the loss.</note>
+    </example>
+  </section>
+
+  <section title="Sizing the extraction prompt">
+    <example type="good" title="Short, schema-anchored, cache-friendly extractor prompt">
+      <code lang="python"><![CDATA[
+# Pass 2 prompt: short, schema-anchored, cache-friendly.
+EXTRACTOR_SYSTEM = (
+    "You extract structured verdicts from analysis text. "
+    "Read only what the analysis explicitly states. "
+    "If a field is not stated, set it to null."
+)
+
+# Pin the system prompt to the cache prefix so repeated extractions hit cache.
+extractor_call(
+    system=EXTRACTOR_SYSTEM,         # cached
+    user=f"Analysis:\n{raw}",        # volatile
+    text_format=Verdict,
+)
+      ]]></code>
+      <note>Stable system prompt, volatile analysis. Cache prefix amortizes across calls; extractor cost stays a small constant.</note>
+    </example>
+  </section>
+</text>

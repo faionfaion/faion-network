@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Terse Default Tool Output — Worked Examples" version="1.0.0" est_tokens="350" depth="recommended">
+  <summary>A search tool retrofitted to summary-by-default with a `format` opt-in, against the same tool dumping full rows on every call.</summary>
+
+  <section title="search_logs: summary default with full opt-in">
+    <example type="good" title="Summary default, full on demand">
+      <code lang="python"><![CDATA[
+@tool
+def search_logs(query: str, limit: int = 20,
+                format: Literal["summary","full"] = "summary") -> str | list[dict]:
+    rows = es.search(query, size=limit)
+    if format == "summary":
+        # one line per hit, ~30 tokens total
+        return "\n".join(f"{r.ts} [{r.level}] {r.msg[:80]}" for r in rows)
+    return [r.dict() for r in rows]   # full JSON only when asked
+      ]]></code>
+      <note>Default mode burns ~30 tokens/hit; agent escalates to `format="full"` only after a summary points it at the row that matters.</note>
+    </example>
+
+    <example type="bad" title="Full rows on every call">
+      <code lang="python"><![CDATA[
+@tool
+def search_logs(query: str, limit: int = 50) -> list[dict]:
+    return [r.dict() for r in es.search(query, size=limit)]
+    # 50 hits * ~80 fields = 5-15k tokens every call
+      ]]></code>
+      <note>Every call dumps full rows into context, even when the agent only needs timestamps to plan.</note>
+    </example>
+  </section>
+</text>

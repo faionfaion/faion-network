@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="django-pytest — Worked Examples" version="1.0.0" est_tokens="950" depth="recommended">
+  <summary>Unit tests, API integration tests, parametrize, and mocking external services. Also the pytest configuration block and a factory_boy factory.</summary>
+
+  <section title="Configuration">
+    <example type="good" title="pyproject.toml pytest block">
+      <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short", "--strict-markers", "-ra"]
+markers = [
+    "slow: deselect with '-m not slow'",
+    "integration: integration tests",
+]
+      ]]></code>
+      <note>Test-specific settings module and --strict-markers (r7-test-settings-module, r14-strict-markers-lint).</note>
+    </example>
+    <note>`templates/conftest.py`: Minimal conftest with api_client, user, auth_client, and network-blocking fixture.</note>
+  </section>
+
+  <section title="Factory pattern">
+    <example type="good" title="factory_boy DjangoModelFactory">
+      <code lang="python"><![CDATA[
+import factory
+from apps.users.models import User
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+      ]]></code>
+      <note>`templates/factories.py`: DjangoModelFactory scaffolds for User and related models.</note>
+    </example>
+  </section>
+
+  <section title="Unit tests for services">
+    <example type="good" title="Arrange / Act / Assert with the db marker">
+      <code lang="python"><![CDATA[
+@pytest.mark.django_db
+class TestCreateOrder:
+    def test_creates_order_with_valid_data(self, user, product):
+        order = services.create_order(user=user, items=[{"product_id": product.id, "quantity": 2}])
+        assert order.user == user
+        assert order.status == "pending"
+
+    def test_raises_for_insufficient_stock(self, user, product):
+        product.stock = 1
+        product.save()
+        with pytest.raises(ValueError, match="Insufficient stock"):
+            services.create_order(user=user, items=[{"product_id": product.id, "quantity": 10}])
+      ]]></code>
+      <note>One logical assertion group per test; fixtures supply the data (r2, r4, r10).</note>
+    </example>
+  </section>
+
+  <section title="Integration tests for APIs">
+    <example type="good" title="APIClient with force_authenticate">
+      <code lang="python"><![CDATA[
+@pytest.mark.django_db
+class TestUserAPI:
+    def test_list_requires_auth(self, api_client):
+        response = api_client.get("/api/v1/users/")
+        assert response.status_code == 401
+
+    def test_list_returns_users(self, authenticated_client, user_factory):
+        user_factory(email="a@b.com")
+        response = authenticated_client.get("/api/v1/users/")
+        assert response.status_code == 200
+        assert len(response.data["results"]) >= 1
+      ]]></code>
+      <note>The authenticated client fixture uses force_authenticate; no login round-trip (r5).</note>
+    </example>
+  </section>
+
+  <section title="Parametrize">
+    <example type="good" title="Equivalence classes for password validation">
+      <code lang="python"><![CDATA[
+@pytest.mark.parametrize("password,valid", [
+    ("ValidPass1!", True),
+    ("short1!", False),
+    ("NOLOWER1!", False),
+    ("NoDigit!!", False),
+])
+def test_password_validation(password, valid):
+    assert validate_password(password).is_valid == valid
+      ]]></code>
+      <note>Pure logic, no db marker; each failing row is reported by its parameters (r11).</note>
+    </example>
+  </section>
+</text>

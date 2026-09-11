@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Refusal Field Strict Schema Worked Example" version="2.0.0" est_tokens="600" depth="recommended">
-  <summary>Canonical happy-path spec emitted from the smoke-test input.</summary>
+<text id="05-examples" title="Refusal Field Strict Schema Worked Example" version="2.0.1" est_tokens="600" depth="recommended">
+  <summary>Canonical happy-path spec emitted from the smoke-test input, then the refusal-first Pydantic schema in code.</summary>
 
   <example type="good">
     <note>Smoke-test driver values flow through the decision tree to the default leaf (r1-top-level-refusal). The emitted JSON satisfies the schema in 02-output-contract.xml.</note>
@@ -40,5 +40,36 @@
   }
 }
 ]]></code>
+  </example>
+
+  <example type="good" title="Refusal-first, nullable payload, single typed branch">
+    <code lang="python"><![CDATA[
+class MedicalExtract(BaseModel):
+    model_config = {"extra": "forbid"}
+    refusal: str | None = Field(
+        default=None,
+        description="If you cannot/should not answer, explain here. Else null.",
+    )
+    diagnoses: list[str] | None = None
+    medications: list[str] | None = None
+
+resp = client.responses.parse(model="gpt-5", input=msgs, text_format=MedicalExtract)
+if resp.output_parsed.refusal:
+    log_refusal(resp.output_parsed.refusal)
+    return None
+return resp.output_parsed
+      ]]></code>
+    <note>Single typed branch handles refusal; payload fields stay null-safe.</note>
+  </example>
+
+  <example type="bad" title="Required payload, no refusal channel">
+    <code lang="python"><![CDATA[
+class MedicalExtract(BaseModel):
+    diagnoses: list[str]   # required, no refusal channel
+    medications: list[str]
+
+# model invents [] or violates grammar → exception
+      ]]></code>
+    <note>Model has no legal way to refuse; you get fake empty lists or parser errors.</note>
   </example>
 </text>

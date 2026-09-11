@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="claude-code-headless-default Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for claude-code-headless-default. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="claude-code-headless-default Core Rules" version="1.0.1" est_tokens="800" depth="essential">
+  <summary>Pick the Claude Code CLI as the default agent runtime; only drop to the Agent SDK when one of four concrete triggers fires. Migrated testable rules for claude-code-headless-default. Verify and refine before relying on for production.</summary>
+
+  <section title="Background">
+    <p>The Claude Code CLI bundles the full agent harness (filesystem, bash, git, MCP, plan mode, sub-agents, hooks, skills, compaction). Re-implementing this in a custom SDK loop is almost always overkill for coding/devops/research work.</p>
+    <p>A subprocess that disables the TUI, allowlists tools, caps turns, and emits structured events is the only safe shape for production.</p>
+    <p>Anthropic — Claude Code headless mode docs: https://code.claude.com/docs/en/headless (headless mode flag reference). Anthropic — Agent SDK overview (the alternative): https://platform.claude.com/docs/en/agent-sdk/overview</p>
+  </section>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -10,6 +16,10 @@
     <rule id="r2" testable="true" depth="essential">
       <statement>Headless invocations MUST set `-p`/`--print`, an explicit `--allowedTools` list, `--max-turns`, and `--output-format stream-json --verbose` so the orchestrator can parse events line-by-line.</statement>
       <rationale source="v1-source">Without `-p` the binary opens a TUI; without `--allowedTools` the agent stalls on permission prompts; without `--max-turns` a runaway loop can drain budget; without stream-json the orchestrator only sees the final blob.</rationale>
+    </rule>
+    <rule id="r-switch-triggers" testable="true" depth="essential">
+      <statement>Drop to the Agent SDK only when ONE of these is true. Document which trigger fired in the agent's design doc. (1) Non-coding domain that does not benefit from filesystem + git + bash (e.g. claims processing, sales triage). (2) Custom tools that cannot be expressed as an MCP server. (3) Programmatic control of the inner loop (branch conversation tree, intercept every tool call, custom replay). (4) Embedding inside a SaaS product whose host process cannot fork subprocesses.</statement>
+      <rationale source="01-cli-vs-sdk-decision">A named trigger in the decision record is the only evidence that the SDK was chosen for a reason the CLI cannot meet; a record with chosen_runtime=agent-sdk and no switch_trigger is rejected by the output contract.</rationale>
     </rule>
   </section>
 </text>

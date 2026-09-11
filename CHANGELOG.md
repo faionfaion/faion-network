@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1, batch 2 of 8: ten more slugs folded.** Six `ai-agents`
+  documents, `ba/process-mining-automation`, `backend/go-http-handlers`,
+  `dev/clean-architecture-quality`, `dev/django-pytest`: 23 non-canonical files
+  folded and deleted, preservation check 0 on each against `HEAD`. Where an extra
+  duplicated a canonical rule in fuller words, the fuller wording won once (five
+  `go-http-handlers` rules, all six `clean-architecture-quality` rules); where an
+  extra held the only worked code, `05-examples.xml` was created —
+  `clean-architecture-quality` alone gained 13 examples across its four layers.
+  Twenty slugs down, sixty to go.
+
 - **CR-010 option 1, batch 1 of 8: ten slugs folded into their canonical parts.**
   `dev/domain-driven-design`, `dev/event-sourcing-basics`, `dev/python`,
   `frontend/frontend-design`, `frontend/pwa-core`, `infra/dora-metrics-cicd`,

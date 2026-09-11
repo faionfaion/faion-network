@@ -43,14 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules specific to django-pytest | ~1000 |
+| `content/01-core-rules.xml` | essential | 14 testable rules: runner, fixtures, factories, db marker, force_authenticate, boundary mocks, test settings module, conftest placement, network-block fixture, arrange/act/assert, parametrize, transactional_db for on_commit, read-conftest-first, strict-markers lint | ~2200 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns with reason, incl. LLM-specific ones (internal-call assertions, shared class state, inline fixture recreation, --reuse-db in CI, patching the wrong import path) | ~850 |
 | `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
+| `content/05-examples.xml` | recommended | pyproject pytest block, UserFactory, service unit tests, APIClient integration tests, parametrize (toml/python) | ~950 |
 | `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
-| `content/01-configuration.xml` | recommended | pyproject.toml settings, directory layout, shared conftest fixtures, and factory_boy pattern. | ~700 |
-| `content/02-test-patterns.xml` | recommended | Unit tests, API integration tests, parametrize, and mocking external services. | ~1000 |
-| `content/03-antipatterns.xml` | recommended | Common test mistakes and LLM-specific failure modes in Django/pytest projects. | ~600 |
 
 ## Task Routing
 

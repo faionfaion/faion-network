@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Failure Modes" version="1.2.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix. Two were added in 1.2.0 with the format-tax correction: keeping the format instruction after removing the constraint, and blaming the format tax for missing required fields.</summary>
+<text id="03-failure-modes" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Failure Modes" version="1.2.1" est_tokens="1300" depth="essential">
+  <summary>6 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix. Two were added in 1.2.0 with the format-tax correction: keeping the format instruction after removing the constraint, and blaming the format tax for missing required fields.</summary>
 
   <section title="Antipatterns">
 
     <antipattern id="scratchpad-substitute" severity="high">
-      <symptom>Author adds a 'reasoning' field to the strict schema and claims it equals two-pass.</symptom>
+      <symptom>Author adds a 'reasoning' field to the strict schema and claims it equals two-pass. Adding a long reasoning field to a strict schema as a substitute for two-pass on math or research tasks.</symptom>
       <root-cause source="arXiv:2604.03616, 2026-04-04">Embedded scratchpad works for medium tasks, but the schema is still stated in the same prompt — and the format INSTRUCTION carries 92% of the measured degradation, before any decoder constraint. A reasoning field inside the schema does not remove the instruction; it is the instruction.</root-cause>
-      <fix>Switch to two-pass when difficulty saturates the scratchpad — A/B is the test.</fix>
+      <fix>Switch to two-pass when difficulty saturates the scratchpad — A/B is the test. The embedded scratchpad pattern works for medium-difficulty reasoning, but the schema is still stated up front, so the format instruction is still compressing the reasoning channel on the hard tasks — the scratchpad field does not undo that. The hidden-scratchpad variant (extended thinking, then format) recovers +9.2 pp on average but worsens 15 percent of combinations; two-pass is the lower-variance choice. When task difficulty saturates the scratchpad, switch to two-pass.</fix>
     </antipattern>
 
     <antipattern id="strong-model-extracts" severity="high">
@@ -32,6 +32,12 @@
       <symptom>A provider SDK returns objects missing REQUIRED fields at a high rate; the team cites the format tax and moves to plain-text parsing without investigating.</symptom>
       <root-cause source="Anthropic structured-outputs docs, fetched 2026-08-03; internal Sonnet 4.5 Agent SDK observation">Under real constrained decoding a required field cannot be omitted — the grammar makes the closing brace unreachable until it is emitted. A high omission rate is therefore evidence that grammar constraints were not applied on that path (schema passed as a prompt instruction, a soft JSON mode, or an errored fallback). The format tax explains accuracy loss, not omission.</root-cause>
       <fix>Move to prose-then-parse if you want — it is the researched-correct shape either way — but log the request as sent and confirm which path ran. Do not generalise one SDK's behaviour to the provider's API.</fix>
+    </antipattern>
+
+    <antipattern id="extractor-input-bloat" severity="medium">
+      <symptom>Sending the original question plus the full reasoning trace to the extractor.</symptom>
+      <root-cause source="02-cost-model">Doubles the extractor's input bill without improving extraction quality — the trace already contains everything the extractor needs. Send only the trace (or the trace plus a one-line task hint).</root-cause>
+      <fix>Pass-2 input is the transcript only, optionally with a one-line task hint; keep the extractor system prompt stable so it hits the cache prefix.</fix>
     </antipattern>
 
   </section>
