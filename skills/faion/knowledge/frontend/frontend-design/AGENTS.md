@@ -49,13 +49,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 12 testable rules: brief first, ≥3-axis divergence, per-variant rationale, working code not mockups, explicit selection, Storybook handoff, discoverable designs folder, screenshot comparison before selection, tokens before components, pinned Storybook versions, colocated component+story+test, skip contract | 1600 |
-| `content/01-rules.xml` | essential | Variant-diversity constraints, the 3-5 ceiling, variant-local token persistence, per-variant a11y gate, rationale requirement, runnable variants | 900 |
+| `content/01-core-rules.xml` | essential | 22 testable rules: brief first, ≥3-axis divergence, per-variant rationale, working code not mockups, explicit selection, Storybook handoff, discoverable designs folder, screenshot comparison before selection, tokens before components, pinned Storybook versions, colocated component+story+test, 3-5 ceiling, variant-local tokens, per-variant a11y gate, README rationale fields, runnable variants, the four phase rules (inputs, dispatch constraints, isolated refinement, token-promotion commit), skip contract | 3100 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/02-workflow.xml` | medium | Four-phase agent workflow with the brainstorm/refinement dispatch prompts and the agent gotchas | 1400 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix, incl. deciding from static frames, components before tokens, Storybook version rot | 1100 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns with symptom/root-cause/fix, incl. deciding from static frames, components before tokens, Storybook version rot, and the four agent gotchas (same-font variants, skipped a11y, refinement regression, designs/ bloat) | 1550 |
 | `content/04-procedure.xml` | essential | 9-step procedure: brief → brainstorm → render comparison → review → refine → extract tokens → Storybook → components → artefact | 1000 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
+| `content/05-examples.xml` | medium | Four-phase agent workflow dispatch prompts: requirements capture, brainstorm dispatch, refinement, token promotion + Storybook + components | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 750 |
 
 ## Task Routing
 

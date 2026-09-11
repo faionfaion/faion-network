@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="event-sourcing-basics Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Failure modes observed when applying the event-sourcing-basics methodology. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="event-sourcing-basics Failure Modes" version="1.1.1" est_tokens="1000" depth="essential">
+  <summary>Failure modes observed when applying the event-sourcing-basics methodology. Each pairs symptom + root-cause + concrete fix. Two critical event sourcing violations: mutable events, and oversized catch-all events.</summary>
 
   <section title="Antipatterns">
     <antipattern id="fm-mutable-event" severity="high">
@@ -25,6 +25,30 @@
       <symptom>Two concurrent appends both succeed at version=4; replay diverges.</symptom>
       <root-cause source="r4">Optimistic concurrency missing.</root-cause>
       <fix>Add expected_version on append; reject if stream moved.</fix>
+    </antipattern>
+
+    <antipattern id="fm-mutable-event-field-assignment" severity="high">
+      <symptom>Assigning new values to event fields after construction (e.g., event.customer_id = new_id).</symptom>
+      <root-cause source="03-antipatterns">Events stored in the event log become inconsistent with in-memory events. Replay produces different state than the original, making the event log unreliable as the source of truth.</root-cause>
+      <fix>Declare every event @dataclass(frozen=True) so assignment raises FrozenInstanceError; see the bad/good pair in 05-examples.xml.</fix>
+    </antipattern>
+
+    <antipattern id="fm-mutable-event-cached-copy" severity="high">
+      <symptom>Mutable event: assigning to event.customer_id after construction.</symptom>
+      <root-cause source="01-event-definitions">Breaks immutability guarantee. Any code that cached the event has an inconsistent copy, making replay non-deterministic.</root-cause>
+      <fix>Same fix as fm-mutable-event-field-assignment (duplicate observation kept from 01-event-definitions): frozen=True on the Event base and every subclass.</fix>
+    </antipattern>
+
+    <antipattern id="fm-large-catch-all-event" severity="high">
+      <symptom>Using a single event type like OrderUpdated that carries the entire order state as a dict.</symptom>
+      <root-cause source="03-antipatterns">Loses intent (which field actually changed?), makes projections load unnecessary data, and makes schema evolution impossible without breaking all consumers that parse the dict.</root-cause>
+      <fix>Split into one event per change (OrderItemAdded, ShippingAddressChanged); see the bad/good pair in 05-examples.xml.</fix>
+    </antipattern>
+
+    <antipattern id="fm-catch-all-event-full-state" severity="high">
+      <symptom>Catch-all event: OrderUpdated with entire_order_data: dict containing all order fields.</symptom>
+      <root-cause source="01-event-definitions">Loses intent (what specifically changed?), bloats the event log, and makes schema evolution impossible without breaking all existing consumers.</root-cause>
+      <fix>Same fix as fm-large-catch-all-event (duplicate observation kept from 01-event-definitions): granular events carrying only the data that changed.</fix>
     </antipattern>
 
   </section>

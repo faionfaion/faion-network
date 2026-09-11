@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Frontend Design Variant Exploration Examples" version="1.0.0" est_tokens="900" depth="recommended">
+  <summary>Phase-by-phase agent workflow: requirements capture, brainstorm dispatch, selection and refinement, Storybook and component finalization. One dispatch example per phase.</summary>
+
+  <section title="Phase 1: Requirements Capture">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Canonical requirements capture
+requirements = AskUserQuestion([
+    {"question": "Surface type?", "options": ["landing", "dashboard", "form", "component-set"]},
+    {"question": "Style direction?", "options": ["minimalist", "bold", "corporate", "playful", "editorial"]},
+    {"question": "Tech stack?", "options": ["React+TS", "Next.js", "Vue", "HTML/CSS"]},
+    {"question": "Brand constraints?", "placeholder": "colors, fonts, logo, or 'none'"},
+])
+]]></code>
+    </example>
+  </section>
+
+  <section title="Phase 2: Brainstorm Dispatch">
+    <example type="good">
+      <code lang="python"><![CDATA[
+Task(
+    subagent_type="faion-frontend-brainstormer-agent",
+    prompt=f"""Create exactly 3-5 DISTINCT design variants for: {requirements.surface_type}
+Tech: {requirements.tech}. Style anchor: {requirements.style}.
+
+DIVERSITY CONSTRAINTS (enforce all):
+- Each variant must use a different typeface pairing
+- No two variants may share the same color palette family
+- Density must vary: at least one tight, one airy
+- Motion: vary from zero to expressive
+
+Each variant must deliver:
+1. Working code under designs/variant-{{N}}-{{slug}}/
+2. tokens.css with variant-local tokens (do NOT update globals)
+3. README.md with: audience fit, aesthetic levers, trade-offs
+4. Runnable as static HTML or Storybook story
+5. axe-core pass before submission
+
+Comparison table at the end contrasting all variants on: typeface, palette, density, motion."""
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Phase 3: Selection and Refinement">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# After user selects variant N
+chosen_dir = f"designs/variant-{N}-{slug}"
+Task(
+    subagent_type="faion-frontend-brainstormer-agent",
+    prompt=f"""Refine {chosen_dir} based on feedback: {user_feedback}
+
+Original spec: {requirements}
+Constraint: only edit files inside {chosen_dir}.
+Do NOT modify globals.css or tailwind.config yet.
+Deliver updated runnable preview + diff vs previous iteration."""
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Phase 4: Token Promotion and Storybook">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Step 1: promote tokens (human reviews this commit)
+promote_tokens(f"designs/variant-{N}-{slug}/tokens.css", "src/styles/globals.css")
+
+# Step 2: Storybook
+Task(
+    subagent_type="faion-storybook-agent",
+    prompt=f"Scaffold Storybook for {project}. Design source: designs/variant-{N}-{slug}/. "
+           f"Create stories for every component variant. Wire Chromatic for visual regression."
+)
+
+# Step 3: typed components
+Task(
+    subagent_type="faion-frontend-component-agent",
+    prompt=f"Convert designs/variant-{N}-{slug}/ HTML mocks to typed React components "
+           f"with cva() variants, cn() merging, and Storybook story files."
+)
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/new-variant.sh">Scaffold a designs/variant-N-slug/ directory with README template.</reference>
+  <reference path="templates/prompt-brainstorm.txt">Full LLM prompt template for generating 3–5 contrastive design variants.</reference>
+</text>

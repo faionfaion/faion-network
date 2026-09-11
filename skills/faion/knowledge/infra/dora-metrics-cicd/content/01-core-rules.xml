@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="DORA + Reliability Metrics Report Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>7 testable rules grounding the dora-metrics methodology. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
+<text id="01-core-rules" title="DORA + Reliability Metrics Report Core Rules" version="1.1.1" est_tokens="2700" depth="essential">
+  <summary>18 testable rules grounding the dora-metrics methodology. The four DORA metrics, their performance tiers, data sources, and 2025 evolution including a fifth reliability metric and AI code generation impact. Rules for setting up DORA metric collection, tool integrations, and dashboard requirements. Each rule pairs a binary check + sourced rationale and is referenced by the decision tree.</summary>
 
   <section title="Rule set">
 
@@ -34,6 +34,61 @@
       <rationale source="DORA 2024 report">Pure throughput metrics encourage shipping at the expense of stability; Reliability is the counterbalance.</rationale>
     </rule>
 
+    <rule id="measure-all-four-metrics-as-a-set" testable="true" depth="essential">
+      <statement>Measure all four DORA metrics as a set — throughput (DF + LT) and stability (CFR + MTTR) together reveal the full delivery health picture.</statement>
+      <rationale source="01-concepts (DORA research)">Optimizing only throughput metrics drives risky large batches; only stability metrics drives slow but safe delivery. Elite performers achieve high scores on all four simultaneously.</rationale>
+    </rule>
+
+    <rule id="track-trends-not-absolute-values" testable="true" depth="essential">
+      <statement>Track trends, not absolute values — week-over-week improvement matters more than hitting exact elite thresholds.</statement>
+      <rationale source="01-concepts (DORA research)">Teams in different domains (embedded, banking) have structural constraints that prevent elite DF; improvement trajectory predicts organizational outcomes better than absolute tier.</rationale>
+    </rule>
+
+    <rule id="add-reliability-slo-fifth-metric" testable="true" depth="essential">
+      <statement>Add Reliability (SLO achievement rate) as a fifth metric alongside the four core DORA metrics.</statement>
+      <rationale source="01-concepts (DORA research)">DORA 2025 research shows SLO achievement and error budget consumption predict organizational outcomes independently of the four delivery metrics.</rationale>
+    </rule>
+
+    <rule id="monitor-batch-size-under-ai-codegen" testable="true" depth="essential">
+      <statement>Monitor batch size when using AI code generation tools; expect a ~7% reduction in delivery stability with heavy AI adoption.</statement>
+      <rationale source="01-concepts (DORA research)">AI-generated code encourages larger commits and pull requests, which violates the small-batch principle underlying elite DORA performance.</rationale>
+    </rule>
+
+    <rule id="automate-collection-from-cicd" testable="true" depth="essential">
+      <statement>Automate metric collection from CI/CD pipelines — never rely on manual reporting.</statement>
+      <rationale source="02-implementation">Manual reporting introduces lag and bias; teams under pressure stop updating it. Automated collection from deployment events is the only reliable baseline.</rationale>
+    </rule>
+
+    <rule id="define-production-deployment-precisely" testable="true" depth="essential">
+      <statement>Define "production deployment" precisely before collecting data: successful deploy to prod environment, not staging.</statement>
+      <rationale source="02-implementation">Ambiguous definition inflates DF when staging deployments are counted. The signal must reflect real user impact.</rationale>
+    </rule>
+
+    <rule id="mark-rollback-hotfix-at-emit-time" testable="true" depth="essential">
+      <statement>Mark deployments as rollback or hotfix at emit time, not retroactively, so CFR is accurate.</statement>
+      <rationale source="02-implementation">Retroactive classification is inconsistent across team members; the CI/CD pipeline knows at deploy time whether the trigger was a hotfix branch or rollback workflow.</rationale>
+    </rule>
+
+    <rule id="link-incidents-to-causing-deployment" testable="true" depth="essential">
+      <statement>Link incident records to the deployment that caused them; MTTR without deployment linkage cannot distinguish release-caused incidents from infrastructure failures.</statement>
+      <rationale source="02-implementation">Only release-caused incidents contribute to Change Failure Rate. Infrastructure-only incidents belong in reliability/SLO tracking, not CFR.</rationale>
+    </rule>
+
+    <rule id="export-deploy-events-at-deploy-time" testable="true" depth="essential">
+      <statement>Export deployment events to a Prometheus-compatible endpoint or PostgreSQL from every CI/CD pipeline immediately after each successful deploy.</statement>
+      <rationale source="02-implementation">Post-hoc scraping of CI/CD logs is fragile; emit events at the point of deployment where all metadata (commit SHA, timestamp, is_rollback) is available.</rationale>
+    </rule>
+
+    <rule id="review-in-retros-not-performance-reviews" testable="true" depth="essential">
+      <statement>Review DORA metrics in team retrospectives, never in performance reviews of individual engineers.</statement>
+      <rationale source="02-implementation">Using DORA metrics to evaluate individuals causes gaming (smaller commits, avoided deployments, suppressed incident reports) that destroys the signal.</rationale>
+    </rule>
+
+    <rule id="weekly-reports-alert-on-degradation" testable="true" depth="essential">
+      <statement>Set weekly automated reports; alert on degradation (not on absolute low values) during the first 90 days of collection.</statement>
+      <rationale source="02-implementation">First 90 days establishes baseline. Early alerting on low absolute values discourages teams before the baseline is known.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If the team has no production deploys yet (pre-product), this methodology MUST be skipped.</statement>
       <rationale source="Internal scope review">Computing DORA on zero deploys yields noise.</rationale>
@@ -41,10 +96,39 @@
 
   </section>
 
+  <section title="Background">
+    <p>Performance tiers (from DORA research):</p>
+    <list>
+      <item>Deployment Frequency: Elite = multiple/day; High = weekly–monthly; Medium = monthly–6mo; Low = 6mo+</item>
+      <item>Lead Time for Changes: Elite = &lt;1 hour; High = 1 day–1 week; Medium = 1–6 months; Low = 6mo+</item>
+      <item>Change Failure Rate: Elite = 0–15%; High = 16–30%; Medium = 31–45%; Low = 46%+</item>
+      <item>Mean Time to Restore: Elite = &lt;1 hour; High = &lt;1 day; Medium = 1 day–1 week; Low = 1 week–1 month</item>
+    </list>
+    <p>Deployment Frequency: count of successful production deployments per time period. Data: CI/CD pipeline events, deployment logs.</p>
+    <p>Lead Time for Changes: time from first commit to successful production deployment. Data: Git commit timestamps + CI/CD deployment timestamps.</p>
+    <p>Change Failure Rate: percentage of deployments requiring rollback, hotfix, or causing an incident. Data: incident tracking system + deployment records.</p>
+    <p>Mean Time to Restore: average time from incident detection to resolution. Data: incident management (PagerDuty, Opsgenie) resolved timestamps.</p>
+    <p>Research findings from Accelerate (Forsgren, Humble, Kim, 2018):</p>
+    <list>
+      <item>Elite performers are 2x more likely to exceed organizational performance goals</item>
+      <item>Elite vs low: 208x higher deployment frequency</item>
+      <item>Elite vs low: 106x faster lead time</item>
+      <item>Elite vs low: 2,604x faster recovery time</item>
+    </list>
+    <p>Recommended tooling by maturity:</p>
+    <list>
+      <item>GitLab native: enable DORA analytics (Premium/Ultimate tier) — zero additional tooling</item>
+      <item>GitHub + any incident tool: Google Four Keys (open source, GCP-native event pipeline)</item>
+      <item>Multi-platform enterprise: Sleuth, LinearB, or Jellyfish for aggregation</item>
+      <item>Custom stack: Prometheus + PostgreSQL schema + Grafana dashboard (templates in this methodology)</item>
+    </list>
+  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Claude API Integration Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>7 testable rules covering the full Claude integration surface: sync/async/streaming, tool use, vision, Extended Thinking, Prompt Caching, Batch API. Each has a statement, rationale, source.</summary>
+<text id="01-core-rules" title="Claude API Integration Core Rules" version="1.0.1" est_tokens="1750" depth="essential">
+  <summary>11 testable rules covering the full Claude integration surface: sync/async/streaming, tool use, vision, Extended Thinking, Prompt Caching, Batch API. Each has a statement, rationale, source. Background lists the model tiers and the cost levers of caching and batch.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -31,12 +31,38 @@
       <statement>For Batch API: poll at intervals ≥60s using `client.messages.batches.retrieve` until `processing_status == "ended"`; iterate results and resubmit `result.type == "errored"` items; use `custom_id` equal to your DB primary key.</statement>
       <rationale source="docs.anthropic.com/en/api/messages-batches">Tight polling adds zero speedup; errored items are not auto-retried; `custom_id` is the only join key against out-of-order results.</rationale>
     </rule>
+    <rule id="model-tier-by-task" testable="true" depth="essential">
+      <statement>Use Haiku for triage/routing steps, Sonnet for main tasks, Opus only for complex reasoning or architecture — rate limits for Opus are significantly lower than Sonnet.</statement>
+      <rationale source="01-client-setup">A pipeline that works with Sonnet may 429 immediately with Opus; Opus rate limits are much tighter, making it unsuitable for high-throughput inner loops.</rationale>
+    </rule>
+    <rule id="thinking-disables-temperature" testable="true" depth="essential">
+      <statement>Extended Thinking is incompatible with temperature — setting both raises an API error; disable temperature when enabling thinking.</statement>
+      <rationale source="02-tool-use; short form of r5">Extended Thinking has its own sampling parameters; temperature is redundant and causes a validation error.</rationale>
+    </rule>
+    <rule id="prompt-caching-byte-identical-prefix" testable="true" depth="essential">
+      <statement>Enable Prompt Caching on any system prompt over 1024 tokens that stays constant across calls — the cached prefix must be byte-identical; a single extra space invalidates the cache.</statement>
+      <rationale source="04-advanced">Prompt Caching charges cached tokens at ~10% of normal input cost; for pipelines calling the same assistant hundreds of times per session, this is the single largest cost reduction available.</rationale>
+    </rule>
+    <rule id="batch-api-offline-only" testable="true" depth="essential">
+      <statement>Use the Batch API only for offline enrichment tasks — it has up to 24-hour processing time and is not suitable for real-time workflows.</statement>
+      <rationale source="04-advanced">Batch API provides 50% cost reduction by processing requests when compute is available; latency is unbounded and unsuitable for user-facing responses.</rationale>
+    </rule>
+  </section>
+
+  <section title="Background">
+    <p>Prompt Caching cuts costs for repetitive pipelines (1024-token minimum, byte-identical prefix); Batch API provides 50% cost reduction for offline enrichment jobs with up to 24-hour processing time.</p>
+    <list>
+      <item>claude-sonnet-4-20250514: best balance of speed/quality — default choice for most tasks</item>
+      <item>claude-opus-*: most capable, complex reasoning and architecture decisions — significantly lower rate limits</item>
+      <item>claude-haiku-*: fastest, most cost-effective — use for triage, classification, high-volume inner loops</item>
+    </list>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

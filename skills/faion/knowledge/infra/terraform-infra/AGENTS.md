@@ -49,15 +49,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/01-core-rules.xml` | essential | 22 testable rules + run-the-checklist + skip-this-methodology conclusions: artefact hygiene (r1-r5), directory layout, component split, directory-per-env over workspaces, standard file set, module design, pipeline stage order, saved-plan apply, tfsec/checkov/Infracost on PRs, OIDC auth, Atlantis, and the ck-* pre/post-deployment checklists; Background on workspace limitations | ~3350 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
-| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
-| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
-| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
-| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
-| `content/01-project-structure.xml` | recommended | Directory layout patterns, file naming conventions, workspace strategies, and their isolation trade-offs. | ~800 |
-| `content/02-cicd-patterns.xml` | recommended | Pipeline stages, saved plan rule, security scanning, OIDC authentication, and Atlantis configuration. | ~850 |
-| `content/03-checklist.xml` | recommended | State architecture, module quality, CI/CD pipeline, security hardening, and production deployment checklists. | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix, incl. monolithic configuration and applying a re-generated plan | ~1050 |
+| `content/04-procedure.xml` | essential | 7-step procedure (input/action/output/decision-gate), steps 6-7 walk the ck-* pre-deployment and post-apply checklists | ~800 |
+| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact, plus the OIDC GitHub Actions configuration | ~650 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules, incl. monolithic-state and re-generated-plan branches | ~600 |
 
 ## Task Routing
 

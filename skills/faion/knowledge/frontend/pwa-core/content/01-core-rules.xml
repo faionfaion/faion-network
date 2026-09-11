@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="PWA Core Architecture Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules on Service Worker scope and registration, Web App Manifest identity and icons, Workbox strategy-per-route-shape, and the update flow. Each is checkable against sw.js, manifest.json and the registration module; the last rule is the routing/skip leaf.</summary>
+<text id="01-core-rules" title="PWA Core Architecture Core Rules" version="1.2.1" est_tokens="2550" depth="essential">
+  <summary>14 rules on Service Worker scope and registration, Web App Manifest identity and icons, Workbox strategy-per-route-shape, and the update flow. Each is checkable against sw.js, manifest.json and the registration module; the last rule is the routing/skip leaf. Non-negotiable rules for service worker placement, manifest stability, icon format, caching strategy, and update UX.</summary>
 
   <section title="Rule set">
 
@@ -34,6 +34,41 @@
       <rationale source="React 18 StrictMode + BeforeInstallPromptEvent semantics">StrictMode double-invokes effects in development, producing two registrations and duplicated lifecycle events that make update debugging unreliable. `beforeinstallprompt` fires once per page load, so a component that unmounts before the user clicks Install loses the only reference to it and the install button becomes permanently inert.</rationale>
     </rule>
 
+    <rule id="sw-and-manifest-from-origin-root" testable="true" depth="essential">
+      <statement>Serve sw.js and manifest.json from the origin root (/) with Cache-Control: no-cache. Never serve the service worker from /static/ or any subdirectory.</statement>
+      <rationale source="01-rules (Mandatory Rules); short form of sw-served-from-scope-root">Service worker scope is tied to its path. A SW at /static/sw.js can only control resources under /static/. Origin-root placement controls the entire app.</rationale>
+    </rule>
+
+    <rule id="manifest-id-stable-across-deploys" testable="true" depth="essential">
+      <statement>Keep the manifest id field stable across deploys. Never change it after the first release.</statement>
+      <rationale source="01-rules (Mandatory Rules); short form of manifest-id-immutable">Changing id forces browsers to treat the PWA as a new app, breaking existing shortcuts and triggering re-installation prompts.</rationale>
+    </rule>
+
+    <rule id="icons-purpose-maskable-any" testable="true" depth="essential">
+      <statement>Ship all icon entries with purpose: "maskable any". Never ship icons with only purpose: "any".</statement>
+      <rationale source="01-rules (Mandatory Rules); short form of maskable-icon-and-install-sizes">Android crops non-maskable icons into unexpected shapes on home screen. maskable ensures the safe-zone guarantee.</rationale>
+    </rule>
+
+    <rule id="caching-strategy-by-asset-type" testable="true" depth="essential">
+      <statement>Use NetworkFirst with networkTimeoutSeconds: 3 for /api/* and navigation routes. Use CacheFirst for images and fonts. Use StaleWhileRevalidate for JS/CSS static assets. Never precache personalised HTML or API responses.</statement>
+      <rationale source="01-rules (Mandatory Rules); short form of strategy-per-route-shape">NetworkFirst with timeout avoids spinner-of-death on flaky networks. CacheFirst for immutable assets (images, fonts) reduces redundant fetches.</rationale>
+    </rule>
+
+    <rule id="update-prompt-on-controllerchange" testable="true" depth="essential">
+      <statement>Show an update prompt on the controllerchange event. Never auto-reload mid-form. Present a user-initiated reload action.</statement>
+      <rationale source="01-rules (Mandatory Rules); short form of update-prompt-not-auto-skipwaiting">Auto-reload discards in-flight form data and violates user expectations. The controllerchange event fires when the new SW takes control.</rationale>
+    </rule>
+
+    <rule id="document-ios-pwa-limitations" testable="false" depth="essential">
+      <statement>Document iOS Safari PWA limitations before promising any PWA feature to iOS users: storage evicted after ~7 days of non-use, no background sync, no periodic sync, no push on older iOS.</statement>
+      <rationale source="01-rules (Mandatory Rules); short form of skip-this-methodology">These gaps make offline-first PWAs unreliable for iOS. Agents never surface this in code review; humans must sign off on any iOS PWA claim.</rationale>
+    </rule>
+
+    <rule id="register-sw-once-from-bootstrap-module" testable="true" depth="essential">
+      <statement>Register the service worker once from a single bootstrap module (index.html or main.ts). Do not register inside React effects — StrictMode double-invokes effects in development, causing double registration.</statement>
+      <rationale source="02-patterns (Implementation Patterns); short form of register-once-outside-react-effects">Double registration causes confusing lifecycle events and makes debugging SW updates harder.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>Do NOT apply when (a) iOS Safari is the primary target and the requirement depends on Background Sync or offline data surviving more than 7 days &#8212; WebKit has no Background Sync API and evicts script-writable storage (IndexedDB, Cache Storage) after 7 days without user interaction; (b) the app is hard real-time (live trading, conferencing) where SW cache coherence adds risk with no offline upside; (c) a native shell (Capacitor, Tauri, React Native) already owns caching and install.</statement>
       <rationale source="WebKit ITP storage policy + methodology preconditions">Promising offline behaviour on a platform that evicts the cache produces the worst outcome: the app works in testing, then silently loses the user's queued data after a week of non-use, which is indistinguishable from data loss.</rationale>
@@ -42,10 +77,9 @@
   </section>
 
   <see-also>
-    <link path="content/01-rules.xml"/>
-    <link path="content/02-patterns.xml"/>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

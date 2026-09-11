@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Claude API Integration Examples" version="1.0.0" est_tokens="2600" depth="essential">
+  <summary>Worked code for every surface the rules cover: client setup and completions, tool use / vision / Extended Thinking, the production service wrapper, and Prompt Caching + Batch API.</summary>
+
+  <section title="Client setup, models, and basic completions">
+    <p>Anthropic client initialization, model hierarchy, sync/async completions, and streaming responses.</p>
+  </section>
+  <section title="Client initialization">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from anthropic import Anthropic
+import os
+
+client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system="You are a senior software architect specializing in Python.",
+    messages=[{"role": "user", "content": "Review this code for security issues."}]
+)
+print(message.content[0].text)
+]]></code>
+    </example>
+    </section>
+  <section title="Model selection">
+    <list>
+      <item>claude-sonnet-4-20250514: best balance of speed/quality — default choice for most tasks</item>
+      <item>claude-opus-*: most capable, complex reasoning and architecture decisions — significantly lower rate limits</item>
+      <item>claude-haiku-*: fastest, most cost-effective — use for triage, classification, high-volume inner loops</item>
+    </list>
+    </section>
+  <section title="Async completions">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+from anthropic import AsyncAnthropic
+
+async_client = AsyncAnthropic()
+
+async def async_claude(prompt: str) -> str:
+    message = await async_client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return message.content[0].text
+
+async def batch_process(prompts: list[str]) -> list[str]:
+    return await asyncio.gather(*[async_claude(p) for p in prompts])
+]]></code>
+    </example>
+    </section>
+  <section title="Streaming">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def stream_claude(prompt: str, system: str = "") -> str:
+    full_response = ""
+    with client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=system,
+        messages=[{"role": "user", "content": prompt}]
+    ) as stream:
+        for text in stream.text_stream:
+            print(text, end="", flush=True)
+            full_response += text
+    return full_response
+]]></code>
+    </example>
+    </section>
+
+  <section title="Tool use, vision, and Extended Thinking">
+    <p>Single-turn tool dispatch with result routing, vision analysis (URL and base64), and Extended Thinking for complex reasoning problems.</p>
+  </section>
+  <section title="Tool use pattern">
+    <example type="good">
+      <code lang="python"><![CDATA[
+tools = [{
+    "name": "get_weather",
+    "description": "Get current weather for a location",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "location": {"type": "string", "description": "City and country, e.g., 'London, UK'"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+        },
+        "required": ["location"]
+    }
+}]
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    messages=[{"role": "user", "content": "What's the weather in Kyiv?"}]
+)
+
+for block in response.content:
+    if block.type == "tool_use":
+        result = execute_tool(block.name, block.input)
+        follow_up = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            tools=tools,
+            messages=[
+                {"role": "user", "content": "What's the weather in Kyiv?"},
+                {"role": "assistant", "content": response.content},
+                {"role": "user", "content": [{"type": "tool_result",
+                    "tool_use_id": block.id, "content": result}]}
+            ]
+        )
+]]></code>
+    </example>
+    </section>
+  <section title="Vision">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import base64
+
+def analyze_local_image(image_path: str, question: str) -> str:
+    with open(image_path, "rb") as f:
+        image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+    media_type = "image/png" if image_path.endswith(".png") else "image/jpeg"
+
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {
+                "type": "base64", "media_type": media_type, "data": image_data
+            }},
+            {"type": "text", "text": question}
+        ]}]
+    )
+    return message.content[0].text
+]]></code>
+    </example>
+    </section>
+  <section title="Extended Thinking">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def complex_reasoning(problem: str) -> dict:
+    response = client.messages.create(
+        model="claude-opus-4-5-20251101",
+        max_tokens=16000,
+        thinking={"type": "enabled", "budget_tokens": 8000},
+        messages=[{"role": "user", "content": problem}]
+        # Note: no temperature parameter when thinking is enabled
+    )
+    return {
+        "thinking": next((b.thinking for b in response.content if b.type == "thinking"), ""),
+        "answer": next((b.text for b in response.content if b.type == "text"), "")
+    }
+]]></code>
+    </example>
+    </section>
+
+  <section title="Production service wrapper and error handling">
+    <p>ClaudeService class with ClaudeConfig dataclass, tenacity retry on transient errors, stop_reason validation, and token tracking.</p>
+  </section>
+  <section title="ClaudeService and ClaudeConfig">
+    <reference path="templates/claude-service.py">ClaudeService class with ClaudeConfig and retry decorator</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
+import logging
+from anthropic import Anthropic
+
+@dataclass
+class ClaudeConfig:
+    model: str = "claude-sonnet-4-20250514"
+    max_tokens: int = 1024
+    system: str = ""
+
+class ClaudeService:
+    def __init__(self, api_key: Optional[str] = None):
+        self.client = Anthropic(api_key=api_key)
+        self.logger = logging.getLogger(__name__)
+
+    def complete(self, messages: List[Dict[str, Any]], config: Optional[ClaudeConfig] = None) -> Dict:
+        config = config or ClaudeConfig()
+        response = self.client.messages.create(
+            model=config.model,
+            max_tokens=config.max_tokens,
+            system=config.system,
+            messages=messages
+        )
+        if response.stop_reason == "max_tokens":
+            raise RuntimeError("Response truncated — increase max_tokens or split task")
+        return {
+            "content": response.content[0].text,
+            "model": response.model,
+            "usage": {"input": response.usage.input_tokens, "output": response.usage.output_tokens},
+            "stop_reason": response.stop_reason
+        }
+]]></code>
+    </example>
+    </section>
+  <section title="Tenacity retry">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from anthropic import RateLimitError, APIConnectionError, AuthenticationError, APIError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=60),
+    retry=retry_if_exception_type((RateLimitError, APIConnectionError))
+)
+def robust_claude(messages: list, system: str = "") -> str:
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system,
+            messages=messages,
+            timeout=60.0
+        )
+        return response.content[0].text
+    except AuthenticationError:
+        raise ValueError("Invalid ANTHROPIC_API_KEY")
+    except APIError as e:
+        if e.status_code >= 500:
+            raise APIConnectionError("Server error")
+        raise
+]]></code>
+    </example>
+    </section>
+
+  <section title="Prompt Caching and Batch API">
+    <p>Prompt Caching cuts costs for repetitive pipelines (1024-token minimum, byte-identical prefix); Batch API provides 50% cost reduction for offline enrichment jobs with up to 24-hour processing time.</p>
+  </section>
+  <section title="Prompt Caching">
+    <example type="good">
+      <code lang="python"><![CDATA[
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system=[{
+        "type": "text",
+        "text": "You are a document analyzer...",  # must be >1024 tokens
+        "cache_control": {"type": "ephemeral"}
+    }],
+    messages=[{"role": "user", "content": query}]
+)
+# Check cache hit in usage
+print(response.usage.cache_read_input_tokens)   # > 0 on cache hit
+print(response.usage.cache_creation_input_tokens)  # > 0 on cache creation
+]]></code>
+    </example>
+    </section>
+  <section title="Batch API">
+    <reference path="templates/batch-api.py">create_batch() and poll_batch() helpers</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def create_batch(requests: list[dict]) -> str:
+    batch = client.beta.messages.batches.create(requests=[
+        {"custom_id": r["id"], "params": {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": r.get("max_tokens", 1024),
+            "messages": r["messages"]
+        }} for r in requests
+    ])
+    return batch.id
+
+def poll_batch(batch_id: str, interval=30) -> list[dict]:
+    import time
+    while True:
+        batch = client.beta.messages.batches.retrieve(batch_id)
+        if batch.processing_status == "ended":
+            return [
+                {"id": r.custom_id, "text": r.result.message.content[0].text}
+                for r in client.beta.messages.batches.results(batch_id)
+                if r.result.type == "succeeded"
+            ]
+        time.sleep(interval)
+]]></code>
+    </example>
+    </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

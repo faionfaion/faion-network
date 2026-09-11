@@ -51,14 +51,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 14 rules with rationale + source: SW at scope root, immutable manifest id, maskable icons, strategy per route, update prompt, single registration, plus the short-form mandatory rules incl. iOS limitations | 2550 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom/root-cause/fix, incl. hallucinated Workbox imports, window access in SW, beforeinstallprompt lost on remount | 1200 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
-| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
+| `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract, plus Workbox SW registration, caching-strategy and install-prompt hook patterns | 1300 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
-| `content/01-rules.xml` | recommended | Non-negotiable rules for service worker placement, manifest stability, icon format, caching strategy, and update UX. | 700 |
-| `content/02-patterns.xml` | recommended | Workbox service worker, registration module, and install prompt hook patterns. | 1150 |
 
 ## Task Routing
 

@@ -43,15 +43,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: services-not-views, asyncio.gather, type public boundary, ruff replaces black/isort/flake8, Python 3.11+, `X \| None` syntax | ~700 |
-| `content/01-project-setup.xml` | essential | Pyenv + Poetry + venv layout (kept) | ~700 |
-| `content/02-django-patterns.xml` | essential | services.py, transaction.atomic, ORM patterns (kept) | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: services-not-views, asyncio.gather, type public boundary, ruff replaces black/isort/flake8, Python 3.11+, `X \| None` syntax | ~850 |
 | `content/02-output-contract.xml` | essential | Required project shape + invariants | ~700 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns: logic in views, sequential awaits, Optional[X] over X\|None, black+ruff conflict, missing services/ layer | ~700 |
-| `content/03-fastapi-patterns.xml` | essential | FastAPI routes/deps/schemas (kept) | ~700 |
 | `content/04-procedure.xml` | medium | 6-step procedure for a new Python service | ~900 |
-| `content/04-pytest-patterns.xml` | essential | pytest fixtures/parametrize (kept) | ~700 |
-| `content/05-asyncio-patterns.xml` | essential | gather, TaskGroup, semaphore (kept) | ~600 |
+| `content/05-examples.xml` | essential | Worked code: Poetry/pyenv/Docker setup, Django BaseModel + services.py + thin views, FastAPI Depends + background tasks, pytest fixtures/factories/parametrize/DB tests, asyncio gather/TaskGroup/Semaphore/timeouts | ~2550 |
 | `content/06-decision-tree.xml` | essential | Root question on Python >= 3.11 and mypy --strict | ~500 |
 
 ## Task Routing

@@ -47,15 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules covering sync/async/streaming/tools/vision/caching/batch | ~1000 |
-| `content/01-client-setup.xml` | essential | Client + ClaudeConfig setup recipe (preserved from v1) | ~600 |
+| `content/01-core-rules.xml` | essential | 11 testable rules covering sync/async/streaming/tools/vision/caching/batch plus model tiering, thinking-vs-temperature, byte-identical cache prefix, batch-offline-only; Background on model tiers and cost levers | ~1750 |
 | `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~800 |
-| `content/02-tool-use.xml` | essential | Tool round-trip pattern (preserved from v1) | ~600 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/03-production.xml` | essential | Production wrapper, retry, prompt caching (preserved from v1) | ~700 |
-| `content/04-advanced.xml` | medium | Extended Thinking + Batch API integration notes (preserved from v1) | ~600 |
 | `content/04-procedure.xml` | medium | 6-step procedure from `ClaudeConfig` to validated service | ~1000 |
-| `content/06-decision-tree.xml` | essential | Decision tree gating whether to apply the full integration | ~600 |
+| `content/05-examples.xml` | essential | Worked code: client init, async + streaming, tool round-trip, vision (base64), Extended Thinking, ClaudeService + ClaudeConfig, tenacity retry, Prompt Caching, Batch API create/poll | ~2600 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether to apply the full integration | ~650 |
 
 ## Task Routing
 

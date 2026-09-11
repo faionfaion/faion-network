@@ -48,13 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 17 testable rules with rationale + source: model-owned logic, ubiquitous language glossary, entities, value objects, aggregates, bounded contexts, domain events, ACL | ~1950 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom + root-cause + fix (anemic model, framework in domain, implicit context, mutable VO, crossing aggregate boundaries) | ~700 |
 | `content/04-procedure.xml` | essential | 6-step end-to-end procedure | ~800 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
-| `content/01-core-patterns.xml` | recommended | Rules and definitions for entities, value objects, aggregates, bounded contexts, and domain services. | ~1300 |
-| `content/02-examples.xml` | recommended | Concrete Python examples: Order aggregate, Money/Address value objects, domain events, repository interface, anti-corruption layer. | ~1200 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~400 |
+| `content/05-examples.xml` | recommended | Concrete Python examples: Order aggregate, Money/Address value objects, domain events, repository interface, anti-corruption layer. | ~1200 |
 
 ## Task Routing
 

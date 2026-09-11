@@ -43,15 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules (ingest-deploy-event-cdevents, lead-time-from-commit-to-prod, deploy-frequency-rolling-7-day, change-failure-rate-from-incidents, mttr-includes-detection-time, reliability-as-fifth-metric, skip-this-methodology) | ~1000 |
+| `content/01-core-rules.xml` | essential | 18 testable rules (ingest-deploy-event-cdevents, lead-time-from-commit-to-prod, deploy-frequency-rolling-7-day, change-failure-rate-from-incidents, mttr-includes-detection-time, reliability-as-fifth-metric, measure-all-four-as-a-set, track-trends, batch size under AI codegen, automated collection, precise prod-deploy definition, emit-time rollback/hotfix marking, incident-deploy linkage, retros-not-reviews, weekly degradation alerts, skip-this-methodology) + Background: performance tiers, metric definitions and data sources, Accelerate findings, tooling by maturity | ~2700 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the report + valid + invalid + forbidden patterns | ~900 |
 | `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | ~800 |
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | ~900 |
-| `content/05-examples.xml` | essential | One worked end-to-end example | ~700 |
-| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~600 |
-| `content/01-concepts.xml` | recommended | The four DORA metrics, their performance tiers, data sources, and 2025 evolution including a fifth reliability metric and AI code generation impact. | ~850 |
-| `content/02-implementation.xml` | recommended | Rules for setting up DORA metric collection, tool integrations, and dashboard requirements. | ~900 |
-| `content/03-examples.xml` | recommended | Concrete examples of deployment event emission, PromQL queries for DORA metrics, and lead time calculation in Python. | ~900 |
+| `content/05-examples.xml` | essential | One worked end-to-end example, plus deployment event emission (GitHub Actions), PromQL queries for DF/CFR/MTTR, and lead time calculation in Python | ~1250 |
+| `content/06-decision-tree.xml` | essential | Routing tree from observable signals to a `<conclusion ref="rule-id">` | ~500 |
 
 ## Task Routing
 

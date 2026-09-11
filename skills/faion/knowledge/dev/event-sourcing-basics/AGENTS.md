@@ -48,14 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 12 testable rules with rationale + source: immutable events, past-tense naming, granular events, _apply dispatch, pending events, from_events replay, optimistic concurrency, schema evolution | ~1350 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom + root-cause + fix, incl. mutable events and oversized catch-all events | ~1000 |
 | `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
-| `content/01-event-definitions.xml` | recommended | Base Event dataclass and domain event hierarchy for an Order aggregate. | ~850 |
-| `content/02-event-sourced-aggregate.xml` | recommended | Order aggregate with _apply dispatch, create factory, from_events reconstruct, and pending events pattern. | ~950 |
-| `content/03-antipatterns.xml` | recommended | Two critical event sourcing violations: mutable events, and oversized catch-all events. | ~500 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~400 |
+| `content/05-examples.xml` | recommended | Base Event dataclass, Order event hierarchy, Order aggregate with _apply dispatch / create / from_events / pending events, and bad-vs-good pairs for mutable and catch-all events. | ~1350 |
 
 ## Task Routing
 

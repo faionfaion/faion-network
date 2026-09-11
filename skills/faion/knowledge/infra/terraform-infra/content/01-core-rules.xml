@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Terraform (Advanced) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules + 2 routing conclusions (run-the-checklist, skip-this-methodology) grounding the terraform methodology. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="Terraform (Advanced) Core Rules" version="1.1.1" est_tokens="3350" depth="essential">
+  <summary>22 testable rules + 2 routing conclusions (run-the-checklist, skip-this-methodology) grounding the terraform methodology. Directory layout patterns, file naming conventions, workspace strategies, and their isolation trade-offs. Pipeline stages, saved plan rule, security scanning, OIDC authentication, and Atlantis configuration. State architecture, module quality, CI/CD pipeline, security hardening, and production deployment checklists. The checklists are the ck-* rules. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -29,6 +29,91 @@
       <rationale source="Audit-trail discipline (SOC2 CC8.1)">Without traceability, the artefact becomes opinion. Citations make the output reviewable by a future operator with no context.</rationale>
     </rule>
 
+    <rule id="env-dirs-with-own-backend" testable="true" depth="essential">
+      <statement>Organize Terraform projects as environments/dev|staging|prod (each with its own backend) plus modules/ for reusable components and global/ for account-wide resources (IAM, DNS).</statement>
+      <rationale source="01-project-structure">Environment directories with separate backends provide full blast-radius isolation — a destroy in dev cannot affect prod state. Shared backend workspaces do not provide this isolation.</rationale>
+    </rule>
+
+    <rule id="split-environment-by-component" testable="true" depth="essential">
+      <statement>Within each environment directory, further split by component: networking/, compute/, database/. Each component directory has its own backend key and state file.</statement>
+      <rationale source="01-project-structure">Monolithic per-environment state files mean a change to a single security group requires locking all compute and database resources. Component separation limits apply scope.</rationale>
+    </rule>
+
+    <rule id="directory-per-env-over-workspaces" testable="true" depth="essential">
+      <statement>Use directory-per-environment over CLI workspaces for production systems; use workspaces only for lightweight variations of the same infrastructure (e.g., feature branch ephemeral environments).</statement>
+      <rationale source="01-project-structure">Workspaces share backend configuration and provider credentials. A misconfigured workspace apply can target the wrong environment. Directory isolation uses separate backend keys making cross-env accidents structurally impossible.</rationale>
+    </rule>
+
+    <rule id="standard-file-set" testable="true" depth="essential">
+      <statement>Use the standard file set: versions.tf (version constraints), providers.tf (provider config), main.tf (primary resources), variables.tf, outputs.tf, locals.tf, data.tf, backend.tf.</statement>
+      <rationale source="01-project-structure">Consistent file layout allows any team member to navigate an unfamiliar module. main.tf is the first place engineers look for resource definitions.</rationale>
+    </rule>
+
+    <rule id="module-single-responsibility" testable="true" depth="essential">
+      <statement>Modules must follow single responsibility — one logical component per module; no hardcoded values; parameterize everything via variables with sensible defaults; version modules with semantic versioning tags.</statement>
+      <rationale source="01-project-structure">Single-responsibility modules are reusable without modification. Hardcoded values (AMI IDs, CIDR blocks, account IDs) make modules non-portable across environments and regions.</rationale>
+    </rule>
+
+    <rule id="pipeline-stage-order" testable="true" depth="essential">
+      <statement>Run the full pipeline in order: terraform fmt -check, terraform validate, tflint, tfsec/checkov, terraform plan -out=tfplan, human review, terraform apply tfplan.</statement>
+      <rationale source="02-cicd-patterns">Each stage catches a different class of error: fmt catches style, validate catches syntax, tflint catches provider-specific issues, tfsec catches security misconfigurations, and the saved plan ensures apply matches reviewed output.</rationale>
+    </rule>
+
+    <rule id="apply-saved-plan-file" testable="true" depth="essential">
+      <statement>Always save the plan to a file with -out=tfplan and apply that exact file; never re-run terraform plan between plan and apply in CI.</statement>
+      <rationale source="02-cicd-patterns">Re-planning between review and apply allows infrastructure to change state, meaning the applied plan differs from the reviewed plan. This is a common cause of production incidents in automated pipelines.</rationale>
+    </rule>
+
+    <rule id="security-scanning-on-every-pr" testable="true" depth="essential">
+      <statement>Run tfsec and checkov on every pull request; fail the pipeline on any CRITICAL or HIGH severity finding without an approved exception; run Infracost to surface cost impact on PRs.</statement>
+      <rationale source="02-cicd-patterns">Security scanners catch default-insecure configurations (unencrypted S3, public RDS, wildcard IAM) before they reach production. Cost estimation prevents unexpected bill increases from infrastructure changes.</rationale>
+    </rule>
+
+    <rule id="oidc-auth-no-static-keys" testable="true" depth="essential">
+      <statement>Use OIDC-based authentication for GitHub Actions and GitLab CI to assume cloud provider roles; never store static access keys as CI secrets.</statement>
+      <rationale source="02-cicd-patterns">OIDC tokens are short-lived (15 minutes), scoped to the specific workflow run, and automatically expire. Static access keys are frequently leaked in CI logs, artifacts, or public repositories.</rationale>
+    </rule>
+
+    <rule id="atlantis-apply-requirements" testable="true" depth="essential">
+      <statement>Configure Atlantis with per-project autoplan and apply_requirements: approved, mergeable; use Atlantis for teams that prefer plan-in-PR workflow over separate CI apply stages.</statement>
+      <rationale source="02-cicd-patterns">Atlantis runs plan automatically on PR creation and posts output as a comment. apply_requirements: approved ensures at least one human review before any apply executes.</rationale>
+    </rule>
+
+    <rule id="ck-state-architecture" testable="true" depth="essential">
+      <statement>Verify: separate state files per environment AND per component; remote backend with locking and encryption; .terraform.lock.hcl committed; no state files in git; provider versions pinned.</statement>
+      <rationale source="03-checklist (Pre-Deployment Checklist)">These five checks together eliminate the most common Terraform production incidents: state corruption, credential leaks, provider version drift, and blast radius from monolithic state.</rationale>
+    </rule>
+
+    <rule id="ck-blast-radius-isolation" testable="true" depth="essential">
+      <statement>Confirm blast-radius isolation: a destroy in one environment's state cannot affect another environment; component-level states minimize resources affected per apply.</statement>
+      <rationale source="03-checklist (Pre-Deployment Checklist)">Without isolation, terraform destroy on the networking state of prod takes down the entire production network. Component isolation limits each operation's scope.</rationale>
+    </rule>
+
+    <rule id="ck-pipeline-stages" testable="true" depth="essential">
+      <statement>Verify pipeline has all stages: fmt -check, validate, tflint, tfsec/checkov, plan -out=tfplan, required human approval for prod, apply tfplan (not re-plan), post-apply health checks.</statement>
+      <rationale source="03-checklist (Pre-Deployment Checklist)">Each missing stage is a class of error that reaches production without detection. The saved-plan requirement is the most commonly missing critical control.</rationale>
+    </rule>
+
+    <rule id="ck-ci-auth-and-audit" testable="true" depth="essential">
+      <statement>Confirm: OIDC authentication (no static keys), TF_IN_AUTOMATION=true, plan artifact stored for audit, apply output logged, Dependabot/Renovate for controlled provider/module updates.</statement>
+      <rationale source="03-checklist (Pre-Deployment Checklist)">Static keys are a credential leak risk. Plan artifacts provide the audit trail for change management. Automated dependency updates prevent security vulnerabilities from accumulating.</rationale>
+    </rule>
+
+    <rule id="ck-security-hardening" testable="true" depth="essential">
+      <statement>Verify: no hardcoded secrets in .tf files, all sensitive variables marked sensitive = true, all storage resources have encryption enabled, no 0.0.0.0/0 security group rules without justification, IAM follows least privilege.</statement>
+      <rationale source="03-checklist (Pre-Deployment Checklist)">Static analysis (tfsec/checkov) catches the common cases, but manual review is needed for business-logic-specific IAM policies that scanners cannot evaluate.</rationale>
+    </rule>
+
+    <rule id="ck-pre-prod-apply" testable="true" depth="essential">
+      <statement>Before prod apply: review plan for unexpected destroys or replacements; assess cost impact (Infracost); create change management ticket; document rollback procedure; notify team.</statement>
+      <rationale source="03-checklist (Pre-Deployment Checklist)">Unexpected destroys in plan output are the most common sign of an unintended infrastructure change. A reviewed plan with no surprises is the primary safety control for production Terraform.</rationale>
+    </rule>
+
+    <rule id="ck-post-prod-apply" testable="true" depth="essential">
+      <statement>After prod apply: run health checks and smoke tests; verify monitoring alerts are active; run terraform plan again to confirm clean state (no drift).</statement>
+      <rationale source="03-checklist (Pre-Deployment Checklist)">A second clean plan after apply confirms the deployed state matches configuration exactly. Drift between apply runs indicates an out-of-band change or Terraform bug.</rationale>
+    </rule>
+
     <rule id="run-the-checklist" testable="true" depth="essential">
       <statement>Routing conclusion — preconditions are satisfied (Applies If: ALL hold, Skip If: NONE holds). Proceed to procedure / output-contract.</statement>
       <rationale source="Decision-tree routing convention">Every methodology decision tree needs an explicit 'go' conclusion that maps back to a rule id.</rationale>
@@ -41,9 +126,15 @@
 
   </section>
 
+  <section title="Background">
+    <p>Workspace limitations: share backend config, share provider configuration, not suitable for system decomposition across components, insufficient blast-radius isolation for critical production systems.</p>
+  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

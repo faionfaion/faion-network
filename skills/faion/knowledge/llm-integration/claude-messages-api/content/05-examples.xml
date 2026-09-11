@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="claude-messages-api Examples" version="1.0.0" est_tokens="1800" depth="recommended">
+  <summary>Worked code for the request/response structure, multi-turn history, vision (base64, URL, PDF) and the three streaming patterns, with the SSE event format reference.</summary>
+
+  <section title="Messages API request, parameters, and response structure">
+    <p>Basic request structure, parameters table, response object fields, content block types, and multi-turn conversation pattern.</p>
+  </section>
+  <section title="Basic request">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import anthropic
+
+client = anthropic.Anthropic()
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system="You are an expert on Specification-Driven Development. Be concise.",
+    messages=[{"role": "user", "content": "What are the key phases of SDD?"}]
+)
+print(message.content[0].text)
+]]></code>
+    </example>
+    </section>
+  <section title="Response structure and stop_reason">
+    <example type="good">
+      <code lang="python"><![CDATA[
+message = client.messages.create(...)
+
+print(message.stop_reason)  # "end_turn" | "max_tokens" | "stop_sequence" | "tool_use"
+print(message.usage.input_tokens, message.usage.output_tokens)
+
+for block in message.content:
+    if block.type == "text":
+        print(block.text)
+    elif block.type == "tool_use":
+        print(f"Tool: {block.name}, Input: {block.input}")
+    elif block.type == "thinking":
+        print(f"Thinking: {block.thinking}")
+]]></code>
+    </example>
+    </section>
+  <section title="Multi-turn pattern">
+    <example type="good">
+      <code lang="python"><![CDATA[
+messages = [
+    {"role": "user", "content": "What is SDD?"},
+    {"role": "assistant", "content": "SDD (Specification-Driven Development) is..."},
+    {"role": "user", "content": "How does it compare to TDD?"}
+]
+response = client.messages.create(model="claude-sonnet-4-20250514",
+    max_tokens=1024, messages=messages)
+# Append full content list, not just text
+messages.append({"role": "assistant", "content": response.content})
+]]></code>
+    </example>
+    </section>
+
+  <section title="Vision: images and PDFs">
+    <p>Image input from base64 and URL, multiple images in one message, PDF document type; supported formats and size limits.</p>
+  </section>
+  <section title="Image from base64">
+    <reference path="templates/vision.py">analyze_screenshot() helper using base64</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import base64
+
+def encode_image(path: str) -> str:
+    with open(path, "rb") as f:
+        return base64.standard_b64encode(f.read()).decode("utf-8")
+
+image_data = encode_image("screenshot.png")
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": [
+        {"type": "image", "source": {
+            "type": "base64", "media_type": "image/png", "data": image_data
+        }},
+        {"type": "text", "text": "Describe this screenshot"}
+    ]}]
+)
+]]></code>
+    </example>
+    </section>
+  <section title="Image from URL">
+    <example type="good">
+      <code lang="python"><![CDATA[
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": [
+        {"type": "image", "source": {"type": "url", "url": "https://example.com/image.jpg"}},
+        {"type": "text", "text": "What's in this image?"}
+    ]}]
+)
+]]></code>
+    </example>
+    </section>
+  <section title="PDF documents">
+    <example type="good">
+      <code lang="python"><![CDATA[
+pdf_data = encode_image("document.pdf")  # same base64 encoding
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=4096,
+    messages=[{"role": "user", "content": [
+        {"type": "document", "source": {
+            "type": "base64", "media_type": "application/pdf", "data": pdf_data
+        }},
+        {"type": "text", "text": "Summarize this document"}
+    ]}]
+)
+]]></code>
+    </example>
+    <list>
+      <item>JPEG / PNG / GIF / WebP: max 20MB each</item>
+      <item>PDF: max 32MB / 100 pages</item>
+    </list>
+    </section>
+
+  <section title="Streaming: text_stream, events, async">
+    <p>Three streaming patterns: text_stream for simple output, event-based for tools and fine-grained control, async streaming for concurrent pipelines; SSE event format reference.</p>
+  </section>
+  <section title="text_stream pattern">
+    <example type="good">
+      <code lang="python"><![CDATA[
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Write a poem about AI"}]
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+    # Get usage stats after streaming completes
+    final = stream.get_final_message()
+    print(f"\nTokens: {final.usage.input_tokens} in, {final.usage.output_tokens} out")
+]]></code>
+      <note>Use stream.get_final_message() when usage stats are needed — they are not available from individual chunks.</note>
+    </example>
+    </section>
+  <section title="Event-based streaming">
+    <example type="good">
+      <code lang="python"><![CDATA[
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello"}]
+) as stream:
+    for event in stream:
+        if event.type == "content_block_start":
+            print(f"Block: {event.content_block.type}")
+        elif event.type == "content_block_delta":
+            if event.delta.type == "text_delta":
+                print(event.delta.text, end="", flush=True)
+        elif event.type == "message_stop":
+            print("\n[Complete]")
+]]></code>
+    </example>
+    </section>
+  <section title="Async streaming">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+import anthropic
+
+async_client = anthropic.AsyncAnthropic()
+
+async def stream_response():
+    async with async_client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": "Hello"}]
+    ) as stream:
+        async for text in stream.text_stream:
+            print(text, end="", flush=True)
+
+asyncio.run(stream_response())
+]]></code>
+    </example>
+    </section>
+  <section title="SSE event format">
+    <p>Raw SSE format for custom transport implementations:</p>
+    <list>
+      <item>message_start: message metadata (id, model, usage placeholder)</item>
+      <item>content_block_start: new content block begins (type: text or tool_use)</item>
+      <item>content_block_delta: text_delta or input_json_delta</item>
+      <item>content_block_stop: block complete</item>
+      <item>message_delta: final usage stats</item>
+      <item>message_stop: message complete</item>
+    </list>
+    </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="domain-driven-design Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the domain-driven-design methodology. Each rule pairs a binary check with a sourced rationale.</summary>
+<text id="01-core-rules" title="domain-driven-design Core Rules" version="1.1.1" est_tokens="1950" depth="essential">
+  <summary>17 testable rules grounding the domain-driven-design methodology. Rules and definitions for entities, value objects, aggregates, bounded contexts, and domain services. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -27,6 +27,46 @@
       <statement>A context map between bounded contexts is explicit (upstream/downstream/anti-corruption-layer) and committed to docs.</statement>
       <rationale source="v1-source">Implicit context relationships lead to model leaks.</rationale>
     </rule>
+    <rule id="r-ubiquitous-language-glossary" testable="true" depth="essential">
+      <statement>Maintain a ubiquitous language glossary in domain/GLOSSARY.md and load it as the first context block of every LLM prompt — single largest quality lever for generated DDD code.</statement>
+      <rationale source="01-core-patterns">Without an authoritative glossary, LLMs invent synonyms (User vs Customer vs Account) within the same session, poisoning the codebase across multiple files.</rationale>
+    </rule>
+    <rule id="r-entity-identity-and-behavior" testable="true" depth="essential">
+      <statement>An entity has a stable identity (UUID) that persists over its lifetime. It encapsulates business behavior as methods that enforce invariants, never as naked setters.</statement>
+      <rationale source="01-core-patterns">Getters and setters push invariant enforcement to callers, which creates duplication. The entity is the single authority for its own consistency rules.</rationale>
+    </rule>
+    <rule id="r-value-object-immutable-validated" testable="true" depth="essential">
+      <statement>Value objects are immutable (frozen=True in Python, record in Java), defined by their attributes, and validated in the constructor. Two VOs with equal attributes are interchangeable.</statement>
+      <rationale source="01-core-patterns">Mutable VOs break equality semantics and allow illegal states to be introduced after construction. If Money(-5, USD) cannot be constructed, every consumer is automatically safe.</rationale>
+    </rule>
+    <rule id="r-validate-in-constructor" testable="true" depth="essential">
+      <statement>Push validation into the VO or entity constructor/factory method, not into a service.</statement>
+      <rationale source="01-core-patterns">Services that validate before creating objects duplicate the rule and leave the window open when called without the guard.</rationale>
+    </rule>
+    <rule id="r-aggregate-reference-by-id" testable="true" depth="essential">
+      <statement>An aggregate is a cluster of entities with one aggregate root. External objects reference the aggregate only through the root, and only by ID — never by direct object pointer to internal entities.</statement>
+      <rationale source="01-core-patterns">Object references between aggregates create tight coupling and tempt callers to traverse and mutate internals, breaking the aggregate's consistency boundary.</rationale>
+    </rule>
+    <rule id="r-one-aggregate-per-transaction" testable="true" depth="essential">
+      <statement>One aggregate per transaction, always. If two aggregates must change together, publish a domain event from the first and handle it to update the second in a separate transaction.</statement>
+      <rationale source="01-core-patterns">Transactions spanning multiple aggregates cause contention, make it hard to reason about consistency, and break the aggregate invariant model.</rationale>
+    </rule>
+    <rule id="r-bounded-context-translate-at-boundary" testable="true" depth="essential">
+      <statement>A bounded context is an explicit boundary within which a domain model and ubiquitous language are consistent. Different contexts may use the same word for different concepts — translate at the boundary via an Anti-Corruption Layer.</statement>
+      <rationale source="01-core-patterns">Without explicit boundaries, model concepts bleed between teams, creating a mudball where Customer in Sales conflicts with Customer in Billing.</rationale>
+    </rule>
+    <rule id="r-colocate-aggregate-folder" testable="true" depth="essential">
+      <statement>Co-locate aggregate, value objects, events, and repository interface in one folder per aggregate (e.g., order/domain/). Forbid imports between sibling aggregate folders.</statement>
+      <rationale source="01-core-patterns">Folder boundaries become architectural firewalls. Without them, agents freely import across aggregates.</rationale>
+    </rule>
+    <rule id="r-domain-events-post-commit" testable="true" depth="essential">
+      <statement>Dispatch domain events post-commit only (outbox pattern). Collect events on the aggregate during the transaction; drain the buffer after the unit-of-work commits.</statement>
+      <rationale source="01-core-patterns">Publishing events before the transaction commits means consumers act on data that may be rolled back, creating phantom side effects (emails sent for orders that never existed).</rationale>
+    </rule>
+    <rule id="r-acl-wrap-external-systems" testable="true" depth="essential">
+      <statement>Wrap every external system whose model you do not control behind an ACL interface defined in the domain. Translate in the infrastructure implementation, never inside the domain.</statement>
+      <rationale source="01-core-patterns">Letting external API terminology leak into the domain contaminates the ubiquitous language and couples business rules to third-party contracts.</rationale>
+    </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>Skip when the input does not satisfy the Applies-If preconditions or another methodology owns this output shape.</statement>
       <rationale source="Skip-rule guard">Prevents duplicate work and wrong-tool application.</rationale>
@@ -37,6 +77,7 @@
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1, batch 1 of 8: ten slugs folded into their canonical parts.**
+  `dev/domain-driven-design`, `dev/event-sourcing-basics`, `dev/python`,
+  `frontend/frontend-design`, `frontend/pwa-core`, `infra/dora-metrics-cicd`,
+  `infra/terraform-infra`, `llm-integration/claude-api-integration`,
+  `claude-best-practices`, `claude-messages-api`: 30 non-canonical content files
+  moved into `01`/`03`/`04`/`05`/`06` and deleted — 88 rules, 63 examples (seven
+  slugs gained a `05-examples.xml` they never had), 15 antipatterns, 11 tree
+  branches. Every sentence moved verbatim: a mechanical check compares each 60+
+  character text node of a deleted file against the remaining parts, and the
+  reviewer re-ran it on all ten before staging (0 missing). Only the six
+  canonical names remain in each `content/`, so `--parts` can now address
+  everything these documents hold.
+
 - **CR-013 §2 closed: the collapsed-variable queue was 29 templates, not 216,
   and three of them needed a split.** Re-measured with the same definition the
   CR uses — one `{{ variable }}` under two or more headings, fences excluded —

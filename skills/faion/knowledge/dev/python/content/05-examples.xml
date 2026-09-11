@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="python Examples" version="1.0.0" est_tokens="2550" depth="essential">
+  <summary>Worked code for the five areas the rules cover: Poetry project setup, Django patterns, FastAPI patterns, pytest patterns, and asyncio patterns.</summary>
+
+  <section title="Project setup with Poetry">
+    <p>Poetry initialization, pyproject.toml layout, dependency groups, venv activation, and Docker integration.</p>
+  </section>
+  <section title="Setup steps">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# New project
+poetry new my-project && cd my-project
+
+# Add production and dev dependencies
+poetry add django fastapi
+poetry add --group dev pytest pytest-django pytest-cov mypy ruff
+
+# Install from lock file (CI)
+poetry install --no-root
+
+# Activate virtual environment
+poetry shell
+
+# Run without activating
+poetry run pytest
+poetry run python manage.py migrate
+
+# Export for Docker
+poetry export -f requirements.txt --output requirements.txt --without-hashes
+]]></code>
+    </example>
+    <reference path="templates/pyproject.toml">Minimal pyproject.toml with dev group and tool stubs</reference>
+  </section>
+  <section title="pyenv integration">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Install and pin Python version for project
+pyenv install 3.11.7
+cd my-project
+pyenv local 3.11.7
+poetry env use $(pyenv which python)
+poetry install
+]]></code>
+    </example>
+  </section>
+  <section title="Docker pattern">
+    <example type="good">
+      <code lang="dockerfile"><![CDATA[
+FROM python:3.11-slim
+WORKDIR /app
+RUN pip install poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --only main
+COPY . .
+CMD ["python", "main.py"]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Django patterns">
+    <p>BaseModel with UUID and timestamps, services layer for business logic, thin views, serializers, and admin with fieldsets.</p>
+  </section>
+  <section title="BaseModel">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import uuid
+from django.db import models
+
+
+class BaseModel(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+]]></code>
+    </example>
+  </section>
+  <section title="Services layer">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from django.db import transaction
+from .models import User, UserType
+
+
+def create_user(email: str, name: str, *, user_type: str = UserType.REGULAR) -> User:
+    return User.objects.create(email=email, name=name, user_type=user_type)
+
+
+@transaction.atomic
+def transfer_ownership(from_user: User, to_user: User, item_id: int) -> None:
+    from apps.items import models as item_models
+    item = item_models.Item.objects.select_for_update().get(id=item_id)
+    item.owner = to_user
+    item.save(update_fields=["owner", "updated_at"])
+]]></code>
+    </example>
+  </section>
+  <section title="Thin views">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from . import services
+from .serializers import CreateUserRequest, UserResponse
+
+
+class UserCreateView(APIView):
+    def post(self, request):
+        serializer = CreateUserRequest(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = services.create_user(**serializer.validated_data)
+        return Response(UserResponse(user).data, status=status.HTTP_201_CREATED)
+]]></code>
+    </example>
+  </section>
+
+  <section title="FastAPI patterns">
+    <p>FastAPI app with lifespan, Depends() injection, Pydantic schemas, and background tasks. See python-fastapi/ for the full methodology.</p>
+  </section>
+  <section title="Routing with Depends">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.dependencies import get_db, get_current_user, DBSession, CurrentUser
+from app.schemas.users import UserCreate, UserResponse
+from app.services import users as user_service
+
+router = APIRouter()
+
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(user_data: UserCreate, db: DBSession) -> UserResponse:
+    return await user_service.create_user(db, user_data)
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: CurrentUser) -> UserResponse:
+    return current_user
+]]></code>
+    </example>
+  </section>
+  <section title="Background tasks">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from fastapi import APIRouter, BackgroundTasks
+
+router = APIRouter()
+
+
+def send_email(email: str, message: str) -> None:
+    # Email sending logic (runs after response is returned)
+    pass
+
+
+@router.post("/notify")
+async def send_notification(
+    email: str, message: str, background_tasks: BackgroundTasks
+) -> dict:
+    background_tasks.add_task(send_email, email, message)
+    return {"status": "notification queued"}
+]]></code>
+    </example>
+  </section>
+
+  <section title="pytest patterns">
+    <p>conftest fixtures, factory fixtures, mocking with patch, parametrize for edge cases, and Django DB integration tests.</p>
+  </section>
+  <section title="conftest fixtures">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import pytest
+from unittest.mock import MagicMock
+
+
+@pytest.fixture
+def mock_db():
+    return MagicMock()
+
+
+@pytest.fixture
+def sample_user_data() -> dict:
+    return {"email": "test@example.com", "name": "Test User"}
+
+
+@pytest.fixture
+def api_client():
+    from rest_framework.test import APIClient
+    return APIClient()
+
+
+@pytest.fixture
+def authenticated_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+]]></code>
+    </example>
+    <reference path="templates/conftest.py">Standard conftest.py with common fixtures</reference>
+  </section>
+  <section title="Factory fixtures">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def user_factory(db):
+    def create_user(email="user@example.com", name="Test User", **kwargs):
+        return User.objects.create(email=email, name=name, **kwargs)
+    return create_user
+]]></code>
+    </example>
+  </section>
+  <section title="Parametrize">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import pytest
+from apps.users.validators import validate_email
+
+
+@pytest.mark.parametrize("email,expected", [
+    ("user@example.com", True),
+    ("user.name@example.co.uk", True),
+    ("invalid", False),
+    ("@example.com", False),
+    ("", False),
+])
+def test_validate_email(email: str, expected: bool) -> None:
+    assert validate_email(email) == expected
+]]></code>
+    </example>
+  </section>
+  <section title="Django DB integration test">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import pytest
+from rest_framework import status
+
+
+@pytest.mark.django_db
+class TestUserAPI:
+    def test_create_user(self, api_client):
+        response = api_client.post("/api/v1/users/",
+            {"email": "new@example.com", "name": "New User"})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["email"] == "new@example.com"
+
+    def test_get_user_requires_auth(self, api_client):
+        response = api_client.get("/api/v1/users/me/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+]]></code>
+    </example>
+  </section>
+
+  <section title="asyncio patterns">
+    <p>asyncio.gather for concurrent I/O, TaskGroup for structured concurrency, Semaphore for rate limiting, and timeouts.</p>
+  </section>
+  <section title="Concurrent I/O with gather">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+
+
+async def fetch_all_users(user_ids: list[int]) -> list[dict]:
+    tasks = [fetch_user(uid) for uid in user_ids]
+    return await asyncio.gather(*tasks)
+
+
+# FastAPI: aggregate multiple data sources concurrently
+@app.get("/aggregate")
+async def get_aggregate():
+    users, products, orders = await asyncio.gather(
+        fetch_users(), fetch_products(), fetch_orders()
+    )
+    return {"users": users, "products": products, "orders": orders}
+]]></code>
+      <note>Use asyncio.gather() for independent concurrent I/O operations. Sequential await calls run one at a time; gather runs them concurrently, reducing total latency proportionally.</note>
+    </example>
+  </section>
+  <section title="TaskGroup (Python 3.11+)">
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def process_batch(items: list[str]) -> list[str]:
+    results = []
+    async with asyncio.TaskGroup() as tg:
+        for item in items:
+            task = tg.create_task(process_item(item))
+    # All tasks completed; collect results
+    return [task.result() for task in ...]
+]]></code>
+    </example>
+  </section>
+  <section title="Semaphore for rate limiting">
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def fetch_with_limit(urls: list[str], max_concurrent: int = 5) -> list[dict]:
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def fetch_one(url: str) -> dict:
+        async with semaphore:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    return await response.json()
+
+    return await asyncio.gather(*[fetch_one(url) for url in urls])
+]]></code>
+    </example>
+  </section>
+  <section title="Timeouts">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# asyncio.wait_for (all Python versions)
+try:
+    result = await asyncio.wait_for(slow_operation(), timeout=2.0)
+except asyncio.TimeoutError:
+    ...
+
+# asyncio.timeout context manager (Python 3.11+)
+async with asyncio.timeout(2.0):
+    result = await slow_operation()
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="../../python-fastapi/AGENTS.md">Full FastAPI methodology with all patterns</link>
+  </see-also>
+</text>

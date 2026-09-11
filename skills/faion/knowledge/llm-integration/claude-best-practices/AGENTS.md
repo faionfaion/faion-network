@@ -44,13 +44,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules (model tiers, pinning, max_tokens, caching layout, retry-after, batch) | ~900 |
-| `content/01-model-selection.xml` | essential | Model-tier table preserved from v1 | ~500 |
+| `content/01-core-rules.xml` | essential | 21 testable rules (model tiers, pinning, max_tokens, caching layout, retry-after, batch) plus the v1 tier-selection, token-configuration, cost-optimization (cache structure, count_tokens pre-flight) and reliability (backoff+jitter, shared bucket, fallback logging, AsyncAnthropic) rules | ~2650 |
 | `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples for the policy pack | ~800 |
-| `content/02-cost-optimization.xml` | essential | Cost-optimization patterns preserved from v1 | ~500 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/03-reliability-patterns.xml` | essential | Reliability patterns preserved from v1 | ~500 |
 | `content/04-procedure.xml` | medium | 6-step procedure from tier-table to validated policy | ~900 |
+| `content/05-examples.xml` | essential | Worked snippets: tiered model table with stop_reason check, cached system prompt with hit-rate monitoring, monitored client logging the model actually used | ~850 |
 | `content/06-decision-tree.xml` | essential | Decision tree gating which best-practice fix applies | ~600 |
 
 ## Task Routing

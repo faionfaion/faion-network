@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Terraform (Advanced) Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>>=3 antipatterns observed in real deployments of the terraform methodology. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Terraform (Advanced) Failure Modes" version="1.1.1" est_tokens="1050" depth="essential">
+  <summary>6 antipatterns observed in real deployments of the terraform methodology. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -26,6 +26,18 @@
       <symptom>Decision is stated; rationale says "industry best practice" with no source; reviewer cannot replay the logic.</symptom>
       <root-cause source="Audit-trail discipline">Author treated the methodology as opinion-emitter instead of evidence-chain.</root-cause>
       <fix>Require trace_refs to name actual artefacts (tickets, dashboards, transcripts). Validator fails when rationale does not cite any item from inputs_used.</fix>
+    </antipattern>
+
+    <antipattern id="ap-monolithic-configuration" severity="high">
+      <symptom>Single monolithic Terraform configuration for all environments and components.</symptom>
+      <root-cause source="01-project-structure">Project started as one root module and was never split by environment or component.</root-cause>
+      <fix>A single state file covering all environments means terraform plan locks all environments simultaneously. A single plan error blocks deployments to all environments. Split into environments/dev|staging|prod with separate backends, then by component (networking/, compute/, database/), each with its own state.</fix>
+    </antipattern>
+
+    <antipattern id="ap-apply-regenerated-plan" severity="high">
+      <symptom>Applying a re-generated plan (not the saved plan file) in CI after human review.</symptom>
+      <root-cause source="02-cicd-patterns">Pipeline re-runs terraform plan at apply time instead of applying the saved tfplan artifact.</root-cause>
+      <fix>Infrastructure can change between the plan review and apply. Re-planning may produce a different plan than what was reviewed, allowing unreviewed changes to reach production. Save the plan with -out=tfplan at plan stage, store it as a pipeline artifact, and apply that exact file after review.</fix>
     </antipattern>
 
   </section>

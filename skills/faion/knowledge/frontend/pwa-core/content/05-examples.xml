@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="PWA Core Architecture Worked Example" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>One worked end-to-end example showing a PWA Core Architecture artefact filled from a realistic input bundle. Trace runs from input brief &#8594; evidence gathering &#8594; schema fill &#8594; validator pass &#8594; review surfacing.</summary>
+<text id="05-examples" title="PWA Core Architecture Worked Example" version="1.1.1" est_tokens="1300" depth="essential">
+  <summary>One worked end-to-end example showing a PWA Core Architecture artefact filled from a realistic input bundle. Trace runs from input brief &#8594; evidence gathering &#8594; schema fill &#8594; validator pass &#8594; review surfacing. Then the implementation patterns: Workbox service worker, registration module, and install prompt hook patterns.</summary>
 
   <section title="Scenario">
     <p>Solo operator triggers PWA Core Architecture on a representative input bundle; the artefact passes the validator and reaches `ready_for_review`.</p>
@@ -48,4 +48,98 @@
 }
 ]]></code>
   </section>
+
+  <section title="Service Worker Registration">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// lib/pwa.ts — call once from main.ts
+export async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+
+  registration.addEventListener('updatefound', () => {
+    const newWorker = registration.installing;
+    if (!newWorker) return;
+    newWorker.addEventListener('statechange', () => {
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdatePrompt();
+      }
+    });
+  });
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Workbox Caching Strategies">
+    <reference path="templates/service-worker.ts">Full Workbox SW with all route strategies and offline fallback.</reference>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// Minimal strategy registration
+import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { ExpirationPlugin } from 'workbox-expiration';
+
+// Pages: network-first with timeout
+registerRoute(
+  new NavigationRoute(new NetworkFirst({
+    cacheName: 'pages',
+    networkTimeoutSeconds: 3,
+  }))
+);
+
+// API: network-first, cache as fallback
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/'),
+  new NetworkFirst({
+    cacheName: 'api',
+    networkTimeoutSeconds: 3,
+    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 3600 })],
+  })
+);
+
+// Images: cache-first, 30-day expiry
+registerRoute(
+  ({ request }) => request.destination === 'image',
+  new CacheFirst({
+    cacheName: 'images',
+    plugins: [new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 2592000 })],
+  })
+);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Install Prompt">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// hooks/useInstallPrompt.ts
+export function useInstallPrompt() {
+  const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled] = useState(
+    window.matchMedia('(display-mode: standalone)').matches
+  );
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setPrompt(e as BeforeInstallPromptEvent); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => { setInstalled(true); setPrompt(null); });
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const promptInstall = async () => {
+    if (!prompt) return;
+    await prompt.prompt();
+    const { outcome } = await prompt.userChoice;
+    if (outcome === 'accepted') setPrompt(null);
+  };
+
+  return { canInstall: !!prompt && !installed, installed, promptInstall };
+}
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/pwa-smoke.ts">Playwright smoke test for SW registration and offline navigation.</reference>
 </text>
