@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Living Documentation Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Living Documentation application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Living Documentation Core Rules" version="1.2.0" est_tokens="1550" depth="essential">
+  <summary>11 testable rules every Living Documentation application must enforce: co-location, auto-generation boundaries, CI enforcement, llms.txt, strict builds and the linting pipeline. These are HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Background">
+    <p>Rules r-same-pr-co-location through r-llms-txt-navigation-index are the principles: rules for treating documentation as code: co-location, auto-generation boundaries, and CI enforcement. Rules r-strict-build-in-ci and r-three-lint-steps are the toolchain: generator selection criteria, linting tools, and CI pipeline steps for Docs-as-Code.</p>
+    <p>What to auto-generate vs hand-author:</p>
+    <list>
+      <item>Auto-generate: API reference (from OpenAPI/JSDoc), changelogs (from conventional commits), code examples (from tests)</item>
+      <item>Hand-author: Architecture Decision Records, design rationale, user guides, tutorials, onboarding docs</item>
+    </list>
+    <p>Generator selection:</p>
+    <list>
+      <item>MkDocs + Material: Python projects, technical docs, fast builds, Material theme</item>
+      <item>Docusaurus: Node.js/React projects, developer portals, MDX support</item>
+      <item>VitePress: Vue projects, very fast builds</item>
+      <item>Starlight (Astro): modern DX, content collections with Zod schemas</item>
+    </list>
+    <reference path="templates/docs-ci.yaml">GitHub Actions workflow for the complete docs CI pipeline</reference>
+    <reference path="templates/mkdocs.yml">MkDocs Material configuration with recommended plugins</reference>
+  </section>
 
   <section title="Rule set">
 
@@ -23,6 +41,31 @@
     <rule id="r5-changelog-from-commits" testable="true" depth="essential">
       <statement>CHANGELOG MUST be generated from commit messages; manual edits rejected.</statement>
       <rationale source="Conventional commits practice">Manual changelogs drift from actual history.</rationale>
+    </rule>
+
+    <rule id="r-same-pr-co-location" testable="true" depth="essential">
+      <statement>Store documentation in the same repository as the code it describes, updated in the same PR.</statement>
+      <rationale source="Docs-as-code practice">Co-location ensures the same review process catches doc drift. Separate wikis always lag behind code changes.</rationale>
+    </rule>
+    <rule id="r-auto-generated-tag-boundary" testable="true" depth="essential">
+      <statement>Tag every auto-generated section with `&lt;!-- AUTO-GENERATED: source=openapi.yaml --&gt;`. Never edit content inside AUTO-GENERATED boundaries manually or with an agent.</statement>
+      <rationale source="Internal — Faion docs-as-code 2026">Auto-generated sections are overwritten on the next generation pass. Manual edits inside them are silently lost. The tag makes the boundary explicit for both humans and agents.</rationale>
+    </rule>
+    <rule id="r-doc-failures-block-ci" testable="true" depth="essential">
+      <statement>Documentation failures (broken links, invalid API spec, failed build) must block the CI pipeline the same way test failures do.</statement>
+      <rationale source="Docs-as-code practice">Documentation that does not block deploys is treated as optional. Optional docs are not maintained.</rationale>
+    </rule>
+    <rule id="r-llms-txt-navigation-index" testable="true" depth="essential">
+      <statement>Write `llms.txt` at the repo root with one-line descriptions of top-level doc sections. Do not copy full section content into llms.txt — link to full pages instead.</statement>
+      <rationale source="llms.txt convention (Mintlify / Anthropic docs)">Agents and LLM tools use llms.txt as a navigation index, not as full content. Over-detailed llms.txt files waste context budget on the index itself.</rationale>
+    </rule>
+    <rule id="r-strict-build-in-ci" testable="true" depth="essential">
+      <statement>Run `mkdocs build --strict` (or equivalent `--fail-on-warning`) in CI to catch broken references before deploy.</statement>
+      <rationale source="MkDocs / Docusaurus practice">Non-strict builds silently skip broken includes and missing pages. Strict mode surfaces all issues at build time.</rationale>
+    </rule>
+    <rule id="r-three-lint-steps" testable="true" depth="essential">
+      <statement>Add three linting steps to the docs CI job: prose lint (Vale), link validation (linkinator), and API spec validation (Spectral for OpenAPI).</statement>
+      <rationale source="Docs-as-code practice">Each tool catches a different failure class: Vale catches style drift, linkinator catches broken URLs, Spectral catches spec regressions. Running all three is the minimum viable doc quality gate.</rationale>
     </rule>
 
   </section>

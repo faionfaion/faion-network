@@ -1,6 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Writing Implementation Plans Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Testable rules grounding Writing Implementation Plans. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
+<text id="01-core-rules" title="Writing Implementation Plans Core Rules" version="1.1.0" est_tokens="2450" depth="essential">
+  <summary>Testable rules grounding Writing Implementation Plans: task structure and token budget, dependency graph and waves, and the traceability quality gates. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
+
+  <section title="Background">
+    <p>Rules r-invest through r-token-budget-tiers cover INVEST criteria, token budget tiers, task definition fields, and acceptance criteria rules for implementation plan tasks. Rules r-dag-from-design through r-critical-path-first cover DAG construction algorithm, wave identification, critical path analysis, and agent-specific dependency anti-patterns. Rules r-traceability-100 through r-no-tbd-in-design cover traceability 100% rule, pre-writing checklist, and common issues with detection and fixes. The anti-patterns and common issues live in content/03-failure-modes.xml.</p>
+    <p>Required task fields:</p>
+    <list>
+      <item>Task ID (TASK-NNN format)</item>
+      <item>Title: action verb + target (e.g., "Create auth middleware")</item>
+      <item>Complexity tier and token estimate</item>
+      <item>AD-X and FR-X trace references (min 1 each)</item>
+      <item>Depends on (explicit list or "None")</item>
+      <item>Blocks (what tasks need this to complete)</item>
+      <item>Files with action (CREATE / MODIFY / DELETE) and purpose</item>
+      <item>Acceptance criteria (min 2, verifiable)</item>
+    </list>
+    <p>Pre-writing checklist:</p>
+    <list>
+      <item>spec.md status: Approved</item>
+      <item>design.md status: Approved</item>
+      <item>All AD-X decisions finalized (no "TBD" entries)</item>
+      <item>constitution.md read for project naming and testing standards</item>
+      <item>Completed plans in done/ reviewed for patterns</item>
+    </list>
+  </section>
 
   <section title="Rule set">
 
@@ -26,7 +49,52 @@
 
     <rule id="r5-wave-grouping" testable="true" depth="essential">
       <statement>Tasks are grouped into numbered waves; wave 0 has no deps; later waves depend only on earlier ones.</statement>
-      <rationale source="Parallelization">Tasks are grouped into numbered waves; wave 0 has no deps; later waves depend only on earlier ones.</rationale>
+      <rationale source="Parallelization">Tasks are grouped into numbered waves; wave 0 has no deps; later waves depend only on earlier ones. The two sources disagree on the first wave's number: this rule numbers the dependency-free wave 0, while r-wave-algorithm numbers it Wave 1; this rule governs until reconciled.</rationale>
+    </rule>
+
+    <rule id="r-invest" testable="true" depth="essential">
+      <statement>Every task must pass INVEST: Independent (can start after its declared deps complete), Negotiable (implementation flexible), Valuable (traces to FR-X), Estimable (token estimate declared), Small (under 100k tokens), Testable (acceptance criteria are verifiable).</statement>
+      <rationale source="INVEST">Tasks that fail INVEST produce incomplete agent executions. The most common failures are: not Independent (hidden deps cause ordering conflicts), not Small (context exhaustion mid-task), not Testable (no way to validate completion).</rationale>
+    </rule>
+
+    <rule id="r-token-budget-tiers" testable="true" depth="essential">
+      <statement>Assign each task to a tier: Simple (under 30k, single file, clear pattern), Normal (30-60k, multiple files, some exploration), Complex (60-100k, many files, novel solution). Tasks over 100k must be split before execution begins.</statement>
+      <rationale source="Pool budget discipline">Agents degrade non-uniformly near context limits. The 100k rule provides a safe margin for most model families. Declaring a tier forces estimation before execution.</rationale>
+    </rule>
+
+    <rule id="r-dag-from-design" testable="true" depth="essential">
+      <statement>Build the dependency graph from design.md, not from the task list. For each file operation in design.md, ask: what must exist before this file can be created or modified? The answers are dependencies.</statement>
+      <rationale source="Traceability">Inferring dependencies from task descriptions introduces hidden assumptions. Grounding the DAG in design.md file operations produces a complete, objective dependency set.</rationale>
+    </rule>
+
+    <rule id="r-finish-to-start-only" testable="true" depth="essential">
+      <statement>Use only Finish-to-Start (FS) dependencies in implementation plans. Document the others (SS, FF) only if they provide a real parallelization opportunity — do not add them for completeness.</statement>
+      <rationale source="Parallelization">Non-FS dependencies add complexity without benefit unless agents can actually exploit them. Most agent executors handle only sequential-within-wave execution.</rationale>
+    </rule>
+
+    <rule id="r-wave-algorithm" testable="true" depth="essential">
+      <statement>Wave 1 = all tasks with no dependencies. Wave N = all tasks whose dependencies are entirely in Waves 1 through N-1. Repeat until all tasks are assigned. Tasks in the same wave can be executed in parallel.</statement>
+      <rationale source="Parallelization">The wave algorithm is deterministic and reproducible. Agents and humans can verify it independently by inspecting the dependency list of each task.</rationale>
+    </rule>
+
+    <rule id="r-critical-path-first" testable="true" depth="essential">
+      <statement>Identify the longest dependency chain by token sum. Prioritize optimization of critical path tasks — splitting or simplifying them reduces total execution scope more than optimizing off-path tasks.</statement>
+      <rationale source="Critical path method">The feature cannot complete faster than its critical path. Off-path task optimization produces no schedule benefit for the overall feature execution.</rationale>
+    </rule>
+
+    <rule id="r-traceability-100" testable="true" depth="essential">
+      <statement>Every AD-X from design.md must have at least one corresponding task. Every FR-X from spec.md must trace to at least one task. Every task must trace to at least one AD-X or FR-X. Zero orphan tasks permitted.</statement>
+      <rationale source="Traceability">The 100% rule ensures no design decision is left unimplemented and no task was invented without requirement backing. It is the primary completeness check before execution begins.</rationale>
+    </rule>
+
+    <rule id="r-grep-traceability-check" testable="true" depth="essential">
+      <statement>Verify traceability by running: `grep -c "AD-" implementation-plan.md` and comparing to the AD-X count in design.md. Do the same for FR-X. Any gap must be resolved before the plan is approved.</statement>
+      <rationale source="Practitioner experience">Manual counting is error-prone. The grep check takes 10 seconds and catches the most common oversight: a design decision that was noted but never assigned to a task.</rationale>
+    </rule>
+
+    <rule id="r-no-tbd-in-design" testable="true" depth="essential">
+      <statement>Do not write an implementation plan against a design doc with TBD architectural decisions. Resolve all TBDs in design.md first.</statement>
+      <rationale source="Practitioner experience">Planning against unresolved decisions produces tasks that change as soon as the decision is made, wasting the planning work and creating confusion during execution.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
@@ -44,6 +112,7 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

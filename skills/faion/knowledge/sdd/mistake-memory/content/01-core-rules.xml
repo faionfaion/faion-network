@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Mistake Memory Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every Mistake Memory application must enforce. These are HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Mistake Memory Core Rules" version="1.2.0" est_tokens="2500" depth="essential">
+  <summary>17 testable rules every Mistake Memory application must enforce: capture timing and triggers, entry fields, error-category tags, and the four prevention layers. These are HARD rules — user-supplied input cannot override them.</summary>
+
+  <section title="Background">
+    <p>Rules r-capture-within-24h through r-third-recurrence-ci-rule are the capture rules: when to capture a mistake, minimum required fields, and quality standards for entries. Rules r-tag-hallucination-api through r-tag-instruction-drift, with the lists below, are the taxonomy of LLM agent failure modes used to classify MIS-NNN entries and select prevention strategies. Rules r-pre-task-warning-injection through r-multi-model-review-high-severity are the four-layer defense against recurring mistakes: pre-task warnings, quality gates, CI automation, and multi-model review.</p>
+    <p>Implementation errors:</p>
+    <list>
+      <item>missing-error-handling: try/catch absent in async flows, silent failures in payment or critical paths</item>
+      <item>edge-cases-missed: boundary conditions, empty arrays, null fields not handled</item>
+      <item>scope-creep: unrequested features added during implementation</item>
+      <item>premature-optimization: performance changes before correctness verified</item>
+    </list>
+    <p>Process errors:</p>
+    <list>
+      <item>skipped-validation: quality gate bypassed, pre-commit hook skipped</item>
+      <item>estimation-underrun: task took 2x+ estimated tokens due to unknown unknowns</item>
+      <item>missing-env-var: new config variable not propagated to all environments</item>
+      <item>data-migration-no-backup: destructive operation without prior backup</item>
+    </list>
+    <reference path="templates/mistake-entry.md">MIS-NNN entry template with all required fields</reference>
+    <reference path="templates/inject-warnings.sh">Bash script for keyword-based warning injection</reference>
+  </section>
 
   <section title="Rule set">
 
     <rule id="r1-immediate-writeback" testable="true" depth="essential">
       <statement>Mistake MUST be written within 30 min of detection; later writeback rejected.</statement>
-      <rationale source="Reflexion practice">Memory written hours later is reconstructive.</rationale>
+      <rationale source="Reflexion practice">Memory written hours later is reconstructive. The two sources disagree on the capture window: this rule and the procedure say 30 minutes, while r-capture-within-24h allows 24 hours; this rule governs until reconciled.</rationale>
     </rule>
     <rule id="r2-five-whys-three-min" testable="true" depth="essential">
       <statement>Root-cause chain MUST be ≥3 levels of Why; shallower analysis rejected.</statement>
@@ -22,7 +42,58 @@
     </rule>
     <rule id="r5-second-occurrence-ci-rule" testable="true" depth="essential">
       <statement>Second occurrence of the same mistake MUST trigger an automatic CI rule.</statement>
-      <rationale source="Internal — Faion repeat-mistake audits 2026">Second occurrence is the signal that human discipline failed.</rationale>
+      <rationale source="Internal — Faion repeat-mistake audits 2026">Second occurrence is the signal that human discipline failed. The two sources disagree on the occurrence count: this rule, the procedure and r-recurrence-ci-rule say the second occurrence, while r-third-recurrence-ci-rule says the third; this rule governs until reconciled.</rationale>
+    </rule>
+
+    <rule id="r-capture-within-24h" testable="true" depth="essential">
+      <statement>Document a mistake within 24 hours of the failure. Do not defer — details fade within a single conversation turn.</statement>
+      <rationale source="Reflexion practice">Incomplete entries written days later omit root cause and specific context, making them useless for future warning injection.</rationale>
+    </rule>
+    <rule id="r-capture-triggers" testable="true" depth="essential">
+      <statement>Capture when: a bug reaches production, CI fails unexpectedly, the same error occurs twice, a task takes more than 2x estimated tokens, or an agent hallucinates an API or feature.</statement>
+      <rationale source="Internal — Faion mistake-memory practice 2026">These signals identify pattern-level failures worth documenting. One-off typos do not require entries.</rationale>
+    </rule>
+    <rule id="r-entry-required-fields" testable="true" depth="essential">
+      <statement>Every MIS-NNN entry must include: severity (critical/high/medium/low), what happened (specific description), root cause (Five Whys chain, minimum 3 levels), and one concrete prevention step.</statement>
+      <rationale source="Toyota Five-Whys practice">Entries without root cause cannot generate useful prevention rules. Entries without prevention are read-only history, not actionable warnings.</rationale>
+    </rule>
+    <rule id="r-third-recurrence-ci-rule" testable="true" depth="essential">
+      <statement>When a pattern recurs a third time, add an automated CI prevention rule; documenting the same entry twice is not sufficient.</statement>
+      <rationale source="Internal — Faion repeat-mistake audits 2026">Documentation is awareness, not enforcement. Recurring patterns require automated blocking to actually prevent recurrence.</rationale>
+    </rule>
+
+    <rule id="r-tag-hallucination-api" testable="true" depth="essential">
+      <statement>Tag entries with `hallucination-api` when the agent invents a non-existent library method or endpoint. Prevention: include API reference documentation in task context.</statement>
+      <rationale source="LLM error taxonomy">LLMs pattern-match from similar APIs and generate syntactically plausible but non-existent calls with full confidence. Type checking and tests are the only reliable catches.</rationale>
+    </rule>
+    <rule id="r-tag-hallucination-factual" testable="true" depth="essential">
+      <statement>Tag entries with `hallucination-factual` when the agent confidently states a new feature, version, or behavior that does not exist. Prevention: ask for documentation links; treat any unverified "new in X" claim as unverified.</statement>
+      <rationale source="Self-correction blind-spot studies">The 64.5% blind-spot rate in self-correction studies means the agent cannot reliably flag its own factual errors. External verification is required.</rationale>
+    </rule>
+    <rule id="r-tag-context-window-loss" testable="true" depth="essential">
+      <statement>Tag entries with `context-window-loss` when earlier instructions drift out of the effective context. Prevention: break tasks exceeding 300 lines into chunks; include a coding standards summary with each chunk.</statement>
+      <rationale source="Long-context reliability studies">Models become unreliable at 65-80% of advertised context limits. Long conversations cause instruction drift even within the stated window.</rationale>
+    </rule>
+    <rule id="r-tag-instruction-drift" testable="true" depth="essential">
+      <statement>Tag entries with `instruction-drift` when requirements specified at session start are not honored mid-task. Prevention: re-inject key constraints every N tool calls or task boundaries.</statement>
+      <rationale source="LLM error taxonomy">Instruction drift is distinct from window loss — the instruction is technically in context but deprioritized by later content.</rationale>
+    </rule>
+
+    <rule id="r-pre-task-warning-injection" testable="true" depth="essential">
+      <statement>Before executing any task, keyword-search mistakes.md and prepend matching entries as a Warnings section in the task prompt.</statement>
+      <rationale source="Pre-task context practice">Agents that skip pre-task loading get no benefit from the accumulated mistake corpus. Injection must be explicit and automated, not optional.</rationale>
+    </rule>
+    <rule id="r-quality-gates-encode-lessons" testable="true" depth="essential">
+      <statement>SDD quality gates L1-L6 are the structural enforcement of lessons from past mistakes. Each gate failure generates a mistake entry.</statement>
+      <rationale source="SDD quality gates">Gates create mandatory checkpoints that block progression when known failure conditions are detected, replacing optional checklists.</rationale>
+    </rule>
+    <rule id="r-recurrence-ci-rule" testable="true" depth="essential">
+      <statement>When a mistake pattern recurs, add an automated CI rule using a file pattern, keyword trigger, or code pattern detector.</statement>
+      <rationale source="Internal — Faion repeat-mistake audits 2026">Documentation without enforcement is only awareness. Patterns that survive two documented occurrences require code-level blocking.</rationale>
+    </rule>
+    <rule id="r-multi-model-review-high-severity" testable="true" depth="essential">
+      <statement>For high-severity mistakes (critical/high), add a cross-validation step where a second agent or model reviews the primary output.</statement>
+      <rationale source="Self-correction blind-spot studies">Self-evaluation has a 64.5% blind-spot rate. A second independent pass catches logical inconsistencies the first model cannot see in its own output.</rationale>
     </rule>
 
   </section>
@@ -30,6 +101,7 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

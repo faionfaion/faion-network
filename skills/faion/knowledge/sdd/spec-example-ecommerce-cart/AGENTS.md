@@ -49,13 +49,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/01-core-rules.xml` | essential | 11 testable rules + skip + run rules, incl. the five adaptation rules from the full spec (two personas, NFR [SOURCE REQUIRED], out-of-scope When column, preliminary data model, open questions) | 1500 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom + root-cause + fix, incl. four AI-agent failure modes when reusing the cart example | 1100 |
+| `content/05-examples.xml` | essential | Worked example end-to-end + the complete e-commerce cart spec (all sections, TypeScript data model) + few-shot usage guide with reusable patterns and prompts | 2600 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
-| `content/01-full-spec.xml` | recommended | E-commerce Cart: Complete Spec Example | 2100 |
-| `content/02-usage-guide.xml` | recommended | Using the Cart Example as a Few-Shot Reference | 850 |
 
 ## Task Routing
 

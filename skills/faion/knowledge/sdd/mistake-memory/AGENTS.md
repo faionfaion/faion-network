@@ -43,14 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 17 testable rules with rationale + source: capture timing and triggers, entry fields, hallucination/context error tags, four prevention layers; background lists of implementation and process error categories | ~2500 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair + 3 entry-quality antipatterns | ~750 |
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
+| `content/05-examples.xml` | essential | Worked artefacts: MIS-007 Five Whys entry, warning-injection command, CI prevention rule | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
-| `content/01-capture-rules.xml` | recommended | When to capture a mistake, minimum required fields, and quality standards for entries. | ~900 |
-| `content/02-error-categories.xml` | recommended | Taxonomy of LLM agent failure modes used to classify MIS-NNN entries and select prevention strategies. | ~750 |
-| `content/03-prevention-layers.xml` | recommended | Four-layer defense against recurring mistakes: pre-task warnings, quality gates, CI automation, and multi-model review. | ~700 |
 
 ## Task Routing
 

@@ -46,15 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/01-core-rules.xml` | essential | 14 testable rules + skip + run rules: one row per task, token cap and tiers, INVEST, AD-X trace, AC per task, waves, DAG from design.md, FS-only deps, wave algorithm, critical path, 100% traceability, grep check, no TBDs; background: required task fields, pre-writing checklist | 2450 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom + root-cause + fix, incl. vague AC, everything-in-wave-one, purely sequential plans, oversized tasks, dangling and circular dependencies | 1200 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/05-examples.xml` | essential | Worked example end-to-end + fully specified TASK-003 + wave table with critical path | 650 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
-| `content/01-task-structure.xml` | recommended | INVEST criteria, token budget tiers, task definition fields, and acceptance criteria rules for implementation plan tasks. | 750 |
-| `content/02-dependency-waves.xml` | recommended | DAG construction algorithm, wave identification, critical path analysis, and agent-specific dependency anti-patterns. | 850 |
-| `content/03-quality-gates.xml` | recommended | Traceability 100% rule, pre-writing checklist, and common issues with detection and fixes. | 750 |
 
 ## Task Routing
 

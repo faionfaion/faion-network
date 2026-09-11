@@ -45,12 +45,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | 900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source + skip rule, incl. the delegated in-progress → done gate and diff-verified conditionals; background: conditional quality gates (API tests, Playwright pos+neg, surface coupling) | 1150 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples | 700 |
-| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (symptom / root-cause / fix), incl. two at the done gate | 550 |
 | `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
-| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
-| `content/07-done-gate.xml` | essential | in-progress → done gate delegated to readiness-checklist; conditional quality gates (API tests, Playwright pos+neg, surface coupling) | 500 |
+| `content/06-decision-tree.xml` | essential | Root question (which gate) + branches → conclusion ref=rule-id, incl. delegation to readiness-checklist | 350 |
 
 ## Task Routing
 

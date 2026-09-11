@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Reflexion Learning Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Testable rules grounding Reflexion Learning. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
+<text id="01-core-rules" title="Reflexion Learning Core Rules" version="1.1.0" est_tokens="2700" depth="essential">
+  <summary>Testable rules grounding Reflexion Learning: episode schema and injection, the PDCA phases per SDD task, the four memory files, and pattern confidence calibration. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
+
+  <section title="Background">
+    <p>Rules r-pdca-all-four-phases through r-retry-limit-3 are the four phases of the Reflexion learning loop mapped to SDD task execution. Rules r-four-memory-files through r-archive-stale-patterns give the structure and update rules for the four memory files in .aidocs/memory/. Rule r-confidence-update-formula and the levels below cover confidence scoring levels, update formula, decay rules, and common calibration errors.</p>
+    <p>SDD quality gate integration:</p>
+    <list>
+      <item>L1 (Spec review): load domain patterns before analysis</item>
+      <item>L2 (Design review): load architecture patterns</item>
+      <item>L4 (Pre-code): load coding patterns and mistakes for the task domain</item>
+      <item>L5 (Post-code): run external tests, generate verbal reflection</item>
+      <item>L6 (Complete): update memory files, close or update session.md</item>
+    </list>
+    <p>Confidence levels:</p>
+    <list>
+      <item>0.9+: High — 5+ uses, validated across contexts, no recent failures</item>
+      <item>0.7-0.89: Medium — 2-4 uses, context-specific, minor issues</item>
+      <item>0.5-0.69: Low — 1-2 uses, limited validation</item>
+      <item>0.3-0.49: Experimental — newly identified, not yet validated</item>
+    </list>
+    <reference path="templates/update-confidence.py">Full confidence updater script that patches patterns.md in place</reference>
+  </section>
 
   <section title="Rule set">
 
@@ -29,6 +49,56 @@
       <rationale source="Practitioner experience">Cap memory at N episodes (default 50); evict by recency × evidence score.</rationale>
     </rule>
 
+    <rule id="r-pdca-all-four-phases" testable="true" depth="essential">
+      <statement>Every SDD task execution must follow Plan → Do → Check → Act. Skipping any phase degrades the learning signal.</statement>
+      <rationale source="Reflexion (NeurIPS 2023)">Reflexion only improves agent quality when all four phases complete. Skipping Check means no reflection is generated; skipping Act means no memory is updated.</rationale>
+    </rule>
+    <rule id="r-plan-phase-keyword-load" testable="true" depth="essential">
+      <statement>Load session.md (if continuing), keyword-filter patterns.md for relevant patterns, keyword-filter mistakes.md for domain warnings. Summarize in 5 bullets before proceeding.</statement>
+      <rationale source="Practitioner experience">Loading the entire patterns.md and mistakes.md burns 5-15k tokens of context budget. Keyword filtering to 3-5 relevant entries is both faster and more precise.</rationale>
+    </rule>
+    <rule id="r-do-phase-track-patterns" testable="true" depth="essential">
+      <statement>Execute the task with loaded patterns applied. Deviate from patterns only with a documented reason. Track which patterns are used.</statement>
+      <rationale source="Practitioner experience">Pattern tracking enables usage-count updates in the Act phase, which in turn updates confidence scores.</rationale>
+    </rule>
+    <rule id="r-check-phase-external-signal" testable="true" depth="essential">
+      <statement>Evaluate output against each acceptance criterion using external signals (test results, linter, type checker). Report each AC as PASS or FAIL with evidence. Do not self-report PASS without external signal.</statement>
+      <rationale source="Self-evaluation optimism studies">LLMs in self-evaluation exhibit systematic optimism — they report AC as PASS when they would fail against an independent test suite. External tests must be the authoritative signal.</rationale>
+    </rule>
+    <rule id="r-act-phase-write-memory" testable="true" depth="essential">
+      <statement>After any PASS: extract a PAT-NNN entry for patterns.md if a novel successful approach was used. After any FAIL: append a MIS-NNN entry to mistakes.md. Update session.md.</statement>
+      <rationale source="Reflexion (NeurIPS 2023)">Reflections written immediately after task completion are accurate. Reflections written at session end produce generic patterns ("write tests first") without project-specific context.</rationale>
+    </rule>
+    <rule id="r-retry-limit-3" testable="true" depth="essential">
+      <statement>Set a maximum of 3 Reflexion retry attempts per task. After 3 cycles, escalate to human review.</statement>
+      <rationale source="Reflexion (NeurIPS 2023)">Reflexion improves on first and second retry but has diminishing returns. A third failure with updated reflections indicates a gap that verbal reinforcement cannot fix alone.</rationale>
+    </rule>
+
+    <rule id="r-four-memory-files" testable="true" depth="essential">
+      <statement>Maintain exactly four memory files in `.aidocs/memory/`: patterns.md, mistakes.md, decisions.md, session.md. Keep them in the same repository as the code they govern.</statement>
+      <rationale source="Memory hygiene">Memory files in a different repo from the code produce context drift — patterns reference files and patterns that no longer exist in the agent's working tree.</rationale>
+    </rule>
+    <rule id="r-pattern-entry-fields" testable="true" depth="essential">
+      <statement>A PAT-NNN entry must include: domain, context (when it applies), problem it solves, solution (actionable steps or code), confidence score, usage count, and source task ID.</statement>
+      <rationale source="Memory hygiene">Patterns without context cannot be retrieved accurately. Patterns without confidence scores cannot be prioritized by the agent during Plan phase loading.</rationale>
+    </rule>
+    <rule id="r-pattern-when-x-do-y" testable="true" depth="essential">
+      <statement>Write patterns in "When X, do Y" format, not as descriptions of what worked. "When migrating tables with >100k rows, batch the update" not "batching worked well".</statement>
+      <rationale source="Practitioner experience">Prescriptive patterns are directly actionable. Descriptive patterns require the agent to re-derive the action, introducing drift.</rationale>
+    </rule>
+    <rule id="r-clear-session-per-project" testable="true" depth="essential">
+      <statement>Clear session.md at the start of each new project. Session context from a previous project causes the agent to apply irrelevant patterns and miss-attribute mistakes.</statement>
+      <rationale source="Memory hygiene">Session.md is project-scoped. Multi-agent pipelines sharing session.md across projects produce write conflicts and corrupted context.</rationale>
+    </rule>
+    <rule id="r-archive-stale-patterns" testable="true" depth="essential">
+      <statement>Archive patterns with confidence below 0.3 or unused for 90+ days into patterns-archive.md. Do not delete — archived patterns may be relevant again if the domain returns.</statement>
+      <rationale source="Memory hygiene">Stale patterns loaded in context introduce noise. High-scoring but untouched patterns may have been invalidated by framework upgrades or architectural changes.</rationale>
+    </rule>
+    <rule id="r-confidence-update-formula" testable="true" depth="essential">
+      <statement>Apply the confidence update formula after each task outcome: success → min(0.95, score + 0.05); partial → score * 0.95; failure → max(0.30, score - 0.15).</statement>
+      <rationale source="Practitioner experience">Symmetric updates would allow a single failure to destroy high-confidence patterns. The asymmetric formula requires consistent failures to reduce confidence significantly.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
       <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent context budget.</rationale>
@@ -44,6 +114,7 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

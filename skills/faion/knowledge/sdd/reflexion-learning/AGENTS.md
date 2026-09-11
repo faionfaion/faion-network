@@ -45,15 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/01-core-rules.xml` | essential | 19 testable rules + skip + run rules: episode schema, PDCA phases per SDD task, retry limit, four memory files, pattern format, archiving, confidence formula; background: quality-gate integration, confidence levels | 2700 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
-| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
-| `content/01-pdca-cycle.xml` | recommended | The four phases of the Reflexion learning loop mapped to SDD task execution. | 850 |
-| `content/02-memory-architecture.xml` | recommended | Structure and update rules for the four memory files in .aidocs/memory/. | 700 |
-| `content/03-confidence-calibration.xml` | recommended | Confidence scoring levels, update formula, decay rules, and common calibration errors. | 650 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom + root-cause + fix, incl. full-memory loads and confidence-calibration gotchas | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end + 4-step PDCA cycle per SDD task | 600 |
+| `content/05-examples.xml` | essential | Worked example end-to-end + confidence update function | 400 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, inputs, retry count) to a rule id in 01-core-rules.xml | 350 |
 
 ## Task Routing
 

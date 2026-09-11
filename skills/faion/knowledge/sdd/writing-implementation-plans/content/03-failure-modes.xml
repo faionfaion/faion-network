@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Writing Implementation Plans Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Observed antipatterns when applying Writing Implementation Plans. Each pairs symptom + sourced root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Writing Implementation Plans Failure Modes" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>Observed antipatterns when applying Writing Implementation Plans, including agent-specific dependency anti-patterns and common plan issues. Each pairs symptom + sourced root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -20,6 +20,42 @@
       <symptom>Task references no AD; provenance lost.</symptom>
       <root-cause source="Practitioner experience">r3 ignored.</root-cause>
       <fix>Linter requires AD reference per row.</fix>
+    </antipattern>
+
+    <antipattern id="vague-task-ac" severity="high">
+      <symptom>Task with acceptance criteria that say "works correctly" or "functions as expected".</symptom>
+      <root-cause source="Practitioner experience">Vague AC cannot be verified by a test or a quality gate check. Every AC must specify a concrete observable outcome: a status code, a file that exists, a database row, a rendered element.</root-cause>
+      <fix>Rewrite each AC as an observable outcome (r4-ac-per-task).</fix>
+    </antipattern>
+
+    <antipattern id="everything-in-wave-one" severity="high">
+      <symptom>Agent declares all tasks as Wave 1 (no dependencies) to maximize apparent parallelism.</symptom>
+      <root-cause source="Practitioner experience">Missing dependencies cause merge conflicts and broken builds when parallel agents overwrite each other's files. Require dependency evidence from design.md for every "no dependencies" claim.</root-cause>
+      <fix>Rebuild the DAG from design.md file operations (r-dag-from-design).</fix>
+    </antipattern>
+
+    <antipattern id="purely-sequential-plan" severity="medium">
+      <symptom>Agent declares all tasks as depending on the previous one, producing a purely sequential plan.</symptom>
+      <root-cause source="Practitioner experience">LLMs default to sequential thinking. A purely sequential plan with more than 3 tasks likely contains false dependencies. Review each FS edge: does the downstream task actually need the upstream file to exist, or is it just logically related?</root-cause>
+      <fix>Drop every FS edge that is not a real file-existence constraint, then re-run r-wave-algorithm.</fix>
+    </antipattern>
+
+    <antipattern id="oversized-task-no-split" severity="high">
+      <symptom>Task token estimate over 100k with no split.</symptom>
+      <root-cause source="Practitioner experience">Declare the task as "Split Required" and decompose into subtasks before proceeding. A 150k task is not one complex task — it is two or three tasks with a shared header.</root-cause>
+      <fix>Split per r-token-budget-tiers before execution.</fix>
+    </antipattern>
+
+    <antipattern id="dangling-dependency" severity="high">
+      <symptom>Task references another task in "Depends on" that does not exist in the plan.</symptom>
+      <root-cause source="Practitioner experience">Add the missing task or fix the reference. Missing dependency tasks are the second most common cause of execution failures after token overruns.</root-cause>
+      <fix>Validator resolves every Depends-on id against the plan.</fix>
+    </antipattern>
+
+    <antipattern id="circular-dependency" severity="high">
+      <symptom>Circular dependency (TASK-A → TASK-B → TASK-A).</symptom>
+      <root-cause source="Practitioner experience">Restructure the dependency chain. Circular deps indicate a design problem: one of the two tasks needs to be split, or one dependency is false (logically related but not a real FS constraint).</root-cause>
+      <fix>Split one task or drop the false edge; the wave algorithm must terminate.</fix>
     </antipattern>
 
   </section>

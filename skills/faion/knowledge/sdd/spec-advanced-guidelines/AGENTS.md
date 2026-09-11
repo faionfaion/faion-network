@@ -49,14 +49,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/01-core-rules.xml` | essential | 15 testable rules + skip + run rules: trigger blocks, 14 required sections, problem statement fields, named personas, FR → US → AC traceability, out-of-scope fields, NFR measurability, AC coverage matrix, Given-When-Then, assumptions | 2300 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom + root-cause + fix, incl. orphan personas, qualitative NFRs and happy-path-only AC | 1000 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/05-examples.xml` | essential | Worked example end-to-end + markdown examples of the traceability chain and a measurable NFR | 700 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
-| `content/01-section-rules.xml` | recommended | Required 14 sections, persona rules, user story format, and FR traceability chain requirements. | 900 |
-| `content/02-nfr-and-ac.xml` | recommended | NFR measurability rules, acceptance criteria coverage matrix, and agent-specific antipatterns for both. | 850 |
 
 ## Task Routing
 

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1, batch 7 of 8: ten `sdd` slugs.** 23 files folded,
+  preservation 0 on each. `key-trends-summary` — whose stated purpose is "6 SDD
+  trends" and whose six trends all lived in unlisted files — now carries them as
+  ten rules and three background sections in `01`. `spec-example-ecommerce-cart`
+  is two example groups in `05`, as a worked spec should be, not rules.
+  `reflexion-learning` gained its PDCA procedure. Five numeric disagreements
+  between a hand-written extra and its generated canonical rule are kept verbatim
+  with a governing note (six sections vs eight, 30 min vs 24 h, wave 0 vs wave 1,
+  …), never silently picked. Seventy down, ten to go.
+
 - **CR-010 option 1, batch 6 of 8: three `product`, five `research`, two `sdd`.**
   27 files folded, preservation 0 on each. The research family
   (`business-model-research`, `competitive-intelligence`, `competitor-analysis`,

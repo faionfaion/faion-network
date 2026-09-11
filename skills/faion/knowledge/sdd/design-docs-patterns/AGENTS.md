@@ -43,14 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 15 testable rules with rationale + source: when to write, format selection by scope, lifecycle gate, SDD placement, required sections, non-goals, alternatives, review process, ADR extraction, LLM checks | ~3400 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair + 2 antipatterns for LLM-generated design docs | ~800 |
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
-| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
-| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
-| `content/01-format-selection.xml` | recommended | When to write a design document, how to choose between lightweight and heavyweight formats, and how the doc maps to the SDD lifecycle phases. | ~1400 |
-| `content/02-writing-rules.xml` | recommended | Required sections, the non-goals rule, alternatives quality bar, ADR extraction, and agent-specific gotchas for LLM-assisted design doc writing. | ~2000 |
+| `content/05-examples.xml` | essential | Worked end-to-end example + markdown examples of non-goals, alternatives and ADR extraction sections | ~1050 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + format-by-scope branching to rule-id conclusions | ~500 |
 
 ## Task Routing
 

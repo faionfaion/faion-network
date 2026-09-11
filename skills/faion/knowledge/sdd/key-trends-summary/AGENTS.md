@@ -43,14 +43,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 15 testable rules with rationale + source, preceded by three background sections: SDD and docs-as-code trends, ADRs and LLM-first workflows, platform engineering and observability | ~3250 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
 | `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
-| `content/01-sdd-and-docs.xml` | recommended | SDD as dominant paradigm for AI-assisted development, docs-as-code patterns, LLM-optimized documentation, and developer portal landscape. | ~850 |
-| `content/02-adrs-and-llm-workflows.xml` | recommended | ADRs and LLM-First Workflow Trends | ~1000 |
-| `content/03-platform-observability.xml` | recommended | Platform Engineering and Observability Trends | ~750 |
 
 ## Task Routing
 
