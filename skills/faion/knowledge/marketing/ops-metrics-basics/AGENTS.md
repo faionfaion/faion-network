@@ -46,14 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source; background: five metric categories and the essential solopreneur metrics set | 1600 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom / root-cause / fix, including the common tracking mistakes | 1100 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | recommended | Stack options by scale, alert triggers, review cadence, and locked formulas for the essential SaaS metrics | 600 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
-| `content/01-metric-selection.xml` | recommended | Metric categories, the rule for choosing the right metrics, and an essential metrics table for solo operators. | 500 |
-| `content/02-tracking-and-review.xml` | recommended | Data sources, lean tracking stack options, target-setting approach, alert thresholds, and review cadence for operators. | 600 |
-| `content/03-formulas-and-antipatterns.xml` | recommended | Precise formulas for all essential SaaS metrics and six common tracking mistakes with fixes. | 500 |
 
 ## Task Routing
 

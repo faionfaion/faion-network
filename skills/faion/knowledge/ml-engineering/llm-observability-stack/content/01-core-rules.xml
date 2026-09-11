@@ -1,11 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="LLM Observability Stack — Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every application of `llm-observability-stack` must enforce. Verifiable at review time; failures gate the artifact.</summary>
+<text id="01-core-rules" title="LLM Observability Stack — Core Rules" version="1.1.1" est_tokens="2000" depth="essential">
+  <summary>Testable rules every application of `llm-observability-stack` must enforce. Verifiable at review time; failures gate the artifact. Platform comparison (Langfuse, Phoenix, LangSmith, Helicone, Portkey), OpenTelemetry integration, metrics taxonomy, and stack selection decision tree for 2026. Instrumentation rules, production alert thresholds, cost tracking patterns, agent tracing gotchas, and antipatterns.</summary>
+
+  <section title="Background">
+    <p>Why LLM observability differs from traditional APM:</p>
+    <list>
+      <item>Traditional: CPU/memory/uptime → LLM: token usage, cost per conversation</item>
+      <item>Traditional: error rates → LLM: hallucination rate, quality scores</item>
+      <item>Traditional: single-request latency → LLM: TTFT, streaming throughput, P50/P95/P99</item>
+      <item>Traditional: deterministic output → LLM: non-deterministic, needs LLM-as-judge evaluation</item>
+      <item>Traditional: single-request scope → LLM: multi-turn conversation tracking with context</item>
+    </list>
+    <p>Metrics taxonomy:</p>
+    <list>
+      <item>Cost: token usage (input/output), $/conversation, cache hit rate, cost by user/team/feature</item>
+      <item>Quality: relevance scores, hallucination rate, user feedback (thumbs), safety scores</item>
+      <item>Performance: latency P50/P95/P99, TTFT (time to first token), throughput, queue depth</item>
+      <item>Reliability: error rate, retry rate, fallback trigger rate, timeout rate</item>
+      <item>Agent-specific: tool call success rate, reasoning step count, iteration count, loop detection</item>
+    </list>
+    <p>Platform comparison (2026):</p>
+    <list>
+      <item>Langfuse — open source (MIT), self-host, tracing + prompts + evals; best for privacy/compliance</item>
+      <item>LangSmith — SaaS by LangChain, agent debugging, ideal for LangChain/LangGraph users</item>
+      <item>Arize Phoenix — open source, evaluation + embeddings, good for ML teams</item>
+      <item>Helicone — proxy-based, cost analytics + caching, free 10K calls then $79/mo</item>
+      <item>Portkey — AI gateway, multi-provider routing + fallback, usage-based</item>
+      <item>OpenLLMetry — open source (Apache 2.0), 23+ backends, OTEL-native; 6.6k+ stars</item>
+      <item>Datadog LLM Obs — enterprise, full-stack APM, no self-host</item>
+      <item>Braintrust — SaaS, multi-agent tracing, enterprise pricing</item>
+    </list>
+    <p>Stack selection, resolved by rule r11-platform-choice:</p>
+    <list>
+      <item>Need self-hosting (privacy/compliance)? → Langfuse (MIT) or Arize Phoenix</item>
+      <item>Using LangChain/LangGraph? → LangSmith</item>
+      <item>Primary goal is cost optimization? → Helicone</item>
+      <item>Multi-provider routing + fallback? → Portkey</item>
+      <item>Existing APM (Datadog, Grafana)? → OpenLLMetry OTEL bridge</item>
+      <item>General purpose, no constraints? → Langfuse Cloud</item>
+    </list>
+  </section>
 
   <section title="Rules">
     <rule id="r1-otel-native" testable="true" depth="essential">
-      <statement>Use OTel-native instrumentation (openllmetry / openinference) as the wire format; vendors are downstream consumers.</statement>
-      <rationale source="OTel GenAI semantic conventions 2026">Vendor-specific SDKs lock you in; OTel native lets you swap viewers.</rationale>
+      <statement>Instrument via OpenTelemetry and route to any backend — never use vendor SDKs as the primary tracing layer.</statement>
+      <rationale source="OTel GenAI semantic conventions 2026">OTEL gives vendor portability. Switching from Langfuse to Datadog requires only a config change when using OTEL exporters; it requires a full re-instrument when using vendor-specific SDKs.</rationale>
     </rule>
 
     <rule id="r2-version-pin" testable="true" depth="essential">
@@ -31,12 +70,37 @@
     <rule id="r6-self-host-eu" testable="true" depth="essential">
       <statement>When EU customer data flows, observability stack is self-hosted in an EU region with documented data-residency.</statement>
       <rationale source="GDPR Article 44; vendor compliance">Cross-region trace storage may breach GDPR.</rationale>
+    </rule>    <rule id="r7-attribution-at-call-time" testable="true" depth="essential">
+      <statement>Attach user_id, session_id, and feature_flag to every LLM span at call time — not post-hoc.</statement>
+      <rationale source="v1-source">Post-hoc enrichment requires a join on a secondary store. Inline attribution enables per-user cost breakdown, session replay, and A/B comparison directly in the tracing UI.</rationale>
+    </rule>
+
+    <rule id="r8-token-counts-not-chars" testable="true" depth="essential">
+      <statement>Log both input and output token counts per call; never derive cost from character count alone.</statement>
+      <rationale source="v1-source">Character count diverges from token count for non-ASCII content, code, and structured JSON. Token counts are available directly from provider responses and are the only reliable cost signal.</rationale>
+    </rule>
+
+    <rule id="r9-parent-trace-per-agent-run" testable="true" depth="essential">
+      <statement>Create a parent trace per agent invocation and nest all tool calls as child spans — never emit flat independent spans.</statement>
+      <rationale source="v1-source">Flat spans make it impossible to reconstruct reasoning chains or correlate tool results with the LLM decision that triggered them. Hierarchical spans enable full session replay.</rationale>
+    </rule>
+
+    <rule id="r10-alert-baselines" testable="true" depth="essential">
+      <statement>Alert on these baselines: error rate &gt;5%, P99 latency &gt;10s, TTFT P95 &gt;2s, hallucination rate &gt;10%, daily spend &gt;80% of budget.</statement>
+      <rationale source="v1-source">These thresholds represent practical production baselines. Lower thresholds create alert fatigue; higher thresholds miss meaningful degradation. Tune to your SLA after establishing a 2-week baseline.</rationale>
+    </rule>
+
+    <rule id="r11-platform-choice" testable="true" depth="essential">
+      <statement>Choose Langfuse for self-hosted production; Helicone for cost-first optimization; LangSmith only if already on LangChain.</statement>
+      <rationale source="v1-source">Langfuse is MIT-licensed, actively maintained, and covers tracing + evals in one tool. Helicone adds a proxy layer that tracks costs without code changes. LangSmith's value is its deep LangGraph integration; outside that stack it adds a vendor dependency for little gain.</rationale>
     </rule>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

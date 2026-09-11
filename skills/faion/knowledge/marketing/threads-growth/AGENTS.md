@@ -43,13 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 14 testable rules with rationale + source: cadence, adaptation, register, reply density and formula, reply-to-large-first, conversation-starter types, no links, IG Stories cross-promote, three KPIs, batch-draft-then-edit, no write API | ~1650 |
 | `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations + JSON schema | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 9 failure modes with detector + repair, including the four common operator mistakes | ~1200 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
-| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
-| `content/01-conversation-strategy.xml` | recommended | Reply formula, conversation-starter types, cross-platform synergy rules, and what makes content perform on Threads. | ~950 |
-| `content/02-growth-patterns.xml` | recommended | Metrics benchmarks by growth stage, scaling milestones, and the most common Threads growth mistakes. | ~750 |
+| `content/05-examples.xml` | recommended | Good/bad reply examples, five conversation-starter templates, metrics benchmarks by growth stage | ~550 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~450 |
 
 ## Task Routing
 

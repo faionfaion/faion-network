@@ -50,14 +50,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology: canonical store, fixed taxonomy, segment-weighted ranking, close-loop, monthly review, daily triage SLA, volume threshold before escalation | 1300 |
-| `content/01-feedback-pipeline.xml` | medium | Source inventory, categorization taxonomy, 6-step pipeline, agent workflow (triage / aggregator / close-loop) | 1100 |
-| `content/02-feedback-patterns.xml` | medium | Monthly review example, app-store response strategy, embedding dedup, LLM-drift audit, PII gotchas, human-in-loop checkpoints | 900 |
+| `content/01-core-rules.xml` | essential | 13 testable rules + skip-this-methodology: canonical store, fixed and versioned taxonomy, segment-weighted ranking, close-loop, monthly review, daily triage SLA, volume threshold, verbatim stored, draft-and-queue, drift audit, embedding dedup, three human checkpoints; background: feedback sources, taxonomy | 2200 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for feedback-record + monthly-theme-report | 850 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns: noise-overload, vote-only ranking, lost close-loop, taxonomy drift, anecdote-driven escalation, inbox rot | 1050 |
-| `content/04-procedure.xml` | essential | 6-step procedure: ingest -> normalize -> classify -> deduplicate -> rank -> dispose | 950 |
-| `content/05-examples.xml` | medium | Worked monthly review producing top-10 themes + dispositions | 700 |
-| `content/06-decision-tree.xml` | essential | Apply/skip routing on volume + multi-channel + commitment | 600 |
+| `content/03-failure-modes.xml` | essential | 12 antipatterns: noise-overload, vote-only ranking, lost close-loop, taxonomy drift, anecdote-driven escalation, inbox rot, enhancement catch-all, PII to LLM, raw votes, roadmap without review, uncalibrated sentiment, bulk close-loop send | 1750 |
+| `content/04-procedure.xml` | essential | 6-step procedure: ingest -> normalize -> classify -> deduplicate -> rank -> dispose; pipeline overview, agent workflow (triage / aggregator / close-loop), app store response strategy | 1300 |
+| `content/05-examples.xml` | medium | Worked monthly review producing top-10 themes + dispositions; monthly review text example with actions per category | 550 |
+| `content/06-decision-tree.xml` | essential | Apply/skip routing on volume + multi-channel + commitment | 550 |
 
 ## Task Routing
 

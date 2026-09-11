@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="LLM Observability Stack — Procedure" version="1.1.0" est_tokens="800" depth="essential">
+<text id="04-procedure" title="LLM Observability Stack — Procedure" version="1.1.1" est_tokens="1050" depth="essential">
   <summary>Step-by-step procedure for applying `llm-observability-stack`. Each step lists input artifact, action, output artifact. Decision gates live in content/06-decision-tree.xml.</summary>
 
   <section title="Procedure">
@@ -23,20 +23,56 @@
 
     <step n="4" name="wire-instrumentation">
       <input>Provider SDKs in apps.</input>
-      <action>Add openllmetry / openinference / langfuse_handler per provider.</action>
+      <action>Add openllmetry / openinference / langfuse_handler per provider. Instrumentation rules:
+        <list>
+          <item>Wrap every external LLM call in a span; include model name, provider, temperature, max_tokens</item>
+          <item>For streaming responses, record TTFT (time to first token) as a separate metric</item>
+          <item>Record cache hit/miss on every call to track prompt caching effectiveness</item>
+          <item>For agents: create parent span per agent run, child spans per tool call; include iteration count</item>
+        </list>
+      </action>
       <output>Traced apps.</output>
     </step>
 
     <step n="5" name="wire-pricing">
       <input>pricing.yaml + traces.</input>
-      <action>Computes cost_usd per call; promql metric.</action>
+      <action>Computes cost_usd per call; promql metric. Cost tracking patterns:
+        <list>
+          <item>Use pricing.yaml to centralize model costs — never hardcode rates in application code</item>
+          <item>Track cost by team, environment, and feature via span attributes; bill back to owners</item>
+          <item>Budget allocation: production 70%, staging 20%, development 10% of monthly budget</item>
+          <item>Self-hosted break-even: ~30,000 minutes/month (500 GPU-hours); below that use APIs</item>
+        </list>
+      </action>
+      <reference path="templates/pricing.yaml">Model pricing config for cost calculation</reference>
       <output>Cost metric.</output>
     </step>
 
     <step n="6" name="wire-alerts">
       <input>Cost + latency + quality metrics.</input>
-      <action>alert-rules.yaml with page + warn tiers; route to PagerDuty / on-call.</action>
+      <action>alert-rules.yaml with page + warn tiers; route to PagerDuty / on-call. Beyond the r10 baselines:
+        <list>
+          <item>Cost spike: hourly spend &gt;150% of 7-day rolling average → warning</item>
+          <item>Quality drop: average quality score &lt;3.5/5 sustained for 15 minutes → warning</item>
+          <item>Cache hit rate &lt;20% for 30 minutes → info (investigate prompt variation)</item>
+          <item>All critical alerts → PagerDuty; warnings → Slack #llm-alerts channel</item>
+        </list>
+      </action>
+      <reference path="templates/alert-rules.yaml">Prometheus alert rules implementing all thresholds above</reference>
       <output>Alerting wired.</output>
+    </step>
+
+    <step n="7" name="wire-agent-tracing">
+      <input>Agent runtime + r9 parent-trace rule.</input>
+      <action>Agent tracing patterns:
+        <list>
+          <item>Record tool_name, input_args, output_size, and success/error for every tool call span</item>
+          <item>Log intermediate reasoning steps (thought content) as span events, not separate spans</item>
+          <item>Detect loops: flag when the same tool is called with identical args &gt;2 times in one session</item>
+          <item>Store full conversation history in trace metadata for debugging hallucination root causes</item>
+        </list>
+      </action>
+      <output>Hierarchical agent traces with loop detection.</output>
     </step>
   </section>
 </text>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Feedback Management Failure Modes" version="1.1.0" est_tokens="850" depth="essential">
-  <summary>Antipatterns observed when applying feedback management. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Feedback Management Failure Modes" version="1.1.1" est_tokens="1750" depth="essential">
+  <summary>12 antipatterns observed when applying feedback management, including the agent gotchas of LLM-driven triage. Each pairs symptom + root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -34,6 +34,37 @@
       <symptom>Items sit unclassified until the monthly review; by then the reporter has moved on and the verbatim no longer resolves to a reproducible case.</symptom>
       <root-cause source="Practitioner experience">Triage cadence collapsed into the review cadence, so classification runs weeks after capture.</root-cause>
       <fix>Apply rule daily-triage-sla. Classify within 24 hours of capture; the monthly review then ranks an already-clean store.</fix>
+    </antipattern>
+
+    <antipattern id="enhancement-catch-all" severity="medium">
+      <symptom>Agent over-categorizing ambiguous items as "enhancement" (catch-all).</symptom>
+      <root-cause source="v1-source">Enhancement becomes a black hole for uncategorized items. Force "bug" when verbatim contains "broken", "can't", "fails". Force specific topic or reject with request for taxonomy update.</root-cause>
+      <fix>Apply rule fixed-taxonomy; add the forcing heuristics to the triage prompt and reject items that land in the catch-all.</fix>
+    </antipattern>
+    <antipattern id="pii-to-llm" severity="high">
+      <symptom>Sending raw feedback verbatim with emails or account IDs to LLM provider.</symptom>
+      <root-cause source="v1-source">PII in LLM calls may violate GDPR DPA. Strip emails, phone numbers, account IDs with a regex pre-pass or dedicated scrubber agent before any LLM call.</root-cause>
+      <fix>Run the scrubber pre-pass at the classify step (04-procedure step 3 decision gate) before scripts/triage.py.</fix>
+    </antipattern>
+    <antipattern id="raw-vote-counts-as-input" severity="medium">
+      <symptom>Using raw vote counts from Canny or Productboard as prioritization input.</symptom>
+      <root-cause source="v1-source">Vote count correlates poorly with retention impact. One churned enterprise customer who never voted matters more than 50 free users who all voted.</root-cause>
+      <fix>Apply rule segment-weighted-ranking.</fix>
+    </antipattern>
+    <antipattern id="roadmap-promotion-without-review" severity="high">
+      <symptom>Promoting a feedback cluster to roadmap item without human review of the decision.</symptom>
+      <root-cause source="v1-source">Feedback volume may reflect vocal minority, not majority pain. Human checkpoint before roadmap promotion prevents shipping for the wrong users.</root-cause>
+      <fix>Apply rule three-human-checkpoints (checkpoint 2).</fix>
+    </antipattern>
+    <antipattern id="uncalibrated-sentiment-across-locales" severity="medium">
+      <symptom>Running one sentiment model across every locale without calibration.</symptom>
+      <root-cause source="v1-source">Sentiment models misread sarcasm, and they misread mixed-language text — Ukrainian and Ukrainian/English code-switching in particular. An uncalibrated model reports a false sentiment trend, and the trend is what the monthly review acts on. Calibrate per locale, or record sentiment as unknown rather than as neutral.</root-cause>
+      <fix>Calibrate per locale before trusting a sentiment trend; store unknown, never neutral, when uncalibrated.</fix>
+    </antipattern>
+    <antipattern id="bulk-close-loop-send" severity="medium">
+      <symptom>Sending close-loop mail to every historical requester at once when a long-awaited feature ships.</symptom>
+      <root-cause source="v1-source">A bulk send to requesters whose request is a year old reads as marketing rather than as a reply, and it attracts spam complaints that damage the sending domain. Segment the send by recency of the request.</root-cause>
+      <fix>Apply rule draft-and-queue-before-send; segment the queue by request recency before approval.</fix>
     </antipattern>
 
   </section>

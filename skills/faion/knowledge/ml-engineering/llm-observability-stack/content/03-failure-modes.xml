@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="LLM Observability Stack — Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+<text id="03-failure-modes" title="LLM Observability Stack — Failure Modes" version="1.1.1" est_tokens="850" depth="essential">
   <summary>Known antipatterns when applying `llm-observability-stack` in real teams. Each carries symptom (observable), root-cause (detector), and fix (corrective action).</summary>
 
   <section title="Antipatterns">
@@ -25,6 +25,22 @@
       <symptom>Cross-region storage for EU data.</symptom>
       <root-cause>topology=='managed' AND data_origin=='eu' AND vendor_region != 'eu'.</root-cause>
       <fix>Switch to self-host EU (r6).</fix>
+    </antipattern>    <antipattern id="fm-05" severity="medium">
+      <symptom>Sampling all traces at &lt;100% in development.</symptom>
+      <root-cause>Development traffic is low enough to sample at 100%. Sampling misses the exact anomalous call you need to debug. Reserve sampling strategies (e.g., 10%) for high-volume production only.</root-cause>
+      <fix>Set sampler to always_on in dev; sample only in production.</fix>
+    </antipattern>
+
+    <antipattern id="fm-06" severity="medium">
+      <symptom>Using Prometheus counters for LLM cost without per-model labels.</symptom>
+      <root-cause>A single llm_cost_usd counter masks model mix. If GPT-4o spikes while GPT-4o-mini stays flat, an unlabeled counter hides the root cause. Always include model and provider labels.</root-cause>
+      <fix>Label cost metrics with model + provider; derive cost from token counts per r8.</fix>
+    </antipattern>
+
+    <antipattern id="fm-07" severity="high">
+      <symptom>Only alerting on error rate, ignoring quality score drift.</symptom>
+      <root-cause>Quality regressions (relevance drop, hallucination increase) do not surface as HTTP errors. They show up as user churn. Quality alerts require LLM-as-judge sampling running continuously in production.</root-cause>
+      <fix>Add the quality baselines from r10 (hallucination rate, quality score) to alert-rules.yaml.</fix>
     </antipattern>
   </section>
 

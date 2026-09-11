@@ -43,13 +43,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 17 testable rules with rationale + source: llms.txt, robots.txt for AI crawlers, clean URLs, Article/FAQ schema, entity naming, H1/entity structure, cited statistics, Core Web Vitals, freshness, visible author credentials; background: AI crawler identification | ~2550 |
 | `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
-| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
-| `content/01-crawler-config.xml` | recommended | AI Crawler Configuration | ~700 |
-| `content/02-schema-authority.xml` | recommended | Schema Markup and Author Authority for AI | ~650 |
-| `content/03-content-structure.xml` | recommended | Content Structure and Freshness for AI Crawlers | ~750 |
+| `content/05-examples.xml` | recommended | Filled llms.txt and minimal Article schema JSON-LD with author credentials | ~500 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~700 |
 
 ## Task Routing
 

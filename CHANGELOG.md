@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1, batch 3 of 8: ten more slugs folded** — six `marketing`,
+  two `ml-engineering`, two `pm`; 26 files, preservation 0 on each. The pattern
+  the batch made visible: in `ops-customer-success-basics`, `seo-techniques` and
+  `claude-tool-use` the canonical rules were *paraphrases* of the hand-written
+  extras, so the extras' verbatim wording replaced the paraphrase under the
+  existing ids rather than being appended as duplicates. `statistics-basics`,
+  `technical-seo-for-ai`, `threads-growth`, `ops-metrics-basics` and
+  `claude-tool-use` gained a `05-examples.xml` they never had. Thirty down.
+
 - **CR-010 option 1, batch 2 of 8: ten more slugs folded.** Six `ai-agents`
   documents, `ba/process-mining-automation`, `backend/go-http-handlers`,
   `dev/clean-architecture-quality`, `dev/django-pytest`: 23 non-canonical files

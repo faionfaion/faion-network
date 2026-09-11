@@ -48,14 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source (DRI per zone, PM fluency, symmetric blur, depth specialist, quarterly git audit, ratio as hypothesis, one agent role per zone, agent-driven audit); background: the Venn shift and the Ng 2:1 ratio | ~1550 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom/root-cause/fix, including agent gotchas; human-in-the-loop checkpoints | ~1250 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
-| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
-| `content/01-model.xml` | recommended | Overlapping Venn diagram team structure where each role holds fluency in adjacent disciplines, replacing relay-race handoffs. | ~1050 |
-| `content/02-agent-usage.xml` | recommended | How to use role-persona subagents, audit patterns, and key gotchas when AI agents operate in overlapping-role zones. | ~900 |
+| `content/05-examples.xml` | essential | End-to-end worked example; PM good/bad, role-persona subagent good/bad, audit prompt, role-overlap.sh | ~850 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 

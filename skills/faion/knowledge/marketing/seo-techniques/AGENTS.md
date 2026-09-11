@@ -50,13 +50,10 @@
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 5+ testable rules with rationale + skip-this-methodology fallback | 1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the artefact + valid/invalid/forbidden examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
-| `content/05-examples.xml` | essential | One full worked example end-to-end | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix, including keyword cannibalization fixes | 950 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate, plus schema validation workflow, AI-friendly content check, pillar-cluster linking build | 1200 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end; schema type selection and required fields, llms.txt and entity optimization, Open Graph and Twitter Card tag blocks | 1450 |
 | `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
-| `content/01-schema-markup.xml` | recommended | JSON-LD schema patterns for Article, FAQ, Organization, and Breadcrumb types with validation workflow. | 800 |
-| `content/02-ai-optimization.xml` | recommended | llms.txt standard for AI crawler guidance, entity optimization, and content structure for AI citation. | 700 |
-| `content/03-social-meta-and-linking.xml` | recommended | Open Graph and Twitter Card meta tag requirements, pillar-cluster internal linking structure, and keyword cannibalization fixes. | 900 |
 
 ## Task Routing
 

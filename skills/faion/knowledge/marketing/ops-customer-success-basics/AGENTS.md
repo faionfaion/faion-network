@@ -48,15 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard | 1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source; includes skip-this-methodology guard; background: success metric per product type, high-touch vs tech-touch segmentation | 1950 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom / root-cause / fix | 800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end with decision gates | 800 |
-| `content/05-examples.xml` | essential | One worked example from inputs to validated artefact | 700 |
+| `content/05-examples.xml` | essential | One worked example from inputs to validated artefact; onboarding playbooks (SaaS, course), event-triggered touchpoint schedule, health-band at-risk intervention, expansion path | 1400 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
-| `content/01-framework.xml` | recommended | Customer Success Basics — Framework | 850 |
-| `content/02-playbooks.xml` | recommended | Onboarding playbook, at-risk intervention, expansion path, and worked examples for SaaS and course products. | 650 |
-| `content/03-agent-rules.xml` | recommended | Safety rules for CS agents: re-engagement caps, billing autonomy prohibition, sentiment brittleness, PII handling. | 900 |
 
 ## Task Routing
 

@@ -44,15 +44,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 8 testable rules: schema flatness, stop_reason check, max-turns, append full content, parallel exec, errors-as-content, force-tool for typed output, MCP scope | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules: tool descriptions, stop_reason check, max-turns, append full content, parallel exec, errors-as-content, force-tool for typed output, MCP scope; background: tool_choice options, MCP primitives | ~1300 |
 | `content/02-output-contract.xml` | essential | JSON Schema for a tool definition + agent-loop trace format | ~700 |
-| `content/03-failure-modes.xml` | essential | 7 antipatterns: deep nesting, append-text-only, blind indexing, infinite loop, strict additionalProperties, MCP-in-server, thinking-blocks-in-tool_result | ~800 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: deep nesting, append-text-only, blind indexing, infinite loop, strict additionalProperties, MCP-in-server, thinking-blocks-in-tool_result | ~900 |
 | `content/04-procedure.xml` | medium | 6-step procedure: design tool schemas → write executor → write agent loop → set max-turns → handle errors → add forced-tool extraction | ~900 |
+| `content/05-examples.xml` | recommended | Runnable Python per rule: tool definition, stop_reason check, agentic loop, parallel execution, error-as-data, forced-tool extraction (single + array), MCP Desktop config and custom server | ~2100 |
 | `content/06-decision-tree.xml` | essential | Root: "is the model Claude AND ≥1 tool call required?" | ~400 |
-| `content/01-tool-definition.xml` | recommended | Claude tools require a name, description, and JSON Schema input_schema; tool_choice controls whether Claude must call a tool and which one. | ~900 |
-| `content/02-agent-loop.xml` | recommended | Canonical Agentic Loop | ~950 |
-| `content/03-structured-output.xml` | recommended | Structured Output via Tool Forcing | ~700 |
-| `content/04-mcp.xml` | recommended | Model Context Protocol (MCP) | ~550 |
 
 ## Task Routing
 

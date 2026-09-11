@@ -45,13 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules each with rationale + source. | ~900 |
+| `content/01-core-rules.xml` | essential | 11 testable rules each with rationale + source (OTel-first, pinning, PII, pricing.yaml, alert tiers and baselines, EU residency, call-time attribution, token counts, parent trace per agent, platform choice); background: why LLM obs differs, metrics taxonomy, platform comparison, stack selection. | ~2000 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check. | ~800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix. | ~800 |
-| `content/04-procedure.xml` | essential | 6-step procedure: deploy-otel → deploy-langfuse → deploy-prom → wire-instrumentation → wire-pricing → wire-alerts. | ~800 |
-| `content/06-decision-tree.xml` | essential | Branch by deployment topology + integration matrix. | ~400 |
-| `content/01-stack-components.xml` | recommended | LLM Observability Stack Components and Platform Comparison | ~1100 |
-| `content/02-instrumentation-rules.xml` | recommended | Instrumentation rules, production alert thresholds, cost tracking patterns, agent tracing gotchas, and antipatterns. | ~1250 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom/root-cause/fix. | ~850 |
+| `content/04-procedure.xml` | essential | 7-step procedure: deploy-otel → deploy-langfuse → deploy-prom → wire-instrumentation → wire-pricing → wire-alerts → wire-agent-tracing, with instrumentation, cost, alert and agent-tracing checklists. | ~1050 |
+| `content/05-examples.xml` | recommended | OTel collector ports and exporters routing to Langfuse + Prometheus; Docker Compose stack template. | ~250 |
+| `content/06-decision-tree.xml` | essential | Branch by deployment topology + integration matrix. | ~500 |
 
 ## Task Routing
 

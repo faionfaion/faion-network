@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Claude Tool Use Worked Examples" version="1.0.0" est_tokens="2100" depth="recommended">
+  <summary>Runnable code for every rule in 01-core-rules.xml. The agentic loop sends messages with tools, detects stop_reason, executes all tool calls, appends the full response.content as the assistant turn, and repeats until end_turn or max iterations. Forcing a specific tool call with tool_choice is the most reliable way to get typed JSON output from Claude, bypassing the need for prompt engineering + json.loads + retry.</summary>
+
+  <section title="Tool definition (r1)">
+    <example type="good" title="Tool schema with a specific description">
+      <code lang="python"><![CDATA[
+tools = [
+    {
+        "name": "get_weather",
+        "description": "Get current weather for a location. Call this when the user asks about weather conditions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name, e.g., 'Kyiv, Ukraine'"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "Temperature unit"
+                }
+            },
+            "required": ["location"]
+        }
+    }
+]
+]]></code>
+    </example>
+    <reference path="templates/tool-definition.json">Example tool definition with input_schema</reference>
+  </section>
+
+  <section title="stop_reason detection (r2)">
+    <example type="good" title="Detect a tool request">
+      <code lang="python"><![CDATA[
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    messages=[{"role": "user", "content": "What's the weather in Kyiv?"}]
+)
+if response.stop_reason == "tool_use":
+    for block in response.content:
+        if block.type == "tool_use":
+            print(f"Tool: {block.name}, ID: {block.id}, Input: {block.input}")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Canonical agentic loop (r3, r4)">
+    <example type="good" title="Loop with max-turns guard and full-content append">
+      <code lang="python"><![CDATA[
+MAX_TURNS = 15
+messages = [{"role": "user", "content": user_input}]
+
+for _ in range(MAX_TURNS):
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4096,
+        tools=tools,
+        messages=messages
+    )
+    messages.append({"role": "assistant", "content": response.content})
+
+    if response.stop_reason != "tool_use":
+        break
+
+    results = [
+        {"type": "tool_result", "tool_use_id": b.id,
+         "content": execute_tool(b.name, b.input)}
+        for b in response.content if b.type == "tool_use"
+    ]
+    messages.append({"role": "user", "content": results})
+
+final_text = response.content[0].text
+]]></code>
+    </example>
+    <reference path="templates/agent-loop.py">Complete agentic loop with parallel tool execution</reference>
+  </section>
+
+  <section title="Parallel tool execution (r5)">
+    <example type="good" title="Dispatch every tool_use block concurrently">
+      <code lang="python"><![CDATA[
+from concurrent.futures import ThreadPoolExecutor
+
+tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+with ThreadPoolExecutor() as executor:
+    futures = {b.id: executor.submit(execute_tool, b.name, b.input) for b in tool_uses}
+
+results = [
+    {"type": "tool_result", "tool_use_id": bid, "content": f.result()}
+    for bid, f in futures.items()
+]
+messages.append({"role": "user", "content": results})
+]]></code>
+    </example>
+  </section>
+
+  <section title="Tool error handling (r6)">
+    <example type="good" title="Errors returned as data">
+      <code lang="python"><![CDATA[
+import json
+
+def execute_tool(name: str, input_data: dict) -> str:
+    try:
+        if name == "get_weather":
+            return json.dumps({"temperature": 15, "condition": "cloudy"})
+        return json.dumps({"error": f"Unknown tool: {name}"})
+    except Exception as e:
+        return json.dumps({"error": str(e), "tool": name})
+]]></code>
+    </example>
+  </section>
+
+  <section title="Structured output via tool forcing (r7)">
+    <example type="good" title="Forced tool call for typed JSON">
+      <code lang="python"><![CDATA[
+json_tool = {
+    "name": "output_json",
+    "description": "Output the result as structured JSON",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer"},
+            "email": {"type": "string", "format": "email"}
+        },
+        "required": ["name", "age"]
+    }
+}
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=[json_tool],
+    tool_choice={"type": "tool", "name": "output_json"},
+    messages=[{"role": "user", "content": "Extract: John Doe, 30, john@example.com"}]
+)
+
+tool_use = next(b for b in message.content if b.type == "tool_use")
+data = tool_use.input  # {"name": "John Doe", "age": 30, "email": "john@example.com"}
+]]></code>
+    </example>
+    <example type="good" title="Forcing a specific tool (short form)">
+      <code lang="python"><![CDATA[
+# Force a specific tool for structured output extraction
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=[json_tool],
+    tool_choice={"type": "tool", "name": "output_json"},
+    messages=[{"role": "user", "content": "Extract: John Doe, 30, john@example.com"}]
+)
+tool_use = next(b for b in message.content if b.type == "tool_use")
+data = tool_use.input  # typed dict matching the schema
+]]></code>
+    </example>
+    <example type="good" title="Array extraction schema">
+      <code lang="python"><![CDATA[
+extraction_tool = {
+    "name": "extract_users",
+    "description": "Extract user records from text",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "users": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "role": {"type": "string"},
+                        "skills": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["name", "role"]
+                }
+            }
+        },
+        "required": ["users"]
+    }
+}
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514", max_tokens=2048,
+    tools=[extraction_tool],
+    tool_choice={"type": "tool", "name": "extract_users"},
+    messages=[{"role": "user", "content": "Parse: John - Developer (Python, JS)\nSara - Designer (Figma)"}]
+)
+users = next(b for b in message.content if b.type == "tool_use").input["users"]
+]]></code>
+    </example>
+    <reference path="templates/forced-tool-extract.py">Forced-tool extraction script</reference>
+  </section>
+
+  <section title="MCP (r8)">
+    <example type="good" title="Claude Desktop config">
+      <code lang="json"><![CDATA[
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {"GITHUB_TOKEN": "..."}
+    }
+  }
+}
+]]></code>
+      <note>Available official servers: filesystem, github, postgres, sqlite, puppeteer, google-drive, slack, brave-search.</note>
+    </example>
+    <example type="good" title="Custom MCP server">
+      <code lang="python"><![CDATA[
+from mcp.server import Server
+import asyncio
+
+server = Server("my-mcp-server")
+
+@server.tool()
+async def search_docs(query: str) -> str:
+    """Search documentation for query"""
+    return f"Results for: {query}"
+
+@server.resource("docs://readme")
+async def get_readme() -> str:
+    """Project README"""
+    with open("README.md") as f:
+        return f.read()
+
+@server.prompt("analyze-code")
+def analyze_code_prompt(language: str = "python") -> str:
+    """Code analysis prompt template"""
+    return f"Analyze the {language} code for bugs, security issues, and performance."
+
+if __name__ == "__main__":
+    asyncio.run(server.run())
+]]></code>
+    </example>
+  </section>
+</text>
