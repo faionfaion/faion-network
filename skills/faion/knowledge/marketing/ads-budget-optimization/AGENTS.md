@@ -47,16 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 14 testable rules with rationale + source: 70-20-10 partition, efficiency-ratio reallocation, 20% weekly step cap, premature-cut block, monthly rebalance, target CPA from LTV, efficiency ratio (target/actual CPA) as primary metric, never collapse test budget, 2-week learning threshold, 30% scaling increment, stop scaling at +40% CPA, cross-channel by efficiency ratio, incrementality before cutting a channel | ~1900 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
-| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
-| `content/05-examples.xml` | essential | One end-to-end worked example | ~900 |
-| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
-| `content/01-framework.xml` | recommended | Target CPA calculation, efficiency ratio formula, and the 70-20-10 budget allocation rule. | ~600 |
-| `content/02-reallocation.xml` | recommended | Decision matrix by CPA vs target, scaling increment rules, and diminishing returns model. | ~650 |
-| `content/03-cross-channel.xml` | recommended | Comparing efficiency across Meta, Google, and LinkedIn; incrementality consideration; reallocation examples. | ~550 |
-| `content/04-antipatterns.xml` | recommended | Common budget allocation mistakes and their fixes. | ~450 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns (symptom/root-cause/fix): premature cut, single-step doubling, no test reserve, equal distribution, one-step doubling, test budget cut under pressure, 3-4 day cut, CPA without downstream quality | ~1100 |
+| `content/04-procedure.xml` | essential | 5 generic steps plus the monthly rebalance cycle: pacing check, reallocation decision matrix, incrementality pause before channel cuts; weekly-review and monthly-allocation template references | ~1150 |
+| `content/05-examples.xml` | essential | End-to-end worked example plus working formulas and tables: target CPA from LTV, efficiency ratio scale, 70-20-10 tranches, reallocation decision matrix, diminishing returns, pacing formula, cross-channel comparison, one reallocation pass, incrementality outcomes | ~1450 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml: spend, attribution variance, test reserve, step size, CPA-vs-target bands (0.7 / 1.0 / 1.3 / 2.0), CPA increase on scale | ~850 |
 
 ## Task Routing
 

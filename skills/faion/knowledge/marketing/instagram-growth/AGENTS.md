@@ -43,13 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 13 testable rules with rationale + source: single pillar, daily Reels, daily Stories with DM-CTA, DM trigger to lead magnet, voice consistency, Reels over static posts, sound-off hooks, 3-5 hashtags, daily polls and question boxes, DM triggers over link-in-bio, reach-based KPIs, human hook review, Graph API page-level limit | ~1600 |
 | `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations + JSON schema | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/03-failure-modes.xml` | essential | 11 failure modes with detector + repair: Reel gaps, multi-pillar, manual DMs, Stories gaps, voice drift, non-partner DM automation, photos only, erratic cadence, over-edited content, no face on camera, DMs unchecked | ~1450 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | ~700 |
-| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
-| `content/01-reel-strategy.xml` | recommended | Reel optimization rules, weekly content schedule, DM trigger funnel, and engagement routine for Instagram growth. | ~850 |
-| `content/02-growth-metrics.xml` | recommended | KPI benchmarks by growth stage, engagement rate targets, and the most common Instagram growth failure modes. | ~800 |
+| `content/05-examples.xml` | recommended | Weekly posting schedule, DM trigger caption, KPI benchmarks by level; reel-script-batch.txt reference | ~450 |
+| `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions: pillar and batch, DM funnel, hashtag count, sound-off hook | ~450 |
 
 ## Task Routing
 

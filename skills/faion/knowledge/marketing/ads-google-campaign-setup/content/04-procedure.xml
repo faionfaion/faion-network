@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Google Ads Campaign Setup Procedure" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Step-by-step procedure for Google Ads Campaign Setup. Each step lists input, action, output, and a decision-gate to the next step.</summary>
+<text id="04-procedure" title="Google Ads Campaign Setup Procedure" version="1.2.0" est_tokens="2050" depth="essential">
+  <summary>Step-by-step procedure for Google Ads Campaign Setup: the five generic steps, then the account and tracking setup, campaign configuration, the four launch checklists (pre-launch, campaign setup, ad groups and ads, extensions), the go-live gate with `templates/launch-gate.py`, and human-in-loop checkpoints. Each step lists input, action, output, and a decision-gate to the next step.</summary>
 
   <section title="Procedure">
     <step n="1" name="inventory-inputs">
@@ -32,6 +32,64 @@
       <action>Run `scripts/validate-ads-google-campaign-setup.py --file &lt;artefact&gt;`. Resolve violations. Set status to ready_for_review. Notify named consumer.</action>
       <output>Validator OK + status=ready_for_review + handoff note delivered.</output>
       <decision-gate>Validator exit 0? Consumer acknowledged? If no -&gt; fix and re-validate.</decision-gate>
+    </step>
+  </section>
+
+  <section title="Account and tracking setup (before step 4)">
+    <step n="6" name="account-and-tracking">
+      <input>Business goal, GA4 property</input>
+      <action>Create Google Ads account. Link to Google Analytics 4. Create conversion actions (purchase, lead, sign-up, call, install). Install Google Tag (gtag.js) or GTM container.</action>
+      <output>Account with conversion actions and tag installed.</output>
+      <decision-gate>Verify Tag Assistant shows conversions firing before launch. Not firing in the last 24 hours? -&gt; stop (conversion-tracking-first rule).</decision-gate>
+    </step>
+    <step n="7" name="configure-campaign">
+      <input>Campaign spec, campaign type (default Search, see `content/05-examples.xml`)</input>
+      <action>Campaign name: [Product]_[Type]_[Goal]_[Date] — enforced via regex. Networks: Search only (disable Display and Search Partners explicitly). Locations: target market specifically (use geoTargetConstants/&lt;id&gt;, not country name strings). Languages: match content language. Bidding: Maximize Conversions (no target CPA) for first 30 conversions. Budget: minimum $20-50/day; $1/day budget signals a unit error (1,000,000 micros = $1). Status: always create as PAUSED; require explicit go-live step.</action>
+      <output>PAUSED campaign with every setting explicit (every-setting-explicit rule).</output>
+      <decision-gate>amount_micros == dollars * 1,000,000 and all three network flags false? If no -&gt; fix before ad groups.</decision-gate>
+    </step>
+  </section>
+
+  <section title="Launch checklists (expand step 5)">
+    <step n="8" name="checklist-pre-launch">
+      <input>Account state</input>
+      <action>Conversion tracking installed and verified firing in last 24 hours. Google Analytics 4 linked to Google Ads account. Remarketing audience created from website visitors. Campaign spec YAML/JSON written and validated against schema.</action>
+      <output>Four pre-launch items ticked in `templates/campaign-checklist.md`.</output>
+      <decision-gate>Any item unticked? If yes -&gt; do not create the campaign.</decision-gate>
+    </step>
+    <step n="9" name="checklist-campaign-setup">
+      <input>Created campaign</input>
+      <action>Campaign type: Search. Network: Search only (Display and Search Partners explicitly disabled). Locations: geoTargetConstants/&lt;id&gt; format (not country name strings). Languages: configured explicitly. Budget: set in micros (dollars * 1,000,000). Bidding: Maximize Conversions, no Target CPA for first 30 conversions. Status: PAUSED. start_date and end_date: set explicitly (default end_date is forever).</action>
+      <output>Eight campaign-setup items ticked.</output>
+      <decision-gate>Any item unticked? If yes -&gt; fix the campaign resource, re-run.</decision-gate>
+    </step>
+    <step n="10" name="checklist-ad-groups-and-ads">
+      <input>Ad groups, RSAs</input>
+      <action>One ad group per keyword theme. 10-20 keywords per ad group, same intent. Minimum 1 RSA per ad group with 15 headlines and 4 descriptions. Headline character limits validated (30 chars each). Description character limits validated (90 chars each). Keyword included in at least one headline per RSA.</action>
+      <output>Six ad-group items ticked; Ad Strength Good or Excellent per RSA.</output>
+      <decision-gate>Any RSA under 15 headlines or over character limits? If yes -&gt; reject the ad (rsa-15-headlines-required rule).</decision-gate>
+    </step>
+    <step n="11" name="checklist-extensions">
+      <input>Account or campaign assets</input>
+      <action>Sitelinks: 4-6 at account or campaign level. Callouts: 4-6 at account or campaign level. Structured snippets: at least one category. Images: logo and product images. Extensions use Asset resources (not deprecated Extension resources).</action>
+      <output>Five extension items ticked.</output>
+      <decision-gate>Any asset created through the Extension service? If yes -&gt; recreate as Asset (asset-resources-not-extension-service rule).</decision-gate>
+    </step>
+    <step n="12" name="go-live-gate">
+      <input>All checklist outputs</input>
+      <action>Run `templates/launch-gate.py`; require all items to pass (launch-gate-all-pass rule); then obtain human approval and flip status to ENABLED.</action>
+      <output>Gate report attached to the artefact; campaign ENABLED.</output>
+      <decision-gate>Gate exit 0 and human approval recorded? If no -&gt; campaign stays PAUSED.</decision-gate>
+    </step>
+    <reference path="templates/launch-gate.py">Pre-flight check script: validates RSA count, network settings, budget unit, conversion tracking</reference>
+  </section>
+
+  <section title="Human-in-loop checkpoints">
+    <step n="13" name="human-checkpoints">
+      <input>Any proposed change to a live campaign</input>
+      <action>Enabling the campaign (status ENABLED): human approval required. Raising budget by more than 25%: human approval required. Switching bid strategy: human approval required. Opening a new geographic target: human approval required. Removing extensions: human approval required.</action>
+      <output>Named approval recorded before the API mutate call.</output>
+      <decision-gate>Approval present for the triggered checkpoint? If no -&gt; do not mutate.</decision-gate>
     </step>
   </section>
 </text>

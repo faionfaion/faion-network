@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Google Performance Max Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
-  <summary>5 testable rules grounding the google-pmax methodology. Each rule pairs a binary check with a sourced rationale.</summary>
+<text id="01-core-rules" title="Google Performance Max Core Rules" version="1.2.0" est_tokens="2800" depth="essential">
+  <summary>20 testable rules grounding the google-pmax methodology — the 30-conversion floor, 3+ asset groups, audience signals, brand negatives, value priority, then campaign creation (PAUSED first, account-level goals, asset minimums, HTTPS final URLs, upload-then-link), audience and bidding (customer-match primary, 14 days / 30 conversions before targets, 3x CPA budget, label-lagged asset refresh) and API discipline (customer_id format, MCC header, pinned API version, budget micros, validated conversion action). Each rule pairs a binary check with a sourced rationale.</summary>
   <section title="Rule set">
     <rule id="pmax-30-conv-floor" testable="true" depth="essential">
       <statement>PMax MUST NOT be enabled below 30 conversions/month at the account level.</statement>
@@ -21,6 +21,69 @@
     <rule id="value-priority-on-events" testable="true" depth="essential">
       <statement>Conversion events used by PMax MUST be assigned value priority (Purchase &gt; Lead &gt; SignUp) or all-or-nothing primary event marking.</statement>
       <rationale source="v1-source: value priority">Equal-weight events skew toward low-value conversions.</rationale>
+    </rule>
+    <p>Creating a Performance Max campaign via the Google Ads API, setting up asset groups, and meeting minimum asset count requirements before submission.</p>
+    <rule id="pmax-paused-first" testable="true" depth="essential">
+      <statement>Always create PMax campaigns with status PAUSED; require explicit human approval before enabling.</statement>
+      <rationale source="Google Ads API campaign status docs">PMax starts spending immediately upon enable. A paused-first approach gives time to validate asset counts, conversion goals, and URL expansion settings before budget flows.</rationale>
+    </rule>
+    <rule id="account-level-conversion-goals" testable="true" depth="essential">
+      <statement>Configure conversion goals at the account level before creating a PMax campaign; PMax silently optimizes for the wrong action if account-level goals are not set correctly.</statement>
+      <rationale source="Google Ads PMax conversion goals docs">Unlike Search campaigns that can target specific conversion actions, PMax uses account-level conversion goals. Wrong goals produce campaigns that optimize for micro-conversions (e.g., page views) instead of purchases.</rationale>
+    </rule>
+    <rule id="asset-minimums-validated" testable="true" depth="essential">
+      <statement>Validate minimum asset counts before submitting an asset group: 5 headlines (30 chars), 5 long headlines (90 chars), 4 descriptions (90 chars), 4 marketing images. Campaigns go nowhere without meeting minimums.</statement>
+      <rationale source="Google Ads PMax asset requirements">PMax campaigns with fewer than the minimum asset counts per type cannot enter the auction for placements that require those assets. The campaign runs but delivers zero impressions on major inventory.</rationale>
+    </rule>
+    <rule id="final-urls-https" testable="true" depth="essential">
+      <statement>final_urls must use HTTPS; HTTP URLs fail with a generic auth error that does not indicate the scheme problem.</statement>
+      <rationale source="Google Ads destination URL policy">Google requires HTTPS for all ad destination URLs. The error message for HTTP URLs is misleading, making this a time-consuming bug to diagnose.</rationale>
+    </rule>
+    <rule id="upload-assets-before-linking" testable="true" depth="essential">
+      <statement>Upload image assets first via mutate_assets, then reference their resource names in asset group asset operations; assets and asset groups cannot be created in the same API call.</statement>
+      <rationale source="Google Ads API AssetService reference">Asset resources must exist before they can be linked to an asset group. Agents that attempt to create and link in one step receive resource-not-found errors.</rationale>
+    </rule>
+    <p>Adding audience signals, bidding strategy progression from Maximize Conversions to Target CPA/ROAS, learning phase rules, and asset refresh cadence.</p>
+    <rule id="customer-match-primary-signal" testable="true" depth="essential">
+      <statement>Use your best-converting customer-match list as the primary audience signal; generic interest segments are much less effective at guiding PMax's optimizer.</statement>
+      <rationale source="Google Ads PMax audience signals docs">PMax weights converter-similarity heavily. A customer-match list of actual buyers gives the optimizer strong signal. Interest segments give broad demographic hints that PMax often ignores.</rationale>
+    </rule>
+    <rule id="max-conv-14-days-30-conv" testable="true" depth="essential">
+      <statement>Run Maximize Conversions without a target for at least 14 days and 30+ conversions; then switch to Target CPA or Target ROAS.</statement>
+      <rationale source="Smart bidding documentation">Setting a target CPA/ROAS before sufficient data forces the bidder to over-fit on sparse conversions. The learning phase needs unconstrained data collection to train the model.</rationale>
+    </rule>
+    <rule id="budget-3x-target-cpa" testable="true" depth="essential">
+      <statement>Keep daily budget at minimum 3x target CPA; below this, PMax stalls on auction-bidding constraints and cannot exit learning.</statement>
+      <rationale source="Smart bidding documentation">PMax needs budget headroom to explore inventory and conversion paths. A budget too close to the target CPA eliminates any exploration margin and traps the campaign in learning indefinitely.</rationale>
+    </rule>
+    <rule id="asset-refresh-quarterly-label-lag" testable="true" depth="essential">
+      <statement>Replace LOW-labeled assets at least quarterly; do not trigger creative swap on performance labels under 7 days old since labels lag 7-14 days.</statement>
+      <rationale source="Google Ads asset performance labels docs">Asset performance labels have a 7-14 day lag. Swapping assets on day 3 based on PENDING or early LOW labels churns creative unnecessarily and disrupts the optimizer's learning.</rationale>
+    </rule>
+    <rule id="brand-negatives-account-level" testable="true" depth="essential">
+      <statement>Add account-level negative keywords for brand terms to prevent PMax from cannibalizing branded Search campaigns.</statement>
+      <rationale source="v1-source: brand negatives">PMax and branded Search campaigns compete in the same auction. Without brand exclusions, PMax steals credit for high-intent branded queries at higher cost than a dedicated Search campaign.</rationale>
+    </rule>
+    <p>Google Ads API-specific failure modes for Performance Max campaigns, including enums, customer_id format, and multi-account considerations.</p>
+    <rule id="customer-id-unhyphenated" testable="true" depth="essential">
+      <statement>customer_id must be provided as an unhyphenated 10-digit string (e.g., "1234567890"); the hyphenated form from the UI ("123-456-7890") causes authentication errors.</statement>
+      <rationale source="Google Ads API client docs">The Google Ads API does not accept hyphenated customer IDs. Agents that copy-paste from the UI clipboard will silently fail with confusing auth-related error messages.</rationale>
+    </rule>
+    <rule id="mcc-login-customer-id" testable="true" depth="essential">
+      <statement>MCC accounts require the login-customer-id header set to the MCC account ID in the API client; omitting it causes 401 errors on all child account calls.</statement>
+      <rationale source="Google Ads API authentication docs">Multi-account agents accessing child accounts must authenticate through the MCC. Without the login-customer-id header, calls fail at the authentication layer before reaching the campaign logic.</rationale>
+    </rule>
+    <rule id="pin-api-version" testable="true" depth="essential">
+      <statement>Pin the Google Ads API version and refresh client stubs when bumping versions; asset field type enums change across versions (e.g., MARKETING_IMAGE vs LANDSCAPE_LOGO naming).</statement>
+      <rationale source="Google Ads API release notes">PMax asset type enums are updated as Google adds new asset types. An agent using enum values from a deprecated version will receive INVALID_ARGUMENT errors that do not name the changed field.</rationale>
+    </rule>
+    <rule id="budget-micros-convention" testable="true" depth="essential">
+      <statement>PMax budget amount_micros uses Google Ads conventions: $50/day = 50,000,000 micros (multiply by 1,000,000). LinkedIn costs are decimal floats — do not mix unit systems across platforms.</statement>
+      <rationale source="Google Ads API CampaignBudget reference">Agents working across Google and LinkedIn in the same session commonly apply the wrong unit convention. $50 submitted as 50 to Google Ads creates a $0.000050/day budget that generates zero impressions.</rationale>
+    </rule>
+    <rule id="validate-conversion-action-30-days" testable="true" depth="essential">
+      <statement>Before creating a PMax campaign, validate that at least one conversion action with include_in_conversions_metric=True exists at the account level and has received conversions in the last 30 days.</statement>
+      <rationale source="Google Ads PMax conversion goals docs">PMax silently optimizes for the best available conversion action. If the account has no active conversion actions, or only micro-conversions, the campaign will optimize for meaningless events.</rationale>
     </rule>
   </section>
   <see-also>

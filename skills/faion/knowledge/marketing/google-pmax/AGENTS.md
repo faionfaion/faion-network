@@ -49,15 +49,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules for google-pmax | 1200 |
+| `content/01-core-rules.xml` | essential | 20 testable rules for google-pmax: 30-conversion floor, 3+ asset groups, audience signals, brand negatives, value priority; campaign creation (PAUSED first, account-level goals, asset minimums, HTTPS final URLs, upload-then-link); audience and bidding (customer-match primary signal, 14 days / 30 conversions before targets, 3x CPA budget, label-lagged asset refresh); API discipline (unhyphenated customer_id, MCC login-customer-id, pinned API version, budget micros, validated conversion action) | 2800 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure | 950 |
-| `content/05-examples.xml` | medium | One worked end-to-end example | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref | 500 |
-| `content/01-campaign-asset-groups.xml` | recommended | Creating a Performance Max campaign via the Google Ads API, setting up asset groups, and meeting minimum asset count requirements before submission. | 900 |
-| `content/02-audience-signals-bidding.xml` | recommended | Adding audience signals, bidding strategy progression from Maximize Conversions to Target CPA/ROAS, learning phase rules, and asset refresh cadence. | 850 |
-| `content/03-agent-rules.xml` | recommended | Google Ads API-specific failure modes for Performance Max campaigns, including enums, customer_id format, and multi-account considerations. | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix: launch below data floor, brand cannibalization, single asset group, audience signals treated as hard limits | 550 |
+| `content/04-procedure.xml` | essential | 5-step procedure plus the API build sequence (create PAUSED campaign, upload and link assets), bidding progression timeline, asset refresh loop with `templates/asset-audit.py`, and four human-in-loop checkpoints | 1250 |
+| `content/05-examples.xml` | medium | One worked end-to-end example plus the asset group minimum-count table and the audience signal stack | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule ref: preconditions, product feed, customer_id / MCC header, asset minimums and HTTPS, premature targets, budget below 3x CPA | 550 |
 
 ## Task Routing
 

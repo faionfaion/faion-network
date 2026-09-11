@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Google Performance Max Procedure" version="1.1.0" est_tokens="950" depth="essential">
-  <summary>5-step procedure to apply this methodology end-to-end.</summary>
+<text id="04-procedure" title="Google Performance Max Procedure" version="1.2.0" est_tokens="1250" depth="essential">
+  <summary>5-step procedure to apply this methodology end-to-end, then the API build sequence (create PAUSED campaign, upload and link assets), the bidding progression timeline, the asset refresh loop with `templates/asset-audit.py`, and human-in-loop checkpoints.</summary>
   <section title="Procedure">
     <step n="1" name="verify-floor">
       <input>Conversion history</input>
@@ -27,6 +27,41 @@
       <input>Conversion event list</input>
       <action>Priority + value (Purchase &gt; Lead &gt; SignUp).</action>
       <output>Value priority block.</output>
+    </step>
+  </section>
+  <section title="API build sequence (after step 5)">
+    <step n="6" name="create-campaign-paused">
+      <input>Account with validated conversion action (validate-conversion-action-30-days rule), unhyphenated customer_id, MCC header if applicable</input>
+      <action>advertising_channel_type: PERFORMANCE_MAX. Bidding: maximize_conversions (no target_cpa_micros) for first 30 conversions. url_expansion_opt_out: True for lead-gen; False for e-commerce with clean site. Budget: minimum 3x target CPA daily in micros (dollars * 1,000,000). start_date and end_date: set explicitly. Status: PAUSED (pmax-paused-first rule).</action>
+      <output>PAUSED PMax campaign resource name.</output>
+      <decision-gate>amount_micros == dollars * 1,000,000 and at least 3x target CPA? If no -&gt; fix before asset groups.</decision-gate>
+    </step>
+    <step n="7" name="upload-and-link-assets">
+      <input>Asset spec per themed group (`templates/asset-spec.md`; minimums in `content/05-examples.xml`)</input>
+      <action>Upload image assets via mutate_assets; then create the asset group and link asset resource names in asset group asset operations (upload-assets-before-linking rule). final_urls HTTPS only.</action>
+      <output>≥3 asset groups, each meeting minimum asset counts (asset-minimums-validated rule).</output>
+      <decision-gate>Any type below minimum or any HTTP final_url? If yes -&gt; the group cannot enter the auction; fix before enabling.</decision-gate>
+    </step>
+    <step n="8" name="bidding-progression">
+      <input>Enabled campaign (after human approval), conversion count</input>
+      <action>Days 1-14: Maximize Conversions, no target — unconstrained exploration. After 30+ conversions: add Target CPA or Target ROAS. Weeks 1-6: minimize pauses and restarts — each restart resets the 4-6 week learning clock.</action>
+      <output>Bidding strategy change log with dates and conversion counts.</output>
+      <decision-gate>14 days AND 30+ conversions reached (max-conv-14-days-30-conv rule)? If no -&gt; keep the target off.</decision-gate>
+    </step>
+    <step n="9" name="asset-refresh">
+      <input>Asset performance labels older than 7 days</input>
+      <action>Run `templates/asset-audit.py` weekly; replace LOW-labeled assets at least quarterly; ignore labels under 7 days old (asset-refresh-quarterly-label-lag rule).</action>
+      <output>Refresh decision per asset type.</output>
+      <decision-gate>Swap touches more than 50% of current assets? If yes -&gt; human review first.</decision-gate>
+    </step>
+    <reference path="templates/asset-audit.py">Pull asset performance labels (BEST/GOOD/LOW/PENDING) grouped by asset type for weekly refresh decisions</reference>
+  </section>
+  <section title="Human-in-loop checkpoints">
+    <step n="10" name="human-checkpoints">
+      <input>Any proposed change to the campaign</input>
+      <action>Enabling the campaign: human brand-safety review of generated copy required. Changing target ROAS or target CPA: human approval required. Toggling URL expansion: human approval required. Any asset swap touching more than 50% of current assets: human review required.</action>
+      <output>Named approval recorded before the mutate call.</output>
+      <decision-gate>Approval present for the triggered checkpoint? If no -&gt; do not mutate.</decision-gate>
     </step>
   </section>
 </text>

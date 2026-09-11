@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Ads Attribution Models Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Antipatterns observed in real deployments of Ads Attribution Models. Each pairs symptom + sourced root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Ads Attribution Models Failure Modes" version="1.2.0" est_tokens="1800" depth="essential">
+  <summary>12 antipatterns observed in real deployments of Ads Attribution Models — platform sums as truth, no incrementality tests, definition drift, raw cross-platform comparison, short or disturbed incrementality tests, last-click only, ignored view-through, and four LLM-agent gotchas (narrating noise, unlabeled tables, timezone mixing, point estimates without CIs). Each pairs symptom + sourced root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern id="platform-sum-truth" severity="high">
@@ -17,6 +17,51 @@
       <symptom>Conversion window changed mid-quarter; apparent 25% variance triggers false alarm.</symptom>
       <root-cause source="Analytics-governance practice">definition-stability rule violated.</root-cause>
       <fix>Freeze definitions quarterly; document change windows; communicate to reviewers.</fix>
+    </antipattern>
+    <antipattern id="raw-cross-platform-comparison" severity="high">
+      <symptom>Comparing platform-reported conversions directly across channels to determine which channel is "winning."</symptom>
+      <root-cause source="Multi-channel attribution literature">Platform totals are not deduplicated. A user clicking both Meta and Google appears in both reports as a unique conversion. The comparison is meaningless without a unified view.</root-cause>
+      <fix>Compare channels only in the GA4 or warehouse-deduped view (deduped-view-for-cross-channel rule); keep platform numbers for in-platform optimization.</fix>
+    </antipattern>
+    <antipattern id="short-or-disturbed-incrementality-test" severity="high">
+      <symptom>Running an incrementality test for less than 2 weeks or adjusting budgets during the test.</symptom>
+      <root-cause source="Incrementality testing literature">Insufficient runtime produces statistically noisy results. Mid-test budget changes alter the treatment condition and make the holdout comparison invalid.</root-cause>
+      <fix>Pre-register a 4-week minimum and freeze budgets and targeting for the whole window (incrementality-four-weeks-frozen rule); restart the test if either is broken.</fix>
+    </antipattern>
+    <antipattern id="platform-totals-for-budget" severity="high">
+      <symptom>Trusting platform-reported totals for cross-channel budget decisions.</symptom>
+      <root-cause source="Multi-channel attribution literature">Platform totals are over-counted by 20-40% due to cross-channel overlap. Decisions based on them systematically overspend on channels that appear more efficient than they are.</root-cause>
+      <fix>Route every budget decision through the deduped source of truth and the three-numbers-per-channel variance check.</fix>
+    </antipattern>
+    <antipattern id="last-click-only" severity="medium">
+      <symptom>Using last-click as the sole attribution model for a multi-touch journey.</symptom>
+      <root-cause source="Multi-channel attribution literature">Last-click assigns zero credit to all upper-funnel touchpoints, leading to systematic under-investment in awareness and consideration channels.</root-cause>
+      <fix>Select the model by sales cycle and conversion volume (model-by-sales-cycle rule); keep last-click only as a secondary comparison view.</fix>
+    </antipattern>
+    <antipattern id="view-through-ignored" severity="medium">
+      <symptom>Ignoring view-through attribution entirely.</symptom>
+      <root-cause source="Display / video attribution practice">Display and video channels drive brand recall that appears as direct traffic. Excluding view-through undervalues awareness spend.</root-cause>
+      <fix>Report view-through separately with its window labeled; validate awareness channels with geo-holdout rather than dropping them.</fix>
+    </antipattern>
+    <antipattern id="agent-narrates-noise" severity="medium">
+      <symptom>Agent explains small variances (under 15%) with elaborate narratives before a minimum-variance threshold is met.</symptom>
+      <root-cause source="Cross-channel attribution audit Q4 2025">Small variances are noise from lookback window differences, timezone offsets, and sampling. Narratives on noise mislead decision-makers.</root-cause>
+      <fix>Report sub-15% variance as "within noise" with no narrative; investigate and narrate only above the threshold (variance-threshold-15 rule).</fix>
+    </antipattern>
+    <antipattern id="agent-unlabeled-comparison-table" severity="medium">
+      <symptom>Agent presents platform-reported and GA4-modeled numbers side-by-side as comparable values without labeling the model and window for each.</symptom>
+      <root-cause source="Meta / Google Ads / GA4 attribution settings docs">They use different lookback windows and deduplication logic. An unlabeled table implies comparability where none exists.</root-cause>
+      <fix>Every column carries model + window in its header (document-platform-defaults rule); tables without labels are rejected at review.</fix>
+    </antipattern>
+    <antipattern id="agent-timezone-mixing" severity="medium">
+      <symptom>Agent computes a single "today" number using GA4 property timezone and Google Ads account timezone interchangeably.</symptom>
+      <root-cause source="GA4 / Google Ads timezone docs">GA4 uses property timezone; Google Ads uses account timezone. These can differ by hours and produce off-by-one date errors in daily reports.</root-cause>
+      <fix>Normalize every source to one reporting timezone in the pipeline before any daily rollup; record the source timezone per row.</fix>
+    </antipattern>
+    <antipattern id="agent-point-estimates-without-ci" severity="medium">
+      <symptom>Agent reports data-driven attribution point estimates without confidence intervals or sample-size caveats.</symptom>
+      <root-cause source="Data-driven attribution documentation">Data-driven models have uncertainty that grows with low conversion volume. Point estimates without CIs create false precision and overconfident recommendations.</root-cause>
+      <fix>Attach conversion volume per channel and a confidence interval or "insufficient volume" flag to every data-driven share; below 50 conversions/channel/month, fall back to a rule-based model.</fix>
     </antipattern>
   </section>
 </text>

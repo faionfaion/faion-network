@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1, batch 4 of 8: the paid-ads family and four more** —
+  `ads-analytics-setup`, `ads-attribution-models`, `ads-budget-optimization`,
+  `ads-conversion-tracking`, `ads-google-campaign-setup`, `google-pmax`,
+  `google-ai-overviews-optimization`, `instagram-growth`, `ops-churn-basics`,
+  `llm-integration/semantic-xml-content`; 30 files, preservation 0 on each. This
+  is where CR-010's own headline example lives: `01-ga4-setup.xml`'s custom-
+  dimension limits, `transaction_id` dedup and the BigQuery-cannot-backfill trap
+  are now rules in `01-core-rules.xml` and steps in `04-procedure.xml`, where
+  `--parts` can reach them.
+
+  One thing the fold surfaced rather than caused: `ads-budget-optimization` now
+  holds two verbatim rules that disagree — a hand-written "no more than 30% in a
+  single step, wait 3-5 days" beside the canonical "no more than 20% per week".
+  Both sentences are kept (the preservation rule forbids rewriting either); the
+  20% rule's rationale now says the two sources disagree and the stricter one
+  governs until the owner reconciles them. Better a visible disagreement than a
+  silently chosen number.
+
 - **CR-010 option 1, batch 3 of 8: ten more slugs folded** — six `marketing`,
   two `ml-engineering`, two `pm`; 26 files, preservation 0 on each. The pattern
   the batch made visible: in `ops-customer-success-basics`, `seo-techniques` and

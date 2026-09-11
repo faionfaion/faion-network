@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Ads Conversion Tracking Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Testable rules every application of Ads Conversion Tracking MUST enforce. Rationale + source per rule. Rules referenced by id from `content/06-decision-tree.xml`.</summary>
+<text id="01-core-rules" title="Ads Conversion Tracking Core Rules" version="1.2.0" est_tokens="1800" depth="essential">
+  <summary>13 testable rules every application of Ads Conversion Tracking MUST enforce — server-side alongside pixel, event_id dedup, attribution window by sales cycle, $ value per event (dynamic for purchases), verification before spend, macro + micro conversions, pixel base code on every page, manual test of every conversion type. Rationale + source per rule. Rules referenced by id from `content/06-decision-tree.xml`.</summary>
 
   <section title="Rule set">
     <rule id="server-side-mandatory" testable="true" depth="essential">
@@ -23,6 +23,38 @@
       <statement>Every event MUST pass DebugView + CRM-cross-check before campaigns go live. Un-verified events run silent.</statement>
       <rationale source="GA4 / Meta debug docs">Silent broken events cost full-month budget before discovery.</rationale>
     </rule>
+    <p>Macro vs micro conversion taxonomy, value assignment methods, and event name mapping across Meta, Google, and LinkedIn.</p>
+    <rule id="macro-and-micro-conversions" testable="true" depth="essential">
+      <statement>Always track both macro conversions (primary business goal) and micro conversions (funnel steps) — micro conversions provide optimization signal when macro volume is too low for smart bidding.</statement>
+      <rationale source="Smart bidding documentation">Smart bidding requires 30-50 conversions per week to function; new campaigns rarely achieve this on macro events alone. Micro conversions (add-to-cart, pricing page view) fill the signal gap during ramp-up.</rationale>
+    </rule>
+    <rule id="dynamic-purchase-values" testable="true" depth="essential">
+      <statement>Pass dynamic purchase values whenever possible — static values prevent Target ROAS bidding from optimizing for high-value orders over low-value ones.</statement>
+      <rationale source="Smart bidding documentation">Static values make all conversions look equal to the algorithm; with dynamic values, bidding can allocate more spend toward user segments that produce larger orders.</rationale>
+    </rule>
+    <p>Meta Pixel and Google Ads tag installation snippets with standard event JavaScript calls.</p>
+    <rule id="pixel-base-code-every-page" testable="true" depth="essential">
+      <statement>Install the Meta Pixel base code on every page of the site, not just conversion pages.</statement>
+      <rationale source="Meta Pixel docs">The base code enables audience building from all page visitors, not just converters — required for website custom audiences and retargeting.</rationale>
+    </rule>
+    <p>Meta Conversions API Node.js implementation, deduplication with browser events, and Google offline conversion flow.</p>
+    <rule id="server-side-alongside-pixel" testable="true" depth="essential">
+      <statement>Always implement server-side tracking alongside browser pixels — never rely on browser pixels alone.</statement>
+      <rationale source="Meta CAPI / Google enhanced conversions docs">Ad blockers, iOS App Tracking Transparency, and browser privacy features block 20-40% of browser pixel events. Server-side events pass directly from your server, bypassing all browser restrictions, and can include richer user data for better match rates.</rationale>
+    </rule>
+    <rule id="event-id-matches-both-sides" testable="true" depth="essential">
+      <statement>Set matching event_id values in both the browser fbq() call and the CAPI server event — mismatched IDs cause double-counting, inflating reported conversions by up to 2x.</statement>
+      <rationale source="Meta CAPI deduplication docs">Meta deduplicates events within a 48-hour window when event_id matches; without this, the algorithm sees twice the conversions and bids accordingly, wasting budget.</rationale>
+    </rule>
+    <p>Verification tools per platform, testing process, and attribution window configuration.</p>
+    <rule id="manual-test-every-conversion-type" testable="true" depth="essential">
+      <statement>Test every conversion type manually before launch — never rely on code review alone to confirm events fire in production.</statement>
+      <rationale source="Meta / Google tag diagnostics docs">CSP headers, async loading conflicts, and SPA routing all cause pixel silencing in production that is invisible in staging environments.</rationale>
+    </rule>
+    <rule id="window-matches-sales-cycle" testable="true" depth="essential">
+      <statement>Set attribution windows to match your product's typical sales cycle — a B2B SaaS with a 30-day trial should use a 30-day click window, not 7 days.</statement>
+      <rationale source="GA4 / platform attribution docs">Shorter windows than the sales cycle under-attribute conversions to ads, making campaigns appear less efficient and causing premature budget cuts on campaigns that are actually working.</rationale>
+    </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If applicability preconditions are unmet (see AGENTS.md Skip If), the methodology MUST be skipped and a one-line skip-reason logged.</statement>
       <rationale source="F-066 decision-tree convention">A named skip terminal keeps decision-tree leaves resolvable and prevents silent misuse on misfit inputs.</rationale>
@@ -32,6 +64,8 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

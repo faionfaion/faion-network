@@ -46,13 +46,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 25 testable rules with rationale + source: six hard gate rules (direct answer, Article + FAQ schema, 30-day freshness, entity consistency, author credentials, GSC tracking), extraction rules (answer placement and length, heading hierarchy, standalone headings, entity definition and naming, inline statistic citations, short paragraphs / lists / tables, plain language), schema and freshness (Article fields, FAQPage verbatim, Author schema, 30-day cycle, no cosmetic dateModified), authority (topical clusters, diverse citations), tracking (GSC primary, monthly/weekly monitoring, top-5 citation benchmark) | ~3000 |
 | `content/02-output-contract.xml` | essential | JSON schema, valid + invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | Antipatterns with symptom + root cause + fix | ~800 |
-| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
-| `content/01-extraction-rules.xml` | recommended | AI Overview Extraction Rules | ~1000 |
-| `content/02-schema-and-freshness.xml` | recommended | Schema Markup and Freshness Signals | ~1000 |
-| `content/03-tracking-and-antipatterns.xml` | recommended | Tools and workflow for tracking AI Overview citation performance, and antipatterns that agents commonly introduce during optimization work. | ~900 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns with symptom + root cause + fix: five artefact-discipline failures, cosmetic dateModified bumps, FAQ schema not matching visible text, likelihood scores without SERP data, unchecked statistics, structural rewrites that drift from fact | ~1450 |
+| `content/05-examples.xml` | recommended | Answer placement good/bad HTML, Article JSON-LD block, tracking tool inventory (GSC, Semrush, Otterly, Profound, Ahrefs); gsc-fetch.sh and content-audit-prompt.txt references | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies: direct-answer blocks, FAQ schema, freshness, buried answers, uncited statistics, cosmetic dateModified, unbenchmarked citations; YMYL and navigational skips | ~700 |
 
 ## Task Routing
 

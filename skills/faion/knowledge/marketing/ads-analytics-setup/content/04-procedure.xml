@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Ads Analytics Setup Procedure" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Step-by-step procedure for Ads Analytics Setup. Each step lists input, action, output, and a decision-gate to the next step.</summary>
+<text id="04-procedure" title="Ads Analytics Setup Procedure" version="1.2.0" est_tokens="1550" depth="essential">
+  <summary>Step-by-step procedure for Ads Analytics Setup: the five generic steps, then the GA4 property setup sequence, conversion configuration, and human-in-loop checkpoints that step 4 (draft-artefact) expands into. Each step lists input, action, output, and a decision-gate to the next step.</summary>
 
   <section title="Procedure">
     <step n="1" name="inventory-inputs">
@@ -33,5 +33,54 @@
       <output>Validator OK + status=ready_for_review + handoff note delivered.</output>
       <decision-gate>Validator exit 0? Consumer acknowledged? If no -&gt; fix and re-validate.</decision-gate>
     </step>
+  </section>
+
+  <section title="GA4 property setup sequence (expands step 4)">
+    <step n="6" name="create-property">
+      <input>Event spec (event-spec-before-code rule satisfied)</input>
+      <action>Create GA4 property in Google Analytics admin</action>
+      <output>Get Measurement ID (G-XXXXXXXXXX)</output>
+      <decision-gate>Measurement ID recorded in the artefact? If no -&gt; stop.</decision-gate>
+    </step>
+    <step n="7" name="install-tag">
+      <input>Measurement ID</input>
+      <action>Install via Google Tag Manager (recommended) or direct gtag.js</action>
+      <output>Tag firing on every page template.</output>
+      <decision-gate>gtag('config') runs before any gtag('event')? If no -&gt; fix load order (gtag-config-before-event rule).</decision-gate>
+    </step>
+    <step n="8" name="enhanced-measurement">
+      <input>Installed tag</input>
+      <action>Enable enhanced measurement (page views, scrolls, outbound clicks, file downloads, video engagement)</action>
+      <output>Enhanced measurement toggles documented in the artefact settings.</output>
+      <decision-gate>Any toggle conflicts with a custom event in the spec? If yes -&gt; disable that toggle.</decision-gate>
+    </step>
+    <step n="9" name="link-integrations">
+      <input>Live property</input>
+      <action>Link to Google Ads, BigQuery, and Search Console immediately</action>
+      <output>Three links active; BigQuery export start date recorded.</output>
+      <decision-gate>BigQuery linked before any production traffic? If no -&gt; document the loss window (ga4-bq-link-day-one rule).</decision-gate>
+    </step>
+    <step n="10" name="mark-conversions">
+      <input>Event spec, live events</input>
+      <action>GA4 Admin → Events → mark key events as conversions. Set conversion value for revenue-generating events</action>
+      <output>Explicit conversion list matching the spec (explicit-conversion-marking rule).</output>
+      <decision-gate>Every revenue event carries a value and purchase carries transaction_id? If no -&gt; iterate.</decision-gate>
+    </step>
+    <step n="11" name="import-to-ads">
+      <input>Marked conversions</input>
+      <action>Import GA4 conversion actions into Google Ads (Tools → Conversions → Import from GA4). Set attribution window per conversion type (match to sales cycle)</action>
+      <output>Google Ads conversion actions with per-type attribution windows.</output>
+      <decision-gate>Attribution windows recorded in the artefact settings? If no -&gt; iterate.</decision-gate>
+    </step>
+  </section>
+
+  <section title="Human-in-loop checkpoints (gate before step 5)">
+    <step n="12" name="human-checkpoints">
+      <input>Draft artefact, staging site</input>
+      <action>Consent banner copy and consent categories: human legal review required. PII filtering rules for server-side tagging: human privacy review required. Conversion event designation (which events count): human business review required. Production GTM container publish: human approval required.</action>
+      <output>Four named approvals recorded in the artefact evidence.</output>
+      <decision-gate>All four approvals present and staging events verified with `templates/validate-events.js`? If no -&gt; do not publish the container.</decision-gate>
+    </step>
+    <reference path="templates/validate-events.js">Playwright script to verify event firing on staging via dataLayer interception before production publish</reference>
   </section>
 </text>

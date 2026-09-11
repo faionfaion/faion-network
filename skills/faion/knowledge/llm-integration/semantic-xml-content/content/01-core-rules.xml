@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Semantic XML Content — Core Rules" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5 testable rules every content/*.xml file must obey. Source: Anthropic prompt guidance on XML, internal faion-network conventions.</summary>
+<text id="01-core-rules" title="Semantic XML Content — Core Rules" version="1.2.0" est_tokens="2050" depth="essential">
+  <summary>15 testable rules every content/*.xml file must obey — tag roles, closed glossary, naming, attributes, nesting, code blocks, cross-references, layout hygiene. Source: Anthropic prompt guidance on XML, internal faion-network conventions.</summary>
+
+  <section title="Background">
+    <p>Why XML beats Markdown for agent-readable content, and what makes a tag semantic.</p>
+    <p>A tag is semantic when its name describes what the content IS, not how it should look. Markdown only encodes structure (heading, list, paragraph). Semantic XML encodes role: this is a rule, that is an antipattern, this is a reference to an external file.</p>
+    <p>What semantic XML gives the agent:</p>
+    <list>
+      <item>Unambiguous separation of instructions, data, examples, and references.</item>
+      <item>Closed grammar — easier to validate with a schema or parser.</item>
+      <item>Per-tag policies: agent treats `&lt;rule&gt;` as binding, `&lt;example&gt;` as illustrative, `&lt;antipattern&gt;` as forbidden.</item>
+      <item>Cheaper future migrations — content is already structured if the schema evolves.</item>
+    </list>
+    <reference path="templates/tag-glossary.xml">Closed list of tags allowed in faion-network methodology content.</reference>
+    <reference path="templates/methodology-text.xml">Skeleton with a CDATA-wrapped code example.</reference>
+  </section>
 
   <section title="Rule set">
     <rule id="r1-role-bearing-names" testable="true" depth="essential">
@@ -8,14 +22,65 @@
       <rationale source="Anthropic XML guidance">Agents act on roles; formatting tags carry no semantic information and waste tokens.</rationale>
     </rule>
 
+    <rule id="r-tag-name-answers-role" testable="true" depth="essential">
+      <statement>Every tag name must answer the question "what kind of content does this hold?" — never "how should this be displayed?".</statement>
+      <rationale source="Anthropic XML guidance">Anthropic fine-tuned Claude to recognize role-bearing tags (instructions, context, example, thinking). Formatting tags carry no policy signal and waste tokens.</rationale>
+    </rule>
+
+    <rule id="r-delete-visual-tags" testable="true" depth="essential">
+      <statement>If a tag's purpose is visual emphasis or layout, delete it.</statement>
+      <rationale source="faion-network convention">Formatting masquerading as semantics gives the agent nothing over Markdown; the test is whether the tag name names a role.</rationale>
+    </rule>
+
+    <rule id="r-four-guarantees" testable="true" depth="essential">
+      <statement>A semantic XML document satisfies four guarantees: role-tagged content, closed vocabulary, machine parseability, no presentation logic.</statement>
+      <rationale source="faion-network convention">If any of the four breaks, the document degrades into either Markdown-with-angle-brackets or to free-form prose, losing the policy signal that justified XML in the first place.</rationale>
+    </rule>
+
     <rule id="r2-closed-glossary" testable="true" depth="essential">
       <statement>All tags must appear in `templates/tag-glossary.xml`. New tags require a glossary PR that documents purpose, attributes, and parents/children.</statement>
       <rationale source="faion-network convention">Open vocabularies diverge across authors; closed glossary keeps the corpus diff-able and parseable by one schema.</rationale>
     </rule>
 
+    <rule id="r-glossary-first" testable="true" depth="essential">
+      <statement>Pick a name from the tag glossary. If you need a new tag, propose it as a glossary update first.</statement>
+      <rationale source="faion-network convention">Closed grammars are validatable; ad-hoc grammars drift.</rationale>
+    </rule>
+
+    <p>Concrete rules for choosing tag names, when to use attributes, and how to nest hierarchies.</p>
+    <rule id="r-lowercase-hyphenated-names" testable="true" depth="essential">
+      <statement>Tag names use lowercase ASCII, hyphenated for multi-word concepts, and describe content role.</statement>
+      <rationale source="faion-network convention">Consistent casing avoids parser ambiguity. Descriptive names let the agent route policy by tag without reading content.</rationale>
+    </rule>
+
+    <rule id="r-attributes-for-metadata" testable="true" depth="essential">
+      <statement>Use attributes for fixed metadata (id, type, lang, path); use child elements for content the agent will read or quote.</statement>
+      <rationale source="faion-network convention">Attributes are cheap to query and rare to misparse; child text is what the agent renders or quotes back.</rationale>
+    </rule>
+
+    <rule id="r-nest-only-hierarchical" testable="true" depth="essential">
+      <statement>Nest only when the relationship is naturally hierarchical: container/items, parent-rule/sub-clauses, example/code+note.</statement>
+      <rationale source="Anthropic XML guidance">Anthropic's own pattern: documents → document → document_content + source. Flat lists with descriptive tags beat deep trees.</rationale>
+    </rule>
+
     <rule id="r3-cdata-for-code" testable="true" depth="essential">
       <statement>Source code lives inside `&lt;code lang="..."&gt;` with a CDATA wrapper. Inline `&lt;` `&gt;` `&amp;` in element text are escaped with `&amp;lt;` `&amp;gt;` `&amp;amp;`.</statement>
       <rationale source="XML 1.0 spec">Unescaped characters break parsers; CDATA lets code blocks contain any character without escaping.</rationale>
+    </rule>
+
+    <rule id="r-code-lang-attribute" testable="true" depth="essential">
+      <statement>Wrap source code in `&lt;code lang="..."&gt;` with a CDATA section. Never let `&lt;`, `&gt;`, or `&amp;` leak into element content.</statement>
+      <rationale source="XML 1.0 spec">CDATA preserves code verbatim and prevents the parser from misreading code as XML. The lang attribute lets the agent pick the right interpretation (syntax, formatter, runner).</rationale>
+    </rule>
+
+    <rule id="r-reference-vs-see-also" testable="true" depth="essential">
+      <statement>Link to other texts and templates with `&lt;reference path="..."&gt;` (one-line purpose) or `&lt;see-also&gt;&lt;link path="..."&gt;...&lt;/link&gt;&lt;/see-also&gt;` (related reading).</statement>
+      <rationale source="faion-network convention">Two distinct relations: a reference is consumed (template, script, schema); a see-also is optional context. Different tags let the agent prioritize.</rationale>
+    </rule>
+
+    <rule id="r-indent-hygiene-only" testable="true" depth="essential">
+      <statement>Indent for parser hygiene only (2 spaces per level). Do not pad with blank lines or decorative comments.</statement>
+      <rationale source="faion-network convention">The agent does not read layout; every padding byte is spent for nobody.</rationale>
     </rule>
 
     <rule id="r4-root-and-summary" testable="true" depth="essential">
@@ -32,6 +97,7 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

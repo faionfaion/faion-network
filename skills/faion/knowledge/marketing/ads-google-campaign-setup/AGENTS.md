@@ -47,14 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 17 testable rules with rationale + source: conversion tracking verified first, PAUSED on create, explicit network flags (Display + Partners off), 15-headline RSAs with keyword and Ad Strength, pre-launch checklist + launch gate, Search as default type, one theme per ad group, extensions before launch as Asset resources, every setting explicit, budget micros check, Maximize Conversions before tCPA | ~2250 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
-| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
-| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
-| `content/01-setup-steps.xml` | recommended | Google Ads Campaign Setup Steps | ~1150 |
-| `content/02-checklist.xml` | recommended | Pre-launch, campaign setup, ad creation, and go-live checklist items for a Google Ads Search campaign. | ~650 |
-| `content/03-agent-rules.xml` | recommended | API-specific rules and LLM failure modes when creating Google Ads campaigns programmatically. | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns (symptom/root-cause/fix): ENABLED on create, Display + Partners left on, under-built RSA, omitted network_settings, location name strings | ~750 |
+| `content/04-procedure.xml` | essential | 5 generic steps plus account and tracking setup, campaign configuration (name regex, networks, geoTargetConstants, bidding, micros budget, PAUSED), four launch checklists (pre-launch, campaign setup, ad groups and ads, extensions), go-live gate with `templates/launch-gate.py`, and five human-in-loop checkpoints | ~2050 |
+| `content/05-examples.xml` | recommended | Campaign type selection table (Search / Display / Shopping / Video / PMax) and the RSA asset specification | ~400 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml: tracking firing, status, networks, RSA headlines, campaign type, budget micros, tCPA before 30 conversions, Extension-service assets | ~800 |
 
 ## Task Routing
 

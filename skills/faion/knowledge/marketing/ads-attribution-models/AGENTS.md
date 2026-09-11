@@ -47,14 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | Background (the overlap problem) + 16 testable rules with rationale + source: warehouse truth, 15% variance threshold, quarterly geo-holdout, weekly variance report, frozen definitions, model by sales cycle, documented platform defaults, deduped view for cross-channel, lookback matches cycle, one locked source of truth, geo-holdout above $10k/month, 4-week frozen incrementality tests, three numbers per channel, human sign-off thresholds, offline-conversion hashing + match rate | ~2250 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
-| `content/03-failure-modes.xml` | essential | >=3 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
-| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
-| `content/01-models.xml` | recommended | Defines the six attribution models, explains the cross-platform overlap problem, and provides lookback window guidelines by sales cycle length. | ~950 |
-| `content/02-strategy.xml` | recommended | Choosing a unified source of truth, configuring GA4 and platform attribution settings, and running geo-holdout incrementality tests. | ~1000 |
-| `content/03-agent-rules.xml` | recommended | Agent Rules and AI Gotchas for Attribution Models | ~950 |
+| `content/03-failure-modes.xml` | essential | 12 antipatterns (symptom/root-cause/fix): platform sums as truth, no incrementality tests, definition drift, raw cross-platform comparison, short/disturbed incrementality test, platform totals for budget, last-click only, view-through ignored, agent narrates noise, unlabeled comparison tables, timezone mixing, point estimates without CIs | ~1800 |
+| `content/04-procedure.xml` | essential | 5 generic steps plus GA4 attribution configuration, the three-number variance check (`templates/variance-check.py`), and four human-in-loop checkpoints | ~1200 |
+| `content/05-examples.xml` | recommended | Six models applied to one journey, platform default windows, lookback windows by sales cycle, source-of-truth options, incrementality test designs | ~800 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml: channels, warehouse, variance threshold, incrementality status, lookback vs cycle, disturbed test, human sign-off triggers, offline match rate | ~800 |
 
 ## Task Routing
 

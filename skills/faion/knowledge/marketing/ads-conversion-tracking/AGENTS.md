@@ -47,15 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 13 testable rules with rationale + source: server-side alongside pixel (mandatory), event_id dedup on both sides, attribution window by sales cycle, $ value per event + dynamic purchase values, verification before spend, macro + micro conversions, pixel base code on every page, manual test of every conversion type | ~1800 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
 | `content/03-failure-modes.xml` | essential | >=4 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
-| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
-| `content/01-conversion-definition.xml` | recommended | Macro vs micro conversion taxonomy, value assignment methods, and event name mapping across Meta, Google, and LinkedIn. | ~550 |
-| `content/02-pixel-installation.xml` | recommended | Meta Pixel and Google Ads tag installation snippets with standard event JavaScript calls. | ~450 |
-| `content/03-server-side.xml` | recommended | Meta Conversions API Node.js implementation, deduplication with browser events, and Google offline conversion flow. | ~600 |
-| `content/04-verification.xml` | recommended | Verification tools per platform, testing process, and attribution window configuration. | ~600 |
+| `content/04-procedure.xml` | essential | 5 generic steps plus the pre-launch verification process: verification extension, test conversion in real-time viewer, value + CAPI dedup check, 24-48h Events Manager monitoring; tracking-plan template reference | ~1250 |
+| `content/05-examples.xml` | recommended | Macro/micro taxonomy, value assignment methods, cross-platform event name mapping, Meta Pixel standard event calls, Google Ads conversion tag, Meta CAPI Node.js sender, verification tools per platform, attribution window defaults; meta-pixel.html and google-tag.html references | ~1250 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml: CRM truth, server-side, dedup key, window vs cycle, low macro volume, pixel coverage, static purchase values, manual test | ~750 |
 
 ## Task Routing
 

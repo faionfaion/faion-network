@@ -46,14 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source: three metrics together, voluntary vs involuntary split, compounded annualization, cohort × plan segmentation, leading-indicator health score, one written churn definition, customer churn alongside NRR, 90-day threshold backtest | 1550 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
-| `content/05-examples.xml` | medium | One worked end-to-end example | 700 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
-| `content/01-measurement.xml` | recommended | Canonical churn metric definitions, benchmarks, health score model, and common mistakes that invalidate churn analysis. | 1200 |
-| `content/02-checklist.xml` | recommended | Ordered steps for establishing churn definitions, measuring baseline, segmenting causes, and setting up monitoring. | 750 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom / root-cause / fix: lagging-only, linear annualization, aggregate hides cohort, untested thresholds, churn rate without leading indicators, annualize by twelve, alerts without backtest | 1050 |
+| `content/04-procedure.xml` | essential | 7-step procedure plus the churn analysis process checklist: define churn, measure current churn, analyze patterns and root causes, segment, health score setup, dashboard and monitor; monthly-churn.sql and churn-report.md references | 1800 |
+| `content/05-examples.xml` | medium | One worked end-to-end example plus metric formulas, benchmarks by segment, composite health score model, common churn reason distribution | 850 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml: preconditions, data maturity, three metrics, voluntary split, cohorts, leading indicators, written definition, backtested health score | 600 |
 
 ## Task Routing
 

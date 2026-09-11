@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Google Ads Campaign Setup Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Testable rules every application of Google Ads Campaign Setup MUST enforce. Rationale + source per rule. Rules referenced by id from `content/06-decision-tree.xml`.</summary>
+<text id="01-core-rules" title="Google Ads Campaign Setup Core Rules" version="1.2.0" est_tokens="2250" depth="essential">
+  <summary>17 testable rules every application of Google Ads Campaign Setup MUST enforce — conversion tracking first, PAUSED on create, explicit network flags, 15-headline RSAs, pre-launch checklist and launch gate, Search as default type, themed ad groups, extensions as Assets, every setting explicit, budget micros check, Maximize Conversions before tCPA. Rationale + source per rule. Rules referenced by id from `content/06-decision-tree.xml`.</summary>
 
   <section title="Rule set">
     <rule id="conversion-tracking-first" testable="true" depth="essential">
@@ -23,6 +23,53 @@
       <statement>Campaign MUST pass pre-launch checklist (tracking firing / RSA per group / extensions / conversion goal / negatives / budget) before ENABLED.</statement>
       <rationale source="Google Ads launch best-practices">Multi-item checks catch silent misconfigurations; no single check catches all.</rationale>
     </rule>
+    <p>Step-by-step process for creating a Google Ads Search campaign: conversion tracking, campaign type selection, settings, ad group structure, RSA creation, and extensions.</p>
+    <rule id="verify-tracking-before-campaign" testable="true" depth="essential">
+      <statement>Install and verify conversion tracking before creating any campaign that targets a conversion goal.</statement>
+      <rationale source="Google Ads Smart Bidding docs">Smart Bidding without conversion data wastes ~14 days in learning burning budget. A campaign verified firing conversions starts with useful signal immediately.</rationale>
+    </rule>
+    <rule id="default-to-search" testable="true" depth="essential">
+      <statement>Default to Search campaign type for new advertisers; it provides direct intent matching and is the easiest to diagnose and optimize.</statement>
+      <rationale source="Google Ads campaign type docs">Search campaigns match ads to active queries, providing clear signal about intent. Display and PMax require more data and budget to optimize effectively.</rationale>
+    </rule>
+    <rule id="explicit-network-flags" testable="true" depth="essential">
+      <statement>Always explicitly set target_search_network=False, target_content_network=False, target_partner_search_network=False for Search-only campaigns; the API does not default to Search-only like the UI recommends.</statement>
+      <rationale source="Google Ads API reference">API-created Search campaigns silently enable Display and Search Partners unless explicitly disabled. This wastes budget on irrelevant placements from day one.</rationale>
+    </rule>
+    <rule id="one-theme-per-ad-group" testable="true" depth="essential">
+      <statement>One theme per ad group; 10-20 keywords per group; all keywords in a group must share the same intent and match the ad copy.</statement>
+      <rationale source="Google Ads Quality Score docs">Tightly themed ad groups produce higher Quality Scores because keyword-to-ad relevance improves. Mixing intents dilutes relevance and raises CPC.</rationale>
+    </rule>
+    <rule id="rsa-keyword-and-ad-strength" testable="true" depth="essential">
+      <statement>Write at least 3 RSA headlines per ad group with 15 total headlines; include the primary keyword in at least one headline; target Ad Strength of Good or Excellent.</statement>
+      <rationale source="Google Ads RSA documentation">More headlines give Google more combinations to test, improving CTR over time. Keyword inclusion in headlines raises Quality Score expected CTR component.</rationale>
+    </rule>
+    <rule id="extensions-before-launch" testable="true" depth="essential">
+      <statement>Add sitelinks (4-6), callouts (4-6), and structured snippets at account or campaign level before launch; missing extensions lower ad rank and CTR.</statement>
+      <rationale source="Google Ads assets docs">Extensions expand ad size, increase CTR, and contribute to Quality Score. They are listed as Asset resources in API v12+; using deprecated Extension service resources returns errors.</rationale>
+    </rule>
+    <p>Pre-launch, campaign setup, ad creation, and go-live checklist items for a Google Ads Search campaign.</p>
+    <rule id="launch-gate-all-pass" testable="true" depth="essential">
+      <statement>Run the launch gate check and require all items to pass before flipping campaign status to ENABLED.</statement>
+      <rationale source="Google Ads launch best-practices">A single missing item — no RSA, conversion tracking not firing, Display network on — can waste the entire budget before anyone notices.</rationale>
+    </rule>
+    <p>API-specific rules and LLM failure modes when creating Google Ads campaigns programmatically.</p>
+    <rule id="every-setting-explicit" testable="true" depth="essential">
+      <statement>Treat every campaign setting as explicit; never rely on API defaults matching UI recommendations.</statement>
+      <rationale source="Google Ads API reference">The most dangerous default: Search campaigns created via API opt into Display Network and Search Partners unless explicitly disabled. The UI defaults to Search-only. This single oversight burns budget from day one.</rationale>
+    </rule>
+    <rule id="budget-micros-check" testable="true" depth="essential">
+      <statement>Verify budget amount_micros equals dollars * 1,000,000 before submission; budgets under 1,000,000 micros ($1/day) indicate a unit error.</statement>
+      <rationale source="Google Ads API CampaignBudget reference">Budget micros confusion is the most common setup bug. A $50/day budget written as 50 instead of 50,000,000 creates a $0.000050/day budget that generates zero impressions.</rationale>
+    </rule>
+    <rule id="max-conversions-before-tcpa" testable="true" depth="essential">
+      <statement>Start with Maximize Conversions without a Target CPA target; switch to Target CPA only after accumulating 30+ conversions.</statement>
+      <rationale source="Google Ads Smart Bidding docs">Smart Bidding requires sufficient conversion history to train. Setting a Target CPA before 30 conversions forces the bidder to over-fit on sparse data and underdeliver.</rationale>
+    </rule>
+    <rule id="asset-resources-not-extension-service" testable="true" depth="essential">
+      <statement>Use Asset resources for extensions (sitelinks, callouts, images) in API v12+; the older Extension service resources return deprecated-resource errors.</statement>
+      <rationale source="Google Ads API migration notes">Google migrated extensions to the Asset model in 2022. Code written against the Extension service silently fails or returns deprecation errors without explaining the migration path.</rationale>
+    </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If applicability preconditions are unmet (see AGENTS.md Skip If), the methodology MUST be skipped and a one-line skip-reason logged.</statement>
       <rationale source="F-066 decision-tree convention">A named skip terminal keeps decision-tree leaves resolvable and prevents silent misuse on misfit inputs.</rationale>
@@ -32,6 +79,8 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

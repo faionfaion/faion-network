@@ -47,14 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | >=5 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 20 testable rules with rationale + source: spec-first events, Consent Mode v2 (from day one, denied-by-default), BQ link day one, UTM convention + exported constants, DebugView verification, explicit conversion marking, purchase transaction_id, custom-dimension limits, User-ID feature, PII hashing, gtag config-before-event, cross-domain linker, GTM container version control, Measurement Protocol client_id | ~2800 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid + forbidden patterns | ~1000 |
-| `content/03-failure-modes.xml` | essential | >=4 antipatterns (symptom/root-cause/fix) | ~900 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs / actions / outputs / decision-gates | ~1100 |
-| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml | ~700 |
-| `content/01-ga4-setup.xml` | recommended | GA4 property creation, tag installation via GTM or direct, enhanced measurement settings, and standard event schema for common business types. | ~1050 |
-| `content/02-conversions-utm.xml` | recommended | Conversion designation in GA4 and ad platforms, UTM parameter schema, naming conventions, and Consent Mode v2 requirements. | ~850 |
-| `content/03-agent-rules.xml` | recommended | Agent-specific rules for analytics install, GTM, Measurement Protocol, and common LLM failure modes in analytics implementation. | ~800 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns (symptom/root-cause/fix): code-first events, late BQ link, free-form UTM, unverified go-live, reserved event names, UTM spaces/uppercase, SPA page_view before route settles | ~1000 |
+| `content/04-procedure.xml` | essential | 5 generic steps plus GA4 property setup sequence (create property, install tag, enhanced measurement, link Ads/BQ/Search Console, mark conversions, import to Ads with attribution windows) and four human-in-loop checkpoints; `templates/validate-events.js` reference | ~1550 |
+| `content/05-examples.xml` | recommended | Standard key events per business type, UTM parameter schema with naming formats, exported UTM constants module | ~650 |
+| `content/06-decision-tree.xml` | essential | Decision tree mapping observable signals to a rule from 01-core-rules.xml: lifespan, consent mode, event spec, BQ link, cross-domain linker, Measurement Protocol client_id, raw PII, purchase transaction_id | ~800 |
 
 ## Task Routing
 

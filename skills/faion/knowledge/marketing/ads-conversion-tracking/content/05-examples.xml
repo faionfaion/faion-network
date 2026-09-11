@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Ads Conversion Tracking Examples" version="1.0.0" est_tokens="1250" depth="recommended">
+  <summary>Reference tables and code the rules assume: macro/micro taxonomy, value assignment methods, cross-platform event names, Meta Pixel and Google Ads tag calls, Meta CAPI Node.js sender, verification tools, and attribution window defaults.</summary>
+
+  <section title="Macro vs micro conversions">
+    <list>
+      <item>Macro — Purchase, Trial start, Lead form submit, Account registration</item>
+      <item>Micro — Add to cart, Begin checkout, Pricing page view, Content download</item>
+    </list>
+  </section>
+
+  <section title="Value assignment methods">
+    <list>
+      <item>Fixed value — Lead = $50 (estimated average value)</item>
+      <item>Dynamic value — Purchase = actual transaction amount (recommended)</item>
+      <item>Estimated LTV value — Trial = $100 (based on historical LTV/conversion rate)</item>
+    </list>
+  </section>
+
+  <section title="Cross-platform event name mapping">
+    <list>
+      <item>Sign up: Meta=CompleteRegistration, Google=sign_up, LinkedIn=signUp</item>
+      <item>Lead: Meta=Lead, Google=generate_lead, LinkedIn=lead</item>
+      <item>Add to cart: Meta=AddToCart, Google=add_to_cart, LinkedIn=N/A</item>
+      <item>Purchase: Meta=Purchase, Google=purchase, LinkedIn=conversion</item>
+      <item>Trial: Meta=StartTrial, Google=trial_started, LinkedIn=N/A</item>
+    </list>
+  </section>
+
+  <section title="Meta Pixel standard event calls">
+    <reference path="templates/meta-pixel.html">Meta Pixel base code with PageView</reference>
+    <example type="good" title="Lead, Purchase, AddToCart with values">
+      <code lang="javascript"><![CDATA[
+// Lead form submission
+fbq('track', 'Lead', {
+  value: 50.00,
+  currency: 'USD'
+});
+
+// Purchase with dynamic value
+fbq('track', 'Purchase', {
+  value: 99.00,
+  currency: 'USD',
+  content_ids: ['prod_123'],
+  content_type: 'product'
+});
+
+// Add to cart
+fbq('track', 'AddToCart', {
+  value: 49.99,
+  currency: 'USD',
+  content_ids: ['SKU123'],
+  content_type: 'product'
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Google Ads conversion tag">
+    <reference path="templates/google-tag.html">Google Ads conversion tag</reference>
+    <example type="good" title="Conversion event with transaction_id">
+      <code lang="javascript"><![CDATA[
+// Google Ads conversion event
+gtag('event', 'conversion', {
+  'send_to': 'AW-XXXXXXXXXX/YYYYYYYYY',
+  'value': 99.00,
+  'currency': 'USD',
+  'transaction_id': 'txn_123'
+});
+      ]]></code>
+      <note>transaction_id deduplicates conversions if the thank-you page fires twice — always include it for purchase events.</note>
+    </example>
+  </section>
+
+  <section title="Meta CAPI — Node.js">
+    <example type="good" title="Server-side Purchase event with event_id">
+      <code lang="javascript"><![CDATA[
+const bizSdk = require('facebook-nodejs-business-sdk');
+const { EventRequest, UserData, ServerEvent } = bizSdk;
+
+async function sendPurchaseEvent(pixelId, accessToken, userData, purchaseData) {
+  const user = (new UserData())
+    .setEmail(userData.email_sha256)
+    .setPhone(userData.phone_sha256)
+    .setClientIpAddress(userData.ip)
+    .setClientUserAgent(userData.user_agent);
+
+  const event = (new ServerEvent())
+    .setEventName('Purchase')
+    .setEventTime(Math.floor(Date.now() / 1000))
+    .setEventId(purchaseData.event_id)  // for deduplication with browser pixel
+    .setUserData(user)
+    .setCustomData({
+      value: purchaseData.value,
+      currency: purchaseData.currency,
+      order_id: purchaseData.order_id
+    })
+    .setEventSourceUrl(purchaseData.page_url);
+
+  const request = (new EventRequest(accessToken, pixelId))
+    .setEvents([event]);
+
+  return request.execute();
+}
+      ]]></code>
+      <note>event_id must match the browser pixel's eventID parameter to enable Meta's deduplication — same event_id from browser + server = counted once.</note>
+    </example>
+  </section>
+
+  <section title="Verification tools">
+    <list>
+      <item>Meta: Meta Pixel Helper (Chrome extension) + Events Manager Test Events tab</item>
+      <item>Google: Google Tag Assistant (Chrome extension) + Google Ads Tag Diagnostics</item>
+      <item>LinkedIn: LinkedIn Insight Tag Helper (Chrome extension)</item>
+      <item>All platforms: Browser DevTools → Network tab → filter by pixel domain</item>
+    </list>
+  </section>
+
+  <section title="Attribution window defaults">
+    <list>
+      <item>Meta default: 7-day click, 1-day view</item>
+      <item>Google default: 30-day click</item>
+      <item>LinkedIn default: 30-day click, 7-day view</item>
+    </list>
+    <note>Defaults are starting points only; the window is set to the sales cycle (window-matches-sales-cycle rule).</note>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

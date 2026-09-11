@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Ads Analytics Setup Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Antipatterns observed in real deployments of Ads Analytics Setup. Each pairs symptom + sourced root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Ads Analytics Setup Failure Modes" version="1.2.0" est_tokens="1000" depth="essential">
+  <summary>7 antipatterns observed in real deployments of Ads Analytics Setup — code-first events, late BQ link, free-form UTM, unverified go-live, reserved event names, malformed UTM values, SPA page_view before route settles. Each pairs symptom + sourced root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern id="code-first-events" severity="high">
@@ -22,6 +22,21 @@
       <symptom>Conversion event misfires for 45 days; only discovered when budget reviewer asks why CPA looks great.</symptom>
       <root-cause source="GA4 DebugView documentation">verification-before-go-live rule violated.</root-cause>
       <fix>Wire DebugView verification step into release checklist; require screenshot evidence per event.</fix>
+    </antipattern>
+    <antipattern id="reserved-event-names" severity="high">
+      <symptom>Using GA4 reserved event names (session_start, first_visit, etc.) for custom events.</symptom>
+      <root-cause source="GA4 reserved event names docs">Reserved event names cause silent collision with GA4's automatically collected events. The custom events will either be dropped or overwrite system data, corrupting session metrics.</root-cause>
+      <fix>Rename the custom event; check every name in the event spec against the GA4 reserved list before coding.</fix>
+    </antipattern>
+    <antipattern id="utm-spaces-or-uppercase" severity="medium">
+      <symptom>Using spaces or uppercase letters in UTM values.</symptom>
+      <root-cause source="UTM convention practice">Spaces get encoded as %20 or + differently across browsers and tools. Mixed case creates separate entries in GA4 reports. Both produce reporting fragmentation that requires manual cleanup.</root-cause>
+      <fix>Lowercase, underscore-separated values only; enforce via the exported UTM constants (utm-constants-in-code rule).</fix>
+    </antipattern>
+    <antipattern id="spa-page-view-before-route" severity="medium">
+      <symptom>Firing page_view events in single-page apps before the URL route is settled.</symptom>
+      <root-cause source="GTM history change trigger docs">GTM fires on history change events immediately. In some frameworks, the route update completes asynchronously after the history push. Early fires record the previous URL as the page_view location.</root-cause>
+      <fix>Fire page_view from the router's post-navigation hook, not from the raw history change trigger; verify the recorded location in DebugView.</fix>
     </antipattern>
   </section>
 </text>

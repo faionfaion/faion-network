@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Ads Attribution Models Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Testable rules every application of Ads Attribution Models MUST enforce. Rationale + source per rule. Rules referenced by id from `content/06-decision-tree.xml`.</summary>
+<text id="01-core-rules" title="Ads Attribution Models Core Rules" version="1.2.0" est_tokens="2250" depth="essential">
+  <summary>16 testable rules every application of Ads Attribution Models MUST enforce — warehouse truth, 15% variance threshold, quarterly geo-holdout, weekly variance report, frozen definitions, model selection by sales cycle, documented platform defaults, lookback windows, locked source of truth, 4-week incrementality tests, human sign-off thresholds, offline-conversion hashing. Rationale + source per rule. Rules referenced by id from `content/06-decision-tree.xml`.</summary>
+
+  <section title="Background">
+    <p>When a user clicks a Meta ad then a Google ad before purchasing, both platforms record the conversion. Platform totals routinely exceed actual sales by 20-40%.</p>
+  </section>
 
   <section title="Rule set">
     <rule id="warehouse-truth" testable="true" depth="essential">
@@ -23,6 +27,49 @@
       <statement>Conversion definitions (event name, window, dedup key) MUST be frozen quarterly. Mid-quarter changes invalidate comparisons.</statement>
       <rationale source="Internal analytics-governance practice">Definition drift mid-quarter generates apparent variance that is actually a definition artifact.</rationale>
     </rule>
+    <p>Defines the six attribution models, explains the cross-platform overlap problem, and provides lookback window guidelines by sales cycle length.</p>
+    <rule id="model-by-sales-cycle" testable="true" depth="essential">
+      <statement>Select an attribution model based on sales cycle length and available conversion volume, not platform convenience.</statement>
+      <rationale source="Multi-channel attribution literature">Each model assigns credit differently and will produce different CPA and ROAS numbers for the same spend. Using the wrong model leads to systematically over- or under-investing in channels.</rationale>
+    </rule>
+    <rule id="document-platform-defaults" testable="true" depth="essential">
+      <statement>Document the attribution model and lookback window for every platform in use; never assume defaults are consistent across platforms.</statement>
+      <rationale source="Meta / Google Ads / GA4 attribution settings docs">Each platform uses different defaults: Meta counts 7-day click + 1-day view, Google Ads uses last Google click at 30 days, GA4 uses data-driven at 90 days. Comparing numbers without knowing this is meaningless.</rationale>
+    </rule>
+    <rule id="deduped-view-for-cross-channel" testable="true" depth="essential">
+      <statement>Use GA4 or a warehouse-deduped view as the single source of truth for cross-channel performance; use platform data only for in-platform optimization.</statement>
+      <rationale source="GA4 attribution docs">GA4 deduplicates across channels using the same user session. Platform data remains useful for optimizing bids and creative within that platform's ecosystem.</rationale>
+    </rule>
+    <rule id="lookback-matches-cycle" testable="true" depth="essential">
+      <statement>Match lookback window to actual sales cycle; never use a shorter window to make numbers look better.</statement>
+      <rationale source="Attribution window practice">A 7-day window on a 30-day SaaS trial cycle will miss the majority of attributed conversions and undercount channel contribution.</rationale>
+    </rule>
+    <p>Choosing a unified source of truth, configuring GA4 and platform attribution settings, and running geo-holdout incrementality tests.</p>
+    <rule id="one-locked-source-of-truth" testable="true" depth="essential">
+      <statement>Pick one attribution source of truth (usually GA4 data-driven or warehouse on top of GA4 export) and apply it consistently across all budget decisions.</statement>
+      <rationale source="Analytics-governance practice">Switching models mid-flight invalidates historical comparisons and causes confusion during budget reviews. A documented, locked model is more valuable than the theoretically best model.</rationale>
+    </rule>
+    <rule id="geo-holdout-above-10k" testable="true" depth="essential">
+      <statement>Run a geo-holdout incrementality test at least once per quarter when spending $10k+/month to validate the attribution model.</statement>
+      <rationale source="Incrementality testing literature">Data-driven attribution drifts over time and cannot detect true causal lift. A geo-holdout measures actual revenue lift vs. a control region, providing ground truth that no model can replicate.</rationale>
+    </rule>
+    <rule id="incrementality-four-weeks-frozen" testable="true" depth="essential">
+      <statement>Run incrementality tests for at least 4 weeks and do not change budgets or targeting during the test period.</statement>
+      <rationale source="Incrementality testing literature">Short tests produce noise, not signal. Budget changes mid-test contaminate the treatment-control comparison and invalidate results.</rationale>
+    </rule>
+    <p>Concrete rules for agents building attribution pipelines, including variance thresholds, human-in-loop checkpoints, and failure modes specific to LLM agents.</p>
+    <rule id="three-numbers-per-channel" testable="true" depth="essential">
+      <statement>Always present three numbers per channel (platform-reported, GA4-modeled, warehouse-deduped) and flag if any two diverge by more than 15%.</statement>
+      <rationale source="Cross-channel attribution audit Q4 2025">Below 15% variance is noise. Above 15% indicates a structural issue — mismatched windows, missing dedup key, or a tracking gap — that must be investigated before budget decisions.</rationale>
+    </rule>
+    <rule id="human-signoff-thresholds" testable="true" depth="essential">
+      <statement>Require human sign-off before any budget reallocation exceeding 10% of total spend, any change to the canonical attribution model, or any retroactive re-attribution.</statement>
+      <rationale source="Analytics-governance practice">These actions have irreversible consequences: retroactive re-attribution destroys audit trail, model changes invalidate historical comparisons, and large reallocations cannot be easily undone.</rationale>
+    </rule>
+    <rule id="offline-conversion-hash-match-rate" testable="true" depth="essential">
+      <statement>When uploading offline conversions, SHA-256 hash lowercase-trimmed email addresses before sending; verify match rate is above 30% before declaring the upload successful.</statement>
+      <rationale source="Google Ads / Meta offline conversion docs">Agents that skip email normalization (lowercase + trim) see near-zero match rates silently. A match rate below 30% indicates a normalization or hashing bug.</rationale>
+    </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If applicability preconditions are unmet (see AGENTS.md Skip If), the methodology MUST be skipped and a one-line skip-reason logged.</statement>
       <rationale source="F-066 decision-tree convention">A named skip terminal keeps decision-tree leaves resolvable and prevents silent misuse on misfit inputs.</rationale>
@@ -32,6 +79,8 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

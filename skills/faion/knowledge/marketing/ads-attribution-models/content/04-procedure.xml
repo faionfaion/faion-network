@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Ads Attribution Models Procedure" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Step-by-step procedure for Ads Attribution Models. Each step lists input, action, output, and a decision-gate to the next step.</summary>
+<text id="04-procedure" title="Ads Attribution Models Procedure" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>Step-by-step procedure for Ads Attribution Models: the five generic steps, then GA4 attribution configuration, the variance check, and the human-in-loop checkpoints that steps 4-5 expand into. Each step lists input, action, output, and a decision-gate to the next step.</summary>
 
   <section title="Procedure">
     <step n="1" name="inventory-inputs">
@@ -32,6 +32,31 @@
       <action>Run `scripts/validate-ads-attribution-models.py --file &lt;artefact&gt;`. Resolve violations. Set status to ready_for_review. Notify named consumer.</action>
       <output>Validator OK + status=ready_for_review + handoff note delivered.</output>
       <decision-gate>Validator exit 0? Consumer acknowledged? If no -&gt; fix and re-validate.</decision-gate>
+    </step>
+  </section>
+
+  <section title="GA4 attribution configuration (expands step 4)">
+    <step n="6" name="configure-ga4-attribution">
+      <input>Locked source of truth (one-locked-source-of-truth rule), sales cycle length</input>
+      <action>Admin → Attribution settings → Reporting attribution model: Data-driven. Lookback window: 30-90 days (match to sales cycle). Acquisition conversion events: configure explicitly</action>
+      <output>GA4 attribution settings recorded in the artefact settings block.</output>
+      <decision-gate>Lookback window matches the measured sales cycle (lookback-matches-cycle rule)? If no -&gt; iterate.</decision-gate>
+    </step>
+    <step n="7" name="variance-check">
+      <input>Platform-reported, GA4-modeled, warehouse-deduped conversions per channel</input>
+      <action>Run `templates/variance-check.py`; present all three numbers per channel; flag any pair diverging by more than 15%.</action>
+      <output>Weekly variance report with alert flags and named reviewer.</output>
+      <decision-gate>Any channel flagged? If yes -&gt; investigate before any budget decision (variance-threshold-15 rule).</decision-gate>
+    </step>
+    <reference path="templates/variance-check.py">Python helper that computes platform-vs-warehouse and GA4-vs-warehouse divergence per channel and sets alert flag above 15%</reference>
+  </section>
+
+  <section title="Human-in-loop checkpoints (gate before step 5)">
+    <step n="8" name="human-checkpoints">
+      <input>Draft artefact, proposed budget or model changes</input>
+      <action>Budget reallocation &gt; 10% of total spend: human approval required. Change of canonical attribution model: human approval required. Retroactive re-attribution of historical conversions: snapshot first, human approval required. New geo-holdout test design: human approval required before budget changes execute.</action>
+      <output>Named approvals recorded in the artefact evidence; snapshot reference for any re-attribution.</output>
+      <decision-gate>Every triggered checkpoint has a named human approval (human-signoff-thresholds rule)? If no -&gt; do not execute the change.</decision-gate>
     </step>
   </section>
 </text>
