@@ -48,15 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates | ~800 |
-| `content/05-examples.xml` | essential | End-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml | ~500 |
-| `content/01-bootstrap-pipeline.xml` | recommended | Seven-phase pipeline from idea to TASK_000, with mandatory Phase 4 user confirmation and the output artifact structure under .aidocs/. | ~800 |
-| `content/02-mlp-planning.xml` | recommended | MLP Planning Workflow | ~750 |
-| `content/03-numbering-conventions.xml` | recommended | Standard numbering patterns for features, tasks, requirements, and acceptance criteria used across the PM workflow artifacts. | ~550 |
+| `content/01-core-rules.xml` | essential | 19 testable rules with rationale + source (Phase 4 confirmation, RICE before backlog exit, no invented features, numbering lock, .aidocs source of truth, MLP modes sequential, non-interactive hard-fail, WOW cites scope analysis, WOW cap 7, propose after telemetry, exact numbering patterns, Jira numeric coercion, daily digest diff-only) | ~2800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix, including MLP update clobbering numbering and cron MLP in MVP phase | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates; seven-phase bootstrap pipeline with .aidocs/ output structure; five-mode MLP pipeline with artifact chain | ~1050 |
+| `content/05-examples.xml` | essential | End-to-end worked example; rice-reorder.sh reference | ~400 |
+| `content/06-decision-tree.xml` | essential | Decision tree routing to rules from 01-core-rules.xml, including MLP telemetry and WOW-cap branches | ~650 |
 
 ## Task Routing
 

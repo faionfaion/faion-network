@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Product Manager Workflows Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>6 testable rules grounding Product Manager Workflows plus the universal skip/run routing pair (referenced by the decision tree).</summary>
+<text id="01-core-rules" title="Product Manager Workflows Core Rules" version="1.1.1" est_tokens="2800" depth="essential">
+  <summary>19 testable rules grounding Product Manager Workflows plus the universal skip/run routing pair (referenced by the decision tree). Five-mode sequential MLP pipeline that transforms a shipped MVP into a Most Lovable Product, with constraints on WOW feature grounding and a cap of 7 WOW items. Standard numbering patterns for features, tasks, requirements, and acceptance criteria used across the PM workflow artifacts.</summary>
 
   <section title="Rule set">
     <rule id="phase-4-confirmation-required" testable="true" depth="essential">
@@ -27,6 +27,58 @@
       <statement>The five faion-mlp-agent modes MUST run strictly in sequence: analyze → find-gaps → propose → update → plan; each mode persists its artefact so a failed run resumes.</statement>
       <rationale source="Internal — faion-mlp-agent design notes">Running propose before analyze produces WOW features ungrounded in competitor evidence; sequencing is the gate that prevents speculation.</rationale>
     </rule>
+    <rule id="phase-4-no-simulated-approval" testable="true" depth="essential">
+      <statement>Phase 4 user confirmation cannot be skipped or simulated — the bootstrap pipeline must hard-fail with NEEDS-HUMAN if no explicit approval token is received.</statement>
+      <rationale source="v1-source">LLMs eager to complete will simulate user approval; bootstrap must detect non-interactive mode and exit rather than invent answers. An unsigned constitution is not a constitution.</rationale>
+    </rule>
+    <rule id="non-interactive-mode-hard-fail" testable="true" depth="essential">
+      <statement>Bootstrap must detect non-interactive mode (cron, CI) and exit with FAIL needs-human; do not invent answers.</statement>
+      <rationale source="v1-source">The AskUserQuestion step blocks in non-interactive runs; an agent that invents user approval produces a constitution nobody agreed to, corrupting the entire project record.</rationale>
+    </rule>
+    <rule id="rice-row-rejected-at-grooming" testable="true" depth="essential">
+      <statement>Every spec must have a RICE row (reach/impact/confidence/effort frontmatter) before leaving backlog; reject specs without RICE at grooming time.</statement>
+      <rationale source="v1-source">Unscored backlog items cannot be prioritized; RICE without frontmatter is invisible to the rice-reorder script and the sprint kickoff agent.</rationale>
+    </rule>
+    <rule id="no-features-outside-inputs" testable="true" depth="essential">
+      <statement>Agents must refuse to invent features not present in the idea-validation or competitive-analysis inputs.</statement>
+      <rationale source="v1-source">MLP hallucination — inventing WOW features without competitor evidence — is the most common failure mode; the PM's job is to make evidence the precondition, not the review step.</rationale>
+    </rule>
+    <rule id="flock-before-numbering-when-concurrent" testable="true" depth="essential">
+      <statement>When two PM agents may run concurrently, take a flock on .aidocs/.numbering.lock before assigning the next feature number or task number.</statement>
+      <rationale source="v1-source">Concurrent agents assigning {NN} without a lock create numbering collisions that break spec filenames and all downstream references.</rationale>
+    </rule>
+    <rule id="mlp-modes-resume-from-checkpoint" testable="true" depth="essential">
+      <statement>Run the five faion-mlp-agent modes strictly in sequence: analyze → find-gaps → propose → update → plan. Each mode persists its artifact so a failed run can resume from the last completed mode.</statement>
+      <rationale source="v1-source">Skipping modes — especially running propose before analyze — produces WOW features ungrounded in competitor evidence, which is the primary MLP failure mode.</rationale>
+    </rule>
+    <rule id="wow-feature-cites-scope-analysis" testable="true" depth="essential">
+      <statement>Every WOW feature must cite a row in mvp-scope-analysis.md; features with no competitor evidence are labeled "speculative" and placed under "Deferred — needs validation".</statement>
+      <rationale source="v1-source">Speculative WOW features not grounded in competitor evidence or customer data are guesses; they belong in the deferred bucket, not the MLP roadmap.</rationale>
+    </rule>
+    <rule id="wow-cap-seven" testable="true" depth="essential">
+      <statement>Cap WOW features at 7; more than 7 and the MLP becomes a v2.0 plan, not an MLP.</statement>
+      <rationale source="v1-source">MLP is the minimum set of WOW features that makes users love the product — a superset of MVP but not a full feature rebuild. Empirically, 8+ WOW features require a second release cycle to ship.</rationale>
+    </rule>
+    <rule id="mlp-propose-after-telemetry" testable="true" depth="essential">
+      <statement>Run MLP propose only after the MVP ships and produces real telemetry; propose-without-data is the primary failure mode the workflow does not warn about in its README.</statement>
+      <rationale source="v1-source">WOW feature selection without usage data is marketing speculation; the propose mode needs to know which MVP features users actually used before proposing enhancements.</rationale>
+    </rule>
+    <rule id="numbering-patterns-exact" testable="true" depth="essential">
+      <statement>Use these exact patterns across all PM workflow artifacts: features as {NN}-{name} (e.g., 01-auth), tasks as TASK_{NNN}_* (e.g., TASK_001_setup), functional requirements as FR-{NN}.{N} (e.g., FR-01.1), acceptance criteria as AC-{NN}.{N} (e.g., AC-01.1).</statement>
+      <rationale source="v1-source">Consistent numbering enables cross-referencing between specs, task files, and tracker tickets; inconsistent numbering breaks the rice-reorder script, spec-to-task linking, and MLP update mode's in-place edit logic.</rationale>
+    </rule>
+    <rule id="tracker-is-execution-mirror" testable="true" depth="essential">
+      <statement>Treat .aidocs/features/ as the planning source of truth and Jira/Linear as the execution mirror — never the reverse.</statement>
+      <rationale source="v1-source">Tracker tickets get deleted, re-numbered, or migrated; the .aidocs/ file tree is under git and has full history. If the tracker is the source of truth, history is lost when tickets are deleted.</rationale>
+    </rule>
+    <rule id="jira-numeric-fields-coerced" testable="true" depth="essential">
+      <statement>When syncing RICE values to Jira numeric custom fields, coerce explicitly; Jira drops the value silently on type mismatch.</statement>
+      <rationale source="v1-source">Jira's REST API does not return an error when a numeric field receives a string value; the value is silently ignored, leaving the field empty in the tracker while appearing correct in the spec frontmatter.</rationale>
+    </rule>
+    <rule id="daily-digest-diff-only" testable="true" depth="essential">
+      <statement>The daily PM orchestrator produces one digest file (.aidocs/digest/YYYY-MM-DD.md) and sends only the diff vs. yesterday via tg-send, not the full digest.</statement>
+      <rationale source="v1-source">Sending the full digest daily creates Telegram noise; the diff is what the PM needs to act on. Full digests are available on demand from the file.</rationale>
+    </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If preconditions in `## Applies If` do not ALL hold OR any disqualifier in `## Skip If` fires, the agent MUST skip this methodology and document the skip reason in the cycle artefact.</statement>
       <rationale source="F-066 requirements-checklist B5.6">A minimum-form decision tree must route 'preconditions-not-satisfied' to skip; this rule is the canonical target.</rationale>
@@ -41,6 +93,8 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

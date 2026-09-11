@@ -43,14 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
-| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
-| `content/01-rice-formula.xml` | recommended | RICE formula definition, scale for each of the four factors, scoring process, and constraints for valid scores. | 1000 |
-| `content/02-rice-examples.xml` | recommended | Two complete worked examples with scored tables and insights, plus concrete antipatterns and agent-specific failure modes. | 750 |
+| `content/01-core-rules.xml` | essential | 10 testable rules + skip + run rules: formula, confidence floor, effort ceiling, consistent units, decision record, reach-unit consistency, fixed Impact scale, confidence cap without evidence, effort breakdown, quarterly re-score; background: Reach sourcing, confidence and effort scales | 1600 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 600 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom + root-cause + fix, including agent failure modes (round-number reach, proposer scores own items, silent threshold drop, no dependency check) | 950 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end; six-step scoring process with sanity check and strategic override lane; scoring-table, decision-record and rice.py references | 800 |
+| `content/05-examples.xml` | essential | Worked example end-to-end; e-commerce and SaaS dashboard scored tables with insights | 650 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml, including reach-unit and confidence-cap branches | 400 |
 
 ## Task Routing
 

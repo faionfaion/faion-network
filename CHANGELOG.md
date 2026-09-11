@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1: the two slugs batch 5 missed.** `pm/workflows` and
+  `product/feature-prioritization-rice-product-ops` were folded with that batch
+  but their agent finished them after the batch was staged; both pass the same
+  six checks and the preservation check at 0, and land here. With them the
+  corpus count of non-canonical content files is 0, as the previous entry says.
+
 - **CR-010 option 1 complete, batch 8 of 8: ten `ux` slugs — and no
   non-canonical content file remains anywhere in the corpus.** 22 files folded
   here, preservation 0 on each; three disagreements between a hand-written
