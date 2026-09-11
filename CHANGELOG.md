@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-013 §2 closed: the collapsed-variable queue was 29 templates, not 216,
+  and three of them needed a split.** Re-measured with the same definition the
+  CR uses — one `{{ variable }}` under two or more headings, fences excluded —
+  the queue is **29 templates, 46 variables**. Every one was read. Three were
+  distinct slots collapsed into one name and are split: `qbr-deck`'s
+  `ticket_ids` → `wins_ticket_ids` / `risks_ticket_ids`, `roadmap`'s `month` →
+  `now_target_month` / `next_target_month`, `retrospective`'s `date` → the retro
+  date and `action_1_due_date`. One (`pattern-memory`'s `feature_nnn_name`) sits
+  in a repeating entry block and became a literal placeholder, because a
+  repeating row is not a variable. The other 42 are the same person, date or
+  link named twice — `owner_full_name` on every slide of a deck, `launch_dri`
+  in the overview and the risk table — and stay one variable.
+
+  The brief's regeneration step was wrong and the agent proved it on a scratch
+  copy before ignoring it: re-running `--migrate` on a derived `.md` demotes
+  every kept multi-heading variable to a literal (the §2 refusal rule is now
+  live in the migrator) and replaces every hand-written schema description with
+  a generic draft. The siblings were regenerated through the tool's own pure
+  generators (`md_from_j2`, `html_from_j2` — exactly what `--check` re-derives)
+  and the schemas edited by hand; `--check` reports zero drift on all four.
+
 - **Jinja backlog A/B/C: one recommended answer each, none executed.** Split
   `sensitive` into `no-transit` and `no-cache` (additive, defaults to both, frees
   `owner_full_name` across 814 templates); lift the loop ban only for `{% for %}`

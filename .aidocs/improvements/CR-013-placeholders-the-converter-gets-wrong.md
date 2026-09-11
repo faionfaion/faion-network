@@ -3,7 +3,7 @@ type: change-request
 id: CR-013
 title: "Two placeholder classes the converter gets wrong, and both fail silently"
 created: 2026-08-16
-status: open
+status: closed 2026-09-11 — §1 was already repaired (see jinja-migration-backlog.md); §2 triaged per file: 29 templates, 46 variables, 3 split, 1 made literal, 42 kept as the same slot under several headings
 affected_components: [faion-network/skills/faion/knowledge, faion-network/skills/faion/tools/template-builder]
 relates_to: ".aidocs/conventions/template-jinja-migration.md §1b, §5; .aidocs/improvements/variable-dictionary-findings.md §1"
 ---

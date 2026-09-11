@@ -26,11 +26,11 @@ token-budget-impact: low
 
 ## Slide 4 — Wins
 - Owner: <owner_full_name>
-- Evidence: <ticket_ids>
+- Evidence: <wins_ticket_ids>
 
 ## Slide 5 — Risks
 - Owner: <owner_full_name>
-- Evidence: <ticket_ids>
+- Evidence: <risks_ticket_ids>
 
 ## Slide 6 — Asks (1-3 explicit)
 - Owner: <owner_full_name>

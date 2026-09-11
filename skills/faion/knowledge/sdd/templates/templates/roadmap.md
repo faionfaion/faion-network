@@ -19,7 +19,7 @@ token-budget-impact: ~350-500 tokens when loaded as context
 
 ### <milestone_1_name>
 
-**Target:** <month>
+**Target:** <now_target_month>
 **Status:** On Track | At Risk | Delayed
 
 Features:
@@ -31,7 +31,7 @@ Features:
 
 ### <milestone_name>
 
-**Target:** <month>
+**Target:** <next_target_month>
 **Confidence:** High | Medium | Low
 
 Features:
