@@ -46,15 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: doj-rule-target-2.1-AA, population-bucket-deadline, surface-scope-public-only, evidence-not-attestation, third-party-content-included | 1000 |
+| `content/01-core-rules.xml` | essential | 13 rules: doj-rule-target-2.1-AA, title-ii-public-entities-only, population-bucket-deadline, surface-scope-public-only, evidence-not-attestation, third-party-content-included, archived-content-exemption-narrow, no-undue-burden-without-counsel, inventory-before-testing, automated-then-manual-checkpoints, prioritize-high-traffic-with-owner, ci-accessibility-checks, vpat-acr-legal-signoff; Background: covered entities, deadlines, covered content types | 2250 |
 | `content/02-output-contract.xml` | essential | JSON Schema for conformance report | 800 |
-| `content/03-failure-modes.xml` | essential | 3 antipatterns: target-2.2-instead-of-2.1, third-party-excluded, self-attestation-without-audit | 700 |
-| `content/04-procedure.xml` | essential | 5 steps: scope → bucket → audit → gap → report | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: target-2.2-instead-of-2.1, third-party-excluded, self-attestation-without-audit, pre-existing-pdfs-marked-exempt, agent-drafted-undue-burden | 800 |
+| `content/04-procedure.xml` | essential | 7 steps: scope → bucket → audit → gap → fixes → monitoring → VPAT/ACR report with human checkpoints | 800 |
 | `content/05-examples.xml` | essential | Worked example: a 75k-pop city portal | 700 |
 | `content/06-decision-tree.xml` | essential | Decision tree: entity type + population → deadline + scope | 500 |
-| `content/01-requirements.xml` | recommended | Legal scope, compliance deadlines, and the full list of digital content types covered by 28 CFR Part 35 (DOJ final rule, April 24 2024). | 800 |
-| `content/02-process.xml` | recommended | Six-step workflow from digital inventory to conformance documentation, with agent responsibilities and human checkpoints. | 700 |
-| `content/03-rules.xml` | recommended | Testable agent rules and known limitation flags that prevent common compliance errors. | 550 |
 
 ## Task Routing
 

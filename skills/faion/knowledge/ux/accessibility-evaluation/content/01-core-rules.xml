@@ -1,37 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Accessibility Evaluation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules anchoring the accessibility-evaluation methodology, each grounded in a source.</summary>
+<text id="01-core-rules" title="Accessibility Evaluation Core Rules" version="1.1.1" est_tokens="1900" depth="essential">
+  <summary>8 testable rules anchoring the accessibility-evaluation methodology, each grounded in a source. Structured five-stage audit process for WCAG 2.1/2.2 AA: automated scan, triage, keyboard testing, screen reader verification, and structured report — with tool pairings and issue priority tiers. Background: agent orchestration for accessibility audits: pipeline roles, triage prompt pattern, keyboard-trace prompt, and LLM gotchas that produce false compliance records or introduce new violations.</summary>
+
+  <section title="Background">
+    <p>Stage 1 (scan) and Stage 5 (report) are fully agent-owned. Stage 3 (keyboard) is scripted via Playwright. Stage 4 (screen reader) is human-in-the-loop — no LLM can replicate NVDA/JAWS/VoiceOver speech buffers. The orchestrator fans out to: a scanner subagent (axe + Pa11y JSON output), a triage subagent (dedup + WCAG mapping), and a writer subagent (markdown report).</p>
+  </section>
 
   <section title="Rule set">
 
     <rule id="tools-30-40-pct" testable="true" depth="essential">
-      <statement>Stage 1 automated scan MUST be treated as catching 30-40% of issues; compliance claims based on automated results alone are forbidden.</statement>
-      <rationale source="v1 methodology — section accessibility-evaluation-five-stage-process">Deque + WebAIM 2024 data: tools miss ARIA misuse, focus order in modals, live-region behaviour, cognitive a11y, and text-over-image contrast.</rationale>
+      <statement>Stage 1 automated scan MUST be treated as catching 30-40% of issues; compliance claims based on automated results alone are forbidden. Run automated scanning (axe-core, Pa11y, Lighthouse) as stage 1, but never claim compliance based on automated results alone — tools catch 30-40% of issues.</statement>
+      <rationale source="v1 methodology — section accessibility-evaluation-five-stage-process">Deque + WebAIM 2024 data: tools miss ARIA misuse, focus order in modals, live-region behaviour, cognitive a11y, and text-over-image contrast. Deque and WebAIM data (2024) confirm automated tools miss the majority of issues: ARIA misuse, focus order in modals, live-region behavior, cognitive accessibility, and text-over-image contrast are invisible to headless scanners.</rationale>
     </rule>
 
     <rule id="pin-axe-version" testable="true" depth="essential">
-      <statement>axe-core version MUST be pinned per repo; CI MUST fail on minor-version drift.</statement>
-      <rationale source="v1 methodology — five-stage process">Minor versions add new rules; an axe-clean baseline at v4.8 produces phantom violations at v4.9 with no code changes.</rationale>
+      <statement>axe-core version MUST be pinned per repo; CI MUST fail on minor-version drift. Pin the axe-core version per repo; rule additions in minor versions create phantom regressions that derail review cycles.</statement>
+      <rationale source="v1 methodology — five-stage process">Minor versions add new rules; an axe-clean baseline at v4.8 produces phantom violations at v4.9 with no code changes. axe-core releases new rules in minor versions. An "axe-clean" baseline at v4.8 may produce violations at v4.9 for the same unmodified code, causing false regression alerts.</rationale>
     </rule>
 
     <rule id="keyboard-coverage" testable="true" depth="essential">
-      <statement>Stage 3 keyboard test MUST cover: Tab reaches every interactive element, visible focus, logical order, skip links, no keyboard traps, documented shortcuts non-conflicting with AT.</statement>
-      <rationale source="WCAG 2.2 SC bundle">WCAG 2.2 SC 2.1.1, 2.4.3, 2.4.7, 2.4.11 each require separate verification; tools cover none reliably.</rationale>
+      <statement>Stage 3 keyboard test MUST cover: Tab reaches every interactive element, visible focus, logical order, skip links, no keyboard traps, documented shortcuts non-conflicting with AT. Test all of: Tab navigation reaching every interactive element, visible focus at all times, logical tab order matching visual flow, skip links, no keyboard traps, and documented shortcuts not conflicting with AT shortcuts.</statement>
+      <rationale source="WCAG 2.2 SC bundle">WCAG 2.2 SC 2.1.1, 2.4.3, 2.4.7, 2.4.11 each require separate verification; tools cover none reliably. WCAG 2.2 SC 2.1.1, 2.4.3, 2.4.7, and 2.4.11 cover these criteria. Each requires separate verification; automated tools cover none of them reliably.</rationale>
     </rule>
 
     <rule id="spa-post-route" testable="true" depth="essential">
-      <statement>For SPA frameworks, audit MUST re-run after every route transition and async state change; focus restoration after navigation is mandatory.</statement>
-      <rationale source="v1 methodology — five-stage process">SPAs frequently drop focus to body after navigation, forcing screen-reader users to restart reading.</rationale>
+      <statement>For SPA frameworks, audit MUST re-run after every route transition and async state change; focus restoration after navigation is mandatory. For SPA frameworks, audit after route transitions and after async state changes; focus management at route change is the #1 SPA accessibility failure.</statement>
+      <rationale source="v1 methodology — five-stage process">SPAs frequently drop focus to body after navigation, forcing screen-reader users to restart reading. Single-page apps frequently drop focus to the document body after navigation, forcing screen reader users to start re-reading from the top of the page.</rationale>
     </rule>
 
     <rule id="at-pairings" testable="true" depth="essential">
-      <statement>Screen-reader verification MUST use the established pairings: NVDA+Firefox, JAWS+Chrome, VoiceOver+Safari (Mac + iOS), TalkBack+Chrome (Android).</statement>
-      <rationale source="v1 methodology — five-stage process">AT behaviour differs by browser pairing; off-pair findings are not industry-standard evidence for VPAT/ACR.</rationale>
+      <statement>Screen-reader verification MUST use the established pairings: NVDA+Firefox, JAWS+Chrome, VoiceOver+Safari (Mac + iOS), TalkBack+Chrome (Android). Use established AT pairings for screen reader testing: NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari on Mac, VoiceOver + Safari on iOS, TalkBack + Chrome on Android.</statement>
+      <rationale source="v1 methodology — five-stage process">AT behaviour differs by browser pairing; off-pair findings are not industry-standard evidence for VPAT/ACR. AT behavior differs by browser pairing. A finding present in NVDA+Firefox may not reproduce in JAWS+Chrome — and vice versa. Pairings are the industry-standard evidence baseline for VPAT/ACR documentation.</rationale>
     </rule>
 
     <rule id="no-fabricated-AT-transcripts" testable="true" depth="essential">
-      <statement>Findings from an agent claiming a screen-reader observation MUST be rejected unless accompanied by audio recording or verbatim machine-readable transcript.</statement>
-      <rationale source="v1 methodology — agent-pipeline-roles-and-gotchas">LLMs cannot reproduce NVDA/JAWS/VoiceOver speech buffers; agent-invented transcripts appear plausible but are not evidence.</rationale>
+      <statement>Findings from an agent claiming a screen-reader observation MUST be rejected unless accompanied by audio recording or verbatim machine-readable transcript. Never accept a screen reader finding from an agent that does not include an audio recording or verbatim speech transcript as evidence; fabricated AT transcripts are undetectable and create false compliance records.</statement>
+      <rationale source="v1 methodology — agent-pipeline-roles-and-gotchas">LLMs cannot reproduce NVDA/JAWS/VoiceOver speech buffers; agent-invented transcripts appear plausible but are not evidence. LLMs cannot reproduce NVDA/JAWS/VoiceOver speech buffers. Agent-invented transcripts appear plausible but are not evidence of conformance.</rationale>
+    </rule>
+
+    <rule id="priority-tiers-four-levels" testable="true" depth="essential">
+      <statement>Classify every finding into Critical (blocks access completely, fix immediately), High (major barrier with difficult workaround, this sprint), Medium (creates difficulty, next sprint), or Low (enhancement, backlog).</statement>
+      <rationale source="folded from 01-process.xml">Consistent priority classification lets stakeholders make resource decisions and produces comparable metrics across audit cycles. Unclassified findings stall remediation planning.</rationale>
+    </rule>
+
+    <rule id="stable-criterion-test-ids" testable="true" depth="essential">
+      <statement>Treat each WCAG criterion as a separate test case with a stable ID so re-runs produce diffs, not full rewrites.</statement>
+      <rationale source="folded from 02-agent-patterns.xml">Without stable IDs, every re-run generates a new report that cannot be compared to the previous one. Diffs are the only way to track remediation progress and detect regressions.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
@@ -45,6 +59,7 @@
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -47,14 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: pour-as-frame, pin-wcag-version-and-level, automated-only-catches-30pct, five-minute-quick-check, placeholder-is-not-a-label | 1100 |
+| `content/01-core-rules.xml` | essential | 9 rules: pour-as-frame, pin-wcag-version-and-level, pin-wcag-22-aa-in-prompts-and-specs, automated-only-catches-30pct, evaluation-coverage-by-type, five-minute-quick-check, placeholder-is-not-a-label, alt-text-by-image-role, axe-core-in-pr-ci; Background: POUR principles, A/AA/AAA conformance levels, four evaluation types and their coverage | 2050 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the quick-check report + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: scanner-only-audit, placeholder-as-label, aria-label-on-native, mixed-wcag-levels | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
-| `content/05-examples.xml` | essential | End-to-end worked example | 700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: scanner-only-audit, placeholder-as-label, aria-label-on-native, mixed-wcag-levels, div-with-role-button, aria-to-silence-scanner | 950 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) with the five-minute quick-check protocol spelled out in step 3 | 550 |
+| `content/05-examples.xml` | essential | End-to-end worked example; before/after code for form labels and image alt text; CI gate template reference | 900 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
-| `content/01-wcag-principles.xml` | recommended | POUR framework, A/AA/AAA conformance requirements, four evaluation types and their coverage, and a five-minute quick-check protocol. | 950 |
-| `content/02-common-issues.xml` | recommended | Common Accessibility Issues with Code Examples | 1000 |
 
 ## Task Routing
 

@@ -47,14 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: tools-30-40-pct, pin-axe-version, keyboard-coverage, spa-post-route, at-pairings, no-fabricated-AT-transcripts | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: tools-30-40-pct, pin-axe-version, keyboard-coverage, spa-post-route, at-pairings, no-fabricated-AT-transcripts, priority-tiers-four-levels, stable-criterion-test-ids; Background: agent pipeline roles per stage | 1900 |
 | `content/02-output-contract.xml` | essential | JSON Schema for findings report + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: placeholder-alt, dark-mode-regression, redundant-aria-label, axe-clean-equals-compliant | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: placeholder-alt, dark-mode-regression, redundant-aria-label, axe-clean-equals-compliant, wont-fix-without-signoff, logged-out-scan | 1050 |
 | `content/04-procedure.xml` | essential | 5 steps: scan → triage → keyboard → screen-reader → report | 900 |
-| `content/05-examples.xml` | essential | Worked example: triage of 3 axe findings into POUR report rows | 700 |
+| `content/05-examples.xml` | essential | Worked example: triage of 3 axe findings into POUR report rows; priority-tier examples; triage and keyboard-trace prompt patterns; audit-report and scan.mjs templates | 550 |
 | `content/06-decision-tree.xml` | essential | Decision tree: finding source → priority + stage | 500 |
-| `content/01-process.xml` | recommended | Accessibility Evaluation Five-Stage Process | 1050 |
-| `content/02-agent-patterns.xml` | recommended | Accessibility Evaluation: Agent Pipeline Roles and Gotchas | 950 |
 
 ## Task Routing
 

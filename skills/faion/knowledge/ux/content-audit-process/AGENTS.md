@@ -49,14 +49,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/01-core-rules.xml` | essential | 12 testable rules with rationale (full inventory, multi-criterion score, six typed actions, impact × effort ranking, legal hold, scope before data, crawler plus manual, minimum columns, score before action, owners and timelines, consolidate not update duplicates, remove only without recovery path) + skip-this-methodology fallback; Background: the six actions | ~1750 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
-| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
-| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
-| `content/01-process.xml` | recommended | Structured procedure for inventorying, evaluating, and assigning actions to all content assets. | ~950 |
-| `content/02-examples.xml` | recommended | Concrete audit findings for blog and help center content, demonstrating action assignment logic. | ~600 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix, including old posts removed blind and duplicates updated individually | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step; step 3 expanded into the six-step audit run with template references | ~1250 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised); blog and help center audit findings; spreadsheet and report templates | ~750 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id), including consolidate and remove branches | ~550 |
 
 ## Task Routing
 

@@ -48,14 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale (five layers, counted variations, impact ranking, cited conventions, design-system codification, convention hierarchy, one canonical visual value, same gesture same result, one term per concept) + skip-this-methodology fallback; Background: consistency hierarchy | ~1600 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom/root-cause/fix, including inconsistent terminology, button order reversal, design drift, platform convention violation, no design system | ~1500 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
-| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
-| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
-| `content/01-framework.xml` | recommended | Five consistency types, the prioritization hierarchy, and concrete implementation patterns for visual, functional, and verbal layers. | ~1000 |
-| `content/02-antipatterns.xml` | recommended | Concrete failure modes: inconsistent terminology, button order reversals, design drift, and platform violations. | ~850 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised); visual, functional, verbal pattern examples; iOS and Google platform reference examples | ~800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id), including the internal-vs-external convention conflict branch | ~500 |
 
 ## Task Routing
 

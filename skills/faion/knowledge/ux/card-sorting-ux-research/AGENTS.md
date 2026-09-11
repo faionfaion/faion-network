@@ -49,14 +49,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/01-core-rules.xml` | essential | 12 testable rules with rationale (participant floors, user-language cards, similarity matrix, ambiguous flagging, named recommendation, goal first, 30-60 cards, format by purpose, recruit by format, similarity thresholds, no grouping examples, tree test before implement) + skip-this-methodology fallback; Background: analysis measures | ~1850 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
-| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
-| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
-| `content/01-process.xml` | recommended | Structured procedure for running open, closed, or hybrid card sorts to reveal user mental models for content organization. | ~950 |
-| `content/02-examples.xml` | recommended | Concrete open and closed sort examples demonstrating result interpretation and decision rules. | ~700 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom/root-cause/fix, including oversized card sets, missing why-questions, discarded outliers | ~1050 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step; step 3 expanded into the six-step sort run plus tree test | ~1300 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised); open and closed sort result examples; results-report template | ~750 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id), including sort-purpose → format branches | ~600 |
 
 ## Task Routing
 

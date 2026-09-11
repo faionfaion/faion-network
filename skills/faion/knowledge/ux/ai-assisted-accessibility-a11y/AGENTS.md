@@ -45,15 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology | 1100 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (two-model split, expert validation, axe+pa11y cross-check, WCAG-cited fixes, alt-text throttle, AI scans / humans decide, scan every deployment) + skip-this-methodology; Background: tool landscape by category, integration points, 2026 AI capabilities, 5-stage pipeline, human vs AI split, ROI benchmarks | 2200 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom/root-cause/fix) | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 800 |
-| `content/05-examples.xml` | essential | Full worked example end-to-end | 900 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns (symptom/root-cause/fix): model routing, direct-to-backlog, single tool, overlays, unreviewed alt text, AI-only captions, scan as compliance proof, unchunked axe JSON, agent-suggested overlays | 1300 |
+| `content/04-procedure.xml` | essential | 7-step procedure with decision gates: scan → Haiku filter → Sonnet fixes → expert validation → tickets → user testing → continuous monitoring | 600 |
+| `content/05-examples.xml` | essential | Full worked example end-to-end; CI gate and triage prompt templates | 350 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 600 |
-| `content/01-tool-landscape.xml` | recommended | AI-powered accessibility tools by category, integration points across the development lifecycle, and capability comparison for 2026. | 700 |
-| `content/02-workflow.xml` | recommended | 5-stage pipeline from automated scan to user validation, including the human-AI responsibility split and ROI data. | 700 |
-| `content/03-anti-patterns.xml` | recommended | Critical failure modes: AI overlays, alt text limitations, caption accuracy traps, automated compliance claims, and agent gotchas. | 650 |
 
 ## Task Routing
 

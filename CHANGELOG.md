@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 option 1 complete, batch 8 of 8: ten `ux` slugs — and no
+  non-canonical content file remains anywhere in the corpus.** 22 files folded
+  here, preservation 0 on each; three disagreements between a hand-written
+  extra and its generated rule kept verbatim with a governing sentence.
+
+  Totals over the eight batches: **80 slugs, 205 files, ~685 KB** of hand-written
+  content moved out of names the retrieval contract could not address and into
+  `01`/`03`/`04`/`05`/`06`, where `--parts` reaches it. Every move was checked
+  mechanically before the extra was deleted — each 60+ character text node of
+  the deleted file must appear, normalised, in the parts that remain — and the
+  reviewer re-ran the same check against `HEAD` on all 80 before staging. The
+  first attempt at this, nine agents in parallel, died on a session limit
+  mid-edit and left 35 half-folded slugs; every one failed that check and was
+  reverted, and the second attempt ran two agents at a time with one slug
+  finished before the next was opened. CR-008's population A and CR-010's
+  option 1 are both closed by this; their "what this does not settle" lists —
+  the near-duplicate rule pairs the preservation rule forced to be kept, and the
+  handful of visible numeric disagreements — are the second-pass dedupe, named
+  per slug in the batch entries above.
+
 - **CR-010 option 1, batch 7 of 8: ten `sdd` slugs.** 23 files folded,
   preservation 0 on each. `key-trends-summary` — whose stated purpose is "6 SDD
   trends" and whose six trends all lived in unlisted files — now carries them as

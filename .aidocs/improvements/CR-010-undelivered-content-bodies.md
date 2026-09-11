@@ -4,7 +4,7 @@ cr_id: CR-010
 title: "602 KB of hand-written methodology content ships and is never delivered"
 priority: P1
 created: 2026-08-15
-status: **corrected 2026-09-10 — the delivery claim was wrong; see Correction**
+status: **executed 2026-09-11 — option 3 stopgap on 2026-09-10, then option 1: all 80 slugs / 205 non-canonical files folded into canonical parts with a mechanical verbatim-preservation check; the delivery claim itself was wrong, see Correction**
 affected_components: [faion-network/skills/faion/knowledge]
 blocks: "publication — the corpus is paid for by the token, and 40% of the median affected document is unreachable"
 supersedes_context: "CR-008 recorded 251 non-canonical part names as a naming defect. This is what those names are actually costing."

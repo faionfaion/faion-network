@@ -46,13 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with sourced rationale + skip-this-methodology + run-the-checklist | 1100 |
+| `content/01-core-rules.xml` | essential | 11 testable rules with sourced rationale (four layers, AT pair, severity enum, user-panel weighting, evidence, axe+Pa11y union, keyboard walkthrough, NVDA+Firefox / VoiceOver+Safari, bug links criterion + screenshot, priority rubric, CI per-PR + release diff) + skip-this-methodology + run-the-checklist; Background: agentic pipeline roles | 2050 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the artefact + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure (input / action / output / decision-gate) | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom + root-cause + fix, including axe "0 violations" as conformance and unbounded auto-fix loops | 900 |
+| `content/04-procedure.xml` | essential | Seven-step procedure (input / action / output / decision-gate): scope, automated, keyboard, AT with SR checklist, cognitive, user panel + aggregate, CI integration | 850 |
+| `content/05-examples.xml` | essential | Reference tables: automated find/miss, keyboard test matrix, priority rubric; audit-report and a11y-scan templates | 800 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs (preconditions, severity, modality) to a rule from 01-core-rules.xml | 500 |
-| `content/01-testing-process.xml` | recommended | Five-Step Accessibility Testing Process | 1200 |
-| `content/02-issue-prioritization.xml` | recommended | Priority rubric for a11y issues, CI integration patterns, false-positive management, and the agentic testing pipeline. | 950 |
 
 ## Task Routing
 

@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Accessibility Testing Process Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Testable rules grounding the Accessibility Testing Process methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
+<text id="01-core-rules" title="Accessibility Testing Process Core Rules" version="1.1.1" est_tokens="2050" depth="essential">
+  <summary>Testable rules grounding the Accessibility Testing Process methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override. Sequential testing process from automated scanning through screen reader and cognitive verification, with tool selection and explicit coverage boundaries for each step. Priority rubric for a11y issues, CI integration patterns, false-positive management, and the agentic testing pipeline.</summary>
+
+  <section title="Background">
+    <p>Agentic pipeline: Step 1 (automated) and Step 2 (keyboard via Playwright) and Step 5 (triage and doc generation) are agent-driveable. Steps 3 (screen reader) and 4 (cognitive) require human-in-loop — agent prepares scripts and templates, a tester executes. Pipeline: scanner agent → keyboard-bot → triage agent → report writer.</p>
+    <list>
+      <item>Scanner agent: run axe + Pa11y, parse JSON, group violations by WCAG criterion with fix recommendation.</item>
+      <item>Triage agent: deduplicate by selector+rule across tools, map to WCAG 2.2 AA, assign priority per rubric.</item>
+      <item>Report writer: populate audit-report.md template from triage output; flag untested criteria as "Not Tested", never "Supports".</item>
+    </list>
+  </section>
 
   <section title="Rule set">
 
@@ -11,12 +20,42 @@
 
     <rule id="at-pair-minimum" testable="true" depth="essential">
       <statement>AT testing covers at least two screen readers — minimum: one desktop (NVDA or JAWS) + one mobile (VoiceOver iOS or TalkBack).</statement>
-      <rationale source="WebAIM SR survey 2024">Different SRs surface different bugs; single-SR audits miss platform-specific failures.</rationale>
+      <rationale source="WebAIM SR survey 2024">Different SRs surface different bugs; single-SR audits miss platform-specific failures. The folded rule at-nvda-firefox-plus-voiceover-safari names a different minimum pair (NVDA+Firefox and VoiceOver+Safari, both desktop); the two sources disagree on whether the second SR must be mobile, and this rule governs until reconciled.</rationale>
+    </rule>
+
+    <rule id="at-nvda-firefox-plus-voiceover-safari" testable="true" depth="essential">
+      <statement>Test with at least NVDA+Firefox and VoiceOver+Safari; a pass on one AT+browser combo does not generalize to another.</statement>
+      <rationale source="folded from 01-testing-process.xml">Screen readers and browsers diverge on ARIA interpretation. NVDA+JAWS differ on Windows for the same DOM; mobile AT (VoiceOver iOS, TalkBack) have additional gesture-specific behaviors.</rationale>
+    </rule>
+
+    <rule id="run-axe-and-pa11y-union" testable="true" depth="essential">
+      <statement>Run both axe AND Pa11y on every audit — their rule sets diverge on ~15% of issues; use the union of violations, not the intersection.</statement>
+      <rationale source="folded from 01-testing-process.xml">axe-core and Pa11y have different heuristics and catch different subsets of WCAG violations. A scan with only one tool produces a systematically incomplete picture.</rationale>
+    </rule>
+
+    <rule id="keyboard-tab-walkthrough" testable="true" depth="essential">
+      <statement>Tab through the entire page without touching the mouse; every interactive element must be reachable, operable, and have a visible focus indicator.</statement>
+      <rationale source="folded from 01-testing-process.xml">Screen reader users navigate by keyboard; axe cannot detect keyboard traps, illogical tab order, or missing skip links — these require a human Tab walkthrough.</rationale>
+    </rule>
+
+    <rule id="bug-links-criterion-and-screenshot" testable="true" depth="essential">
+      <statement>Every a11y bug must be linked to a WCAG criterion number and include a pre-fix screenshot; never close a bug without both.</statement>
+      <rationale source="folded from 01-testing-process.xml">Without criterion mapping and evidence, audit drift is undetectable and VPAT/ACR cannot be produced from the issue tracker.</rationale>
+    </rule>
+
+    <rule id="ci-axe-pa11y-per-pr-with-release-diff" testable="true" depth="essential">
+      <statement>Run axe + Pa11y on every PR against a known URL; snapshot axe JSON per release and diff against the previous release to detect regressions.</statement>
+      <rationale source="folded from 02-issue-prioritization.xml">Without a CI gate, a11y regressions accumulate silently between releases. Diffing JSON identifies whether a new release introduced new violations.</rationale>
     </rule>
 
     <rule id="severity-enum" testable="true" depth="essential">
       <statement>Severity per finding is one of: blocker / major / minor / informational. Free-form severity strings are forbidden.</statement>
-      <rationale source="Internal — audit triage convention">Closed enum enables triage and dashboarding.</rationale>
+      <rationale source="Internal — audit triage convention">Closed enum enables triage and dashboarding. The folded rule priority-rubric-four-levels uses a different four-level vocabulary (Critical / High / Medium / Low) keyed to fix timeline; the two sources disagree on the label set, and this enum governs the artefact's severity field until reconciled.</rationale>
+    </rule>
+
+    <rule id="priority-rubric-four-levels" testable="true" depth="essential">
+      <statement>Assign every issue one of four priority levels based on whether it blocks access completely, creates a significant barrier, creates difficulty, or is an enhancement.</statement>
+      <rationale source="folded from 02-issue-prioritization.xml">Without explicit triage, all issues compete equally and critical ones are delayed. Priority drives fix timeline, not just backlog ordering.</rationale>
     </rule>
 
     <rule id="user-feedback-weighted" testable="true" depth="essential">
@@ -44,6 +83,8 @@
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

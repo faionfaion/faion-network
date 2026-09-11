@@ -49,14 +49,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale (competitor mix capped at 8, pre-declared criteria, MSCW four tiers, first-hand product use, citation per finding, consistent documentation, cross-competitor patterns) + skip-this-methodology fallback | ~1550 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
-| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom/root-cause/fix, including copy-without-why, one-time analysis, substitute for user research | ~1200 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step; step 3 expanded into the six-step analysis run with template references | ~1250 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised); e-commerce checkout and SaaS onboarding finding-to-insight examples; four report templates | ~850 |
 | `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
-| `content/01-process.xml` | recommended | Structured procedure for examining competitor products across predefined criteria and converting observations into prioritized design recommendations. | ~1100 |
-| `content/02-examples.xml` | recommended | Concrete e-commerce and SaaS examples of finding-to-insight conversion and analysis anti-patterns. | ~850 |
 
 ## Task Routing
 

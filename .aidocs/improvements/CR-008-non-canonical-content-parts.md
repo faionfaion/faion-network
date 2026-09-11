@@ -4,7 +4,7 @@ cr_id: CR-008
 title: "251 content files no --parts name can address, and 7 documents that are wholly unreachable"
 priority: P1
 created: 2026-08-15
-status: population B executed 2026-09-10 (option 1: the 7 sdd documents now carry all six canonical parts, topical files folded and removed); population A open, subsumed by CR-010 option 1
+status: population B executed 2026-09-10 (option 1: the 7 sdd documents now carry all six canonical parts, topical files folded and removed); population A executed 2026-09-11 under CR-010 option 1 — 0 non-canonical content files remain in the corpus
 affected_components: [faion-network/skills/faion/knowledge]
 blocks: "publication — retrieval-content-contracts.md §1"
 ---
