@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The fold's eleven visible disagreements, in one table for the owner.**
+  `.aidocs/improvements/fold-disagreements-decisions.md` lists every place a
+  hand-written extra and its generated canonical rule state the same thing with
+  different numbers or opposite advice — 20% vs 30% budget steps, six vs eight
+  design-doc sections, 30 min vs 24 h mistake capture, wave 0 vs wave 1, LLM
+  drafts alternatives or must not, 60% vs 70/40 card-sort thresholds, and so on.
+  Both sentences stand in the corpus with a governing note; each row is a
+  one-word edit once a number is chosen. Measured beside it: 123 near-duplicate
+  rule pairs (token Jaccard ≥ 0.6) across 46 slugs, most predating the fold
+  (`langchain-*`, `django-pytest-*`) — the dedupe pass is corpus-wide, not fold
+  residue.
+
 - **CR-010 option 1: the two slugs batch 5 missed.** `pm/workflows` and
   `product/feature-prioritization-rice-product-ops` were folded with that batch
   but their agent finished them after the batch was staged; both pass the same
