@@ -1,25 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="RAG Policy Thresholds Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>JSON Schema (draft-07) for `RAGPolicy` — numeric thresholds per signal + default action per colour + evidence + owner + refresh cadence.</summary>
+<text id="02-output-contract" title="RAG Policy Thresholds Output Contract" version="2.0.0" est_tokens="4750" depth="essential">
+  <summary>Draft-07 JSON Schema for `RAGPolicy`: per-signal numeric `amber_threshold` / `red_threshold` with a comparator and unit, an `input_source` that names a system and a repeatable query, at least one incident / post-mortem / policy / baseline anchor per signal, an Amber step with a deadline inside the reporting cycle, a Red playbook with an hour bound, a `review_log` of reviews and overrides (a computed Red is never reported lower), and a `colour_history` of computed cycles that cite the policy version. Validator: `scripts/validate-rag-policy-thresholds.py`; staleness: `scripts/staleness-check.py`.</summary>
 
-  <section title="Schema">
+  <section title="JSON Schema (draft-07)">
     <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/rag-policy.json",
+  "title": "RAGPolicy",
   "type": "object",
-  "required": ["project_id", "header", "signals", "actions", "review_log"],
+  "required": ["project_id", "header", "signals", "actions", "review_log", "colour_history"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "colour": {"enum": ["green", "amber", "red"]},
+    "signal_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "anchor": {"type": "string", "pattern": "^(incident-[A-Za-z0-9._-]+|postmortem-[A-Za-z0-9._-]+|policy://[^\\s]+|baseline-[A-Za-z0-9._-]+)$"},
+    "signal_change": {
+      "type": "object",
+      "required": ["signal_id", "reason"],
+      "properties": {
+        "signal_id": {"$ref": "#/definitions/signal_id"},
+        "reason": {"type": "string", "minLength": 10},
+        "evidence": {"type": "array", "items": {"$ref": "#/definitions/anchor"}}
+      }
+    }
+  },
   "properties": {
-    "project_id": {"type": "string"},
+    "__faion_header__": {"type": "object"},
+    "project_id": {"type": "string", "minLength": 2},
     "header": {
       "type": "object",
-      "required": ["owner", "last_reviewed", "version", "trigger", "reporting_cadence_days"],
+      "required": ["owner", "version", "last_reviewed", "reporting_cadence_days"],
+      "additionalProperties": false,
       "properties": {
-        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
-        "last_reviewed": {"type": "string", "format": "date"},
-        "version": {"type": "string"},
-        "trigger": {"enum": ["weekly_status", "fortnightly_status", "monthly_status"]},
-        "reporting_cadence_days": {"type": "integer", "minimum": 1, "maximum": 30}
+        "owner": {
+          "type": "object",
+          "required": ["role", "person"],
+          "properties": {"role": {"type": "string", "minLength": 2}, "person": {"type": "string", "minLength": 2}}
+        },
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"},
+        "last_reviewed": {"$ref": "#/definitions/date"},
+        "reporting_cadence_days": {"type": "integer", "minimum": 1, "maximum": 31}
       }
     },
     "signals": {
@@ -27,71 +49,331 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["signal_id", "input_source", "amber_threshold", "red_threshold", "comparator", "evidence"],
+        "required": ["signal_id", "unit", "input_source", "comparator", "amber_threshold", "red_threshold", "evidence"],
+        "additionalProperties": false,
         "properties": {
-          "signal_id": {"type": "string"},
-          "input_source": {"type": "string"},
+          "signal_id": {"$ref": "#/definitions/signal_id"},
+          "unit": {"enum": ["percent", "count", "ratio", "boolean"]},
+          "input_source": {
+            "type": "object",
+            "required": ["system", "query"],
+            "properties": {
+              "system": {"type": "string", "minLength": 2},
+              "query": {
+                "type": "string",
+                "minLength": 3,
+                "not": {"pattern": "(?i)(estimate|gut|feel|consensus|opinion|ask the|check-in)"}
+              }
+            }
+          },
+          "comparator": {"enum": ["gt", "lt", "gte", "lte", "eq"]},
           "amber_threshold": {"type": "number"},
           "red_threshold": {"type": "number"},
-          "comparator": {"enum": ["gt", "lt", "gte", "lte", "eq"]},
-          "evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}}
-        }
+          "evidence": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/definitions/anchor"}}
+        },
+        "allOf": [
+          {"if": {"properties": {"signal_id": {"pattern": "^(schedule|budget)"}}}, "then": {"properties": {"signal_id": {"pattern": "_variance_pct$"}, "unit": {"const": "percent"}}}},
+          {"if": {"properties": {"comparator": {"const": "eq"}}}, "then": {"properties": {"unit": {"const": "boolean"}}}}
+        ]
       }
     },
     "actions": {
       "type": "object",
       "required": ["green", "amber", "red"],
+      "additionalProperties": false,
       "properties": {
-        "green": {"type": "string"},
-        "amber": {"type": "string", "minLength": 10},
-        "red": {"type": "string", "minLength": 10}
+        "green": {"type": "string", "minLength": 5},
+        "amber": {
+          "type": "object",
+          "required": ["step", "deadline_hours"],
+          "properties": {
+            "step": {"type": "string", "minLength": 10, "not": {"pattern": "(?i)^(discuss|monitor|keep an eye|watch)"}},
+            "deadline_hours": {"type": "integer", "minimum": 1}
+          }
+        },
+        "red": {
+          "type": "object",
+          "required": ["playbook", "first_step", "within_hours", "fires_at"],
+          "properties": {
+            "playbook": {"type": "string", "minLength": 3},
+            "first_step": {"type": "string", "minLength": 10, "not": {"pattern": "(?i)^(discuss|monitor|keep an eye|watch)"}},
+            "within_hours": {"type": "integer", "minimum": 1, "maximum": 72},
+            "fires_at": {"const": "compute_time"}
+          }
+        }
       }
     },
-    "review_log": {"type": "array", "items": {"type": "object", "required": ["reviewed_at"]}}
+    "review_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["logged_at", "kind", "person"],
+        "properties": {
+          "logged_at": {"$ref": "#/definitions/date"},
+          "kind": {"enum": ["review", "override"]},
+          "person": {"type": "string", "minLength": 2},
+          "version_after": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"},
+          "signals_removed": {"type": "array", "items": {"$ref": "#/definitions/signal_change"}},
+          "signals_justified": {"type": "array", "items": {"$ref": "#/definitions/signal_change"}},
+          "signals_added_or_tightened": {
+            "type": "array",
+            "items": {"allOf": [{"$ref": "#/definitions/signal_change"}, {"required": ["evidence"], "properties": {"evidence": {"minItems": 1}}}]}
+          },
+          "cycle_date": {"$ref": "#/definitions/date"},
+          "computed_colour": {"$ref": "#/definitions/colour"},
+          "reported_colour": {"$ref": "#/definitions/colour"},
+          "reason": {"type": "string", "minLength": 10}
+        },
+        "allOf": [
+          {"if": {"properties": {"kind": {"const": "review"}}}, "then": {"required": ["version_after", "signals_removed", "signals_justified", "signals_added_or_tightened"]}},
+          {"if": {"properties": {"kind": {"const": "override"}}}, "then": {"required": ["cycle_date", "computed_colour", "reported_colour", "reason"]}},
+          {"if": {"properties": {"kind": {"const": "override"}, "computed_colour": {"const": "red"}}, "required": ["computed_colour"]}, "then": {"properties": {"reported_colour": {"const": "red"}}}}
+        ]
+      }
+    },
+    "colour_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["computed_at", "policy_version", "policy_last_reviewed", "values", "computed_colour", "reported_colour"],
+        "additionalProperties": false,
+        "properties": {
+          "computed_at": {"$ref": "#/definitions/date"},
+          "policy_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"},
+          "policy_last_reviewed": {"$ref": "#/definitions/date"},
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["signal_id", "value"],
+              "properties": {"signal_id": {"$ref": "#/definitions/signal_id"}, "value": {"type": "number"}}
+            }
+          },
+          "computed_colour": {"$ref": "#/definitions/colour"},
+          "reported_colour": {"$ref": "#/definitions/colour"},
+          "red_escalated_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}"}
+        },
+        "if": {"properties": {"computed_colour": {"const": "red"}}},
+        "then": {"required": ["red_escalated_at"], "properties": {"reported_colour": {"const": "red"}}}
+      }
+    }
   }
 }
 ]]></code>
+    <note>What the validator's cross-field block checks beyond the schema: `red_threshold` lies strictly beyond `amber_threshold` in the comparator's direction, and for `eq` the two differ (r-red-strictly-beyond-amber); `amber.deadline_hours` is at most `reporting_cadence_days` x 24 (r-red-action-named-and-time-bound); every `colour_history` entry's `values` cover every signal, its `computed_colour` equals the worst per-signal colour obtained by applying the comparator to the thresholds, with no averaging (r-worst-signal-wins); a `reported_colour` that differs from `computed_colour` has an `override` entry in `review_log` for that `cycle_date` (r-override-logged-never-downgrades-red); `computed_at` is at most 90 days after `policy_last_reviewed` (r-review-within-90-days-prunes-and-adds). Whether `header.last_reviewed` is stale today is time-relative and is checked by `scripts/staleness-check.py`.</note>
   </section>
 
-  <section title="Forbidden patterns">
-    <list>
-      <item>`signals[*].amber_threshold` or `red_threshold` non-numeric ("significant", "material") — violates `r2-bounded-output`.</item>
-      <item>`actions.red` empty or generic "discuss" — violates `r4-named-owner`.</item>
-      <item>`header.last_reviewed` &gt; 90 days — violates `r5-iteration-loop`.</item>
-      <item>`signals[*].evidence` empty — violates `r3-evidence-anchored`.</item>
-      <item>`header.trigger` "when_needed" — violates `r1-explicit-trigger`.</item>
-    </list>
-  </section>
-
-  <example valid="true">
-    <code lang="json"><![CDATA[
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
   "project_id": "checkout",
-  "header": {"owner": {"role": "PM", "person": "pm-handle"}, "last_reviewed": "2026-05-10", "version": "1.4", "trigger": "weekly_status", "reporting_cadence_days": 7},
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10",
+    "reporting_cadence_days": 7
+  },
   "signals": [
-    {"signal_id": "schedule_variance_pct", "input_source": "Jira velocity report", "amber_threshold": 10, "red_threshold": 20, "comparator": "gt",
-     "evidence": ["incident-2025-Q4-acme-overrun", "policy://pmo/schedule-tolerance"]},
-    {"signal_id": "defect_escape_rate", "input_source": "Sentry weekly export", "amber_threshold": 0.05, "red_threshold": 0.10, "comparator": "gt",
-     "evidence": ["postmortem-2026-Q1"]}
+    {
+      "signal_id": "schedule_variance_pct",
+      "unit": "percent",
+      "input_source": {"system": "Jira", "query": "dashboard 'Checkout EV' panel 'SV%' = (EV - PV) / PV * 100"},
+      "comparator": "gt",
+      "amber_threshold": 10,
+      "red_threshold": 20,
+      "evidence": ["incident-2025-Q4-acme-overrun", "policy://pmo/schedule-tolerance"]
+    },
+    {
+      "signal_id": "budget_variance_pct",
+      "unit": "percent",
+      "input_source": {"system": "NetSuite", "query": "saved export 'checkout-cost-vs-plan' column CV%"},
+      "comparator": "gt",
+      "amber_threshold": 5,
+      "red_threshold": 15,
+      "evidence": ["policy://pmo/budget-tolerance"]
+    },
+    {
+      "signal_id": "defect_escape_rate",
+      "unit": "ratio",
+      "input_source": {"system": "Sentry", "query": "saved search 'checkout prod new issues / releases' weekly"},
+      "comparator": "gt",
+      "amber_threshold": 0.05,
+      "red_threshold": 0.1,
+      "evidence": ["postmortem-2026-Q1-checkout-hotfix"]
+    },
+    {
+      "signal_id": "blockers_open_count",
+      "unit": "count",
+      "input_source": {"system": "Jira", "query": "project = CHK AND flagged = Impediment AND status != Done"},
+      "comparator": "gte",
+      "amber_threshold": 2,
+      "red_threshold": 4,
+      "evidence": ["baseline-chk-2026-q1-blockers"]
+    }
   ],
-  "actions": {"green": "continue normal cadence", "amber": "PM scheduled mid-week health-check; surface in next sync", "red": "fire distressed-project-rescue playbook; sponsor notified within 4h"},
-  "review_log": [{"reviewed_at": "2026-05-10"}]
+  "actions": {
+    "green": "continue the weekly cadence; record value, version and last_reviewed",
+    "amber": {"step": "PM runs a mid-week health check with the tech lead and posts findings in the status thread", "deadline_hours": 72},
+    "red": {"playbook": "distressed-project-rescue", "first_step": "sponsor notified and rescue playbook opened", "within_hours": 4, "fires_at": "compute_time"}
+  },
+  "review_log": [
+    {
+      "logged_at": "2026-05-10",
+      "kind": "review",
+      "person": "olena.k",
+      "version_after": "1.4.0",
+      "signals_removed": [{"signal_id": "pr_review_latency_hours", "reason": "no Amber or Red in Q4 2025 and Q1 2026"}],
+      "signals_justified": [{"signal_id": "budget_variance_pct", "reason": "no Amber in two periods but it is the sponsor's contractual tolerance"}],
+      "signals_added_or_tightened": [{"signal_id": "defect_escape_rate", "reason": "Q1 hotfix incident was not flagged ahead; amber tightened from 0.08 to 0.05", "evidence": ["postmortem-2026-Q1-checkout-hotfix"]}]
+    },
+    {
+      "logged_at": "2026-05-18",
+      "kind": "override",
+      "person": "olena.k",
+      "cycle_date": "2026-05-18",
+      "computed_colour": "amber",
+      "reported_colour": "green",
+      "reason": "Jira EV panel double-counted the sprint 14 carry-over; corrected SV% is 6"
+    }
+  ],
+  "colour_history": [
+    {
+      "computed_at": "2026-05-18",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {"signal_id": "schedule_variance_pct", "value": 12},
+        {"signal_id": "budget_variance_pct", "value": 3},
+        {"signal_id": "defect_escape_rate", "value": 0.02},
+        {"signal_id": "blockers_open_count", "value": 1}
+      ],
+      "computed_colour": "amber",
+      "reported_colour": "green"
+    },
+    {
+      "computed_at": "2026-05-25",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {"signal_id": "schedule_variance_pct", "value": 22},
+        {"signal_id": "budget_variance_pct", "value": 4},
+        {"signal_id": "defect_escape_rate", "value": 0.03},
+        {"signal_id": "blockers_open_count", "value": 1}
+      ],
+      "computed_colour": "red",
+      "reported_colour": "red",
+      "red_escalated_at": "2026-05-25T10:40"
+    }
+  ]
 }
 ]]></code>
-  </example>
+    </example>
+  </section>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "project_id": "x",
-  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0", "trigger": "when_needed", "reporting_cadence_days": 7},
-  "signals": [{"signal_id": "schedule", "input_source": "guess", "amber_threshold": "significant", "red_threshold": "material", "comparator": "gt", "evidence": []}],
-  "actions": {"green": "", "amber": "discuss", "red": "..."},
-  "review_log": []
+  "project_id": "checkout",
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10",
+    "reporting_cadence_days": 7
+  },
+  "signals": [
+    {
+      "signal_id": "schedule_variance_pct",
+      "unit": "percent",
+      "input_source": {"system": "PM", "query": "PM estimate at the weekly sync"},
+      "comparator": "gt",
+      "amber_threshold": "significant",
+      "red_threshold": 20,
+      "evidence": ["TBD"]
+    },
+    {
+      "signal_id": "test_coverage_pct",
+      "unit": "percent",
+      "input_source": {"system": "SonarQube", "query": "project CHK measure coverage"},
+      "comparator": "lt",
+      "amber_threshold": 60,
+      "red_threshold": 70,
+      "evidence": ["policy://eng/coverage-floor"]
+    }
+  ],
+  "actions": {
+    "green": "continue normal cadence",
+    "amber": {"step": "discuss at the next sync", "deadline_hours": 72},
+    "red": {"playbook": "distressed-project-rescue", "first_step": "sponsor notified and rescue playbook opened", "within_hours": 4, "fires_at": "next_sync"}
+  },
+  "review_log": [
+    {
+      "logged_at": "2026-05-25",
+      "kind": "override",
+      "person": "olena.k",
+      "cycle_date": "2026-05-25",
+      "computed_colour": "red",
+      "reported_colour": "amber",
+      "reason": "steering committee is on Thursday; the team is confident the slip recovers"
+    }
+  ],
+  "colour_history": [
+    {
+      "computed_at": "2026-05-25",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {"signal_id": "schedule_variance_pct", "value": 22},
+        {"signal_id": "test_coverage_pct", "value": 80}
+      ],
+      "computed_colour": "amber",
+      "reported_colour": "amber"
+    }
+  ]
 }
 ]]></code>
-    <note>Non-numeric thresholds; no evidence; vague trigger; empty owner; actions too short.</note>
-  </example>
+      <note>Subject violations: `amber_threshold: "significant"` is prose, not a number (r-threshold-numeric-with-comparator); `test_coverage_pct` is a `lt` signal whose red (70) lies above amber (60), so the Amber band is empty (r-red-strictly-beyond-amber); `input_source.query` is a PM estimate (r-input-source-is-a-query); evidence `TBD` (r-evidence-anchor-per-signal); Amber action "discuss" and a Red action that fires at the next sync (r-red-action-named-and-time-bound); an override that reports a computed Red as Amber, and a cycle whose `computed_colour` is Amber while `schedule_variance_pct` = 22 is over the Red threshold of 20 (r-override-logged-never-downgrades-red, r-worst-signal-wins).</note>
+    </example>
+  </section>
 
-  <reference path="scripts/validate-rag-policy-thresholds.py">Validator script</reference>
+  <forbidden-patterns>
+    <antipattern id="prose-threshold">
+      <description>`amber_threshold` or `red_threshold` that is not a number, a missing comparator, or a unit that differs from what the query returns.</description>
+      <reason>r-threshold-numeric-with-comparator: "significant slippage" is renegotiated every week under stakeholder pressure.</reason>
+    </antipattern>
+    <antipattern id="collapsed-amber-band">
+      <description>`red_threshold` not strictly beyond `amber_threshold` in the comparator's direction, or equal thresholds on an `eq` signal.</description>
+      <reason>r-red-strictly-beyond-amber: the project jumps from Green to Red with no warning window.</reason>
+    </antipattern>
+    <antipattern id="opinion-as-input">
+      <description>`input_source.query` reading "estimate", "gut feel", "consensus" or "ask the lead", or a schedule / budget signal that is not a percent variance against plan.</description>
+      <reason>r-input-source-is-a-query: a threshold is only reproducible if the input is.</reason>
+    </antipattern>
+    <antipattern id="averaged-colour">
+      <description>A `colour_history` entry whose `computed_colour` is better than the worst per-signal colour, or values missing for a signal.</description>
+      <reason>r-worst-signal-wins: averaging is how a 25% overrun reports Green.</reason>
+    </antipattern>
+    <antipattern id="unlogged-or-downgraded-override">
+      <description>`reported_colour` differing from `computed_colour` with no `override` entry for that cycle, or an override whose `computed_colour` is red and `reported_colour` is not.</description>
+      <reason>r-override-logged-never-downgrades-red: if the override path is free, the policy is decoration.</reason>
+    </antipattern>
+    <antipattern id="untraceable-threshold">
+      <description>`evidence` empty, or a value such as `TBD`, `see ticket` or `experience` instead of an `incident-`, `postmortem-`, `policy://` or `baseline-` anchor; a tightened threshold with no new anchor.</description>
+      <reason>r-evidence-anchor-per-signal: a threshold nobody can trace is a threshold nobody will defend.</reason>
+    </antipattern>
+    <antipattern id="red-without-consequence">
+      <description>`actions.red` without a playbook or an hour bound, `fires_at` other than `compute_time`, an Amber step reading "discuss" or "monitor", or a deadline outside the reporting cycle.</description>
+      <reason>r-red-action-named-and-time-bound: teams that reach Red and "discuss it Monday" reach Red for six consecutive weeks.</reason>
+    </antipattern>
+    <antipattern id="fossil-policy">
+      <description>A cycle computed more than 90 days after `policy_last_reviewed`, a review entry without removed / justified / added lists, or a cycle that does not cite `policy_version`.</description>
+      <reason>r-review-within-90-days-prunes-and-adds: thresholds set once become folklore.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-rag-policy-thresholds.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="scripts/staleness-check.py">Flags a policy whose `header.last_reviewed` is older than 90 days.</reference>
+  <reference path="templates/skeleton.md.j2">Markdown skeleton with the same signal columns, action fields and log sections.</reference>
 </text>

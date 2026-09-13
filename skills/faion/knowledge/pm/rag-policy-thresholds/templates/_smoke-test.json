@@ -9,34 +9,174 @@
   "project_id": "smoke",
   "header": {
     "owner": {
-      "role": "PM",
-      "person": "pm-handle"
+      "role": "pm",
+      "person": "olena.k"
     },
+    "version": "1.4.0",
     "last_reviewed": "2026-05-10",
-    "version": "1.0",
-    "trigger": "weekly_status",
     "reporting_cadence_days": 7
   },
   "signals": [
     {
       "signal_id": "schedule_variance_pct",
-      "input_source": "Jira velocity",
+      "unit": "percent",
+      "input_source": {
+        "system": "Jira",
+        "query": "dashboard 'Checkout EV' panel 'SV%' = (EV - PV) / PV * 100"
+      },
+      "comparator": "gt",
       "amber_threshold": 10,
       "red_threshold": 20,
-      "comparator": "gt",
       "evidence": [
-        "incident-2025-Q4-acme"
+        "incident-2025-Q4-acme-overrun",
+        "policy://pmo/schedule-tolerance"
+      ]
+    },
+    {
+      "signal_id": "budget_variance_pct",
+      "unit": "percent",
+      "input_source": {
+        "system": "NetSuite",
+        "query": "saved export 'checkout-cost-vs-plan' column CV%"
+      },
+      "comparator": "gt",
+      "amber_threshold": 5,
+      "red_threshold": 15,
+      "evidence": [
+        "policy://pmo/budget-tolerance"
+      ]
+    },
+    {
+      "signal_id": "defect_escape_rate",
+      "unit": "ratio",
+      "input_source": {
+        "system": "Sentry",
+        "query": "saved search 'checkout prod new issues / releases' weekly"
+      },
+      "comparator": "gt",
+      "amber_threshold": 0.05,
+      "red_threshold": 0.1,
+      "evidence": [
+        "postmortem-2026-Q1-checkout-hotfix"
+      ]
+    },
+    {
+      "signal_id": "blockers_open_count",
+      "unit": "count",
+      "input_source": {
+        "system": "Jira",
+        "query": "project = CHK AND flagged = Impediment AND status != Done"
+      },
+      "comparator": "gte",
+      "amber_threshold": 2,
+      "red_threshold": 4,
+      "evidence": [
+        "baseline-chk-2026-q1-blockers"
       ]
     }
   ],
   "actions": {
-    "green": "continue normal cadence",
-    "amber": "PM scheduled mid-week health-check",
-    "red": "fire distressed-project-rescue; sponsor notified within 4h"
+    "green": "continue the weekly cadence; record value, version and last_reviewed",
+    "amber": {
+      "step": "PM runs a mid-week health check with the tech lead and posts findings in the status thread",
+      "deadline_hours": 72
+    },
+    "red": {
+      "playbook": "distressed-project-rescue",
+      "first_step": "sponsor notified and rescue playbook opened",
+      "within_hours": 4,
+      "fires_at": "compute_time"
+    }
   },
   "review_log": [
     {
-      "reviewed_at": "2026-05-10"
+      "logged_at": "2026-05-10",
+      "kind": "review",
+      "person": "olena.k",
+      "version_after": "1.4.0",
+      "signals_removed": [
+        {
+          "signal_id": "pr_review_latency_hours",
+          "reason": "no Amber or Red in Q4 2025 and Q1 2026"
+        }
+      ],
+      "signals_justified": [
+        {
+          "signal_id": "budget_variance_pct",
+          "reason": "no Amber in two periods but it is the sponsor's contractual tolerance"
+        }
+      ],
+      "signals_added_or_tightened": [
+        {
+          "signal_id": "defect_escape_rate",
+          "reason": "Q1 hotfix incident was not flagged ahead; amber tightened from 0.08 to 0.05",
+          "evidence": [
+            "postmortem-2026-Q1-checkout-hotfix"
+          ]
+        }
+      ]
+    },
+    {
+      "logged_at": "2026-05-18",
+      "kind": "override",
+      "person": "olena.k",
+      "cycle_date": "2026-05-18",
+      "computed_colour": "amber",
+      "reported_colour": "green",
+      "reason": "Jira EV panel double-counted the sprint 14 carry-over; corrected SV% is 6"
+    }
+  ],
+  "colour_history": [
+    {
+      "computed_at": "2026-05-18",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {
+          "signal_id": "schedule_variance_pct",
+          "value": 12
+        },
+        {
+          "signal_id": "budget_variance_pct",
+          "value": 3
+        },
+        {
+          "signal_id": "defect_escape_rate",
+          "value": 0.02
+        },
+        {
+          "signal_id": "blockers_open_count",
+          "value": 1
+        }
+      ],
+      "computed_colour": "amber",
+      "reported_colour": "green"
+    },
+    {
+      "computed_at": "2026-05-25",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {
+          "signal_id": "schedule_variance_pct",
+          "value": 22
+        },
+        {
+          "signal_id": "budget_variance_pct",
+          "value": 4
+        },
+        {
+          "signal_id": "defect_escape_rate",
+          "value": 0.03
+        },
+        {
+          "signal_id": "blockers_open_count",
+          "value": 1
+        }
+      ],
+      "computed_colour": "red",
+      "reported_colour": "red",
+      "red_escalated_at": "2026-05-25T10:40"
     }
   ]
 }

@@ -1,118 +1,285 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Remote 1:1 Async Fallback Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>JSON Schema (draft-07) for `Async11Note` — 3 named prompts + response window + escalation + named owner + evidence anchor.</summary>
+<text id="02-output-contract" title="Remote 1:1 Async Fallback Output Contract" version="2.0.0" est_tokens="4550" depth="essential">
+  <summary>Draft-07 JSON Schema for `Async11Note`: one note per PM-IC pair per cycle in a two-person channel, with the recorded reason sync was infeasible and the consecutive-async cap, the three fixed prompts (blockers, decisions_needed, morale on the pulse axes), a 24-168 business-hour window counted in the IC's timezone, an IC-authored response or an unresponsive / paused status, a PM ack within 24 business hours with owned sprint-dated actions, the reschedule-then-manager escalation ladder that never forwards morale, and the quarterly response-rate review. Validator: `scripts/validate-remote-1-1-async-fallback.py`; staleness: `scripts/staleness-check.py`.</summary>
 
-  <section title="Schema">
+  <section title="JSON Schema (draft-07)">
     <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/async-11-note.json",
+  "title": "Async11Note",
   "type": "object",
-  "required": ["pair_id", "cycle_iso", "header", "prompts", "ic_response", "pm_ack", "escalation"],
+  "required": ["pair_id", "cycle_iso", "header", "channel", "sync_infeasibility", "prompts", "posting", "ic_response", "pm_ack", "escalation"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "datetime": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "next_action": {
+      "type": "object",
+      "required": ["action", "owner_role", "deadline_sprint"],
+      "properties": {
+        "action": {"type": "string", "minLength": 5},
+        "owner_role": {"type": "string", "minLength": 2},
+        "deadline_sprint": {"type": "string", "pattern": "^S[0-9]+$"}
+      }
+    }
+  },
   "properties": {
-    "pair_id": {"type": "string"},
+    "__faion_header__": {"type": "object"},
+    "pair_id": {"type": "string", "pattern": "^[a-z0-9._-]+--[a-z0-9._-]+$"},
     "cycle_iso": {"type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$"},
     "header": {
       "type": "object",
-      "required": ["owner", "last_reviewed", "version", "response_window_business_hours"],
+      "required": ["owner", "version", "last_reviewed", "response_window_business_hours"],
+      "additionalProperties": false,
       "properties": {
-        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
-        "last_reviewed": {"type": "string", "format": "date"},
-        "version": {"type": "string"},
+        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string", "minLength": 2}, "person": {"type": "string", "minLength": 2}}},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"},
+        "last_reviewed": {"$ref": "#/definitions/date"},
         "response_window_business_hours": {"type": "integer", "minimum": 24, "maximum": 168}
+      }
+    },
+    "channel": {
+      "type": "object",
+      "required": ["kind", "visible_to", "morale_shared_outside_pair"],
+      "properties": {
+        "kind": {"enum": ["private_doc", "dm", "email"]},
+        "visible_to": {"type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["pm", "ic"]}},
+        "morale_shared_outside_pair": {"const": false}
+      }
+    },
+    "sync_infeasibility": {
+      "type": "object",
+      "required": ["reason", "consecutive_async_cycles"],
+      "properties": {
+        "reason": {"enum": ["no_overlapping_hours", "temporary_leave", "sickness", "travel"]},
+        "consecutive_async_cycles": {"type": "integer", "minimum": 1, "maximum": 3},
+        "last_sync_call_cycle": {"type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$"}
       }
     },
     "prompts": {
       "type": "object",
       "required": ["blockers", "decisions_needed", "morale"],
+      "additionalProperties": false,
       "properties": {
-        "blockers": {"type": "string", "minLength": 10},
-        "decisions_needed": {"type": "string", "minLength": 10},
-        "morale": {"type": "string", "minLength": 10}
+        "blockers": {"type": "string", "minLength": 10, "pattern": "(?i)(wbs|ticket|id\\b)", "not": {"pattern": "(?i)(anything to share|how is it going|how are things|all good)"}},
+        "decisions_needed": {"type": "string", "minLength": 10, "pattern": "(?i)(whom|who|owner)", "not": {"pattern": "(?i)(anything to share|how is it going|how are things)"}},
+        "morale": {"type": "string", "minLength": 10, "allOf": [{"pattern": "(?i)workload"}, {"pattern": "(?i)autonomy"}, {"pattern": "(?i)clarity"}, {"pattern": "1-10|1 to 10"}]}
+      }
+    },
+    "posting": {
+      "type": "object",
+      "required": ["ic_timezone", "posted_at", "window_closes_at", "reminders_sent"],
+      "properties": {
+        "ic_timezone": {"type": "string", "pattern": "^[A-Za-z_]+/[A-Za-z_/+-]+$|^UTC$"},
+        "posted_at": {"anyOf": [{"$ref": "#/definitions/datetime"}, {"type": "null"}]},
+        "window_closes_at": {"anyOf": [{"$ref": "#/definitions/datetime"}, {"type": "null"}]},
+        "reminders_sent": {"type": "integer", "minimum": 0}
       }
     },
     "ic_response": {
       "type": "object",
-      "required": ["received_at", "blockers", "decisions_needed", "morale"],
+      "required": ["status", "received_at", "blockers", "decisions_needed", "morale"],
       "properties": {
-        "received_at": {"type": ["string", "null"]},
+        "status": {"enum": ["answered", "unresponsive", "paused"]},
+        "received_at": {"anyOf": [{"$ref": "#/definitions/datetime"}, {"type": "null"}]},
+        "authored_by": {"const": "ic"},
         "blockers": {"type": "string"},
         "decisions_needed": {"type": "string"},
-        "morale": {"type": "string"}
-      }
+        "morale": {"type": "string"},
+        "leave_type": {"enum": ["vacation", "parental", "sick"]}
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "answered"}}}, "then": {"required": ["authored_by"], "properties": {"received_at": {"type": "string"}, "morale": {"pattern": "(?i)workload ?[0-9]+.*autonomy ?[0-9]+.*clarity ?[0-9]+"}}}},
+        {"if": {"properties": {"status": {"const": "paused"}}}, "then": {"required": ["leave_type"], "properties": {"received_at": {"type": "null"}}}}
+      ]
     },
     "pm_ack": {
       "type": "object",
-      "required": ["acked_at", "next_actions"],
+      "required": ["acked_at", "ack_business_hours_after_response", "next_actions"],
       "properties": {
-        "acked_at": {"type": ["string", "null"]},
-        "next_actions": {"type": "array", "items": {"type": "object", "required": ["action", "owner_role", "deadline_sprint"]}}
+        "acked_at": {"anyOf": [{"$ref": "#/definitions/datetime"}, {"type": "null"}]},
+        "ack_business_hours_after_response": {"type": ["integer", "null"], "minimum": 0, "maximum": 24},
+        "next_actions": {"type": "array", "items": {"$ref": "#/definitions/next_action"}}
       }
     },
     "escalation": {
       "type": "object",
-      "required": ["unresponsive_count", "action"],
+      "required": ["count_before_cycle", "unresponsive_count", "action"],
       "properties": {
+        "count_before_cycle": {"type": "integer", "minimum": 0},
         "unresponsive_count": {"type": "integer", "minimum": 0},
-        "action": {"enum": ["none", "synchronous_reschedule", "escalate_to_manager"]}
-      }
+        "action": {"enum": ["none", "synchronous_reschedule", "escalate_to_manager"]},
+        "sync_slot_offered_for_cycle": {"type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$"},
+        "manager_packet": {
+          "type": "object",
+          "required": ["manager", "unresponsive_count", "last_acked_next_actions", "includes_morale"],
+          "properties": {
+            "manager": {"type": "string", "minLength": 2},
+            "unresponsive_count": {"type": "integer", "minimum": 2},
+            "last_acked_next_actions": {"type": "array", "items": {"$ref": "#/definitions/next_action"}},
+            "includes_morale": {"const": false}
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"unresponsive_count": {"const": 0}}}, "then": {"properties": {"action": {"const": "none"}}}},
+        {"if": {"properties": {"unresponsive_count": {"const": 1}}}, "then": {"properties": {"action": {"const": "synchronous_reschedule"}}, "required": ["sync_slot_offered_for_cycle"]}},
+        {"if": {"properties": {"unresponsive_count": {"minimum": 2}}}, "then": {"properties": {"action": {"const": "escalate_to_manager"}}, "required": ["manager_packet"]}}
+      ]
+    },
+    "review": {
+      "type": "object",
+      "required": ["computed_at", "cycles_in_quarter", "in_window_responses", "response_rate", "below_80_over_4_cycles", "structural_decision", "version_after"],
+      "properties": {
+        "computed_at": {"$ref": "#/definitions/date"},
+        "cycles_in_quarter": {"type": "integer", "minimum": 1},
+        "in_window_responses": {"type": "integer", "minimum": 0},
+        "response_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "below_80_over_4_cycles": {"type": "boolean"},
+        "structural_decision": {"enum": ["none", "change_response_window", "restructure_pair", "mandate_synchronous"]},
+        "version_after": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"}
+      },
+      "if": {"properties": {"below_80_over_4_cycles": {"const": true}}},
+      "then": {"properties": {"structural_decision": {"enum": ["change_response_window", "restructure_pair", "mandate_synchronous"]}}}
     }
   }
 }
 ]]></code>
+    <note>What the validator's cross-field block checks beyond the schema: `posting.window_closes_at` is at least `response_window_business_hours` calendar hours after `posted_at` (business hours never close sooner than calendar hours) (r-response-window-in-ic-business-hours); an `answered` response has `received_at` on or before `window_closes_at`, and a `received_at` after it is `unresponsive` (r-empty-answer-ok-missing-field-is-unresponsive); `pm_ack.acked_at` is not before `received_at`, and when the IC reported a blocker or a decision (anything other than empty, "none" or "nothing") `next_actions` is not empty (r-pm-ack-within-24h-with-owned-actions); `unresponsive_count` is 0 after an answered cycle, `count_before_cycle` + 1 after an unresponsive one and unchanged after a paused one, and a paused cycle has no `posted_at` and no reminders (r-escalation-ladder-reschedule-then-manager, r-formal-leave-pauses-the-cycle); a paused cycle does not carry `sync_infeasibility.reason: temporary_leave` as if it were posted; `review.response_rate` equals `in_window_responses / cycles_in_quarter`, and `posted_at` is at most 90 days after `header.last_reviewed` (r-quarterly-response-rate-review). Whether `last_reviewed` is stale today is checked by `scripts/staleness-check.py`.</note>
   </section>
 
-  <section title="Forbidden patterns">
-    <list>
-      <item>Any `prompts.*` shorter than 10 chars or generic ("anything?") — violates `r2-bounded-output`.</item>
-      <item>`ic_response.received_at` past response window AND `escalation.action == "none"` — violates `r1-explicit-trigger`.</item>
-      <item>`pm_ack.next_actions` items missing `deadline_sprint` — violates `r4-named-owner`.</item>
-      <item>`header.last_reviewed` &gt; 90 days — violates `r5-iteration-loop`.</item>
-      <item>`unresponsive_count` &gt;= 2 with `action == "none"` — violates escalation policy.</item>
-    </list>
-  </section>
-
-  <example valid="true">
-    <code lang="json"><![CDATA[
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "pair_id": "pm-handle--ic-handle",
+  "pair_id": "olena.k--taras.v",
   "cycle_iso": "2026-W21",
-  "header": {"owner": {"role": "PM", "person": "pm-handle"}, "last_reviewed": "2026-05-10", "version": "1.4", "response_window_business_hours": 48},
-  "prompts": {
-    "blockers": "What is blocking your current sprint goals? Cite the WBS id and what is upstream.",
-    "decisions_needed": "What decision are you waiting on, from whom, and by when?",
-    "morale": "Workload 1-10, autonomy 1-10, clarity 1-10 — and anything else you want me to know."
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "version": "1.4.0",
+    "last_reviewed": "2026-04-07",
+    "response_window_business_hours": 48
   },
+  "channel": {"kind": "private_doc", "visible_to": ["pm", "ic"], "morale_shared_outside_pair": false},
+  "sync_infeasibility": {"reason": "no_overlapping_hours", "consecutive_async_cycles": 2, "last_sync_call_cycle": "2026-W19"},
+  "prompts": {
+    "blockers": "What is blocking your current sprint goals? Cite the WBS id or ticket and what is upstream of it.",
+    "decisions_needed": "What decision are you waiting on, from whom, and by which date?",
+    "morale": "Workload 1-10, autonomy 1-10, clarity 1-10, and anything else you want me to know."
+  },
+  "posting": {"ic_timezone": "Australia/Sydney", "posted_at": "2026-05-18T09:00+10:00", "window_closes_at": "2026-05-20T09:00+10:00", "reminders_sent": 0},
   "ic_response": {
-    "received_at": "2026-05-22T09:30:00Z",
-    "blockers": "PR review on 4.2 stalled 3 days",
-    "decisions_needed": "Need security-lead sign-off on token TTL",
-    "morale": "workload 7 autonomy 8 clarity 6"
+    "status": "answered",
+    "received_at": "2026-05-19T16:30+10:00",
+    "authored_by": "ic",
+    "blockers": "PR review on WBS 4.2 stalled 3 days; waiting on backend-lead",
+    "decisions_needed": "Token TTL for the session service; owner security-lead; needed before S14 planning",
+    "morale": "workload 7, autonomy 8, clarity 6; clarity dropped because the S14 scope changed twice"
   },
   "pm_ack": {
-    "acked_at": "2026-05-22T17:00:00Z",
+    "acked_at": "2026-05-19T18:00+02:00",
+    "ack_business_hours_after_response": 6,
     "next_actions": [
-      {"action": "Ping security-lead for token TTL decision", "owner_role": "PM", "deadline_sprint": "S14"}
+      {"action": "Ask backend-lead to review the WBS 4.2 PR today or hand it to a second reviewer", "owner_role": "pm", "deadline_sprint": "S13"},
+      {"action": "Get security-lead's token TTL decision on the record before S14 planning", "owner_role": "pm", "deadline_sprint": "S14"}
     ]
   },
-  "escalation": {"unresponsive_count": 0, "action": "none"}
+  "escalation": {"count_before_cycle": 0, "unresponsive_count": 0, "action": "none"},
+  "review": {
+    "computed_at": "2026-04-07",
+    "cycles_in_quarter": 12,
+    "in_window_responses": 11,
+    "response_rate": 0.9167,
+    "below_80_over_4_cycles": false,
+    "structural_decision": "none",
+    "version_after": "1.4.0"
+  }
 }
 ]]></code>
-  </example>
+    </example>
+  </section>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "pair_id": "x", "cycle_iso": "2026-W21",
-  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0", "response_window_business_hours": 12},
-  "prompts": {"blockers": "?", "decisions_needed": "?", "morale": "?"},
-  "ic_response": {"received_at": null, "blockers": "", "decisions_needed": "", "morale": ""},
-  "pm_ack": {"acked_at": null, "next_actions": []},
-  "escalation": {"unresponsive_count": 3, "action": "none"}
+  "pair_id": "olena.k--taras.v",
+  "cycle_iso": "2026-W21",
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "version": "1.4.0",
+    "last_reviewed": "2026-04-07",
+    "response_window_business_hours": 12
+  },
+  "channel": {"kind": "private_doc", "visible_to": ["pm", "ic"], "morale_shared_outside_pair": true},
+  "sync_infeasibility": {"reason": "no_overlapping_hours", "consecutive_async_cycles": 5},
+  "prompts": {
+    "blockers": "Anything to share this week?",
+    "decisions_needed": "Any decisions pending?",
+    "morale": "How is it going overall?"
+  },
+  "posting": {"ic_timezone": "Australia/Sydney", "posted_at": "2026-05-15T17:00+02:00", "window_closes_at": "2026-05-16T05:00+02:00", "reminders_sent": 3},
+  "ic_response": {
+    "status": "unresponsive",
+    "received_at": null,
+    "blockers": "",
+    "decisions_needed": "",
+    "morale": ""
+  },
+  "pm_ack": {"acked_at": null, "ack_business_hours_after_response": null, "next_actions": []},
+  "escalation": {
+    "count_before_cycle": 2,
+    "unresponsive_count": 3,
+    "action": "none",
+    "manager_packet": {"manager": "sofia.r", "unresponsive_count": 3, "last_acked_next_actions": [], "includes_morale": true}
+  }
 }
 ]]></code>
-    <note>Prompts too short; owner empty; response_window below minimum; 3 unresponsive cycles with action=none.</note>
-  </example>
+      <note>Subject violations: a 12-hour window posted at 17:00 Friday PM-time that closes at 05:00 in Warsaw, which is Saturday afternoon in Sydney (r-response-window-in-ic-business-hours); three generic prompts, none naming a ticket, a decision owner or the workload / autonomy / clarity scales (r-three-named-prompts-fixed); five consecutive async cycles with no sync call (r-async-only-when-sync-infeasible); a third unresponsive cycle with `action: none`, three reminders, and a manager packet that includes morale and the morale flag set to shared (r-escalation-ladder-reschedule-then-manager, r-private-channel-morale-never-aggregated-by-name).</note>
+    </example>
+  </section>
 
-  <reference path="scripts/validate-remote-1-1-async-fallback.py">Validator script</reference>
+  <forbidden-patterns>
+    <antipattern id="async-by-default">
+      <description>`sync_infeasibility.reason` missing, or `consecutive_async_cycles` above 3 with no `last_sync_call_cycle` inside the last 4 cycles.</description>
+      <reason>r-async-only-when-sync-infeasible: async is cheaper for the PM, so without a cap it becomes the default and the relationship thins to a form.</reason>
+    </antipattern>
+    <antipattern id="generic-prompts">
+      <description>A prompt under 10 characters, "anything to share?" / "how is it going?", a blockers prompt without a ticket or WBS id, a decisions prompt without an owner and date, or a morale prompt off the workload / autonomy / clarity 1-10 scales.</description>
+      <reason>r-three-named-prompts-fixed: a vague prompt gets "all good" and cycle N stops being comparable with cycle N-4.</reason>
+    </antipattern>
+    <antipattern id="window-on-the-pm-clock">
+      <description>`response_window_business_hours` outside 24-168, `window_closes_at` sooner than the window's hours after `posted_at`, or a late verdict counted over the IC's weekend, holiday or leave.</description>
+      <reason>r-response-window-in-ic-business-hours: a Friday-evening 48-hour window is "answer over your weekend" ten timezones away.</reason>
+    </antipattern>
+    <antipattern id="pm-transcribed-response">
+      <description>An `answered` response without `authored_by: ic`, a missing prompt field counted as answered, or a reply that exists only in another channel.</description>
+      <reason>r-empty-answer-ok-missing-field-is-unresponsive: "no blockers" is information; a missing field is silence, and the morale field stays in the IC's words.</reason>
+    </antipattern>
+    <antipattern id="thumbs-up-ack">
+      <description>`ack_business_hours_after_response` above 24, or `next_actions` empty while the IC reported a blocker or a decision needed, or an action without `owner_role` and `deadline_sprint`.</description>
+      <reason>r-pm-ack-within-24h-with-owned-actions: the owned, dated action is the only visible proof the note was read.</reason>
+    </antipattern>
+    <antipattern id="silent-skip">
+      <description>`unresponsive_count` not equal to `count_before_cycle` + 1 after an expired window, `action: none` with an unresponsive status, count 1 without a sync slot, or count 2+ without a manager packet.</description>
+      <reason>r-escalation-ladder-reschedule-then-manager: a third note into silence is the PM protecting their own calendar.</reason>
+    </antipattern>
+    <antipattern id="pursued-on-leave">
+      <description>A `paused` cycle with a `posted_at`, `reminders_sent` above 0, or an `unresponsive_count` that moved.</description>
+      <reason>r-formal-leave-pauses-the-cycle: the reminder itself is a compliance problem in several jurisdictions and a trust problem in all of them.</reason>
+    </antipattern>
+    <antipattern id="morale-leak">
+      <description>`channel.visible_to` beyond the pair, `morale_shared_outside_pair` true, or `manager_packet.includes_morale` true.</description>
+      <reason>r-private-channel-morale-never-aggregated-by-name: the first named "clarity 4" in a leadership deck makes every later answer a 7.</reason>
+    </antipattern>
+    <antipattern id="review-without-a-decision">
+      <description>`review.below_80_over_4_cycles` true with `structural_decision: none`, a `response_rate` that does not equal the ratio, or a note posted more than 90 days after `last_reviewed`.</description>
+      <reason>r-quarterly-response-rate-review: a pair answering 3 of 8 notes is not served by the protocol, and the protocol will not fix itself.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-remote-1-1-async-fallback.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="scripts/staleness-check.py">Flags a note whose `header.last_reviewed` is older than 90 days.</reference>
+  <reference path="templates/skeleton.md.j2">Markdown note skeleton with the same header, prompts, response, ack and escalation fields.</reference>
 </text>

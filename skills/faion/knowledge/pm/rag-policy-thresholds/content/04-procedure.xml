@@ -1,39 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="RAG Policy Thresholds Procedure" version="1.1.0" est_tokens="600" depth="medium">
-  <summary>Five-step procedure: scaffold → set thresholds → publish → run weekly compute-colour → quarterly review.</summary>
+<text id="04-procedure" title="RAG Policy Thresholds Procedure" version="2.0.0" est_tokens="1800" depth="essential">
+  <summary>Seven steps from an incident corpus to a published `RAGPolicy` and its weekly compute: set the header and cadence, define each signal as a named query in a stated unit, set numeric Amber / Red thresholds with an anchor, bind a time-bound action per colour, validate and publish citing version and last_reviewed, compute the colour each cycle as worst-signal-wins with logged overrides, and review within 90 days. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
   <section title="Procedure">
-
-    <step n="1" name="scaffold">
-      <input>Last quarter's policy + project context</input>
-      <action>Copy `templates/skeleton.md`. Populate `header.owner`, `header.trigger`, `header.reporting_cadence_days`.</action>
-      <output>Scaffolded `RAGPolicy`</output>
+    <step n="1" name="set-the-header-and-the-reporting-cadence">
+      <input>The reporting calendar (weekly or fortnightly status), the PM who owns the policy, last quarter's policy if one exists.</input>
+      <action>Copy `templates/skeleton.md.j2`. Fill `header.owner` with the PM's role and person, `header.reporting_cadence_days` with the days between status reports (7 or 14), `header.version` (1.0.0 for a new policy, bumped from the prior one otherwise) and `header.last_reviewed` with today.</action>
+      <output>`project_id`, `header`.</output>
+      <decision-gate>Fewer than three reports a year, or a client or regulator mandates its own status framework: skip; adopt the mandated scheme.</decision-gate>
     </step>
-
-    <step n="2" name="set-thresholds">
-      <input>Incident corpus + signal definitions + cohort baseline</input>
-      <action>Run `set-thresholds`. Per signal pick numeric `amber_threshold` + `red_threshold` + `comparator` + ≥ 1 evidence anchor. Reject "significant"/"material" inputs.</action>
-      <output>Policy with all signals populated</output>
+    <step n="2" name="define-each-signal-as-a-named-query">
+      <input>The systems that hold the numbers (Jira, Sentry, finance export, DORA dashboard) and the API tokens or saved filters that read them.</input>
+      <action>For each signal write `signal_id`, its `unit` (percent, count, ratio, boolean) and an `input_source` naming the `system` and the `query` a second person can run to get the same value. Define schedule and budget signals as earned-value percent variances (`schedule_variance_pct` = (EV - PV) / PV x 100, `budget_variance_pct` = (EV - AC) / EV x 100 or the finance export's CV%), never as raw days or currency (r-input-source-is-a-query).</action>
+      <output>`signals[].signal_id`, `unit`, `input_source`.</output>
+      <decision-gate>A signal whose only source is "PM estimate" or "team check-in": leave it out until a query exists; it does not enter the compute.</decision-gate>
     </step>
-
-    <step n="3" name="publish">
-      <input>Populated policy</input>
-      <action>Run validator. Commit to repo. Notify stakeholders with the version + last_reviewed.</action>
-      <output>Published `RAGPolicy`</output>
+    <step n="3" name="set-numeric-thresholds-with-an-anchor">
+      <input>The incident and post-mortem corpus, PMO tolerance policies, cohort baselines for the project size.</input>
+      <action>Run `set-thresholds`. Per signal choose the `comparator` and numeric `amber_threshold` and `red_threshold` in the signal's unit, with red strictly beyond amber in the comparator's direction (for `lt` signals red is the lower number). Cite at least one `evidence` anchor per signal: `incident-&lt;id&gt;`, `postmortem-&lt;id&gt;`, `policy://&lt;path&gt;` or `baseline-&lt;id&gt;`. Delete any signal for which no number can be agreed (r-threshold-numeric-with-comparator, r-red-strictly-beyond-amber, r-evidence-anchor-per-signal).</action>
+      <output>`signals[]` complete.</output>
+      <decision-gate>A stakeholder offers "significant" or "material" instead of a number: the signal is not in the policy until the number is.</decision-gate>
     </step>
-
-    <step n="4" name="run-weekly-compute">
-      <input>Live signal values + policy</input>
-      <action>Run `compute-colour` at every reporting cadence. Apply comparator to thresholds. Emit colour + cite policy_version.</action>
-      <output>Per-cycle colour + auto-attached action.</output>
-      <decision-gate>If colour == Red, fire `actions.red` immediately; do not wait for next sync.</decision-gate>
+    <step n="4" name="bind-a-time-bound-action-per-colour">
+      <input>The escalation paths available (sponsor, steering committee, distressed-project-rescue playbook) and the reporting cycle length.</input>
+      <action>Write `actions.green` as the normal cadence. Write `actions.amber.step` as a concrete review (who meets whom, what is posted where) with `deadline_hours` inside the cycle (at most `reporting_cadence_days` x 24). Write `actions.red` with the `playbook` name, the `first_step` (for example sponsor notified), `within_hours` for that step and `fires_at: compute_time` (r-red-action-named-and-time-bound).</action>
+      <output>`actions`.</output>
     </step>
-
-    <step n="5" name="quarterly-review">
-      <input>Last quarter colour history + outcome data</input>
-      <action>Run `outcome-review-synthesis`. Remove unused thresholds, add new ones tied to recent incidents. Increment version, update `last_reviewed`.</action>
-      <output>Versioned policy + review_log entry</output>
+    <step n="5" name="validate-and-publish-with-version-and-review-date">
+      <input>The draft `RAGPolicy` JSON.</input>
+      <action>Run `python3 scripts/validate-rag-policy-thresholds.py --file policy.json`; fix every VIOLATION. Commit the policy and tell the stakeholders who read the status report which `header.version` and `header.last_reviewed` future colours will cite.</action>
+      <output>Published `RAGPolicy`; `colour_history` empty.</output>
+      <decision-gate>Any violation: not published; a colour computed from an invalid policy is not reported.</decision-gate>
     </step>
+    <step n="6" name="compute-the-colour-every-cycle">
+      <input>The live value of every signal from its `input_source` query; the published policy.</input>
+      <action>Run `compute-colour` at every `reporting_cadence_days`: apply each signal's comparator to its thresholds, take the worst colour as `computed_colour`, and append a `colour_history` entry with every value, `policy_version` and `policy_last_reviewed`. A Red fires `actions.red` at compute time; record `red_escalated_at`. To report a different colour, add a `review_log` entry with `kind: override`, the `cycle_date`, both colours, the reason and the person; a computed Red is never reported lower (r-worst-signal-wins, r-override-logged-never-downgrades-red).</action>
+      <output>One `colour_history` entry per cycle; `review_log` override entries where used; the escalation opened for Red.</output>
+      <decision-gate>`policy_last_reviewed` is more than 90 days before `computed_at`: do not compute; run step 7 first.</decision-gate>
+    </step>
+    <step n="7" name="review-within-90-days">
+      <input>`colour_history` for the last two review periods, the post-mortems of the period, `scripts/staleness-check.py` output (weekly cron).</input>
+      <action>Run `outcome-review-synthesis` before `last_reviewed` is 90 days old. For every signal with no Amber or Red in two periods, remove it or write its justification; for every incident of the period no signal flagged ahead, add or tighten a signal with a new anchor. Bump `header.version`, set `header.last_reviewed`, and append a `review_log` entry with `kind: review`, `version_after`, `signals_removed`, `signals_justified` and `signals_added_or_tightened` (r-review-within-90-days-prunes-and-adds, r-evidence-anchor-per-signal).</action>
+      <output>Reviewed policy; `review_log` review entry; next cycle cites the new version.</output>
+    </step>
+  </section>
 
+  <section title="Exit criteria">
+    <list>
+      <item>Every signal has a numeric Amber and Red threshold with a comparator and unit, red strictly beyond amber, an `input_source` with system and query, and at least one anchor.</item>
+      <item>`actions.amber` has a step with a deadline inside the cycle; `actions.red` names a playbook, a first step, an hour bound and fires at compute time.</item>
+      <item>Each `colour_history` entry carries every signal's value, the worst-signal colour and the policy version; every differing reported colour has an override entry, and no Red was reported lower.</item>
+      <item>`header.last_reviewed` is within 90 days and the latest review entry lists removed, justified and added signals.</item>
+    </list>
   </section>
 </text>

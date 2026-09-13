@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Ramp Task Difficulty Ladder Procedure" version="1.0.0" est_tokens="1800" depth="essential">
+  <summary>Eight steps from a signed hire to a regraded ladder: set the header and ramp window, define each rung by observable scope, band the durations, set fading buddy support, anchor every rung to a completed prior ramp or mark it unvalidated, tag tickets before the start date, run the ramp rung by rung with overrun reclassification, and regrade at the outcome review. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="set-the-header-and-the-ramp-window">
+      <input>The hire signed with a start date, the team's ramp length (2 weeks is 10 working days), the tech lead who owns onboarding, the tracker's label convention.</input>
+      <action>Copy `templates/skeleton.md.j2` or `templates/header.yaml`. Fill `header.owner` as `role:person`, `header.ramp_window_days`, `header.review_cadence` (monthly or quarterly, never longer), `header.rung_label_prefix` (for example `ramp/rung-`), `header.version` and `header.last_reviewed`.</action>
+      <output>`team`, `header`.</output>
+      <decision-gate>Fewer than 3 hires a year, or no previous newcomer's merged PR to anchor a rung: skip the versioned ladder and write a one-off onboarding doc (06-decision-tree).</decision-gate>
+    </step>
+    <step n="2" name="define-each-rung-by-observable-scope">
+      <input>The repository layout (modules, feature-flag mechanism, design-review rule) and the kinds of change the team merges.</input>
+      <action>Write at least 4 rungs. For each, fill `ticket_pattern` with `files_touched_max`, `modules_crossed_max`, `behind_feature_flag`, `design_review_required` and concrete `examples` of changes on that rung. Never name a rung or an example by story points, T-shirt size or easy / medium / hard. If a ticket matches two rungs, the higher applies (r-rung-defined-by-observable-scope).</action>
+      <output>`rungs[].rung`, `name`, `ticket_pattern`.</output>
+    </step>
+    <step n="3" name="band-the-durations">
+      <input>The rungs and the ramp window.</input>
+      <action>Set `expected_duration_days.min` and `max` per rung so that `max` never decreases up the ladder, rung 1's `max` is at most 1 working day, and the top rung's `max` is at most `ramp_window_days` (r-durations-monotonic-rung1-under-a-day). Rung 1 examples must be real changes that merge to main through the normal pipeline: docs fix, dependency bump, log line; no kata, no training repo (r-rung1-merges-to-main).</action>
+      <output>`rungs[].expected_duration_days`.</output>
+    </step>
+    <step n="4" name="set-fading-buddy-support">
+      <input>The buddy assigned to the hire.</input>
+      <action>Set `buddy_support` per rung from `full_pairing` at rung 1 to `scheduled_check_ins` at the top rung, never increasing up the ladder and never absent inside the ramp window (r-buddy-support-fades-per-rung).</action>
+      <output>`rungs[].buddy_support`.</output>
+    </step>
+    <step n="5" name="anchor-every-rung-to-a-completed-prior-ramp">
+      <input>Merged PRs and closed tickets from previous newcomers with their actual durations.</input>
+      <action>For each rung set `evidence.status: validated` with `merged_ref`, `completed_by_newcomer` and `actual_duration_days` from a previous newcomer on that rung. A senior engineer's PR or an unstarted backlog item is not evidence: set `status: unvalidated` with `not_applicable: unvalidated` and treat the band as a guess until a ramp fills it (r-evidence-is-a-completed-prior-ramp).</action>
+      <output>`rungs[].evidence`.</output>
+    </step>
+    <step n="6" name="tag-tickets-before-the-start-date">
+      <input>The team backlog and the sprint's committed scope.</input>
+      <action>Before `start_date`, tag at least 2 tickets per rung with `rung_label_prefix` + rung number and list them in `tagged_tickets` with `on_critical_path` and `deadline_inside_ramp_window`; both must be false on rungs 1 and 2. Record `ramps[].tickets_tagged_on`. Run `python3 scripts/validate-ramp-task-difficulty-ladder.py --file ladder.json` and commit (r-tickets-tagged-before-start-date).</action>
+      <output>`rungs[].tagged_tickets`; a `ramps[]` entry with `newcomer`, `start_date`, `tickets_tagged_on`.</output>
+      <decision-gate>Any rung with fewer than 2 tagged tickets, or a rung-1 / rung-2 ticket on the critical path: the start date is not ready; fix before day one.</decision-gate>
+    </step>
+    <step n="7" name="run-the-ramp-rung-by-rung">
+      <input>The newcomer, the buddy, the tagged tickets.</input>
+      <action>Day one starts on rung 1. Append a `progression` entry per merged ticket with `rung`, `ticket`, `merged_on` and `actual_duration_days`; promote to rung N+1 only after a rung-N merge, regardless of seniority. When a ticket runs past twice its rung's `max`, review its classification, set `reclassified_to_rung` and re-label it rather than grade the newcomer. At the end of the window record `time_to_first_pr_days` and `rung_reached_on_last_day` (r-promotion-requires-completed-rung, r-rung1-merges-to-main).</action>
+      <output>`ramps[].progression`, `time_to_first_pr_days`, `rung_reached_on_last_day`.</output>
+      <decision-gate>The newcomer has no merged PR by day 3: the buddy pairs on a rung-1 ticket the same day; the rung-1 pattern is reviewed at the next outcome review.</decision-gate>
+    </step>
+    <step n="8" name="regrade-at-the-outcome-review">
+      <input>All `ramps[]` since the last review.</input>
+      <action>At `review_cadence`, fill `outcome_review`: `last_run`, `next_due` within the cadence, `ramps_reviewed`, `median_time_to_first_pr_days`, and `per_rung` with the median actual duration, `within_band`, `consecutive_out_of_band_cycles` and an `action`. Any rung outside its band is `rebanded` or has its `pattern_rewritten`; a median time to first PR above 3 days rewrites rung 1; set `version_bumped: true` and bump `header.version` and `last_reviewed` (r-outcome-review-regrades-rungs).</action>
+      <output>`outcome_review`; new `header.version`.</output>
+      <decision-gate>A rung out of band for two consecutive reviews with `action: none`: the review is invalid; the ladder is not republished until the rung changes.</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>At least 4 rungs defined by files, modules, flag and design-review scope, with non-decreasing duration bands, rung 1 under a day and the top rung inside the ramp window.</item>
+      <item>Buddy support fades from full pairing to scheduled check-ins; every rung is anchored to a previous newcomer's merged work or marked `not_applicable: unvalidated`.</item>
+      <item>At least 2 tickets per rung tagged before the start date, rungs 1 and 2 off the critical path; each ramp progresses one rung per merged ticket with overruns reclassified.</item>
+      <item>The outcome review records time to first PR and rung reached, re-bands every out-of-band rung and bumps the version; the next review is due within the cadence.</item>
+    </list>
+  </section>
+</text>

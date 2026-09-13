@@ -1,39 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Remote 1:1 Async Fallback Procedure" version="1.1.0" est_tokens="600" depth="medium">
-  <summary>Five-step procedure: post prompts → IC responds → PM ack → escalate-if-unresponsive → quarterly review.</summary>
+<text id="04-procedure" title="Remote 1:1 Async Fallback Procedure" version="2.0.0" est_tokens="1950" depth="essential">
+  <summary>Seven steps per cycle plus the quarterly review: decide that sync is infeasible (or that the cycle is paused for leave), post the three fixed prompts with a window in the IC's hours, receive the IC-authored response, ack within 24 business hours with owned actions, walk the escalation ladder when the window expires, and compute the quarterly response rate. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
   <section title="Procedure">
-
-    <step n="1" name="post-prompts">
-      <input>1:1 cadence calendar slot</input>
-      <action>Run `compose-prompts`. Post Async11Note skeleton to the private doc with timestamp. Notify IC with the response window.</action>
-      <output>Posted note with timestamp + window</output>
+    <step n="1" name="decide-that-sync-is-infeasible-this-cycle">
+      <input>The pair's calendars and timezones, leave records, the count of async cycles since the last synchronous call.</input>
+      <action>If a synchronous 1:1 fits this cycle, hold it and stop. Otherwise record `sync_infeasibility.reason` (no_overlapping_hours, temporary_leave, sickness, travel) and `consecutive_async_cycles`; if this would be the fourth async cycle in a row, book a synchronous call first, rotating the off-hours burden, and record `last_sync_call_cycle` (r-async-only-when-sync-infeasible). If the IC is on vacation, parental or sick leave during the cycle, set `ic_response.status: paused` with `leave_type`, leave `posting.posted_at` null, send nothing, and carry `escalation.count_before_cycle` into `unresponsive_count` unchanged (r-formal-leave-pauses-the-cycle).</action>
+      <output>`pair_id`, `cycle_iso`, `header`, `channel`, `sync_infeasibility`; for leave, a paused note and the procedure ends.</output>
+      <decision-gate>Sync feasible: no note. Third consecutive async cycle already run: no note until a sync call is held.</decision-gate>
     </step>
-
-    <step n="2" name="ic-responds">
-      <input>IC reads prompts</input>
-      <action>IC responds in `ic_response` block within `response_window_business_hours`. Empty answers acceptable; missing answers are not.</action>
-      <output>Filled `ic_response`</output>
+    <step n="2" name="post-the-three-fixed-prompts-in-a-private-channel">
+      <input>`templates/skeleton.md.j2`; the pulse survey's morale axes; the pair's private doc, DM or email thread.</input>
+      <action>Run `compose-prompts`. Post the note in a channel visible only to the PM and the IC (`channel.kind`, `visible_to: [pm, ic]`). Use exactly the three prompts: `blockers` asking for a WBS or ticket id, `decisions_needed` asking for the decision, its owner and date, `morale` asking for workload, autonomy and clarity on 1-10 scales (r-three-named-prompts-fixed, r-private-channel-morale-never-aggregated-by-name).</action>
+      <output>`prompts`, `channel`.</output>
     </step>
-
-    <step n="3" name="pm-ack">
-      <input>Filled response</input>
-      <action>Run `synthesise-response`. PM writes `pm_ack.next_actions` with owner_role + deadline_sprint. Acknowledges within 24h of IC response.</action>
-      <output>`pm_ack` populated</output>
+    <step n="3" name="publish-the-window-in-the-ic-s-hours">
+      <input>`header.response_window_business_hours` (24-168, default 48), the IC's timezone, public holidays and leave days in the IC's location.</input>
+      <action>Set `posting.ic_timezone`, `posted_at` and `window_closes_at`, counting only the IC's working days and skipping their holidays; a window posted Friday evening PM-time closes no earlier than mid-week for an IC ten hours ahead. Tell the IC the closing time in their own timezone (r-response-window-in-ic-business-hours).</action>
+      <output>`posting`.</output>
+      <decision-gate>Window under 24 or over 168 business hours: invalid even if both parties agree; fix the header before posting.</decision-gate>
     </step>
-
-    <step n="4" name="escalate-if-unresponsive">
-      <input>Cycle timing data</input>
-      <action>Run `escalation-decision`. If IC unresponsive past response window, increment `unresponsive_count`. Count == 1 → schedule synchronous reschedule; count &gt;= 2 → escalate to IC's manager.</action>
-      <output>`escalation` populated</output>
-      <decision-gate>If `unresponsive_count &gt;= 2`, do NOT proceed to next async cycle until synchronous contact made.</decision-gate>
+    <step n="4" name="receive-the-ic-authored-response">
+      <input>The IC's reply in the note.</input>
+      <action>The IC fills `ic_response.blockers`, `decisions_needed` and `morale` in the note itself; "none" is a valid answer, an absent field is not. Set `received_at` and `authored_by: ic`. If the reply arrived only in Slack or in a hallway, ask the IC to copy it into the note; the PM never transcribes it (r-empty-answer-ok-missing-field-is-unresponsive).</action>
+      <output>`ic_response` with `status: answered`, or the window still open.</output>
     </step>
-
-    <step n="5" name="quarterly-review">
-      <input>Last quarter notes + response-rate trend</input>
-      <action>Run `outcome-review-synthesis`. If response-rate trend &lt; 80% over 4 cycles, propose pair-restructure or sync-mandate.</action>
-      <output>Versioned methodology + review_log entry</output>
+    <step n="5" name="ack-within-24-business-hours-with-owned-actions">
+      <input>The answered `ic_response`.</input>
+      <action>Run `synthesise-response`. Within 24 business hours of `received_at`, write `pm_ack.acked_at`, `ack_business_hours_after_response` and one `next_actions` item per reported blocker or decision, each with `action`, `owner_role` and `deadline_sprint`. Set `escalation.unresponsive_count: 0`, `action: none` (r-pm-ack-within-24h-with-owned-actions, r-escalation-ladder-reschedule-then-manager).</action>
+      <output>`pm_ack`, `escalation` reset.</output>
+      <decision-gate>The IC reported a blocker and `next_actions` is empty: the ack is not written until an owned, dated action exists.</decision-gate>
     </step>
+    <step n="6" name="walk-the-escalation-ladder-when-the-window-expires">
+      <input>`window_closes_at` passed with a missing field or no reply.</input>
+      <action>Run `escalation-decision`. Set `ic_response.status: unresponsive` and `unresponsive_count` = `count_before_cycle` + 1. Count 1: `action: synchronous_reschedule` and `sync_slot_offered_for_cycle` within the next cycle. Count 2 or more: `action: escalate_to_manager` with a `manager_packet` holding the count and the last acked `next_actions` only, `includes_morale: false`; post no further async note until synchronous contact has happened (r-escalation-ladder-reschedule-then-manager, r-private-channel-morale-never-aggregated-by-name).</action>
+      <output>`ic_response.status`, `escalation`.</output>
+      <decision-gate>`action: none` with an expired window is invalid; the count moves or the cycle is recorded as paused for leave, nothing in between.</decision-gate>
+    </step>
+    <step n="7" name="validate-and-file-the-note">
+      <input>The completed `Async11Note` JSON.</input>
+      <action>Run `python3 scripts/validate-remote-1-1-async-fallback.py --file note.json`; fix every VIOLATION. File the note in the pair's private channel, one note per pair per cycle; copy nothing from the morale field anywhere else.</action>
+      <output>A filed note passing the contract.</output>
+    </step>
+    <step n="8" name="quarterly-response-rate-review">
+      <input>The quarter's notes for the pair; `scripts/staleness-check.py` output (weekly cron).</input>
+      <action>Every 90 days at most, fill `review`: `cycles_in_quarter`, `in_window_responses`, `response_rate` (the ratio), `below_80_over_4_cycles`. If any 4 consecutive cycles fall below 80%, record a `structural_decision` (change the window, restructure the pair, mandate synchronous 1:1s). Bump `header.version` and `last_reviewed`; report morale only as a pair-level trend or an aggregate of at least 5 ICs (r-quarterly-response-rate-review, r-private-channel-morale-never-aggregated-by-name).</action>
+      <output>`review`; new `header.version` and `last_reviewed` for the next cycle's notes.</output>
+      <decision-gate>Below 80% with `structural_decision: none`: the review is invalid; the pair does not get another async cycle until the decision is recorded.</decision-gate>
+    </step>
+  </section>
 
+  <section title="Exit criteria">
+    <list>
+      <item>`sync_infeasibility.reason` recorded; at most 3 consecutive async cycles; a leave cycle is paused, unposted and does not move the count.</item>
+      <item>The three fixed prompts with a ticket id, a decision owner and date, and the workload / autonomy / clarity scales; a 24-168 business-hour window counted in the IC's timezone.</item>
+      <item>An IC-authored response or an unresponsive status; the PM ack within 24 business hours with an owned, sprint-dated action per reported blocker or decision.</item>
+      <item>The escalation ladder applied (0 / reschedule / manager packet without morale); the note in a two-person channel; the quarterly review with a rate and a decision where below 80%.</item>
+    </list>
   </section>
 </text>

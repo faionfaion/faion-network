@@ -10,28 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- The product-dev team runs onboarding (or a similar named ramp block) on a recurring cadence (≥3 hires/year).
-- The team owns the artefact or escalates ownership to a named role.
-- The team uses a version-controlled or wiki-style space where the artefact lives.
-- The trigger event is observable (hire signed, start date set, ticket calendar slot).
-- A buddy / mentor role exists to hand new hires graded tasks against the ladder.
+- The team hires at least 3 developers a year onto a fixed ramp window (10 working days for a 2-week ramp) with a signed hire and a known start date.
+- At least one previous newcomer has merged a PR on the production repo, with its actual duration recoverable, to anchor rung 1.
+- The repository has observable scope markers a buddy can count: files, modules, a feature-flag mechanism and a design-review rule.
+- The tracker supports labels (for example `ramp/rung-1`) and the sprint can reserve at least 2 tickets per rung off the committed scope.
+- A named tech lead owns the ladder and a buddy is assigned per hire to pair on rung 1 and fade up the ladder.
 
 ## Skip If (ANY kills it)
 
-- One-shot work with no recurrence — write a single onboarding doc, not a versioned artefact.
-- Team has < 3 hires per year — the review cadence costs more than it returns.
-- Regulated context that mandates a different shape (use the regulator's template instead).
-- No named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Fewer than 3 hires a year: write a one-off onboarding doc; the quarterly regrade costs more than the ramps it calibrates.
+- No previous newcomer has merged anything on the production repo: every band would be a whiteboard guess; run one ad-hoc ramp first and come back with its PRs.
+- Ramp tasks cannot be reserved off the sprint's committed scope (every ticket carries a delivery deadline): rungs 1 and 2 will be cannibalised on day one.
+- The team's work has no code to merge to main (research, pure ops rotation): rung 1 as a merged change does not exist; use a shadowing plan instead.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Hiring trigger event | calendar / ATS | HR or hiring manager |
-| Backlog of candidate ramp tickets | issue list | team backlog (Jira / Linear / GitHub Issues) |
-| Named owner | role + person | team roster |
-| Knowledge space | git repo / wiki | team SDD or docs space |
-| Outcome review cadence | schedule | team operating calendar |
+| Signed hire with start date and the ramp window length in working days | ATS record / calendar | HR or hiring manager |
+| Merged PRs or closed tickets by previous newcomers, with actual durations, one per rung where available | PR urls or ticket ids | git hosting / tracker |
+| Repository scope markers: module map, feature-flag mechanism, design-review rule | repo docs | tech lead |
+| Backlog with at least 2 candidate tickets per rung taggable `<prefix><rung>` and reservable off the committed sprint scope | issue list (Jira / Linear / GitHub Issues) | team backlog |
+| Named owner (`role:person`) and the buddy assigned to the hire | team roster | tech lead |
+| Previous ladder version with its `ramps[]` and `outcome_review` | JSON, this contract | this methodology (prior cycle) |
 
 ## Assumes Loaded
 
@@ -47,9 +48,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: rungs by observable scope, monotonic durations with rung 1 under a day, rung 1 merges to main, buddy support fades, evidence is a prior ramp, tickets tagged before start date, no rung skip, outcome review regrades | ~2200 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for `RampLadder`: header with ramp window, cadence and label prefix; 4+ rungs by files / modules / flag / design-review scope with duration bands, fading buddy support, prior-newcomer evidence or `not_applicable: unvalidated`, 2+ tagged tickets; per-newcomer progressions with reclassification; outcome review with per-rung regrade; valid + invalid examples, forbidden patterns | ~6200 |
 | `content/03-failure-modes.xml` | essential | 6 modes: story points as rungs, sandbox rung 1, rung skip under pressure, cannibalised ramp backlog, support never fades, whiteboard durations | ~900 |
-| `content/06-decision-tree.xml` | essential | Decides whether the team is ready to commit to a versioned ladder vs ad-hoc onboarding | ~300 |
+| `content/04-procedure.xml` | essential | 8 steps: header and ramp window, rungs by observable scope, duration bands, fading buddy support, evidence from a completed prior ramp, tickets tagged before the start date, ramp run rung by rung with overrun reclassification, regrade at the outcome review | ~1800 |
+| `content/05-examples.xml` | recommended | Complete five-rung payments ladder after two ramps and a review that rewrote rung 3, a note per non-obvious value, and a bad ladder with the validator output and what the tech lead sees | ~4000 |
+| `content/06-decision-tree.xml` | essential | Decides whether the team is ready to commit to a versioned ladder vs ad-hoc onboarding | ~450 |
 
 ## Task Routing
 
@@ -65,7 +68,7 @@
 |------|---------|
 | `templates/skeleton.md.j2` | Canonical section list with `not_applicable: <reason>` markers per section. |
 | `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root, trigger. |
+| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, ramp_window_days, review_cadence, rung_label_prefix. |
 
 ## Scripts
 

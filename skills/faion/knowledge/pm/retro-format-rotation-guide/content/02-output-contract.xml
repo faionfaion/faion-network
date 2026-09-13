@@ -1,87 +1,226 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Retro Format Rotation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema for the rotation guide artefact. Validator enforces last-3-format history present, no-repeat rule, named owner, and outcome-review staleness.</summary>
+<text id="02-output-contract" title="Retro Format Rotation Guide Output Contract" version="2.0.0" est_tokens="3800" depth="essential">
+  <summary>Draft-07 JSON Schema for the per-team `RotationGuide`: a three-instance committed history with per-retro counts (or a recorded `skip` when there are fewer), the last-used date per format, the team state, the stale-format detector's findings with their signal, the refresh trend with the team-health escalation after two unrefreshed rotations, and the pick with its tie-breaker and a rationale naming history, state and the deciding rule. Validator: `scripts/validate-retro-format-rotation-guide.py`.</summary>
 
-  <section title="Schema">
+  <section title="JSON Schema (draft-07)">
     <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/retro-format-rotation-guide.json",
+  "title": "RotationGuide",
   "type": "object",
-  "required": ["team_id", "owner", "last_3_formats", "next_format", "rationale", "team_state", "outcome_review"],
+  "required": ["team_id", "owner", "guide_date", "history", "format_last_used", "team_state", "stale_formats", "refresh_trend", "outcome_review"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "format": {"enum": ["start-stop-continue", "sailboat", "4ls", "timeline", "anonymous-async", "mad-sad-glad", "lean-coffee"]},
+    "count": {"type": "integer", "minimum": 0}
+  },
   "properties": {
-    "team_id": {"type": "string", "minLength": 1},
-    "owner": {"type": "string", "minLength": 1},
-    "last_3_formats": {
+    "__faion_header__": {"type": "object"},
+    "team_id": {"type": "string", "minLength": 2},
+    "owner": {"type": "string", "minLength": 2, "pattern": "^[^#@]+$", "not": {"pattern": "(?i)^(team|everyone|the team|all|tbd|channel)$"}},
+    "guide_date": {"$ref": "#/definitions/date"},
+    "history": {
       "type": "array",
-      "minItems": 3,
       "maxItems": 3,
-      "items": {"type": "string", "enum": ["start-stop-continue", "sailboat", "4ls", "timeline", "anonymous-async", "mad-sad-glad", "lean-coffee"]}
+      "items": {
+        "type": "object",
+        "required": ["retro_date", "instance_ref", "format", "action_items", "participants", "silent_participants"],
+        "properties": {
+          "retro_date": {"$ref": "#/definitions/date"},
+          "instance_ref": {"type": "string", "minLength": 5},
+          "format": {"$ref": "#/definitions/format"},
+          "action_items": {"$ref": "#/definitions/count"},
+          "participants": {"$ref": "#/definitions/count"},
+          "silent_participants": {"$ref": "#/definitions/count"}
+        }
+      }
     },
-    "next_format": {"type": "string", "enum": ["start-stop-continue", "sailboat", "4ls", "timeline", "anonymous-async", "mad-sad-glad", "lean-coffee"]},
-    "rationale": {"type": "string", "minLength": 20},
+    "format_last_used": {
+      "type": "object",
+      "required": ["start-stop-continue", "sailboat", "4ls", "timeline", "anonymous-async", "mad-sad-glad", "lean-coffee"],
+      "additionalProperties": {"anyOf": [{"$ref": "#/definitions/date"}, {"type": "null"}]}
+    },
     "team_state": {
       "type": "object",
       "required": ["distribution", "fatigue_signal"],
       "properties": {
-        "distribution": {"type": "string", "enum": ["async", "hybrid", "in-person"]},
-        "fatigue_signal": {"type": "string", "enum": ["fresh", "rotating", "fatigued"]}
+        "distribution": {"enum": ["async", "hybrid", "in-person"]},
+        "fatigue_signal": {"enum": ["fresh", "rotating", "fatigued"]}
       }
     },
+    "stale_formats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["format", "signal"],
+        "properties": {
+          "format": {"$ref": "#/definitions/format"},
+          "signal": {"enum": ["twice_in_last_3", "action_items_dropped_over_50pct", "two_or_more_silent_participants"]}
+        }
+      }
+    },
+    "refresh_trend": {
+      "type": "object",
+      "required": ["consecutive_rotations_without_refresh", "escalation"],
+      "properties": {
+        "consecutive_rotations_without_refresh": {"type": "integer", "minimum": 0, "maximum": 2},
+        "escalation": {"enum": ["none", "fatigue_is_not_a_format_problem"]},
+        "team_health_route": {"enum": ["team-morale-pulse-survey", "solo-burnout-tripwires"]}
+      },
+      "if": {"properties": {"consecutive_rotations_without_refresh": {"const": 2}}},
+      "then": {"properties": {"escalation": {"const": "fatigue_is_not_a_format_problem"}}, "required": ["team_health_route"]}
+    },
+    "skip": {"const": "history < 3"},
+    "pick": {
+      "type": "object",
+      "required": ["next_format", "tie_breaker", "exception_recorded", "next_format_last_used", "anonymous_async_input"],
+      "properties": {
+        "next_format": {"$ref": "#/definitions/format"},
+        "tie_breaker": {"enum": ["no_repeat_only", "async_pool", "async_pool_exhausted", "fatigued_12_month_lookback", "in_person_sailboat_or_lean_coffee", "reflective_mid_cycle_4ls"]},
+        "exception_recorded": {"type": "boolean"},
+        "next_format_last_used": {"anyOf": [{"$ref": "#/definitions/date"}, {"type": "null"}]},
+        "anonymous_async_input": {"type": "boolean"}
+      },
+      "if": {"properties": {"exception_recorded": {"const": true}}},
+      "then": {"properties": {"tie_breaker": {"const": "async_pool_exhausted"}}}
+    },
+    "rationale": {"type": "string", "minLength": 20, "not": {"pattern": "(?i)(everyone likes it|seemed right|we always)"}},
     "outcome_review": {
       "type": "object",
       "required": ["cadence", "last_run_at"],
       "properties": {
-        "cadence": {"type": "string", "enum": ["next-retro", "monthly", "quarterly"]},
-        "last_run_at": {"type": "string", "format": "date"}
+        "cadence": {"enum": ["next-retro", "monthly", "quarterly"]},
+        "last_run_at": {"$ref": "#/definitions/date"}
       }
     }
-  }
+  },
+  "allOf": [
+    {"if": {"properties": {"history": {"maxItems": 2}}}, "then": {"required": ["skip"], "not": {"required": ["pick"]}}},
+    {"if": {"properties": {"history": {"minItems": 3}, "refresh_trend": {"properties": {"escalation": {"const": "none"}}}}, "required": ["refresh_trend"]}, "then": {"required": ["pick", "rationale"]}},
+    {"if": {"properties": {"refresh_trend": {"properties": {"escalation": {"const": "fatigue_is_not_a_format_problem"}}}}, "required": ["refresh_trend"]}, "then": {"not": {"required": ["pick"]}}},
+    {"if": {"properties": {"team_state": {"properties": {"distribution": {"const": "async"}}}}, "required": ["pick"]}, "then": {"properties": {"pick": {"properties": {"next_format": {"not": {"enum": ["mad-sad-glad", "lean-coffee"]}}, "anonymous_async_input": {"const": true}}}}}},
+    {"if": {"properties": {"team_state": {"properties": {"fatigue_signal": {"const": "fatigued"}}}}, "required": ["pick"]}, "then": {"properties": {"pick": {"properties": {"tie_breaker": {"const": "fatigued_12_month_lookback"}}}}}}
+  ]
 }
 ]]></code>
+    <note>What the validator's cross-field block checks beyond the schema: `history` is newest first by `retro_date` and its formats agree with `format_last_used` (r-history-read-from-committed-instances); `stale_formats` equals the set the three signals produce from `history` (a format twice in the last three, an action-item drop of more than 50% between two consecutive retros on the same format, or 2+ silent participants at the most recent retro), and `pick.next_format` is not in it (r-stale-format-detector-three-signals); `pick.next_format` is not in the history unless `tie_breaker` is `async_pool_exhausted` and every async-capable format is in the history or stale (r-no-repeat-in-last-3, r-async-team-rotates-within-async-pool); when `fatigued`, `format_last_used[next_format]` is null or at least 365 days before `guide_date`, `pick.next_format_last_used` matches it, and the rationale states it (r-fatigued-team-picks-format-unused-12-months); `rationale` names all three history formats, the distribution and the fatigue signal (r-rationale-names-history-state-and-tiebreaker); `refresh_trend.consecutive_rotations_without_refresh` equals the count computed from the history's action-item and contributing-participant counts (r-two-rotations-without-refresh-escalate-to-team-health).</note>
   </section>
 
-  <example valid="true">
-    <code lang="json"><![CDATA[
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
   "team_id": "platform",
   "owner": "Ruslan",
-  "last_3_formats": ["mad-sad-glad", "4ls", "sailboat"],
-  "next_format": "anonymous-async",
-  "rationale": "Distribution shifted to async after Carol relocated to PT timezone; previous 3 covered in-person variants; rotate to async.",
+  "guide_date": "2026-05-16",
+  "history": [
+    {"retro_date": "2026-05-09", "instance_ref": "retros/platform/2026-05-09.json", "format": "sailboat", "action_items": 4, "participants": 8, "silent_participants": 0},
+    {"retro_date": "2026-04-25", "instance_ref": "retros/platform/2026-04-25.json", "format": "4ls", "action_items": 6, "participants": 8, "silent_participants": 0},
+    {"retro_date": "2026-04-11", "instance_ref": "retros/platform/2026-04-11.json", "format": "mad-sad-glad", "action_items": 5, "participants": 7, "silent_participants": 1}
+  ],
+  "format_last_used": {
+    "start-stop-continue": "2025-11-14",
+    "sailboat": "2026-05-09",
+    "4ls": "2026-04-25",
+    "timeline": null,
+    "anonymous-async": null,
+    "mad-sad-glad": "2026-04-11",
+    "lean-coffee": "2026-03-28"
+  },
   "team_state": {"distribution": "async", "fatigue_signal": "rotating"},
+  "stale_formats": [],
+  "refresh_trend": {"consecutive_rotations_without_refresh": 1, "escalation": "none"},
+  "pick": {
+    "next_format": "anonymous-async",
+    "tie_breaker": "async_pool",
+    "exception_recorded": false,
+    "next_format_last_used": null,
+    "anonymous_async_input": true
+  },
+  "rationale": "Last three were sailboat, 4ls and mad-sad-glad, all live formats; distribution is now async since Carol moved to Lisbon, fatigue signal rotating. The async pool tie-breaker decides: anonymous-async is outside the last three, never used by this team, and the only pick that gets Lisbon's cards in.",
   "outcome_review": {"cadence": "next-retro", "last_run_at": "2026-05-09"}
 }
 ]]></code>
-  </example>
+    </example>
+  </section>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
   "team_id": "platform",
   "owner": "team",
-  "last_3_formats": ["sailboat", "sailboat", "sailboat"],
-  "next_format": "sailboat",
-  "rationale": "everyone likes it",
-  "team_state": {"distribution": "remote", "fatigue_signal": "tired"},
-  "outcome_review": {"cadence": "ad-hoc", "last_run_at": ""}
+  "guide_date": "2026-05-16",
+  "history": [
+    {"retro_date": "2026-05-09", "instance_ref": "from memory", "format": "sailboat", "action_items": 1, "participants": 8, "silent_participants": 3},
+    {"retro_date": "2026-04-25", "instance_ref": "from memory", "format": "sailboat", "action_items": 3, "participants": 8, "silent_participants": 2},
+    {"retro_date": "2026-04-11", "instance_ref": "retros/platform/2026-04-11.json", "format": "sailboat", "action_items": 6, "participants": 8, "silent_participants": 0}
+  ],
+  "format_last_used": {
+    "start-stop-continue": "2026-01-16",
+    "sailboat": "2026-05-09",
+    "4ls": "2025-12-05",
+    "timeline": null,
+    "anonymous-async": null,
+    "mad-sad-glad": "2026-02-13",
+    "lean-coffee": "2026-03-13"
+  },
+  "team_state": {"distribution": "async", "fatigue_signal": "fatigued"},
+  "stale_formats": [],
+  "refresh_trend": {"consecutive_rotations_without_refresh": 0, "escalation": "none"},
+  "pick": {
+    "next_format": "lean-coffee",
+    "tie_breaker": "in_person_sailboat_or_lean_coffee",
+    "exception_recorded": false,
+    "next_format_last_used": "2026-03-13",
+    "anonymous_async_input": false
+  },
+  "rationale": "Everyone likes it and lean-coffee is a change.",
+  "outcome_review": {"cadence": "next-retro", "last_run_at": "2026-05-09"}
 }
 ]]></code>
-    <note>owner is team, no-repeat rule violated, rationale too short, distribution + fatigue_signal not in enum, outcome_review.cadence not in enum.</note>
-  </example>
+      <note>Subject violations: three sailboats in a row with action items falling 6, 3, 1 and silent participants rising 0, 2, 3, yet `stale_formats` is empty and the refresh trend says 0 (r-stale-format-detector-three-signals, r-two-rotations-without-refresh-escalate-to-team-health); two history entries "from memory" (r-history-read-from-committed-instances); an async team picked lean-coffee without anonymous input (r-async-team-rotates-within-async-pool); a fatigued team given a format used two months ago with an in-person tie-breaker (r-fatigued-team-picks-format-unused-12-months); a rationale of "everyone likes it" naming no history or state, and an owner of "team" (r-rationale-names-history-state-and-tiebreaker).</note>
+    </example>
+  </section>
 
-  <output-contract>
-    <forbidden>
-      <pattern id="f1">next_format in last_3_formats (no-repeat-in-3 rule)</pattern>
-      <pattern id="f2">rationale &lt; 20 chars (vague picking)</pattern>
-      <pattern id="f3">owner is a team / channel</pattern>
-      <pattern id="f4">outcome_review.cadence not in enum</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Lowercase format strings before enum check.</transformation>
-      <transformation>Default outcome_review.cadence to "next-retro" when omitted.</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <forbidden-patterns>
+    <antipattern id="history-from-memory">
+      <description>`history` not read from committed instances (no `instance_ref` path), not newest first, disagreeing with `format_last_used`, or a `pick` emitted with fewer than three entries.</description>
+      <reason>r-history-read-from-committed-instances: facilitators remember the retro they enjoyed, not the one they ran.</reason>
+    </antipattern>
+    <antipattern id="repeat-in-last-3">
+      <description>`pick.next_format` present in the history without a recorded `async_pool_exhausted` exception.</description>
+      <reason>r-no-repeat-in-last-3: retro fatigue sets in within four to six cycles of the same format.</reason>
+    </antipattern>
+    <antipattern id="live-format-for-async-team">
+      <description>`distribution: async` with `next_format` mad-sad-glad or lean-coffee, or `anonymous_async_input` false.</description>
+      <reason>r-async-team-rotates-within-async-pool: variety that gives the overlap-hour timezone a retro and everyone else a summary.</reason>
+    </antipattern>
+    <antipattern id="blind-stale-detector">
+      <description>`stale_formats` missing a format that appears twice in the history, dropped more than 50% in action items between consecutive uses, or left 2+ participants silent at the last retro; or a stale format picked.</description>
+      <reason>r-stale-format-detector-three-signals: a format that stopped working after one use is stale after one use.</reason>
+    </antipattern>
+    <antipattern id="fatigued-gets-fourth-most-recent">
+      <description>`fatigue_signal: fatigued` with a `next_format` used inside 12 months, a tie-breaker other than the 12-month lookback, or a rationale that does not state when the format was last used.</description>
+      <reason>r-fatigued-team-picks-format-unused-12-months: a fatigued team needs a format it has no muscle memory for.</reason>
+    </antipattern>
+    <antipattern id="habit-instead-of-rationale">
+      <description>`rationale` under 20 characters, "everyone likes it", or one that omits any of the three previous formats, the distribution, the fatigue signal or the tie-breaker; `owner` a team or channel.</description>
+      <reason>r-rationale-names-history-state-and-tiebreaker: without the named tie-breaker the health check cannot tell a decision from a habit.</reason>
+    </antipattern>
+    <antipattern id="counts-not-recorded">
+      <description>A history entry without `action_items`, `participants` and `silent_participants`, or `outcome_review.last_run_at` earlier than the most recent retro.</description>
+      <reason>r-counts-recorded-per-scheduled-retro: without the counts the rotation is a random walk through seven formats.</reason>
+    </antipattern>
+    <antipattern id="morale-treated-as-format">
+      <description>`consecutive_rotations_without_refresh` of 2 with `escalation: none`, no `team_health_route`, or a `pick` still emitted.</description>
+      <reason>r-two-rotations-without-refresh-escalate-to-team-health: rotating through five formats while participation falls is treating a morale problem with stationery.</reason>
+    </antipattern>
+  </forbidden-patterns>
 
-  <reference path="scripts/validate-retro-format-rotation-guide.py">Validator script</reference>
+  <reference path="scripts/validate-retro-format-rotation-guide.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/rotation-guide.md.j2">Per-team guide skeleton with the same history, state, detector, pick and rationale fields.</reference>
+  <reference path="templates/rotation-rule-card.md.j2">The rotation rule, the stale-format detector and the tie-breakers the `pick` is chosen by.</reference>
 </text>

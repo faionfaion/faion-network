@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Retro Format Rotation Guide Procedure" version="1.0.0" est_tokens="1750" depth="essential">
+  <summary>Seven steps from the committed retro instances to a scheduled next format: read the three-instance history with counts (or record the skip), run the stale-format detector, compute the refresh trend and escalate to team health after two unrefreshed rotations, apply the no-repeat rule inside the async pool, apply the fatigue lookback, write the rationale, validate and schedule, then record the counts at the outcome review. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="read-the-history-from-committed-instances">
+      <input>The team's committed `RetroInstance` files (from [[retro-facilitation-multistyle]]), newest first; the date each of the seven formats was last run for this team.</input>
+      <action>Run `history_read`. Fill `history` with the three most recent instances: `retro_date`, `instance_ref` (the committed path), `format`, `action_items`, `participants`, `silent_participants`. Fill `format_last_used` for all seven formats (null for never). Set `team_id`, `owner` (a person), `guide_date` (r-history-read-from-committed-instances, r-counts-recorded-per-scheduled-retro).</action>
+      <output>`team_id`, `owner`, `guide_date`, `history`, `format_last_used`.</output>
+      <decision-gate>Fewer than three committed instances: set `skip: "history &lt; 3"`, no `pick`, stop. Counts missing on either of the two most recent instances: backfill from the instances before continuing; the detector is blind without them.</decision-gate>
+    </step>
+    <step n="2" name="run-the-stale-format-detector">
+      <input>`history`.</input>
+      <action>List in `stale_formats` every format that appears twice in the history (`twice_in_last_3`), whose action-item count fell by more than 50% between two consecutive retros on that format (`action_items_dropped_over_50pct`), or that left 2 or more participants silent at the most recent retro (`two_or_more_silent_participants`), naming the signal. Record the team's `distribution` and `fatigue_signal` in `team_state` (r-stale-format-detector-three-signals).</action>
+      <output>`stale_formats`, `team_state`.</output>
+    </step>
+    <step n="3" name="compute-the-refresh-trend">
+      <input>`history` counts; `stale_formats`.</input>
+      <action>Run `health_check`. For each of the last two rotations to a different, non-stale format, check whether it raised the action-item count or the contributing-participant count (participants minus silent) over the retro before it. Set `refresh_trend.consecutive_rotations_without_refresh`. At 2, set `escalation: fatigue_is_not_a_format_problem`, name the `team_health_route` ([[team-morale-pulse-survey]] or [[solo-burnout-tripwires]]) and emit no `pick` (r-two-rotations-without-refresh-escalate-to-team-health).</action>
+      <output>`refresh_trend`.</output>
+      <decision-gate>Escalated: rotation is suspended until the team-health review is recorded; the guide is filed without a pick.</decision-gate>
+    </step>
+    <step n="4" name="pick-inside-the-no-repeat-and-async-rules">
+      <input>`templates/rotation-rule-card.md.j2`; `history`, `stale_formats`, `team_state`.</input>
+      <action>Run `rotation_pick`. Candidates are the seven formats minus the three in the history minus the stale ones. For an `async` team, candidates are further limited to the async pool (anonymous-async, or sailboat / 4ls / start-stop-continue / timeline on a shared board with anonymous input and a timezone-spanning window); never mad-sad-glad or lean-coffee. If the async pool is empty after the exclusions, pick the async-capable format used longest ago, set `exception_recorded: true` and `tie_breaker: async_pool_exhausted` (r-no-repeat-in-last-3, r-async-team-rotates-within-async-pool).</action>
+      <output>Candidate list; for async teams `pick.anonymous_async_input: true`.</output>
+    </step>
+    <step n="5" name="apply-the-fatigue-lookback-and-the-tie-breaker">
+      <input>Candidates; `format_last_used`; `team_state.fatigue_signal`.</input>
+      <action>`fatigued`: keep only candidates with `format_last_used` null or at least 12 months before `guide_date`, set `tie_breaker: fatigued_12_month_lookback`. `rotating`: any candidate, `tie_breaker: no_repeat_only` or `async_pool`. `fresh`: the in-person tie-breakers may decide (sailboat or lean-coffee for in-person, 4ls for a reflective mid-cycle). Set `pick.next_format` and `next_format_last_used` (r-fatigued-team-picks-format-unused-12-months).</action>
+      <output>`pick`.</output>
+      <decision-gate>A fatigued team with no candidate unused for 12 months: pick the never-used format if any; otherwise the oldest, and say so in the rationale.</decision-gate>
+    </step>
+    <step n="6" name="write-the-rationale-validate-and-schedule">
+      <input>`pick`, `history`, `team_state`; the next retro's calendar slot.</input>
+      <action>Write `rationale` (20+ characters) naming all three previous formats, the distribution, the fatigue signal, the tie-breaker or exception that decided, and for a fatigued team when the picked format was last used. Run `python3 scripts/validate-retro-format-rotation-guide.py --file guide.json`, fix every VIOLATION, commit the guide beside the retro instances and schedule the retro with the picked format (r-rationale-names-history-state-and-tiebreaker).</action>
+      <output>`rationale`; a scheduled retro with its format.</output>
+    </step>
+    <step n="7" name="record-the-counts-at-the-outcome-review">
+      <input>The scheduled retro's committed `RetroInstance`.</input>
+      <action>At the next retro's outcome review, record the format actually run, the action items produced, the participants and the number who contributed nothing; set `outcome_review.last_run_at`. That instance becomes `history[0]` of the next guide, and its counts feed the stale detector and the refresh trend (r-counts-recorded-per-scheduled-retro, r-two-rotations-without-refresh-escalate-to-team-health).</action>
+      <output>`outcome_review`; the next guide's history.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Three committed instances with counts in `history`, newest first, or `skip: "history &lt; 3"` with no pick.</item>
+      <item>`stale_formats` lists every format one of the three signals fires for; the refresh trend is computed and, at two unrefreshed rotations, escalated to team health with no pick.</item>
+      <item>`pick.next_format` is outside the last three and the stale set, inside the async pool for async teams, and unused for 12 months for fatigued teams.</item>
+      <item>The rationale names the three previous formats, the distribution, the fatigue signal and the tie-breaker; the scheduled retro's counts are recorded at its outcome review.</item>
+    </list>
+  </section>
+</text>

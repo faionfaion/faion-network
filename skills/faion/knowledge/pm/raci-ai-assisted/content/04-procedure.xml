@@ -1,40 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="RACI AI Assisted Procedure" version="1.1.0" est_tokens="600" depth="medium">
-  <summary>Five-step procedure: scaffold → assign-A → validate → publish → quarterly-review.</summary>
+<text id="04-procedure" title="RACI AI Assisted Procedure" version="2.0.0" est_tokens="1850" depth="essential">
+  <summary>Eight steps from a named trigger to a published `RACIMatrix` and its quarterly review: confirm the trigger and snapshot roster and open leaves, scaffold one row per open leaf, assign a single anchored A per row, fill R / C / I with one column per role, apply the roster-delta diff before the deadline, validate, publish with the notification record, and review within 90 days. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
   <section title="Procedure">
-
-    <step n="1" name="scaffold">
-      <input>WBS leaves + roster + last RACI</input>
-      <action>Run `raci-scaffold`. Create one row per WBS leaf with empty R/A/C/I. Carry forward prior `accountable` if role still in roster.</action>
-      <output>Scaffolded matrix</output>
+    <step n="1" name="confirm-the-trigger-and-snapshot-the-inputs">
+      <input>The event that fired (kickoff, a roster join / leave / role change, or the quarterly date); the WBS spec from [[wbs-creation]]; the team roster; the project charter; the prior `RACIMatrix` if one exists.</input>
+      <action>Set `header.trigger` to the enum value that matches the event. Copy the roster's role ids and people into `roster`, and the ids of every WBS leaf that is open into `wbs_open_leaves`. Set `header.status: draft` (r-trigger-enum-and-roster-delta).</action>
+      <output>`project_id`, `header` (status draft), `roster`, `wbs_open_leaves`.</output>
+      <decision-gate>No WBS spec or no roster with role ids: stop, build those first. Event not in the enum ("when needed", "someone asked"): refuse; no refresh without a named trigger.</decision-gate>
     </step>
-
-    <step n="2" name="assign-A">
-      <input>Scaffolded matrix + charter + roster</input>
-      <action>Run `raci-assign-A`. For each row pick exactly one accountable role from the roster with one evidence anchor (charter line OR wbs-dict#id).</action>
-      <output>Matrix with `accountable` populated per row</output>
-      <decision-gate>If any row has no accountable, defer to PM; do NOT publish.</decision-gate>
+    <step n="2" name="scaffold-one-row-per-open-leaf">
+      <input>`wbs_open_leaves`, `roster`, the prior matrix's rows.</input>
+      <action>Run `raci-scaffold` (`templates/skeleton.md.j2`): one row per id in `wbs_open_leaves`, never a row for a parent node. Carry forward a prior row's A only when that role is still in `roster` and the leaf is still open; otherwise leave the cell empty. Keep a prior row whose leaf has closed, marked for removal at the next quarterly review (r-rows-bind-to-wbs-leaves).</action>
+      <output>`rows[]` with `wbs_id` and `deliverable`, R / A / C / I empty or carried forward.</output>
     </step>
-
-    <step n="3" name="validate">
-      <input>Populated matrix</input>
-      <action>Run `raci-validate`. Check: exactly one A per row, R not empty, no duplicate A within WBS branch, evidence populated, header.trigger valid.</action>
-      <output>Validated matrix OR violation list</output>
+    <step n="3" name="assign-a-single-anchored-accountable">
+      <input>Scaffolded rows, the charter, the WBS dictionary, the stakeholder register.</input>
+      <action>Run `raci-assign-A`. For each row pick exactly one role id from `roster` as `accountable` and record the anchor that justifies it in `evidence` as `charter#section`, `wbs-dict#wbs_id` or `stakeholders#row`; set `status: anchored`. Where no source justifies an A, still name the model's best candidate but set `status: proposed` with `evidence: []` and route the row to the PM (r-exactly-one-accountable-per-row, r-evidence-anchor-per-assignment).</action>
+      <output>Every row with one `accountable`, its `evidence` and `status`.</output>
+      <decision-gate>Any row where the model wants two names, "team" or "tbd": the row is `proposed`, not published, until the PM names one role.</decision-gate>
     </step>
-
-    <step n="4" name="publish">
-      <input>Validated matrix</input>
-      <action>Commit to repo. Update `last_reviewed` to today. Notify roster members of their assignments in the team channel.</action>
-      <output>Published `RACIMatrix`</output>
+    <step n="4" name="fill-responsible-consulted-informed">
+      <input>Rows with A assigned, the roster, the charter.</input>
+      <action>Put at least one role in `responsible`. Put in `consulted` only roles asked before the deliverable is decided; roles that only need the outcome go in `informed`. Never list a role in two columns of one row. Where the C list is longer than the R list, send the row to the PM and record the decision as `over_consultation_reviewed: true` or trim the list (r-responsible-in-roster, r-one-column-per-role-per-row).</action>
+      <output>`responsible[]`, `consulted[]`, `informed[]` per row.</output>
     </step>
-
-    <step n="5" name="quarterly-review">
-      <input>Last quarter matrices + roster deltas + outcome data</input>
-      <action>Run `outcome-review-synthesis`. Remove rows whose WBS leaves are closed. Re-validate against current roster. Update version.</action>
-      <output>Versioned matrix + review_log entry</output>
-      <decision-gate>If next-cycle trigger would not pass r1 (vague trigger), refuse to schedule it.</decision-gate>
+    <step n="5" name="apply-the-roster-delta">
+      <input>The join / leave / role-change notice with the person, the role id and the effective date; the current rows.</input>
+      <action>Only when `header.trigger` is `roster_delta`. Fill `roster_delta` with `change`, `role`, `person`, `effective_date` and `refresh_deadline` (the last day for a leave or role change, `effective_date` + 7 days for a join). Mark every row that names the departed role `orphaned`, reassign each with a new anchor, and list `rows_changed`, `rows_orphaned` (still unresolved) and `rows_reassigned` with their anchors (r-trigger-enum-and-roster-delta, r-responsible-in-roster).</action>
+      <output>`roster_delta` complete; no row still names a role outside `roster`.</output>
+      <decision-gate>`refresh_deadline` already passed or a row still `orphaned`: escalate to the PM the same day; the matrix stays draft.</decision-gate>
     </step>
+    <step n="6" name="validate-the-draft">
+      <input>The draft `RACIMatrix` JSON.</input>
+      <action>Run `raci-validate`: `python3 scripts/validate-raci-ai-assisted.py --file matrix.json`. It checks one row per open leaf and no summary-node rows, every role in `roster`, exactly one A per row, one column per role, anchors on anchored rows, the delta deadline and the notification coverage (all eight rules).</action>
+      <output>`OK`, or a VIOLATION list with the rule id per line.</output>
+      <decision-gate>Any violation, or any row still `proposed` or `orphaned`: the PM resolves it; `header.status` stays `draft` and nothing is sent.</decision-gate>
+    </step>
+    <step n="7" name="publish-and-notify-every-r-and-a-holder">
+      <input>A validated draft with every row `anchored`; the team channel.</input>
+      <action>Set `header.status: published`, `header.last_reviewed` to today, bump `header.version`. Send each person holding an R or A their rows in the team channel and append a `review_log` entry with `kind: publish` and `notification.channel`, `sent_on` and `recipients[]` (role, person, rows). Re-run the validator; commit (r-notify-assignees-on-publish).</action>
+      <output>Published `RACIMatrix` with the notification record.</output>
+    </step>
+    <step n="8" name="quarterly-review-within-90-days">
+      <input>The published matrix, the current WBS spec and roster, `scripts/staleness-check.py` output (weekly cron).</input>
+      <action>Before `last_reviewed` is 90 days old, run with `header.trigger: quarterly_review`: remove rows whose leaf is closed, re-run steps 2-6 against the current roster, resolve rows still `proposed`, bump `version`, and append a `review_log` entry with `kind: quarterly_review`, `rows_removed`, `rows_reassigned` and `rows_still_proposed`; then publish per step 7 (r-quarterly-review-90-days).</action>
+      <output>Refreshed, published matrix; `review_log` with the review counts.</output>
+      <decision-gate>`rows_still_proposed` unchanged for two consecutive reviews: the PM decides those rows in the review meeting, not the next one.</decision-gate>
+    </step>
+  </section>
 
+  <section title="Exit criteria">
+    <list>
+      <item>`header.trigger` is `kickoff`, `roster_delta` or `quarterly_review`; a `roster_delta` carries its diff and `last_reviewed` is on or before `refresh_deadline`.</item>
+      <item>One row per open WBS leaf, no summary-node rows, every R / A / C / I value in `roster`, one column per role per row.</item>
+      <item>Every row has exactly one `accountable`, at least one anchor and `status: anchored`; `header.status: published`.</item>
+      <item>Latest `review_log` publish entry names channel, date and the rows sent to every R / A holder; `last_reviewed` is within 90 days.</item>
+    </list>
   </section>
 </text>

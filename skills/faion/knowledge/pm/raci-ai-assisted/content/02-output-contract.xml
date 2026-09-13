@@ -1,87 +1,340 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="RACI AI Assisted Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>JSON Schema (draft-07) for `RACIMatrix` — exactly one accountable per row, evidence-anchored assignments, named owner, last_reviewed within window.</summary>
+<text id="02-output-contract" title="RACI AI Assisted Output Contract" version="2.0.0" est_tokens="4150" depth="essential">
+  <summary>Draft-07 JSON Schema for `RACIMatrix`: a roster and open-leaf snapshot, one row per open WBS leaf with exactly one accountable role id, an evidence anchor per anchored row, a `proposed` / `orphaned` status that blocks publish, the roster-delta diff with its deadline, and a `review_log` whose publish entries carry the notification record and whose quarterly entries carry the review counts. Validator: `scripts/validate-raci-ai-assisted.py`; staleness: `scripts/staleness-check.py`.</summary>
 
-  <section title="Schema">
+  <section title="JSON Schema (draft-07)">
     <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/raci-matrix.json",
+  "title": "RACIMatrix",
   "type": "object",
-  "required": ["project_id", "header", "rows", "review_log"],
+  "required": ["project_id", "header", "roster", "wbs_open_leaves", "rows", "review_log"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "wbs_id": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)*$"},
+    "role_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+      "not": {"enum": ["team", "Team", "TEAM", "tbd", "TBD", "various", "ai", "AI", "agent", "automation", "bot"]}
+    },
+    "anchor": {"type": "string", "pattern": "^(charter#[A-Za-z0-9._-]+|wbs-dict#[0-9]+(\\.[0-9]+)*|stakeholders#[A-Za-z0-9._-]+)$"},
+    "wbs_id_list": {"type": "array", "items": {"$ref": "#/definitions/wbs_id"}, "uniqueItems": true}
+  },
   "properties": {
-    "project_id": {"type": "string"},
+    "__faion_header__": {"type": "object"},
+    "project_id": {"type": "string", "minLength": 2},
     "header": {
       "type": "object",
-      "required": ["owner", "last_reviewed", "version", "trigger"],
+      "required": ["owner", "status", "trigger", "version", "last_reviewed"],
+      "additionalProperties": false,
       "properties": {
-        "owner": {"type": "object", "required": ["role", "person"], "properties": {"role": {"type": "string"}, "person": {"type": "string", "minLength": 2}}},
-        "last_reviewed": {"type": "string", "format": "date"},
-        "version": {"type": "string"},
-        "trigger": {"enum": ["kickoff", "roster_delta", "quarterly_review"]}
+        "owner": {
+          "type": "object",
+          "required": ["role", "person"],
+          "properties": {"role": {"$ref": "#/definitions/role_id"}, "person": {"type": "string", "minLength": 2}}
+        },
+        "status": {"enum": ["draft", "published"]},
+        "trigger": {"enum": ["kickoff", "roster_delta", "quarterly_review"]},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"},
+        "last_reviewed": {"$ref": "#/definitions/date"}
       }
     },
+    "roster": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["role", "person"],
+        "properties": {"role": {"$ref": "#/definitions/role_id"}, "person": {"type": "string", "minLength": 2}}
+      }
+    },
+    "wbs_open_leaves": {"$ref": "#/definitions/wbs_id_list", "minItems": 1},
     "rows": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["wbs_id", "deliverable", "responsible", "accountable", "consulted", "informed", "evidence"],
+        "required": ["wbs_id", "deliverable", "responsible", "accountable", "consulted", "informed", "evidence", "status"],
+        "additionalProperties": false,
         "properties": {
-          "wbs_id": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)*$"},
-          "deliverable": {"type": "string"},
-          "responsible": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-          "accountable": {"type": "string", "minLength": 2},
-          "consulted": {"type": "array", "items": {"type": "string"}},
-          "informed": {"type": "array", "items": {"type": "string"}},
-          "evidence": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+          "wbs_id": {"$ref": "#/definitions/wbs_id"},
+          "deliverable": {"type": "string", "minLength": 2},
+          "responsible": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/definitions/role_id"}},
+          "accountable": {"$ref": "#/definitions/role_id"},
+          "consulted": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/role_id"}},
+          "informed": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/role_id"}},
+          "evidence": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/anchor"}},
+          "status": {"enum": ["anchored", "proposed", "orphaned"]},
+          "over_consultation_reviewed": {"type": "boolean"}
+        },
+        "if": {"properties": {"status": {"const": "anchored"}}},
+        "then": {"properties": {"evidence": {"minItems": 1}}}
+      }
+    },
+    "roster_delta": {
+      "type": "object",
+      "required": ["change", "role", "person", "effective_date", "refresh_deadline", "rows_changed", "rows_orphaned", "rows_reassigned"],
+      "additionalProperties": false,
+      "properties": {
+        "change": {"enum": ["join", "leave", "role_change"]},
+        "role": {"$ref": "#/definitions/role_id"},
+        "person": {"type": "string", "minLength": 2},
+        "effective_date": {"$ref": "#/definitions/date"},
+        "refresh_deadline": {"$ref": "#/definitions/date"},
+        "rows_changed": {"$ref": "#/definitions/wbs_id_list"},
+        "rows_orphaned": {"$ref": "#/definitions/wbs_id_list"},
+        "rows_reassigned": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["wbs_id", "column", "role", "evidence"],
+            "properties": {
+              "wbs_id": {"$ref": "#/definitions/wbs_id"},
+              "column": {"enum": ["responsible", "accountable", "consulted", "informed"]},
+              "role": {"$ref": "#/definitions/role_id"},
+              "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/anchor"}}
+            }
+          }
         }
       }
     },
-    "review_log": {"type": "array", "items": {"type": "object", "required": ["reviewed_at"]}}
-  }
+    "review_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reviewed_at", "kind"],
+        "properties": {
+          "reviewed_at": {"$ref": "#/definitions/date"},
+          "kind": {"enum": ["publish", "quarterly_review"]},
+          "notification": {
+            "type": "object",
+            "required": ["channel", "sent_on", "recipients"],
+            "properties": {
+              "channel": {"type": "string", "minLength": 1},
+              "sent_on": {"$ref": "#/definitions/date"},
+              "recipients": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["role", "person", "rows"],
+                  "properties": {
+                    "role": {"$ref": "#/definitions/role_id"},
+                    "person": {"type": "string", "minLength": 2},
+                    "rows": {"$ref": "#/definitions/wbs_id_list", "minItems": 1}
+                  }
+                }
+              }
+            }
+          },
+          "rows_removed": {"type": "integer", "minimum": 0},
+          "rows_reassigned": {"type": "integer", "minimum": 0},
+          "rows_still_proposed": {"type": "integer", "minimum": 0}
+        },
+        "allOf": [
+          {"if": {"properties": {"kind": {"const": "publish"}}}, "then": {"required": ["notification"]}},
+          {"if": {"properties": {"kind": {"const": "quarterly_review"}}}, "then": {"required": ["rows_removed", "rows_reassigned", "rows_still_proposed"]}}
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"header": {"properties": {"status": {"const": "published"}}}}},
+      "then": {
+        "properties": {
+          "rows": {"items": {"properties": {"status": {"const": "anchored"}}}},
+          "review_log": {"minItems": 1, "contains": {"properties": {"kind": {"const": "publish"}}, "required": ["kind"]}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"header": {"properties": {"trigger": {"const": "roster_delta"}}}}},
+      "then": {"required": ["roster_delta"]}
+    },
+    {
+      "if": {"properties": {"header": {"properties": {"trigger": {"const": "quarterly_review"}}}}},
+      "then": {"properties": {"review_log": {"minItems": 1, "contains": {"properties": {"kind": {"const": "quarterly_review"}}, "required": ["kind"]}}}}
+    }
+  ]
 }
 ]]></code>
+    <note>What the validator's cross-field block checks beyond the schema: every open leaf in `wbs_open_leaves` has a row and no row's `wbs_id` is the parent of another row's (r-rows-bind-to-wbs-leaves); rows for leaves no longer open are rejected only when `trigger` is `quarterly_review`, since closed leaves are removed at the review and not earlier; every role id in R / A / C / I is in `roster`, and a row naming a role that is not is `orphaned` (r-responsible-in-roster); a role appears in at most one column per row, and a row whose C list is longer than its R list carries `over_consultation_reviewed: true` (r-one-column-per-role-per-row); for a `roster_delta`, `refresh_deadline` is `effective_date` for a leave or role change and `effective_date` + 7 days for a join, and `last_reviewed` is not after it (r-trigger-enum-and-roster-delta); on a published matrix the latest publish entry's recipients cover every role holding R or A (r-notify-assignees-on-publish); a quarterly entry's `rows_still_proposed` equals the count of `proposed` rows (r-quarterly-review-90-days). The 90-day staleness window is time-relative and is checked by `scripts/staleness-check.py`, not by the contract.</note>
   </section>
 
-  <section title="Forbidden patterns">
-    <list>
-      <item>`accountable` empty or matching `^team|tbd|various$` — violates `r4-named-owner`.</item>
-      <item>Two rows naming the same role as `accountable` for the same WBS branch (duplicate A) — violates RACI invariant.</item>
-      <item>`responsible` empty for a non-trivial leaf — orphaned R.</item>
-      <item>`evidence` empty — violates `r3-evidence-anchored`.</item>
-      <item>`header.trigger` value outside enum — violates `r1-explicit-trigger`.</item>
-      <item>`header.last_reviewed` &gt; 90 days — violates `r5-iteration-loop`.</item>
-    </list>
-  </section>
-
-  <example valid="true">
-    <code lang="json"><![CDATA[
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
   "project_id": "checkout",
-  "header": {"owner": {"role": "PM", "person": "pm-handle"}, "last_reviewed": "2026-05-10", "version": "1.4", "trigger": "roster_delta"},
-  "rows": [
-    {"wbs_id": "2.1", "deliverable": "Login Endpoint", "responsible": ["backend-engineer"], "accountable": "backend-lead",
-     "consulted": ["security-lead"], "informed": ["PM"], "evidence": ["charter#auth-section", "wbs-dict#2.1"]}
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "status": "published",
+    "trigger": "roster_delta",
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10"
+  },
+  "roster": [
+    {"role": "pm", "person": "olena.k"},
+    {"role": "backend-lead", "person": "ihor.m"},
+    {"role": "backend-engineer", "person": "taras.v"},
+    {"role": "appsec-lead", "person": "maksym.d"}
   ],
-  "review_log": [{"reviewed_at": "2026-05-10"}]
+  "wbs_open_leaves": ["2.1", "2.2"],
+  "rows": [
+    {
+      "wbs_id": "2.1",
+      "deliverable": "Login endpoint",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead",
+      "consulted": ["appsec-lead"],
+      "informed": ["pm"],
+      "evidence": ["charter#auth-scope", "wbs-dict#2.1"],
+      "status": "anchored"
+    },
+    {
+      "wbs_id": "2.2",
+      "deliverable": "Rate limiting",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead",
+      "consulted": [],
+      "informed": ["pm", "appsec-lead"],
+      "evidence": ["wbs-dict#2.2"],
+      "status": "anchored"
+    }
+  ],
+  "roster_delta": {
+    "change": "leave",
+    "role": "security-lead",
+    "person": "dana.r",
+    "effective_date": "2026-05-15",
+    "refresh_deadline": "2026-05-15",
+    "rows_changed": ["2.1", "2.2"],
+    "rows_orphaned": [],
+    "rows_reassigned": [
+      {"wbs_id": "2.1", "column": "consulted", "role": "appsec-lead", "evidence": ["stakeholders#appsec-lead"]},
+      {"wbs_id": "2.2", "column": "informed", "role": "appsec-lead", "evidence": ["stakeholders#appsec-lead"]}
+    ]
+  },
+  "review_log": [
+    {
+      "reviewed_at": "2026-02-03",
+      "kind": "publish",
+      "notification": {
+        "channel": "#checkout",
+        "sent_on": "2026-02-03",
+        "recipients": [
+          {"role": "backend-lead", "person": "ihor.m", "rows": ["2.1", "2.2"]},
+          {"role": "backend-engineer", "person": "taras.v", "rows": ["2.1", "2.2"]}
+        ]
+      }
+    },
+    {
+      "reviewed_at": "2026-05-10",
+      "kind": "publish",
+      "notification": {
+        "channel": "#checkout",
+        "sent_on": "2026-05-10",
+        "recipients": [
+          {"role": "backend-lead", "person": "ihor.m", "rows": ["2.1", "2.2"]},
+          {"role": "backend-engineer", "person": "taras.v", "rows": ["2.1", "2.2"]}
+        ]
+      }
+    }
+  ]
 }
 ]]></code>
-  </example>
+    </example>
+  </section>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "project_id": "x",
-  "header": {"owner": {"role": "team", "person": ""}, "last_reviewed": "2024-01-01", "version": "0", "trigger": "when_needed"},
-  "rows": [
-    {"wbs_id": "2.1", "deliverable": "Login", "responsible": [], "accountable": "", "consulted": [], "informed": [], "evidence": []}
+  "project_id": "checkout",
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "status": "published",
+    "trigger": "roster_delta",
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10"
+  },
+  "roster": [
+    {"role": "pm", "person": "olena.k"},
+    {"role": "backend-lead", "person": "ihor.m"},
+    {"role": "backend-engineer", "person": "taras.v"}
   ],
-  "review_log": []
+  "wbs_open_leaves": ["2.1", "2.2"],
+  "rows": [
+    {
+      "wbs_id": "2",
+      "deliverable": "Backend",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead, pm",
+      "consulted": ["security-lead", "pm"],
+      "informed": ["pm"],
+      "evidence": [],
+      "status": "anchored"
+    },
+    {
+      "wbs_id": "2.1",
+      "deliverable": "Login endpoint",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead",
+      "consulted": ["security-lead"],
+      "informed": ["pm"],
+      "evidence": ["charter#auth-scope"],
+      "status": "proposed"
+    }
+  ],
+  "review_log": [
+    {"reviewed_at": "2026-05-10", "kind": "publish"}
+  ]
 }
 ]]></code>
-    <note>owner.person empty; trigger invalid; last_reviewed stale; row has empty responsible/accountable/evidence.</note>
-  </example>
+      <note>Subject violations: `accountable: "backend-lead, pm"` is two roles, not one role id (r-exactly-one-accountable-per-row); a row for the summary node `2` and no row for open leaf `2.2` (r-rows-bind-to-wbs-leaves); `security-lead` is not in the roster and the rows are not `orphaned`, while `pm` sits in both C and I on the same row (r-responsible-in-roster, r-one-column-per-role-per-row); an `anchored` row with no evidence and a `proposed` row on a published matrix (r-evidence-anchor-per-assignment); trigger `roster_delta` without the `roster_delta` diff (r-trigger-enum-and-roster-delta); a publish entry with no notification record (r-notify-assignees-on-publish).</note>
+    </example>
+  </section>
 
-  <reference path="scripts/validate-raci-ai-assisted.py">Validator script</reference>
+  <forbidden-patterns>
+    <antipattern id="shared-or-vague-accountable">
+      <description>`accountable` containing a separator, empty, equal to `team` / `tbd` / `various`, or naming the agent or an automation.</description>
+      <reason>r-exactly-one-accountable-per-row: two accountable roles are each one's assumption about the other; zero is the PM.</reason>
+    </antipattern>
+    <antipattern id="role-not-in-roster">
+      <description>Any R / A / C / I value absent from `roster`, or a row for a departed role not marked `orphaned`, or an `orphaned` row on a published matrix.</description>
+      <reason>r-responsible-in-roster: the matrix rots at offboarding; eleven rows naming a lead who left is a month with nobody accountable for auth.</reason>
+    </antipattern>
+    <antipattern id="summary-node-row">
+      <description>A `wbs_id` that is the parent of another row's `wbs_id`, or an entry of `wbs_open_leaves` with no row.</description>
+      <reason>r-rows-bind-to-wbs-leaves: a row for "2. Backend" hides that 2.3 has no owner.</reason>
+    </antipattern>
+    <antipattern id="published-while-proposed">
+      <description>`header.status: published` with any row `proposed`, or an `anchored` row whose `evidence` is empty or does not match `charter#`, `wbs-dict#` or `stakeholders#`.</description>
+      <reason>r-evidence-anchor-per-assignment: a plausible A without an anchor looks decided and nobody remembers deciding it.</reason>
+    </antipattern>
+    <antipattern id="refresh-when-needed">
+      <description>`header.trigger` outside `kickoff` / `roster_delta` / `quarterly_review`, a `roster_delta` trigger without the diff, or `last_reviewed` after `refresh_deadline`.</description>
+      <reason>r-trigger-enum-and-roster-delta: "refresh when needed" refreshes never; the deadline is the person's last day.</reason>
+    </antipattern>
+    <antipattern id="everyone-consulted">
+      <description>A role in two columns of one row, or a C list longer than the R list without `over_consultation_reviewed: true`.</description>
+      <reason>r-one-column-per-role-per-row: a security lead in C on forty rows blocks forty deliverables or ignores forty notifications.</reason>
+    </antipattern>
+    <antipattern id="silent-publish">
+      <description>A `publish` entry in `review_log` without `notification`, or recipients that do not cover every role holding R or A.</description>
+      <reason>r-notify-assignees-on-publish: an assignment nobody was told about is not an assignment.</reason>
+    </antipattern>
+    <antipattern id="stale-or-uncounted-review">
+      <description>`last_reviewed` older than 90 days (staleness-check.py), a `quarterly_review` trigger with no `quarterly_review` entry, or an entry whose `rows_still_proposed` disagrees with the rows.</description>
+      <reason>r-quarterly-review-90-days: the counts are what tell the PM whether the same eleven rows have been proposed for two quarters.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-raci-ai-assisted.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="scripts/staleness-check.py">Flags a matrix whose `header.last_reviewed` is older than 90 days.</reference>
+  <reference path="templates/skeleton.md.j2">Markdown skeleton with the same header fields and row columns.</reference>
 </text>

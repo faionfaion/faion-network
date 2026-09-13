@@ -10,25 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- Org runs a service with paying customers OR a published SLA.
-- Incidents happen often enough that ad-hoc comms cost is real (>=1 P1/P2 per quarter).
-- An incident-commander role exists (named, on a rotation).
-- Status-page tool and customer-comms channel are in place.
+- The org runs a service with paying customers or a published SLA, and sees at least one P1 / P2 a quarter, so the four templates are exercised rather than written for a drawer.
+- The incident runbook defines severity levels (P1-P4 or SEV1-4) the matrix can map to audiences, first-post deadlines and update intervals.
+- A named incident commander and a communications lead are on rotation and can approve every external send.
+- A status-page tool with component statuses and the four lifecycle states, a customer comms list and an exec distribution list exist.
+- A game day or tabletop can be run at least quarterly so every template carries a `last_drilled` date inside 90 days.
 
 ## Skip If (ANY kills it)
 
-- Pre-launch product with no SLA — defer until customers exist.
-- No on-call rotation — templates without a commander rot.
-- Org has a regulated template (banking, healthcare) — use the regulator's instead.
+- Pre-launch product with no customers and no SLA: there is nobody to post to; defer until the first paying customer.
+- No on-call rotation or no named commander: templates without someone to approve the send rot; build the rotation first.
+- A regulator mandates the incident notification format (banking, healthcare, telecoms): use the regulator's template and deadlines instead of this matrix.
+- The only status channel is a shared internal chat with no public page: the highest severity cannot include the status page the rules require; stand one up first.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Status-page tool access | API/UI | Statuspage / Atlassian Statuspage / equivalent |
-| Customer comms list | CRM export | support tool |
-| Exec brief recipients | list | leadership roster |
-| Severity definitions | doc | incident-management runbook |
+| Severity definitions (P1-P4 or SEV1-4) with the audiences, first-post deadline and update interval per level | runbook table | incident-management runbook |
+| Status-page tool with component list and the Investigating / Identified / Monitoring / Resolved states | API / UI | Statuspage / Atlassian Statuspage / equivalent |
+| Customer comms list and the customer-email sender | CRM export | support tool |
+| Exec brief recipients with the figures they need (customers, revenue at risk, SLA credits) | list | leadership roster / account team |
+| On-call rotation naming the incident commander and comms lead per shift | rota | incident-management runbook |
+| Previous `IncidentCommsBundle` with its `last_drilled` dates and past incidents | JSON, this contract | this methodology (prior cycle) |
 
 ## Assumes Loaded
 
@@ -43,10 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~900 |
-| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~400 |
+| `content/01-core-rules.xml` | essential | Testable rules every application enforces | ~2100 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for `IncidentCommsBundle`: severity x audience matrix with deadlines and intervals, token list, four templates with required tokens and `last_drilled`, per-incident updates with state / timestamp / impact / next update and external-review flags, internal post with named commander, five-field exec brief, Resolved block with postmortem date; valid + invalid examples, forbidden patterns | ~6750 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix | ~1300 |
+| `content/04-procedure.xml` | essential | 9 steps: matrix, token list, four templates, drill and stamp last_drilled; then per incident: internal post first, first external post inside the deadline, exec brief on one screen, updates on the interval through the states, Resolved with window and postmortem date | ~2250 |
+| `content/05-examples.xml` | recommended | Complete checkout-api bundle with a P1 run from Investigating to Resolved in 91 minutes and a note per non-obvious value, and a bad bundle with the validator output and what the commander sees | ~4000 |
+| `content/06-decision-tree.xml` | essential | Root question → branches → conclusions (rule refs) | ~750 |
 
 ## Task Routing
 

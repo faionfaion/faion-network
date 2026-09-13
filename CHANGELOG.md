@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 layer 2 complete: the last seven `pm` documents, and all 61 are
+  whole.** `retro-facilitation-multistyle` carries an 18-field contract
+  (format, distribution, prime directive, safety check, one-to-three owned and
+  dated actions), `rag-policy-thresholds` seven fields with a comparator per
+  threshold; four slugs gained the procedure and examples they never had.
+  Time-relative staleness ("90 days from today") stays in each slug's existing
+  `staleness-check.py` rather than in the contract, because a fixture dated
+  "today" expires its own self-test — the honest place for a clock is a script.
+
+  Over the six batches: 61 contracts rewritten as draft-07 schemas of the fields
+  the rules actually constrain, 61 procedures in the subject's own steps, 34
+  `05-examples.xml` and 9 `04-procedure.xml` created, every Applies If / Skip
+  If / Prerequisites rewritten, 61 validators rebuilt with an `extra()` block
+  for the arithmetic JSON Schema cannot express and a self-test that runs the
+  contract's own examples, and every template realigned and regenerated through
+  the tool's pure generators. Generic-step residue across the 61: **0**.
+  CR-011 is closed on both layers; what remains corpus-wide is the near-
+  duplicate rule pairs and the eleven tabled disagreements.
+
 - **CR-011 layer 2, batch 6: six `marketing` and two `pm`.** `growth-referral-
   programs` and `internal-link-audit` redone from the committed state after the
   limit kill; four slugs (`retainer-pricing-methodology`,

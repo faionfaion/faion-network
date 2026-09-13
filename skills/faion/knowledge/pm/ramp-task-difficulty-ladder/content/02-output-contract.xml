@@ -1,43 +1,415 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ramp Task Difficulty Ladder — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Ramp Task Difficulty Ladder Output Contract" version="2.0.0" est_tokens="6200" depth="essential">
+  <summary>Draft-07 JSON Schema for `RampLadder`: a header with owner, ramp window, review cadence and tracker label prefix; at least 4 rungs each defined by observable scope, a duration band, a fading buddy-support level, evidence from a completed prior ramp (or `not_applicable: unvalidated`) and at least 2 tagged tickets kept off the critical path on rungs 1-2; per-newcomer ramps recording rung-by-rung merges with no skips and overrun reclassification; and an outcome review that records `time_to_first_pr`, the rung reached, and re-bands out-of-band rungs. Validator: `scripts/validate-ramp-task-difficulty-ladder.py`.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ramp-task-difficulty-ladder.json",
+  "title": "RampLadder",
+  "type": "object",
+  "required": ["team", "header", "rungs", "ramps", "outcome_review"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "days": {"type": "number", "exclusiveMinimum": 0},
+    "rung_no": {"type": "integer", "minimum": 1},
+    "support": {"enum": ["full_pairing", "pair_on_pr", "review_on_pr", "review_on_design", "scheduled_check_ins"]},
+    "ticket_ref": {"type": "string", "pattern": "^(https?://\\S+|[A-Z][A-Z0-9]+-[0-9]+|#[0-9]+)$"}
+  },
+  "properties": {
+    "__faion_header__": {"type": "object"},
+    "team": {"type": "string", "minLength": 2},
+    "header": {
+      "type": "object",
+      "required": ["owner", "version", "last_reviewed", "ramp_window_days", "review_cadence", "rung_label_prefix"],
+      "additionalProperties": false,
+      "properties": {
+        "owner": {"type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z0-9._-]+$"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "last_reviewed": {"$ref": "#/definitions/date"},
+        "ramp_window_days": {"type": "integer", "minimum": 5, "maximum": 60},
+        "review_cadence": {"enum": ["monthly", "quarterly"]},
+        "rung_label_prefix": {"type": "string", "pattern": "^[a-z][a-z0-9/_-]*$"}
+      }
+    },
+    "rungs": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["rung", "name", "ticket_pattern", "expected_duration_days", "buddy_support", "evidence", "tagged_tickets"],
+        "additionalProperties": false,
+        "properties": {
+          "rung": {"$ref": "#/definitions/rung_no"},
+          "name": {"type": "string", "minLength": 3, "not": {"pattern": "(?i)(story point|t-shirt|\\beasy\\b|\\bmedium\\b|\\bhard\\b)"}},
+          "ticket_pattern": {
+            "type": "object",
+            "required": ["files_touched_max", "modules_crossed_max", "behind_feature_flag", "design_review_required", "examples"],
+            "properties": {
+              "files_touched_max": {"type": "integer", "minimum": 1},
+              "modules_crossed_max": {"type": "integer", "minimum": 1},
+              "behind_feature_flag": {"type": "boolean"},
+              "design_review_required": {"type": "boolean"},
+              "examples": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5, "not": {"pattern": "(?i)([0-9]+ ?(story )?points?|t-shirt|\\beasy\\b|\\bmedium\\b|\\bhard\\b)"}}}
+            }
+          },
+          "expected_duration_days": {
+            "type": "object",
+            "required": ["min", "max"],
+            "properties": {"min": {"$ref": "#/definitions/days"}, "max": {"$ref": "#/definitions/days"}}
+          },
+          "buddy_support": {"$ref": "#/definitions/support"},
+          "evidence": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": {"enum": ["validated", "unvalidated"]},
+              "not_applicable": {"const": "unvalidated"},
+              "merged_ref": {"$ref": "#/definitions/ticket_ref"},
+              "completed_by_newcomer": {"type": "string", "minLength": 2},
+              "actual_duration_days": {"$ref": "#/definitions/days"}
+            },
+            "if": {"properties": {"status": {"const": "validated"}}},
+            "then": {"required": ["merged_ref", "completed_by_newcomer", "actual_duration_days"]},
+            "else": {"required": ["not_applicable"]}
+          },
+          "tagged_tickets": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["ref", "label", "on_critical_path", "deadline_inside_ramp_window"],
+              "properties": {
+                "ref": {"$ref": "#/definitions/ticket_ref"},
+                "label": {"type": "string", "pattern": "^[a-z][a-z0-9/_-]*[0-9]+$"},
+                "on_critical_path": {"type": "boolean"},
+                "deadline_inside_ramp_window": {"type": "boolean"}
+              }
+            }
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"rung": {"const": 1}}}, "then": {"properties": {"expected_duration_days": {"properties": {"max": {"maximum": 1}}}, "buddy_support": {"const": "full_pairing"}}}},
+          {"if": {"properties": {"rung": {"maximum": 2}}}, "then": {"properties": {"tagged_tickets": {"items": {"properties": {"on_critical_path": {"const": false}, "deadline_inside_ramp_window": {"const": false}}}}}}}
+        ]
+      }
+    },
+    "ramps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["newcomer", "start_date", "tickets_tagged_on", "progression", "time_to_first_pr_days", "rung_reached_on_last_day"],
+        "additionalProperties": false,
+        "properties": {
+          "newcomer": {"type": "string", "minLength": 2},
+          "start_date": {"$ref": "#/definitions/date"},
+          "tickets_tagged_on": {"$ref": "#/definitions/date"},
+          "progression": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["rung", "ticket", "merged_on", "actual_duration_days"],
+              "properties": {
+                "rung": {"$ref": "#/definitions/rung_no"},
+                "ticket": {"$ref": "#/definitions/ticket_ref"},
+                "merged_on": {"$ref": "#/definitions/date"},
+                "actual_duration_days": {"$ref": "#/definitions/days"},
+                "reclassified_to_rung": {"$ref": "#/definitions/rung_no"}
+              }
+            }
+          },
+          "time_to_first_pr_days": {"type": "number", "minimum": 0},
+          "rung_reached_on_last_day": {"$ref": "#/definitions/rung_no"}
+        }
+      }
+    },
+    "outcome_review": {
+      "type": "object",
+      "required": ["last_run", "next_due", "ramps_reviewed", "median_time_to_first_pr_days", "per_rung", "version_bumped"],
+      "additionalProperties": false,
+      "properties": {
+        "last_run": {"$ref": "#/definitions/date"},
+        "next_due": {"$ref": "#/definitions/date"},
+        "ramps_reviewed": {"type": "integer", "minimum": 0},
+        "median_time_to_first_pr_days": {"type": "number", "minimum": 0},
+        "per_rung": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rung", "median_actual_days", "within_band", "consecutive_out_of_band_cycles", "action"],
+            "properties": {
+              "rung": {"$ref": "#/definitions/rung_no"},
+              "median_actual_days": {"type": ["number", "null"]},
+              "within_band": {"type": "boolean"},
+              "consecutive_out_of_band_cycles": {"type": "integer", "minimum": 0},
+              "action": {"enum": ["none", "rebanded", "pattern_rewritten"]}
+            },
+            "if": {"properties": {"within_band": {"const": false}}},
+            "then": {"properties": {"action": {"enum": ["rebanded", "pattern_rewritten"]}}}
+          }
+        },
+        "version_bumped": {"type": "boolean"}
+      }
+    }
+  }
+}
+]]></code>
+    <note>What the validator's cross-field block checks beyond the schema: rungs are numbered 1..n without gaps; `expected_duration_days.max` is at least `min`, non-decreasing up the ladder, and the top rung's `max` is at most `header.ramp_window_days` (r-durations-monotonic-rung1-under-a-day); `buddy_support` never increases up the ladder and the top rung is `scheduled_check_ins` (r-buddy-support-fades-per-rung); every rung's tagged-ticket labels start with `header.rung_label_prefix` followed by the rung number (r-tickets-tagged-before-start-date); in each ramp, `tickets_tagged_on` is on or before `start_date`, the progression starts at rung 1 and never rises by more than one rung per merged ticket, and any ticket whose `actual_duration_days` exceeds twice its rung's `max` carries `reclassified_to_rung` (r-rung1-merges-to-main, r-tickets-tagged-before-start-date, r-promotion-requires-completed-rung); in the outcome review, `within_band` agrees with the rung's band, a rung out of band for two or more consecutive cycles is re-banded or rewritten with `version_bumped` true, `median_time_to_first_pr_days` above 3 requires an action on rung 1, and `next_due` is at most 31 days (monthly) or 92 days (quarterly) after `last_run` (r-outcome-review-regrades-rungs, r-rung1-merges-to-main).</note>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "team": "payments-platform",
+  "header": {
+    "owner": "tech-lead:alice.m",
+    "version": "1.2.0",
+    "last_reviewed": "2026-06-30",
+    "ramp_window_days": 10,
+    "review_cadence": "quarterly",
+    "rung_label_prefix": "ramp/rung-"
+  },
+  "rungs": [
+    {
+      "rung": 1,
+      "name": "read-only change that ships",
+      "ticket_pattern": {"files_touched_max": 1, "modules_crossed_max": 1, "behind_feature_flag": false, "design_review_required": false, "examples": ["docs typo fix in README", "dependency patch bump", "add a log line"]},
+      "expected_duration_days": {"min": 0.25, "max": 1},
+      "buddy_support": "full_pairing",
+      "evidence": {"status": "validated", "merged_ref": "https://github.com/acme/payments/pull/812", "completed_by_newcomer": "dmytro.k", "actual_duration_days": 0.4},
+      "tagged_tickets": [
+        {"ref": "PAY-2210", "label": "ramp/rung-1", "on_critical_path": false, "deadline_inside_ramp_window": false},
+        {"ref": "PAY-2214", "label": "ramp/rung-1", "on_critical_path": false, "deadline_inside_ramp_window": false}
+      ]
+    },
+    {
+      "rung": 2,
+      "name": "single-file change",
+      "ticket_pattern": {"files_touched_max": 1, "modules_crossed_max": 1, "behind_feature_flag": false, "design_review_required": false, "examples": ["rename a function and its call sites in one file", "add a unit test for an existing helper"]},
+      "expected_duration_days": {"min": 1, "max": 2},
+      "buddy_support": "pair_on_pr",
+      "evidence": {"status": "validated", "merged_ref": "https://github.com/acme/payments/pull/819", "completed_by_newcomer": "dmytro.k", "actual_duration_days": 1.5},
+      "tagged_tickets": [
+        {"ref": "PAY-2218", "label": "ramp/rung-2", "on_critical_path": false, "deadline_inside_ramp_window": false},
+        {"ref": "PAY-2221", "label": "ramp/rung-2", "on_critical_path": false, "deadline_inside_ramp_window": false}
+      ]
+    },
+    {
+      "rung": 3,
+      "name": "single-module change behind a flag",
+      "ticket_pattern": {"files_touched_max": 5, "modules_crossed_max": 1, "behind_feature_flag": true, "design_review_required": false, "examples": ["new read endpoint in the refunds module behind refunds_v2 flag"]},
+      "expected_duration_days": {"min": 2, "max": 3},
+      "buddy_support": "review_on_pr",
+      "evidence": {"status": "validated", "merged_ref": "https://github.com/acme/payments/pull/831", "completed_by_newcomer": "dmytro.k", "actual_duration_days": 2.5},
+      "tagged_tickets": [
+        {"ref": "PAY-2230", "label": "ramp/rung-3", "on_critical_path": false, "deadline_inside_ramp_window": false},
+        {"ref": "PAY-2233", "label": "ramp/rung-3", "on_critical_path": true, "deadline_inside_ramp_window": false}
+      ]
+    },
+    {
+      "rung": 4,
+      "name": "cross-module change with design review",
+      "ticket_pattern": {"files_touched_max": 12, "modules_crossed_max": 2, "behind_feature_flag": true, "design_review_required": true, "examples": ["small refactor across refunds and ledger modules"]},
+      "expected_duration_days": {"min": 3, "max": 5},
+      "buddy_support": "review_on_design",
+      "evidence": {"status": "validated", "merged_ref": "https://github.com/acme/payments/pull/840", "completed_by_newcomer": "dmytro.k", "actual_duration_days": 4},
+      "tagged_tickets": [
+        {"ref": "PAY-2240", "label": "ramp/rung-4", "on_critical_path": false, "deadline_inside_ramp_window": false},
+        {"ref": "PAY-2241", "label": "ramp/rung-4", "on_critical_path": false, "deadline_inside_ramp_window": true}
+      ]
+    },
+    {
+      "rung": 5,
+      "name": "end-to-end feature slice",
+      "ticket_pattern": {"files_touched_max": 25, "modules_crossed_max": 3, "behind_feature_flag": true, "design_review_required": true, "examples": ["partial-refund flow from API to ledger entry behind a flag"]},
+      "expected_duration_days": {"min": 5, "max": 10},
+      "buddy_support": "scheduled_check_ins",
+      "evidence": {"status": "unvalidated", "not_applicable": "unvalidated"},
+      "tagged_tickets": [
+        {"ref": "PAY-2250", "label": "ramp/rung-5", "on_critical_path": false, "deadline_inside_ramp_window": false},
+        {"ref": "PAY-2252", "label": "ramp/rung-5", "on_critical_path": false, "deadline_inside_ramp_window": false}
+      ]
+    }
+  ],
+  "ramps": [
+    {
+      "newcomer": "dmytro.k",
+      "start_date": "2026-04-06",
+      "tickets_tagged_on": "2026-03-30",
+      "progression": [
+        {"rung": 1, "ticket": "PAY-2101", "merged_on": "2026-04-06", "actual_duration_days": 0.4},
+        {"rung": 2, "ticket": "PAY-2105", "merged_on": "2026-04-08", "actual_duration_days": 1.5},
+        {"rung": 3, "ticket": "PAY-2112", "merged_on": "2026-04-13", "actual_duration_days": 2.5},
+        {"rung": 4, "ticket": "PAY-2120", "merged_on": "2026-04-17", "actual_duration_days": 4}
+      ],
+      "time_to_first_pr_days": 1,
+      "rung_reached_on_last_day": 4
+    },
+    {
+      "newcomer": "iryna.s",
+      "start_date": "2026-05-11",
+      "tickets_tagged_on": "2026-05-06",
+      "progression": [
+        {"rung": 1, "ticket": "PAY-2210", "merged_on": "2026-05-11", "actual_duration_days": 0.5},
+        {"rung": 2, "ticket": "PAY-2218", "merged_on": "2026-05-13", "actual_duration_days": 1.5},
+        {"rung": 3, "ticket": "PAY-2230", "merged_on": "2026-05-21", "actual_duration_days": 7, "reclassified_to_rung": 4}
+      ],
+      "time_to_first_pr_days": 1,
+      "rung_reached_on_last_day": 3
+    }
+  ],
+  "outcome_review": {
+    "last_run": "2026-06-30",
+    "next_due": "2026-09-30",
+    "ramps_reviewed": 2,
+    "median_time_to_first_pr_days": 1,
+    "per_rung": [
+      {"rung": 1, "median_actual_days": 0.45, "within_band": true, "consecutive_out_of_band_cycles": 0, "action": "none"},
+      {"rung": 2, "median_actual_days": 1.5, "within_band": true, "consecutive_out_of_band_cycles": 0, "action": "none"},
+      {"rung": 3, "median_actual_days": 4.75, "within_band": false, "consecutive_out_of_band_cycles": 1, "action": "pattern_rewritten"},
+      {"rung": 4, "median_actual_days": 4, "within_band": true, "consecutive_out_of_band_cycles": 0, "action": "none"},
+      {"rung": 5, "median_actual_days": null, "within_band": true, "consecutive_out_of_band_cycles": 0, "action": "none"}
+    ],
+    "version_bumped": true
+  }
+}
+]]></code>
+    </example>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "team": "payments-platform",
+  "header": {
+    "owner": "tech-lead:alice.m",
+    "version": "1.2.0",
+    "last_reviewed": "2026-06-30",
+    "ramp_window_days": 10,
+    "review_cadence": "quarterly",
+    "rung_label_prefix": "ramp/rung-"
+  },
+  "rungs": [
+    {
+      "rung": 1,
+      "name": "easy (1-2 story points)",
+      "ticket_pattern": {"files_touched_max": 1, "modules_crossed_max": 1, "behind_feature_flag": false, "design_review_required": false, "examples": ["any 1-point ticket"]},
+      "expected_duration_days": {"min": 1, "max": 2},
+      "buddy_support": "full_pairing",
+      "evidence": {"status": "validated", "merged_ref": "https://github.com/acme/onboarding-kata/pull/3", "completed_by_newcomer": "dmytro.k", "actual_duration_days": 1},
+      "tagged_tickets": [
+        {"ref": "PAY-2210", "label": "ramp/rung-1", "on_critical_path": true, "deadline_inside_ramp_window": true},
+        {"ref": "PAY-2214", "label": "ramp/rung-1", "on_critical_path": false, "deadline_inside_ramp_window": false}
+      ]
+    },
+    {
+      "rung": 2,
+      "name": "medium",
+      "ticket_pattern": {"files_touched_max": 3, "modules_crossed_max": 1, "behind_feature_flag": false, "design_review_required": false, "examples": ["rename a function and its call sites"]},
+      "expected_duration_days": {"min": 1, "max": 2},
+      "buddy_support": "scheduled_check_ins",
+      "evidence": {"status": "validated", "merged_ref": "https://github.com/acme/payments/pull/700", "completed_by_newcomer": "alice.m", "actual_duration_days": 0.5},
+      "tagged_tickets": [
+        {"ref": "PAY-2218", "label": "ramp/rung-2", "on_critical_path": false, "deadline_inside_ramp_window": false}
+      ]
+    },
+    {
+      "rung": 3,
+      "name": "single-module change behind a flag",
+      "ticket_pattern": {"files_touched_max": 5, "modules_crossed_max": 1, "behind_feature_flag": true, "design_review_required": false, "examples": ["new read endpoint behind a flag"]},
+      "expected_duration_days": {"min": 2, "max": 3},
+      "buddy_support": "review_on_pr",
+      "evidence": {"status": "unvalidated"},
+      "tagged_tickets": [
+        {"ref": "PAY-2230", "label": "ramp/rung-3", "on_critical_path": false, "deadline_inside_ramp_window": false},
+        {"ref": "PAY-2233", "label": "ramp/rung-3", "on_critical_path": false, "deadline_inside_ramp_window": false}
+      ]
+    },
+    {
+      "rung": 4,
+      "name": "cross-module migration",
+      "ticket_pattern": {"files_touched_max": 12, "modules_crossed_max": 2, "behind_feature_flag": true, "design_review_required": true, "examples": ["ledger schema migration"]},
+      "expected_duration_days": {"min": 3, "max": 12},
+      "buddy_support": "review_on_design",
+      "evidence": {"status": "unvalidated", "not_applicable": "unvalidated"},
+      "tagged_tickets": [
+        {"ref": "PAY-2240", "label": "ramp/rung-4", "on_critical_path": false, "deadline_inside_ramp_window": false},
+        {"ref": "PAY-2241", "label": "ramp/rung-4", "on_critical_path": false, "deadline_inside_ramp_window": false}
+      ]
+    }
+  ],
+  "ramps": [
+    {
+      "newcomer": "iryna.s",
+      "start_date": "2026-05-11",
+      "tickets_tagged_on": "2026-05-12",
+      "progression": [
+        {"rung": 1, "ticket": "PAY-2210", "merged_on": "2026-05-15", "actual_duration_days": 4},
+        {"rung": 4, "ticket": "PAY-2240", "merged_on": "2026-05-29", "actual_duration_days": 9}
+      ],
+      "time_to_first_pr_days": 5,
+      "rung_reached_on_last_day": 4
+    }
+  ],
+  "outcome_review": {
+    "last_run": "2026-06-30",
+    "next_due": "2027-01-15",
+    "ramps_reviewed": 1,
+    "median_time_to_first_pr_days": 5,
+    "per_rung": [
+      {"rung": 1, "median_actual_days": 4, "within_band": false, "consecutive_out_of_band_cycles": 2, "action": "none"},
+      {"rung": 2, "median_actual_days": null, "within_band": true, "consecutive_out_of_band_cycles": 0, "action": "none"},
+      {"rung": 3, "median_actual_days": null, "within_band": true, "consecutive_out_of_band_cycles": 0, "action": "none"},
+      {"rung": 4, "median_actual_days": 9, "within_band": true, "consecutive_out_of_band_cycles": 0, "action": "none"}
+    ],
+    "version_bumped": false
+  }
+}
+]]></code>
+      <note>Subject violations: rung names and examples are story points and "easy / medium" (r-rung-defined-by-observable-scope); rung 1's upper bound is 2 days and rung 4's 12-day upper bound exceeds the 10-day ramp window (r-durations-monotonic-rung1-under-a-day); rung 1's evidence is a PR on an onboarding-kata repo and rung 2's is the tech lead's own PR (r-rung1-merges-to-main, r-evidence-is-a-completed-prior-ramp); buddy support drops to check-ins at rung 2 and rises again at rung 3 (r-buddy-support-fades-per-rung); a rung-1 ticket on the critical path with a deadline inside the window, rung 2 with one tagged ticket, and tickets tagged the day after the start date (r-tickets-tagged-before-start-date); the newcomer jumped from rung 1 to rung 4 and the 4-day rung-1 ticket was never reclassified (r-promotion-requires-completed-rung); rung 1 out of band for two cycles with no action, median time to first PR of 5 days with nothing changed, `within_band` true on a rung-4 median of 9 against a 3-12 band that itself breaks the window, and the next review 6.5 months out (r-outcome-review-regrades-rungs).</note>
+    </example>
   </section>
+
+  <forbidden-patterns>
+    <antipattern id="rungs-by-estimate">
+      <description>A rung `name` or `ticket_pattern.examples` entry naming story points, T-shirt sizes or easy / medium / hard, or a pattern without files, modules, flag and design-review fields.</description>
+      <reason>r-rung-defined-by-observable-scope: story points encode the estimator's familiarity, not the newcomer's difficulty.</reason>
+    </antipattern>
+    <antipattern id="unordered-or-oversized-bands">
+      <description>Fewer than 4 rungs, `expected_duration_days.max` decreasing up the ladder, rung 1 `max` above 1 day, or a top rung `max` beyond `ramp_window_days`.</description>
+      <reason>r-durations-monotonic-rung1-under-a-day: a ladder not ordered by effort is a list; day one must end with something merged.</reason>
+    </antipattern>
+    <antipattern id="sandbox-rung-one">
+      <description>Rung 1 evidence whose `merged_ref` is a kata, training repo or unmerged branch, or a `median_time_to_first_pr_days` above 3 with no action on rung 1.</description>
+      <reason>r-rung1-merges-to-main: a training repo teaches the newcomer the training repo.</reason>
+    </antipattern>
+    <antipattern id="support-that-does-not-fade">
+      <description>`buddy_support` identical across rungs, increasing up the ladder, rung 1 other than `full_pairing`, or the top rung other than `scheduled_check_ins`.</description>
+      <reason>r-buddy-support-fades-per-rung: support that never fades produces a newcomer who can only work while paired.</reason>
+    </antipattern>
+    <antipattern id="whiteboard-evidence">
+      <description>Evidence `validated` without a merged ref, a newcomer name and an actual duration; a senior engineer's PR as evidence; or an unvalidated rung without `not_applicable: unvalidated`.</description>
+      <reason>r-evidence-is-a-completed-prior-ramp: bands invented at a whiteboard are wrong in the same direction every time.</reason>
+    </antipattern>
+    <antipattern id="ramp-tickets-cannibalised">
+      <description>Fewer than 2 `tagged_tickets` on any rung, a rung-1 or rung-2 ticket with `on_critical_path` or `deadline_inside_ramp_window` true, or `tickets_tagged_on` after `start_date`.</description>
+      <reason>r-tickets-tagged-before-start-date: day one spent watching the buddy scroll Jira.</reason>
+    </antipattern>
+    <antipattern id="rung-skip">
+      <description>A `progression` that does not start at rung 1 or rises by more than one rung per merged ticket, or an overrun past twice the band with no `reclassified_to_rung`.</description>
+      <reason>r-promotion-requires-completed-rung: seniority shortens each rung, it does not remove them.</reason>
+    </antipattern>
+    <antipattern id="review-that-changes-nothing">
+      <description>A rung `within_band: false` with `action: none`, two consecutive out-of-band cycles without `version_bumped`, `within_band` that disagrees with the band, or `next_due` beyond the cadence.</description>
+      <reason>r-outcome-review-regrades-rungs: without the regrade the ladder drifts away from the codebase it describes.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-ramp-task-difficulty-ladder.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/skeleton.md.j2">Markdown ladder skeleton with the same header keys, rung columns and review fields.</reference>
 </text>

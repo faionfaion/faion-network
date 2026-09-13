@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Incident Comms Templates Internal External Procedure" version="1.0.0" est_tokens="2250" depth="essential">
+  <summary>Nine steps in two halves: build the bundle (severity x audience matrix with deadlines, token list, the four templates, a drill), then run it in a live incident (internal post with a named commander, first external post inside the deadline, updates on the interval through the four states, exec brief on one screen, Resolved with the postmortem date, post-incident email by the matrix deadline). Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="write-the-severity-audience-matrix">
+      <input>The incident runbook's severity definitions; the status-page tool; the customer comms list; the exec distribution list; the internal incident channel.</input>
+      <action>For every severity in the runbook add a `severity_matrix` row with the `audiences` that receive a message, `first_post_deadline_minutes`, `update_interval_minutes` and `post_incident_email_deadline_hours`. The highest severity always lists `status_page`. Set `service`, `header.owner` (`role:person`), `header.version` and `last_reviewed` (r-severity-audience-matrix, r-first-post-deadline-and-cadence).</action>
+      <output>`service`, `header`, `severity_matrix`.</output>
+      <decision-gate>No paying customers or SLA, fewer than one P1 / P2 a quarter, or no named commander on rotation: skip; a regulated org uses the regulator's template (06-decision-tree).</decision-gate>
+    </step>
+    <step n="2" name="fix-the-token-list">
+      <input>The fields every message needs: incident id, state, timestamp, impact, next update, the exec brief's five fields, the internal post's eight fields, the Resolved window and fix.</input>
+      <action>Write `token_list` as the closed set of double-brace token names the templates may use (for example `incident_id`, `impact`, `next_update_at`, `commander`). Nothing outside the list appears in any template body (r-placeholders-resolved-before-send).</action>
+      <output>`token_list`.</output>
+    </step>
+    <step n="3" name="write-the-four-templates">
+      <input>`templates/skeleton.md.j2`; `token_list`.</input>
+      <action>Run `scaffold-template-bundle`. `templates.status_page` carries `{{state}}`, `{{timestamp}}`, `{{impact}}` and `{{next_update_at}}`; `customer_email` carries `{{impact}}` and `{{next_update_at}}` and no cause; `exec_brief` carries exactly `{{customer_impact}}`, `{{eta}}`, `{{decisions_needed}}`, `{{what_is_being_done}}`, `{{next_update_at}}`; `internal_channel` carries `{{severity}}`, `{{commander}}`, `{{comms_lead}}`, `{{blast_radius}}`, `{{hypothesis}}`, `{{actions}}`, `{{incident_link}}`, `{{next_checkpoint_at}}`. Run `severity-audience-mapping` to note which tokens apply per severity (r-status-page-lifecycle-states, r-no-speculation-external, r-exec-brief-one-screen, r-internal-post-fields).</action>
+      <output>`templates.*.body`.</output>
+    </step>
+    <step n="4" name="drill-the-bundle-and-stamp-last-drilled">
+      <input>A game day or tabletop scenario; the current status-page components and leadership roster.</input>
+      <action>Fill every template against the scenario, send to a test audience, check every component and recipient still exists, and set `templates.*.last_drilled` to the drill date. Repeat at least quarterly and after any change to the matrix, the components or the on-call rotation; a template older than 90 days is not the default for a live incident. Run `python3 scripts/validate-incident-comms-templates-internal-external.py --file bundle.json` and commit (r-quarterly-drill).</action>
+      <output>`templates.*.last_drilled`; a validated bundle.</output>
+      <decision-gate>A drill finds a renamed component or a missing recipient: fix the template before the bundle is the default again.</decision-gate>
+    </step>
+    <step n="5" name="declare-and-post-the-internal-update-first">
+      <input>The incident declared with a severity; the commander and comms lead on shift.</input>
+      <action>Open the incident record with `incident_id`, `severity`, `declared_at`. Fill `internal_post`: `severity`, `commander` and `comms_lead` as named people, `blast_radius`, `current_hypothesis`, `actions_in_flight` each with an owner, `incident_link`, `next_checkpoint_at`. Hypotheses and system names stay here (r-internal-post-fields).</action>
+      <output>`incidents[].incident_id`, `severity`, `declared_at`, `internal_post`.</output>
+      <decision-gate>No named commander: the comms lead does not post externally until one is named; the internal post carries the gap.</decision-gate>
+    </step>
+    <step n="6" name="first-external-post-inside-the-deadline">
+      <input>The matrix row for the severity; the status-page and customer-email templates.</input>
+      <action>Fill the status-page template with `state: Investigating`, the timestamp with timezone, the impact (components, regions or segments and what customers cannot do) and the next-update time, and set the page's component status to match. Fill the customer email where the row lists it. Check every filled text: zero double-brace tokens, zero template comments, no unconfirmed cause, no blame, no internal names, no customer data; record the `review` flags and `approved_by` (the commander or comms lead). Post before `first_post_deadline_minutes` and list the audiences in `audiences_sent` (r-first-post-deadline-and-cadence, r-status-page-lifecycle-states, r-no-speculation-external, r-placeholders-resolved-before-send).</action>
+      <output>`updates[0..]`, `audiences_sent`.</output>
+      <decision-gate>A token or a cause survives in the draft: the validator blocks the send; the agent shows the rendered text and does not post on its own.</decision-gate>
+    </step>
+    <step n="7" name="write-the-exec-brief-on-one-screen">
+      <input>Customer, revenue and SLA figures from the account team; the matrix row.</input>
+      <action>Where the row lists `exec_brief`, fill exactly five fields: `customer_impact` (customers affected, revenue at risk, SLA credits exposed), `eta` or "unknown, next update at &lt;time&gt;", `decisions_needed` from the reader, `what_is_being_done`, `next_update_at`. Keep it under 150 words with `technical_narrative: false` (r-exec-brief-one-screen).</action>
+      <output>`exec_brief`.</output>
+    </step>
+    <step n="8" name="update-on-the-interval-through-the-states">
+      <input>`update_interval_minutes`; the responders' progress.</input>
+      <action>At every interval post an update, moving through Identified and Monitoring in order, each with timestamp, impact, next-update time, matching component status and the review flags; when nothing changed, post "no change, still investigating" with the next time. Never let the promised time pass in silence (r-first-post-deadline-and-cadence, r-status-page-lifecycle-states).</action>
+      <output>Further `updates[]`.</output>
+    </step>
+    <step n="9" name="resolve-with-the-window-and-the-postmortem-date">
+      <input>The confirmed fix; the incident start and end times.</input>
+      <action>Post `state: Resolved` with the start and end times with timezone, the affected scope, what was changed, and a dated post-incident report commitment; fill `resolved` with `start_at`, `end_at`, `affected_scope`, `fix_applied`, `postmortem_due`. Run `post-incident-narrative` and send the post-incident customer email within `post_incident_email_deadline_hours`, recording `post_incident_email_sent_at`. Re-run the validator on the completed incident (r-resolution-and-postmortem-commitment).</action>
+      <output>The Resolved update, `resolved`; a completed incident record passing the contract.</output>
+      <decision-gate>Cause still unconfirmed at resolution: the Resolved message states what was changed, not why; the cause waits for the report.</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>A matrix row per severity with deadlines and intervals, the highest severity including the status page; four templates whose tokens are all in the token list, each drilled within 90 days.</item>
+      <item>Per incident: a named commander and comms lead in the internal post; the first external post inside the deadline; updates on the interval through the states with timestamp, impact, next-update time and matching component status.</item>
+      <item>No external text with an unconfirmed cause, blame, internal names, customer data or an unresolved token; every send approved by the commander or comms lead.</item>
+      <item>An exec brief of five fields under 150 words where the row lists it; a Resolved message with window, scope, fix and postmortem date; the post-incident email inside the matrix deadline.</item>
+    </list>
+  </section>
+</text>

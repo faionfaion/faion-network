@@ -1,57 +1,330 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Incident Comms Templates Internal External Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Incident Comms Templates Internal External artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Incident Comms Templates Internal External Output Contract" version="2.0.0" est_tokens="6750" depth="essential">
+  <summary>Draft-07 JSON Schema for the `IncidentCommsBundle`: the severity x audience matrix with first-post deadlines, update intervals and the post-incident email deadline; the four templates (status page, customer email, exec brief, internal channel) with their token list and `last_drilled` dates; and, per live incident, the filled updates with lifecycle state, timestamp, impact and next-update time, the external-review flags that keep speculation and internal names out, the internal post with a named commander, the five-field exec brief, and the Resolved message with its postmortem commitment. Validator: `scripts/validate-incident-comms-templates-internal-external.py`.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/incident-comms-bundle.json",
+  "title": "IncidentCommsBundle",
+  "type": "object",
+  "required": ["service", "header", "severity_matrix", "token_list", "templates", "incidents"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "datetime_tz": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "person": {"type": "string", "minLength": 2, "not": {"pattern": "(?i)^(team|on-call|tbd|everyone|n/a)$"}},
+    "audience": {"enum": ["status_page", "customer_email", "exec_brief", "internal_channel"]},
+    "severity": {"type": "string", "pattern": "^(P[1-4]|SEV[1-4])$"},
+    "filled_text": {"type": "string", "minLength": 20, "not": {"pattern": "\\{\\{[a-z_]+\\}\\}|<!--"}},
+    "template": {
+      "type": "object",
+      "required": ["body", "last_drilled"],
+      "properties": {
+        "body": {"type": "string", "minLength": 40},
+        "last_drilled": {"$ref": "#/definitions/date"}
+      }
+    },
+    "external_review": {
+      "type": "object",
+      "required": ["unconfirmed_cause", "blame", "internal_names", "customer_pii"],
+      "properties": {
+        "unconfirmed_cause": {"const": false},
+        "blame": {"const": false},
+        "internal_names": {"const": false},
+        "customer_pii": {"const": false}
+      }
+    }
+  },
+  "properties": {
+    "__faion_header__": {"type": "object"},
+    "service": {"type": "string", "minLength": 2},
+    "header": {
+      "type": "object",
+      "required": ["owner", "version", "last_reviewed"],
+      "properties": {
+        "owner": {"type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z0-9._-]+$"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "last_reviewed": {"$ref": "#/definitions/date"}
+      }
+    },
+    "severity_matrix": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["severity", "audiences", "first_post_deadline_minutes", "update_interval_minutes", "post_incident_email_deadline_hours"],
+        "properties": {
+          "severity": {"$ref": "#/definitions/severity"},
+          "audiences": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/definitions/audience"}},
+          "first_post_deadline_minutes": {"type": "integer", "minimum": 1, "maximum": 240},
+          "update_interval_minutes": {"type": "integer", "minimum": 5, "maximum": 240},
+          "post_incident_email_deadline_hours": {"type": "integer", "minimum": 1, "maximum": 240}
+        }
+      }
+    },
+    "token_list": {"type": "array", "minItems": 4, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z_]*$"}},
+    "templates": {
+      "type": "object",
+      "required": ["status_page", "customer_email", "exec_brief", "internal_channel"],
+      "additionalProperties": false,
+      "properties": {
+        "status_page": {"allOf": [{"$ref": "#/definitions/template"}, {"properties": {"body": {"allOf": [{"pattern": "\\{\\{state\\}\\}"}, {"pattern": "\\{\\{timestamp\\}\\}"}, {"pattern": "\\{\\{impact\\}\\}"}, {"pattern": "\\{\\{next_update_at\\}\\}"}]}}}]},
+        "customer_email": {"allOf": [{"$ref": "#/definitions/template"}, {"properties": {"body": {"allOf": [{"pattern": "\\{\\{impact\\}\\}"}, {"pattern": "\\{\\{next_update_at\\}\\}"}]}}}]},
+        "exec_brief": {"allOf": [{"$ref": "#/definitions/template"}, {"properties": {"body": {"allOf": [{"pattern": "\\{\\{customer_impact\\}\\}"}, {"pattern": "\\{\\{eta\\}\\}"}, {"pattern": "\\{\\{decisions_needed\\}\\}"}, {"pattern": "\\{\\{what_is_being_done\\}\\}"}, {"pattern": "\\{\\{next_update_at\\}\\}"}]}}}]},
+        "internal_channel": {"allOf": [{"$ref": "#/definitions/template"}, {"properties": {"body": {"allOf": [{"pattern": "\\{\\{severity\\}\\}"}, {"pattern": "\\{\\{commander\\}\\}"}, {"pattern": "\\{\\{comms_lead\\}\\}"}, {"pattern": "\\{\\{blast_radius\\}\\}"}, {"pattern": "\\{\\{hypothesis\\}\\}"}, {"pattern": "\\{\\{actions\\}\\}"}, {"pattern": "\\{\\{incident_link\\}\\}"}, {"pattern": "\\{\\{next_checkpoint_at\\}\\}"}]}}}]}
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["incident_id", "severity", "declared_at", "audiences_sent", "updates", "internal_post"],
+        "additionalProperties": false,
+        "properties": {
+          "incident_id": {"type": "string", "pattern": "^INC-[0-9]+$"},
+          "severity": {"$ref": "#/definitions/severity"},
+          "declared_at": {"$ref": "#/definitions/datetime_tz"},
+          "audiences_sent": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/audience"}},
+          "updates": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["channel", "posted_at", "minutes_after_declaration", "text", "next_update_at", "approved_by"],
+              "properties": {
+                "channel": {"enum": ["status_page", "customer_email"]},
+                "state": {"enum": ["Investigating", "Identified", "Monitoring", "Resolved"]},
+                "posted_at": {"$ref": "#/definitions/datetime_tz"},
+                "minutes_after_declaration": {"type": "integer", "minimum": 0},
+                "text": {"$ref": "#/definitions/filled_text"},
+                "impact": {"type": "string", "minLength": 10},
+                "component_status_matches_text": {"type": "boolean"},
+                "next_update_at": {"anyOf": [{"$ref": "#/definitions/datetime_tz"}, {"type": "null"}]},
+                "review": {"$ref": "#/definitions/external_review"},
+                "approved_by": {"$ref": "#/definitions/person"}
+              },
+              "allOf": [
+                {"if": {"properties": {"channel": {"const": "status_page"}}}, "then": {"required": ["state", "impact", "component_status_matches_text"], "properties": {"component_status_matches_text": {"const": true}}}},
+                {"if": {"properties": {"state": {"const": "Resolved"}}, "required": ["state"]}, "else": {"required": ["review"], "properties": {"next_update_at": {"type": "string"}, "text": {"allOf": [{"pattern": "(?i)next update (by|at) "}, {"not": {"pattern": "(?i)(we believe|likely caused|appears to be|root cause (is|was)|caused by)"}}]}}}}
+              ]
+            }
+          },
+          "internal_post": {
+            "type": "object",
+            "required": ["severity", "commander", "comms_lead", "blast_radius", "current_hypothesis", "actions_in_flight", "incident_link", "next_checkpoint_at"],
+            "properties": {
+              "severity": {"$ref": "#/definitions/severity"},
+              "commander": {"$ref": "#/definitions/person"},
+              "comms_lead": {"$ref": "#/definitions/person"},
+              "blast_radius": {"$ref": "#/definitions/filled_text"},
+              "current_hypothesis": {"type": "string", "minLength": 5, "not": {"pattern": "\\{\\{[a-z_]+\\}\\}"}},
+              "actions_in_flight": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["action", "owner"], "properties": {"action": {"type": "string", "minLength": 5}, "owner": {"$ref": "#/definitions/person"}}}},
+              "incident_link": {"type": "string", "pattern": "^https?://\\S+$"},
+              "next_checkpoint_at": {"$ref": "#/definitions/datetime_tz"}
+            }
+          },
+          "exec_brief": {
+            "type": "object",
+            "required": ["customer_impact", "eta", "decisions_needed", "what_is_being_done", "next_update_at", "word_count", "technical_narrative"],
+            "additionalProperties": false,
+            "properties": {
+              "customer_impact": {
+                "type": "object",
+                "required": ["customers_affected", "revenue_at_risk", "sla_credits_exposed"],
+                "properties": {
+                  "customers_affected": {"type": "string", "minLength": 2},
+                  "revenue_at_risk": {"type": "string", "minLength": 2},
+                  "sla_credits_exposed": {"type": "string", "minLength": 2}
+                }
+              },
+              "eta": {"type": "string", "minLength": 5, "pattern": "(?i)(^[0-9]{4}-|unknown, next update at )"},
+              "decisions_needed": {"type": "array", "items": {"type": "string", "minLength": 5}},
+              "what_is_being_done": {"$ref": "#/definitions/filled_text"},
+              "next_update_at": {"$ref": "#/definitions/datetime_tz"},
+              "word_count": {"type": "integer", "minimum": 20, "maximum": 150},
+              "technical_narrative": {"const": false}
+            }
+          },
+          "resolved": {
+            "type": "object",
+            "required": ["start_at", "end_at", "affected_scope", "fix_applied", "postmortem_due", "post_incident_email_sent_at"],
+            "properties": {
+              "start_at": {"$ref": "#/definitions/datetime_tz"},
+              "end_at": {"$ref": "#/definitions/datetime_tz"},
+              "affected_scope": {"$ref": "#/definitions/filled_text"},
+              "fix_applied": {"$ref": "#/definitions/filled_text"},
+              "postmortem_due": {"$ref": "#/definitions/date"},
+              "post_incident_email_sent_at": {"anyOf": [{"$ref": "#/definitions/datetime_tz"}, {"type": "null"}]}
+            }
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
+    <note>What the validator's cross-field block checks beyond the schema: the highest severity row (lowest P / SEV number) lists `status_page` (r-severity-audience-matrix); every double-brace token in a template body is in `token_list` (r-placeholders-resolved-before-send); per incident, the matrix has a row for its severity, `audiences_sent` equals that row's audiences, the first external update is inside `first_post_deadline_minutes`, and no gap between consecutive status-page updates exceeds `update_interval_minutes` (r-severity-audience-matrix, r-first-post-deadline-and-cadence); status-page states never move backwards through Investigating, Identified, Monitoring, Resolved (r-status-page-lifecycle-states); `internal_post.severity` equals the incident's, and an `exec_brief` is present whenever the matrix row lists `exec_brief` (r-internal-post-fields, r-exec-brief-one-screen); when a status-page update is Resolved, `resolved` is present with `end_at` after `start_at`, `postmortem_due` after `end_at`, and `post_incident_email_sent_at` at most `post_incident_email_deadline_hours` after `end_at` when set (r-resolution-and-postmortem-commitment); every template used for an incident has `last_drilled` within 90 days before `declared_at` (r-quarterly-drill).</note>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "service": "checkout-api",
+  "header": {"owner": "pm:olena.k", "version": "1.3.0", "last_reviewed": "2026-05-04"},
+  "severity_matrix": [
+    {"severity": "P1", "audiences": ["status_page", "customer_email", "exec_brief", "internal_channel"], "first_post_deadline_minutes": 15, "update_interval_minutes": 30, "post_incident_email_deadline_hours": 72},
+    {"severity": "P2", "audiences": ["status_page", "exec_brief", "internal_channel"], "first_post_deadline_minutes": 30, "update_interval_minutes": 60, "post_incident_email_deadline_hours": 120},
+    {"severity": "P3", "audiences": ["internal_channel"], "first_post_deadline_minutes": 60, "update_interval_minutes": 120, "post_incident_email_deadline_hours": 240}
+  ],
+  "token_list": ["incident_id", "state", "timestamp", "impact", "next_update_at", "customer_impact", "eta", "decisions_needed", "what_is_being_done", "severity", "commander", "comms_lead", "blast_radius", "hypothesis", "actions", "incident_link", "next_checkpoint_at", "start_at", "end_at", "fix_applied", "postmortem_due"],
+  "templates": {
+    "status_page": {"body": "{{state}} ({{timestamp}}): {{impact}}. We will post the next update by {{next_update_at}}.", "last_drilled": "2026-04-20"},
+    "customer_email": {"body": "Subject: {{incident_id}} service disruption. We are aware of an issue affecting {{impact}}. Our team is working on it; next update by {{next_update_at}}. We will share a full report at {{postmortem_due}}.", "last_drilled": "2026-04-20"},
+    "exec_brief": {"body": "Impact: {{customer_impact}}. ETA: {{eta}}. Decisions needed from you: {{decisions_needed}}. In progress: {{what_is_being_done}}. Next update: {{next_update_at}}.", "last_drilled": "2026-04-20"},
+    "internal_channel": {"body": "Sev {{severity}} | IC {{commander}} | Comms {{comms_lead}} | Blast radius: {{blast_radius}} | Hypothesis: {{hypothesis}} | In flight: {{actions}} | Channel: {{incident_link}} | Next checkpoint {{next_checkpoint_at}}", "last_drilled": "2026-04-20"}
+  },
+  "incidents": [
+    {
+      "incident_id": "INC-2041",
+      "severity": "P1",
+      "declared_at": "2026-05-12T09:02+02:00",
+      "audiences_sent": ["status_page", "customer_email", "exec_brief", "internal_channel"],
+      "updates": [
+        {"channel": "status_page", "state": "Investigating", "posted_at": "2026-05-12T09:10+02:00", "minutes_after_declaration": 8, "impact": "Checkout for EU customers returns errors; browsing and cart are unaffected", "text": "Investigating (2026-05-12 09:10 CEST): checkout for EU customers returns errors; browsing and cart are unaffected. We will post the next update by 09:40 CEST.", "component_status_matches_text": true, "next_update_at": "2026-05-12T09:40+02:00", "review": {"unconfirmed_cause": false, "blame": false, "internal_names": false, "customer_pii": false}, "approved_by": "dana.r"},
+        {"channel": "customer_email", "posted_at": "2026-05-12T09:14+02:00", "minutes_after_declaration": 12, "text": "We are aware of an issue affecting checkout for EU customers since 09:02 CEST. Browsing and cart are unaffected. Our team is working on it; next update by 09:40 CEST.", "next_update_at": "2026-05-12T09:40+02:00", "review": {"unconfirmed_cause": false, "blame": false, "internal_names": false, "customer_pii": false}, "approved_by": "dana.r"},
+        {"channel": "status_page", "state": "Identified", "posted_at": "2026-05-12T09:38+02:00", "minutes_after_declaration": 36, "impact": "Checkout for EU customers returns errors; browsing and cart are unaffected", "text": "Identified (2026-05-12 09:38 CEST): the fault is isolated and a fix is being applied; checkout for EU customers still returns errors. Next update by 10:08 CEST.", "component_status_matches_text": true, "next_update_at": "2026-05-12T10:08+02:00", "review": {"unconfirmed_cause": false, "blame": false, "internal_names": false, "customer_pii": false}, "approved_by": "dana.r"},
+        {"channel": "status_page", "state": "Monitoring", "posted_at": "2026-05-12T10:05+02:00", "minutes_after_declaration": 63, "impact": "Checkout for EU customers recovering; error rate back to normal since 10:01 CEST", "text": "Monitoring (2026-05-12 10:05 CEST): a fix has been applied and checkout for EU customers is recovering; error rate back to normal since 10:01 CEST. Next update by 10:35 CEST.", "component_status_matches_text": true, "next_update_at": "2026-05-12T10:35+02:00", "review": {"unconfirmed_cause": false, "blame": false, "internal_names": false, "customer_pii": false}, "approved_by": "dana.r"},
+        {"channel": "status_page", "state": "Resolved", "posted_at": "2026-05-12T10:33+02:00", "minutes_after_declaration": 91, "impact": "Checkout for EU customers, 09:02 to 10:01 CEST", "text": "Resolved (2026-05-12 10:33 CEST): between 09:02 and 10:01 CEST checkout for EU customers returned errors. A configuration change in our payment routing was rolled back. A post-incident report will be published by 2026-05-15.", "component_status_matches_text": true, "next_update_at": null, "approved_by": "dana.r"}
+      ],
+      "internal_post": {
+        "severity": "P1",
+        "commander": "ihor.m",
+        "comms_lead": "dana.r",
+        "blast_radius": "EU checkout, roughly 38% of daily order volume; US and APAC unaffected",
+        "current_hypothesis": "payment-router config push at 08:58 changed the EU PSP endpoint; rollback in progress",
+        "actions_in_flight": [{"action": "Roll back payment-router config to 08:40 revision", "owner": "taras.v"}, {"action": "Pull EU error-rate graph into the incident channel", "owner": "maksym.d"}],
+        "incident_link": "https://acme.slack.com/archives/C0INC2041",
+        "next_checkpoint_at": "2026-05-12T09:30+02:00"
+      },
+      "exec_brief": {
+        "customer_impact": {"customers_affected": "EU customers, about 38% of daily orders", "revenue_at_risk": "about 41k EUR per hour of outage", "sla_credits_exposed": "3 enterprise contracts with 99.9% monthly SLA"},
+        "eta": "unknown, next update at 09:40 CEST",
+        "decisions_needed": ["Approve proactive credit note to the 3 enterprise accounts if outage exceeds 2 hours"],
+        "what_is_being_done": "Rolling back a payment routing change; customer email and status page posted at 09:14 CEST",
+        "next_update_at": "2026-05-12T09:40+02:00",
+        "word_count": 78,
+        "technical_narrative": false
+      },
+      "resolved": {
+        "start_at": "2026-05-12T09:02+02:00",
+        "end_at": "2026-05-12T10:01+02:00",
+        "affected_scope": "Checkout for EU customers; browsing and cart unaffected; US and APAC unaffected",
+        "fix_applied": "Payment-router configuration rolled back to the 08:40 revision",
+        "postmortem_due": "2026-05-15",
+        "post_incident_email_sent_at": "2026-05-14T16:00+02:00"
+      }
+    }
+  ]
+}
+]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "service": "checkout-api",
+  "header": {"owner": "pm:olena.k", "version": "1.3.0", "last_reviewed": "2026-05-04"},
+  "severity_matrix": [
+    {"severity": "P1", "audiences": ["customer_email", "exec_brief", "internal_channel"], "first_post_deadline_minutes": 15, "update_interval_minutes": 30, "post_incident_email_deadline_hours": 72}
+  ],
+  "token_list": ["incident_id", "state", "timestamp", "impact", "next_update_at"],
+  "templates": {
+    "status_page": {"body": "{{state}} ({{timestamp}}): {{impact}}. We will post the next update by {{next_update_at}}.", "last_drilled": "2025-11-03"},
+    "customer_email": {"body": "We are aware of an issue affecting {{impact}}. We will keep you posted.", "last_drilled": "2025-11-03"},
+    "exec_brief": {"body": "Impact: {{customer_impact}}. ETA: {{eta}}. Decisions needed: {{decisions_needed}}. In progress: {{what_is_being_done}}. Next update: {{next_update_at}}.", "last_drilled": "2025-11-03"},
+    "internal_channel": {"body": "Sev {{severity}} | IC {{commander}} | Comms {{comms_lead}} | Blast radius: {{blast_radius}} | Hypothesis: {{hypothesis}} | In flight: {{actions}} | Channel: {{incident_link}} | Next checkpoint {{next_checkpoint_at}}", "last_drilled": "2025-11-03"}
+  },
+  "incidents": [
+    {
+      "incident_id": "INC-2041",
+      "severity": "P1",
+      "declared_at": "2026-05-12T09:02+02:00",
+      "audiences_sent": ["status_page", "internal_channel"],
+      "updates": [
+        {"channel": "status_page", "state": "Investigating", "posted_at": "2026-05-12T09:50+02:00", "minutes_after_declaration": 48, "impact": "Checkout errors", "text": "We are investigating an issue affecting {{impact}} customers. We believe the database cluster db-eu-1 is the cause.", "component_status_matches_text": false, "next_update_at": null, "review": {"unconfirmed_cause": true, "blame": false, "internal_names": true, "customer_pii": false}, "approved_by": "on-call"},
+        {"channel": "status_page", "state": "Resolved", "posted_at": "2026-05-12T12:40+02:00", "minutes_after_declaration": 218, "impact": "Checkout errors", "text": "The issue has been resolved. Thank you for your patience while we worked on this.", "component_status_matches_text": true, "next_update_at": null, "approved_by": "dana.r"}
+      ],
+      "internal_post": {
+        "severity": "P1",
+        "commander": "team",
+        "comms_lead": "dana.r",
+        "blast_radius": "EU checkout, roughly 38% of daily order volume",
+        "current_hypothesis": "payment-router config push changed the EU PSP endpoint",
+        "actions_in_flight": [],
+        "incident_link": "https://acme.slack.com/archives/C0INC2041",
+        "next_checkpoint_at": "2026-05-12T09:30+02:00"
+      },
+      "exec_brief": {
+        "customer_impact": {"customers_affected": "EU customers", "revenue_at_risk": "significant", "sla_credits_exposed": "some"},
+        "eta": "soon",
+        "decisions_needed": [],
+        "what_is_being_done": "At 08:58 a configuration push to the payment router changed the EU PSP endpoint; the connection pool then exhausted because retries doubled; we are rolling back and also considering a hotfix to the pool sizing which needs a restart of the three router pods in eu-west-1",
+        "next_update_at": "2026-05-12T09:40+02:00",
+        "word_count": 240,
+        "technical_narrative": true
+      }
+    }
+  ]
+}
+]]></code>
+      <note>Subject violations: the P1 matrix row omits the public status page, and the customer email and exec brief the row does list were never sent (r-severity-audience-matrix); the first post landed 48 minutes after declaration against a 15-minute deadline, with no next-update time (r-first-post-deadline-and-cadence); the component status contradicts the text and the Investigating post has no impact a customer can act on (r-status-page-lifecycle-states); the Investigating post names a database host and an unconfirmed cause (r-no-speculation-external); the commander is "team" and no actions are in flight (r-internal-post-fields); the exec brief is a 240-word technical narrative with "significant" for revenue and "soon" for ETA (r-exec-brief-one-screen); "resolved" with no window, scope, fix or postmortem date (r-resolution-and-postmortem-commitment); an unresolved token in a live post (r-placeholders-resolved-before-send); templates last drilled six months before the incident and a customer-email template with no next-update token (r-quarterly-drill, r-first-post-deadline-and-cadence).</note>
+    </example>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <forbidden-patterns>
+    <antipattern id="audience-off-matrix">
+      <description>A matrix without a row for the declared severity, a highest-severity row without `status_page`, or `audiences_sent` that differs from the row.</description>
+      <reason>r-severity-audience-matrix: "do we email customers?" is decided at 03:00 by whoever is on call.</reason>
+    </antipattern>
+    <antipattern id="silent-gap">
+      <description>First external update after `first_post_deadline_minutes`, a gap between status-page updates longer than `update_interval_minutes`, or a non-Resolved update with no "next update by" line.</description>
+      <reason>r-first-post-deadline-and-cadence: silence during an outage is read as abandonment.</reason>
+    </antipattern>
+    <antipattern id="page-that-lies">
+      <description>A status-page update without state, timestamp with timezone, impact or next-update time; states out of order; `component_status_matches_text` false.</description>
+      <reason>r-status-page-lifecycle-states: "Operational" next to "checkout failing" teaches every reader that the page lies.</reason>
+    </antipattern>
+    <antipattern id="speculated-cause">
+      <description>External text with "we believe", "likely caused by", "appears to be", a vendor, person or host name, or any customer data before Resolved; any `review` flag true.</description>
+      <reason>r-no-speculation-external: a retracted cause costs more trust than "we are investigating" ever would.</reason>
+    </antipattern>
+    <antipattern id="headless-internal-post">
+      <description>An internal post whose commander or comms lead is not a named person, with no actions in flight, no incident link or no next checkpoint.</description>
+      <reason>r-internal-post-fields: without a named commander two engineers restart the same service.</reason>
+    </antipattern>
+    <antipattern id="exec-brief-war-story">
+      <description>An exec brief over 150 words, with `technical_narrative` true, a vague ETA, or impact without customers, revenue and SLA credits.</description>
+      <reason>r-exec-brief-one-screen: three paragraphs about connection pools produce a reply-all asking "so is it fixed?".</reason>
+    </antipattern>
+    <antipattern id="resolved-without-scope">
+      <description>A Resolved update without a `resolved` block, or one missing start and end with timezone, scope, fix or a dated postmortem commitment; a post-incident email after the matrix deadline.</description>
+      <reason>r-resolution-and-postmortem-commitment: every customer computes their own downtime for the SLA claim.</reason>
+    </antipattern>
+    <antipattern id="placeholder-shipped">
+      <description>Any filled text containing a double-brace token or a template comment, or a template body using a token outside `token_list`.</description>
+      <reason>r-placeholders-resolved-before-send: it is the one comms failure customers screenshot.</reason>
+    </antipattern>
+    <antipattern id="stale-template">
+      <description>A template used for an incident whose `last_drilled` is more than 90 days before `declared_at`.</description>
+      <reason>r-quarterly-drill: the retired component is found at minute 12 of a real P1.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-incident-comms-templates-internal-external.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/skeleton.md.j2">The four-template bundle and the severity matrix in Markdown, with the same tokens and fields.</reference>
 </text>

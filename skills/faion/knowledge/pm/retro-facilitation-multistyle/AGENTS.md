@@ -15,26 +15,30 @@
 
 ## Applies If (ALL must hold)
 
-- PM facilitates retros on a recurring cadence (≥3 per year).
-- PM owns the artefact (or escalates ownership to a named role).
-- Team uses a version-controlled or wiki-style space for retro notes.
-- The retro trigger fires on a published cadence (event, threshold, schedule).
+- The team runs at least 3 retros a year on an iteration of 5-31 days, so there is a next retro date to bind actions to and a previous instance to walk.
+- The facilitator can state the team's distribution (async, hybrid, in-person), the participant timezones and whether everyone can be on one live call.
+- The last two retro instances are on file with their formats and their card / attendance counts, so rotation and the fatigue signal can be judged.
+- A tracker (GitHub, GitLab, Jira) is open during the retro so each action gets an issue or PR link before the timebox ends.
+- An anonymous 1-5 poll and, for async teams, a form or board that stores no author identity are available.
 
 ## Skip If (ANY kills it)
 
-- One-shot retro with no recurrence — write a single doc.
-- Team has &lt; 3 retros per year — review cadence costs more than it returns.
-- Regulated context mandating a different shape — use the regulator's template.
-- No named owner — defer until ownership is resolved.
+- A one-shot retro or fewer than 3 a year: write a single retro doc; there is no previous instance to walk and no next retro to date actions against.
+- No previous retro on record and the team cannot say its distribution: run one ad-hoc retro with the format card, then start versioned instances from the second.
+- The line manager insists on sitting in the discussion or the team has no tracker for action links: the instance cannot pass the safety and action rules; fix the room first.
+- A project post-mortem or incident review rather than an iteration retro: those have their own shape (blameless post-mortem), not the five formats here.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Access to repo / wiki hosting retro notes | repo path | platform |
-| Named owner for retro outcomes | identity | PM |
-| List of 5 supported formats with their selection criteria | doc | PM |
-| Outcome-review cadence published | calendar | PM |
+| The last two `RetroInstance` files (format, action items, participation counts) | JSON, this contract | this methodology (prior cycles) |
+| Participant list with timezones (IANA names) and whether everyone can join one live call | roster | PM |
+| Iteration length and the next retro date | calendar | PM |
+| Kerth's Prime Directive text and an anonymous 1-5 safety poll | text + poll tool | `templates/format-card.md.j2` / PM |
+| Tracker with issue / PR links creatable during the retro | GitHub / GitLab / Jira | platform |
+| For async teams: a card form or board that stores no author identity | form / board | PM |
+| Format card with the five formats and the selection rule | `templates/format-card.md.j2` | this methodology |
 
 ## Assumes Loaded
 
@@ -50,8 +54,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: format matches distribution, rationale names state and history, fatigued team rotates, Prime Directive and safety check, previous actions reviewed first, 1-3 owned linked dated actions, anonymous-async window and clustering, timebox held | ~2200 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for retro instance + valid/invalid examples + forbidden patterns | ~900 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for `RetroInstance`: format against distribution and fatigue with the previous two formats, rationale, Prime Directive and anonymous safety check with the below-3 switch, previous-action status walk, 1-3 owned / linked / dated actions, anonymous-async window and clustering, lean-coffee dot-votes, published timebox; valid + invalid examples, forbidden patterns | ~4650 |
 | `content/03-failure-modes.xml` | essential | 6 modes: live format on async team, same format forever, action avalanche, no memory of previous actions, status meeting in disguise, timebox blowout | ~900 |
+| `content/04-procedure.xml` | essential | 8 steps: record team state and the last two formats, choose the format and write the rationale, publish the timebox, Prime Directive and safety check, walk the previous actions, collect input per format (async window or lean-coffee dot-vote), close with 1-3 owned linked dated actions, validate and file | ~2000 |
+| `content/05-examples.xml` | recommended | Complete anonymous-async instance for a Kyiv-Lisbon-London team with a note per non-obvious value, and a bad instance with the validator output and what the facilitator sees | ~2350 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="RACI AI Assisted Worked Examples" version="1.0.0" est_tokens="1950" depth="recommended">
+  <summary>One complete `RACIMatrix` refreshed on a roster delta (the security lead leaves, an appsec lead joins) with a note on every non-obvious value, and one bad matrix showing what the validator prints and what the PM sees beyond it.</summary>
+
+  <section title="Scenario">
+    <p>The checkout project has two open WBS leaves under 2 (Backend): 2.1 Login endpoint and 2.2 Rate limiting. The matrix was first published at kickoff on 2026-02-03. On 2026-05-08 HR posts that the security lead (dana.r) leaves on 2026-05-15 and that an appsec lead (maksym.d) has joined and taken over the security review. The PM (olena.k) runs the methodology with `trigger: roster_delta`; the deadline is the departing person's last day.</p>
+  </section>
+
+  <section title="Good artefact">
+    <example type="good" title="checkout RACIMatrix 1.4.0, roster delta refreshed on 2026-05-10">
+      <code lang="json"><![CDATA[
+{
+  "project_id": "checkout",
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "status": "published",
+    "trigger": "roster_delta",
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10"
+  },
+  "roster": [
+    {"role": "pm", "person": "olena.k"},
+    {"role": "backend-lead", "person": "ihor.m"},
+    {"role": "backend-engineer", "person": "taras.v"},
+    {"role": "appsec-lead", "person": "maksym.d"}
+  ],
+  "wbs_open_leaves": ["2.1", "2.2"],
+  "rows": [
+    {
+      "wbs_id": "2.1",
+      "deliverable": "Login endpoint",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead",
+      "consulted": ["appsec-lead"],
+      "informed": ["pm"],
+      "evidence": ["charter#auth-scope", "wbs-dict#2.1"],
+      "status": "anchored"
+    },
+    {
+      "wbs_id": "2.2",
+      "deliverable": "Rate limiting",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead",
+      "consulted": [],
+      "informed": ["pm", "appsec-lead"],
+      "evidence": ["wbs-dict#2.2"],
+      "status": "anchored"
+    }
+  ],
+  "roster_delta": {
+    "change": "leave",
+    "role": "security-lead",
+    "person": "dana.r",
+    "effective_date": "2026-05-15",
+    "refresh_deadline": "2026-05-15",
+    "rows_changed": ["2.1", "2.2"],
+    "rows_orphaned": [],
+    "rows_reassigned": [
+      {"wbs_id": "2.1", "column": "consulted", "role": "appsec-lead", "evidence": ["stakeholders#appsec-lead"]},
+      {"wbs_id": "2.2", "column": "informed", "role": "appsec-lead", "evidence": ["stakeholders#appsec-lead"]}
+    ]
+  },
+  "review_log": [
+    {
+      "reviewed_at": "2026-02-03",
+      "kind": "publish",
+      "notification": {
+        "channel": "#checkout",
+        "sent_on": "2026-02-03",
+        "recipients": [
+          {"role": "backend-lead", "person": "ihor.m", "rows": ["2.1", "2.2"]},
+          {"role": "backend-engineer", "person": "taras.v", "rows": ["2.1", "2.2"]}
+        ]
+      }
+    },
+    {
+      "reviewed_at": "2026-05-10",
+      "kind": "publish",
+      "notification": {
+        "channel": "#checkout",
+        "sent_on": "2026-05-10",
+        "recipients": [
+          {"role": "backend-lead", "person": "ihor.m", "rows": ["2.1", "2.2"]},
+          {"role": "backend-engineer", "person": "taras.v", "rows": ["2.1", "2.2"]}
+        ]
+      }
+    }
+  ]
+}
+]]></code>
+      <note>`roster` no longer contains `security-lead`: the snapshot is the roster as of `last_reviewed`, so any row still naming it would be `orphaned` and block publish (r-responsible-in-roster).</note>
+      <note>Two rows for two open leaves and none for `2`; a "2 Backend" row would hide an unowned 2.3 the day it is added to the WBS (r-rows-bind-to-wbs-leaves).</note>
+      <note>`accountable` is the same role on both rows, which is fine; what is forbidden is two roles on one row. The anchors are `charter#auth-scope` for 2.1 (the charter names the backend lead for authentication) and `wbs-dict#2.2` for 2.2 (the dictionary entry names the owner); both rows are `anchored`, so `status: published` is allowed (r-exactly-one-accountable-per-row, r-evidence-anchor-per-assignment).</note>
+      <note>`appsec-lead` is in C on 2.1 (asked before the login design is decided) and in I on 2.2 (told when rate limits ship), never in both on one row; C is not longer than R on any row, so no `over_consultation_reviewed` flag is needed (r-one-column-per-role-per-row).</note>
+      <note>`refresh_deadline` equals `effective_date` because the change is a leave; `last_reviewed` 2026-05-10 is five days before it. The reassignments carry `stakeholders#appsec-lead` as the anchor for the new role (r-trigger-enum-and-roster-delta).</note>
+      <note>The 2026-05-10 publish entry notifies exactly the roles holding R or A (`backend-lead`, `backend-engineer`) with their rows; `pm` and `appsec-lead` hold only C / I and are not required recipients (r-notify-assignees-on-publish).</note>
+      <note>`last_reviewed` is well inside 90 days of the review date; `scripts/staleness-check.py` on the weekly cron would print `FRESH` (r-quarterly-review-90-days).</note>
+    </example>
+  </section>
+
+  <section title="Bad artefact">
+    <example type="bad" title="What the validator and the PM reject">
+      <code lang="json"><![CDATA[
+{
+  "project_id": "checkout",
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "status": "published",
+    "trigger": "roster_delta",
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10"
+  },
+  "roster": [
+    {"role": "pm", "person": "olena.k"},
+    {"role": "backend-lead", "person": "ihor.m"},
+    {"role": "backend-engineer", "person": "taras.v"}
+  ],
+  "wbs_open_leaves": ["2.1", "2.2"],
+  "rows": [
+    {
+      "wbs_id": "2",
+      "deliverable": "Backend",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead, pm",
+      "consulted": ["security-lead", "pm"],
+      "informed": ["pm"],
+      "evidence": [],
+      "status": "anchored"
+    },
+    {
+      "wbs_id": "2.1",
+      "deliverable": "Login endpoint",
+      "responsible": ["backend-engineer"],
+      "accountable": "backend-lead",
+      "consulted": ["security-lead"],
+      "informed": ["pm"],
+      "evidence": ["charter#auth-scope"],
+      "status": "proposed"
+    }
+  ],
+  "review_log": [
+    {"reviewed_at": "2026-05-10", "kind": "publish"}
+  ]
+}
+]]></code>
+      <note>Validator output: `$.rows[0].accountable: 'backend-lead, pm' does not match pattern '^[A-Za-z0-9][A-Za-z0-9_-]*$'`, `$.rows[0].evidence: 0 items, minItems=1`, `$.rows[1].status: must equal 'anchored', got 'proposed'`, `$.roster_delta: missing required field`, `$.review_log[0].notification: missing required field`.</note>
+      <note>Once those schema errors are fixed, the cross-field block reports the rest: `rows: open WBS leaf 2.2 has no row (r-rows-bind-to-wbs-leaves)`, `rows: 2 is a summary node (parent of another row); only leaves get rows (r-rows-bind-to-wbs-leaves)`, `rows[0]: role 'pm' in both consulted and informed (r-one-column-per-role-per-row)`, `rows[0]: roles ['security-lead'] not in roster and row not 'orphaned' (r-responsible-in-roster)`, `rows[0]: consulted (2) longer than responsible (1) and not reviewed by the PM (r-one-column-per-role-per-row)`, `rows[1]: roles ['security-lead'] not in roster and row not 'orphaned' (r-responsible-in-roster)`.</note>
+      <note>What the PM sees beyond the validator: the model hedged on the row where the charter was silent and named both leads, which is the row where nobody will run the security review; `security-lead` left on 2026-05-15 and the matrix says nothing about who took the consultation, so the login design goes out unreviewed; and "published" with no notification means the backend engineer learns about 2.2 in the incident review.</note>
+    </example>
+  </section>
+</text>

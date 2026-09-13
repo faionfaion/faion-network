@@ -15,26 +15,30 @@
 
 ## Applies If (ALL must hold)
 
-- PM ↔ IC pairing exists with weekly cadence baseline.
-- Async response infrastructure exists (private doc / Slack DM / email).
-- IC is reachable within the published response window.
-- PM has authority to escalate to manager on second unresponsive cycle.
+- A PM-IC pair with a weekly 1:1 baseline where this cycle's synchronous slot is infeasible for a nameable reason (no overlapping hours, temporary leave, sickness, travel) and fewer than 3 async cycles have run since the last call.
+- A channel visible only to the two of them (private doc, DM or email thread) where the note and the IC's morale line can live.
+- The IC's timezone, working days and public holidays are known, so a 24-168 business-hour window can be counted on their clock.
+- The team runs a pulse survey with workload / autonomy / clarity axes the morale prompt can reuse.
+- The IC's manager is named and the PM can offer a sync slot after one missed window and escalate after two.
 
 ## Skip If (ANY kills it)
 
-- Synchronous 1:1 is feasible — use it. Async is fallback, not default.
-- IC is on formal disconnection leave (vacation per company policy) — pause, do not async-pursue.
-- < 3 cycles per year — single doc cheaper than versioned methodology.
-- No named owner.
+- A synchronous 1:1 fits this cycle: hold it; async is the fallback, not the default.
+- The IC is on formal leave (vacation, parental, sick): the cycle is paused, not posted; no note, no reminders, the count does not move.
+- The pair has already run 3 consecutive async cycles: book the synchronous call first, rotating the off-hours burden.
+- The only available channel is team-visible (a shared channel, a dashboard): the morale field cannot be kept between the two of them.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| 1:1 baseline cadence | calendar | PM |
-| Private doc / DM channel | Slack / Notion / email | PM ↔ IC |
-| Last quarter Async11Notes | JSON | this methodology |
-| Escalation contact (IC's manager) | stakeholder register | HR |
+| Pair calendars with the reason this cycle's sync slot is infeasible and the cycle of the last synchronous call | calendar | PM |
+| IC's timezone (IANA name), working days and public-holiday list for the window | HR record | HR / IC |
+| Two-person channel (private doc, DM or email thread) | Slack / Notion / email | PM and IC |
+| Pulse survey axes (workload, autonomy, clarity, 1-10) for the morale prompt | survey definition | [[team-morale-pulse-survey]] |
+| Previous cycle's `Async11Note` for `count_before_cycle` and the last acked `next_actions` | JSON, this contract | this methodology (prior cycle) |
+| The quarter's notes for the response-rate review | JSON, this contract | this methodology |
+| IC's manager for the escalation packet | stakeholder register | HR |
 
 ## Assumes Loaded
 
@@ -51,10 +55,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 9 rules: async only when sync infeasible, three named prompts, window in IC business hours, missing field is unresponsive, PM ack within 24h with owned actions, reschedule-then-manager ladder, leave pauses the cycle, morale stays private, quarterly response-rate review | ~2450 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for `Async11Note` + forbidden patterns | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for `Async11Note`: two-person channel, sync-infeasibility reason and 3-cycle cap, the three fixed prompts with ticket / owner / 1-10 axes, window in the IC's timezone, IC-authored response or unresponsive / paused status, ack within 24 business hours with owned actions, reschedule-then-manager ladder without morale, quarterly response-rate review; valid + invalid examples, forbidden patterns | ~4550 |
 | `content/03-failure-modes.xml` | essential | 6 modes: async becomes default, generic prompts, window in PM timezone, ack without actions, silent skip, morale leaks into dashboards | ~900 |
-| `content/04-procedure.xml` | medium | 5-step: post prompts → IC responds → PM ack → escalate-if-unresponsive → quarterly review | ~600 |
-| `content/06-decision-tree.xml` | essential | Tree: response window, unresponsive count, scope of issue → ack / escalate / synchronous-reschedule | ~400 |
+| `content/04-procedure.xml` | essential | 8 steps: decide sync is infeasible or pause for leave, post the fixed prompts privately, publish the window in the IC's hours, receive the IC-authored response, ack within 24 business hours with owned actions, walk the escalation ladder, validate and file, quarterly response-rate review | ~1950 |
+| `content/05-examples.xml` | recommended | Complete Warsaw-Sydney note answered and acked the same day with a note per non-obvious value, and a bad note with the validator output and what the IC's manager sees | ~1950 |
+| `content/06-decision-tree.xml` | essential | Tree: response window, unresponsive count, scope of issue → ack / escalate / synchronous-reschedule | ~450 |
 
 ## Task Routing
 

@@ -15,26 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- Team has run ≥3 retros under the PM's facilitation (history exists).
-- PM facilitates ≥4 retros per year for this team.
-- PM owns the rotation artefact (or escalates ownership).
-- Team uses a version-controlled or wiki space hosting the history.
+- At least three committed `RetroInstance` files exist for this team, each with its format, action-item count, participant count and silent-participant count.
+- The team retros at least 4 times a year, so the no-repeat-in-3 rule and the 12-month lookback have cycles to work on.
+- The PM can state the team's distribution (async, hybrid, in-person) and fatigue signal, and knows when each of the seven formats was last run for this team.
+- A named person owns the guide and the next retro's outcome review will record the counts back into it.
+- For async teams: a shared board or form with anonymous input and a window spanning every timezone is available.
 
 ## Skip If (ANY kills it)
 
-- First-ever retro for the team — no rotation needed.
-- Team has run &lt; 3 retros — defer until history exists.
-- One-shot retro (post-incident, post-launch) — different rubric.
-- No named owner — defer until ownership is resolved.
+- Fewer than three committed instances: record `skip: history < 3` and pick with the format card alone; the no-repeat rule has nothing to work on.
+- The last two scheduled retros have no recorded counts: backfill them from the instances first; the stale detector is blind.
+- Two consecutive rotations to non-stale formats raised neither actions nor contributors: rotation is suspended; run the morale pulse or burnout tripwires before picking again.
+- A one-shot post-incident or post-launch retro: that is a blameless post-mortem, not a rotation slot.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Last 3 retro instances with format + outcome | repo path | PM |
-| Team-state input (distribution + fatigue) | doc | PM |
-| Named owner for the rotation guide | identity | PM |
-| Outcome-review cadence published | calendar | PM |
+| The three most recent committed `RetroInstance` files: format, action items, participants, silent participants | JSON, [[retro-facilitation-multistyle]] contract | this team's retro space |
+| Last-used date per format for this team (all seven; never = null) | table | retro space history |
+| Team state: distribution and fatigue signal | PM's read of the team | PM |
+| Previous `RotationGuide` with its refresh trend and any escalation | JSON, this contract | this methodology (prior cycle) |
+| Rotation rule card: no-repeat, async pool, stale detector, tie-breakers | `templates/rotation-rule-card.md.j2` | this methodology |
+| Next retro's calendar slot and, for async teams, the anonymous board and timezone list | calendar, board | PM |
 
 ## Assumes Loaded
 
@@ -50,8 +53,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: history from committed instances, no repeat in last 3, async pool, three-signal stale detector, fatigued picks 12-month-unused format, rationale names history and tie-breaker, counts recorded per retro, two rotations without refresh escalate to team health | ~2200 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for the rotation guide artefact + valid/invalid examples + forbidden patterns | ~900 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for `RotationGuide`: three-instance committed history with counts or `skip`, last-used date per format, team state, stale detector findings with signal, refresh trend with team-health escalation, the pick with tie-breaker and exception, rationale naming history and state; valid + invalid examples, forbidden patterns | ~3800 |
 | `content/03-failure-modes.xml` | essential | 6 modes: three sailboats, history from memory, live format for async team, blind stale detector, fatigued gets fourth-most-recent, morale treated as format | ~900 |
+| `content/04-procedure.xml` | essential | 7 steps: read the committed history with counts or skip, run the stale detector, compute the refresh trend and escalate at two, pick inside the no-repeat and async rules, apply the fatigue lookback and tie-breaker, write the rationale and schedule, record the counts at the outcome review | ~1750 |
+| `content/05-examples.xml` | recommended | Complete guide rotating a newly async platform team onto anonymous-async with a note per non-obvious value, and a bad guide (three sailboats from memory) with the validator output and what the PM sees | ~1800 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
 
 ## Task Routing

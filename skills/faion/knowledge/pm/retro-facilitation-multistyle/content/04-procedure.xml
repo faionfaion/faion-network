@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Retro Facilitation Multistyle Procedure" version="1.0.0" est_tokens="2000" depth="essential">
+  <summary>Eight steps from reading the team's state to filing the instance: record distribution, fatigue and the previous two formats, choose the format the rules allow and write the rationale, publish the timebox, open with the Prime Directive and the anonymous safety check, walk the previous actions, collect input (with the anonymous-async window or the lean-coffee dot-vote where the format needs it), close with 1-3 owned, linked, dated actions, and validate. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="record-the-team-state-and-the-last-two-formats">
+      <input>The participant list with timezones, the last two `RetroInstance` files, card and attendance counts from the previous retro, the iteration length, the date of the next retro.</input>
+      <action>Fill `retro_date`, `next_retro_date`, `iteration_length_days`, `team_state.distribution` (async when there is no hour every participant can attend live), `team_state.timezones`, `all_participants_on_live_call`, `fatigue_signal` (fatigued after an overrun or declining cards, rotating on a normal cycle, fresh when participation held), `previous_formats` from the last two instances and `previous_participation`.</action>
+      <output>`retro_date`, `next_retro_date`, `iteration_length_days`, `team_state`, `previous_formats`, `previous_participation`.</output>
+      <decision-gate>Fewer than 3 retros a year or a one-shot retro: write a single retro doc, no versioned instance (06-decision-tree).</decision-gate>
+    </step>
+    <step n="2" name="choose-the-format-and-write-the-rationale">
+      <input>`templates/format-card.md.j2`; the team state from step 1.</input>
+      <action>Run `format_selection`. Async distribution forces `anonymous-async`; `lean-coffee` only with everyone on one live call; `mad-sad-glad` never for an async team. Fatigued: pick a format used in neither of the last two retros; rotating: not the last one; the same format a third time only when fresh with participation at or above the previous retro. Write `selection_rationale` naming the distribution, the fatigue signal and both previous formats (r-format-matches-distribution, r-fatigued-team-rotates-format, r-rationale-names-distribution-fatigue-and-history).</action>
+      <output>`format`, `selection_rationale`.</output>
+      <decision-gate>The only format the rules allow is one the facilitator has not run: run it anyway with the format card open; the rationale records that.</decision-gate>
+    </step>
+    <step n="3" name="publish-the-timebox-before-the-retro-starts">
+      <input>`iteration_length_days`; for lean-coffee the topic-vote plan.</input>
+      <action>Set `timebox.minutes` (at most 3 hours for a one-month iteration, 45-90 minutes for a two-week sprint) and `published_before_start: true` in the invite. For `lean-coffee`, plan the dot-vote and a per-topic clock with at most two extensions by visible vote (r-timebox-published-and-held).</action>
+      <output>`timebox.minutes`, `timebox.published_before_start`; `lean_coffee.topics_dot_voted_before_discussion` where relevant.</output>
+    </step>
+    <step n="4" name="open-with-the-prime-directive-and-the-safety-check">
+      <input>Kerth's Prime Directive text; an anonymous 1-5 poll.</input>
+      <action>Read or post the Prime Directive, then run the anonymous safety check before any discussion and record `opening.safety_check.median`. Below 3, switch the rest of the session to anonymous cards or a form and set `switched_to_anonymous_input: true`. A line manager who is not a team member leaves before the discussion (`non_member_manager_in_discussion: false`) (r-prime-directive-and-safety-check).</action>
+      <output>`opening`.</output>
+      <decision-gate>Manager will not leave: the retro does not proceed to discussion; record it and reschedule.</decision-gate>
+    </step>
+    <step n="5" name="walk-the-previous-actions-first">
+      <input>The previous instance's `action_items`.</input>
+      <action>Before collecting new input, mark each previous action `done`, `not_done_carried_over` (once, with a reason and a new due date) or `dropped` (with a reason; mandatory on a second miss). Set `outcome_review.last_run_at` to today's `retro_date` and `cadence: next-retro` (r-previous-actions-reviewed-before-new-ones).</action>
+      <output>`previous_actions_review`, `outcome_review`.</output>
+      <decision-gate>A previous action nobody can place: it is dropped with the reason "no owner", and the missing owner is the first new card.</decision-gate>
+    </step>
+    <step n="6" name="collect-input-in-the-chosen-format">
+      <input>The format; for anonymous-async a form or board that stores no author identity; for lean-coffee the topic board.</input>
+      <action>Run `retro_facilitation_notes`. For `anonymous-async`, open a window covering at least one full working day in every timezone in `team_state.timezones`, record `window_start`, `window_end` and `working_days_in_window_per_timezone`, cluster the cards into themes before the recap, never attribute or ask who wrote a card (`attribution_requests: 0`), and hold the recap live only if every timezone can attend, otherwise record it and keep it open for comment for a working day. For `lean-coffee`, dot-vote the topics, clock each one, cap extensions at two. For the other formats, fill the columns live. Record `participation.cards` and `attendance` (r-anonymous-async-window-and-clustering, r-timebox-published-and-held).</action>
+      <output>`participation`; `anonymous_async` or `lean_coffee` where the format needs it.</output>
+    </step>
+    <step n="7" name="close-with-one-to-three-owned-linked-dated-actions">
+      <input>The clustered themes; the team tracker open in the session.</input>
+      <action>Agree 1-3 `action_items`. Each names one person as `owner` (never "team", "everyone" or a channel), has an `evidence_link` to a tracker issue or PR created during the retro, and a `due_date` on or before `next_retro_date`. Anything without a link when the timebox ends goes to `discussion_notes`. Record `timebox.actual_minutes` and `overran`; an overrun feeds the next retro's fatigue signal (r-action-items-one-to-three-owned-dated-linked, r-timebox-published-and-held).</action>
+      <output>`action_items`, `discussion_notes`, `timebox.actual_minutes`, `timebox.overran`.</output>
+      <decision-gate>Four or more candidate actions: the team dot-votes to three; the rest are notes, not actions.</decision-gate>
+    </step>
+    <step n="8" name="validate-and-file-the-instance">
+      <input>The completed `RetroInstance` JSON; `templates/retro-instance.md.j2` for the readable copy.</input>
+      <action>Run `python3 scripts/validate-retro-facilitation-multistyle.py --file retro.json`; fix every VIOLATION. Commit the instance to the team's retro space beside the previous ones so step 1 of the next retro can read `previous_formats` and the actions to walk.</action>
+      <output>A filed `RetroInstance` passing the contract.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The format is allowed for the distribution and the fatigue signal, and the rationale names the distribution, the fatigue signal and the last two formats.</item>
+      <item>Prime Directive read, anonymous 1-5 safety check recorded, anonymous input switched on below 3, no non-member manager in the discussion.</item>
+      <item>Every previous action has a status with a reason where not done or dropped; `outcome_review.last_run_at` is today.</item>
+      <item>1-3 actions with a named person, a tracker link and a due date before the next retro; the timebox was published and the overrun recorded; anonymous-async window and clustering or lean-coffee dot-votes recorded where the format needs them.</item>
+    </list>
+  </section>
+</text>

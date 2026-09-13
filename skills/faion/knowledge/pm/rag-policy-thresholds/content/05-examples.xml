@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="RAG Policy Thresholds Worked Examples" version="1.0.0" est_tokens="2600" depth="recommended">
+  <summary>One complete `RAGPolicy` for a checkout project with four signals, a logged override in week 20 and a Red fired in week 21, with a note on every non-obvious value, and one bad policy showing what the validator prints and what the sponsor sees beyond it.</summary>
+
+  <section title="Scenario">
+    <p>The checkout project reports weekly to a sponsor. In Q4 2025 the same team lost the Acme account after a 30% schedule overrun that had been reported Green for six weeks; the PMO tolerance policy now sets schedule tolerance at 10% / 20%. In Q1 2026 a hotfix incident escaped to production without any signal turning Amber. The PM (olena.k) reviews the policy on 2026-05-10, computes week 20 on 2026-05-18 and week 21 on 2026-05-25.</p>
+  </section>
+
+  <section title="Good artefact">
+    <example type="good" title="checkout RAGPolicy 1.4.0, reviewed 2026-05-10, two cycles computed">
+      <code lang="json"><![CDATA[
+{
+  "project_id": "checkout",
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10",
+    "reporting_cadence_days": 7
+  },
+  "signals": [
+    {
+      "signal_id": "schedule_variance_pct",
+      "unit": "percent",
+      "input_source": {"system": "Jira", "query": "dashboard 'Checkout EV' panel 'SV%' = (EV - PV) / PV * 100"},
+      "comparator": "gt",
+      "amber_threshold": 10,
+      "red_threshold": 20,
+      "evidence": ["incident-2025-Q4-acme-overrun", "policy://pmo/schedule-tolerance"]
+    },
+    {
+      "signal_id": "budget_variance_pct",
+      "unit": "percent",
+      "input_source": {"system": "NetSuite", "query": "saved export 'checkout-cost-vs-plan' column CV%"},
+      "comparator": "gt",
+      "amber_threshold": 5,
+      "red_threshold": 15,
+      "evidence": ["policy://pmo/budget-tolerance"]
+    },
+    {
+      "signal_id": "defect_escape_rate",
+      "unit": "ratio",
+      "input_source": {"system": "Sentry", "query": "saved search 'checkout prod new issues / releases' weekly"},
+      "comparator": "gt",
+      "amber_threshold": 0.05,
+      "red_threshold": 0.1,
+      "evidence": ["postmortem-2026-Q1-checkout-hotfix"]
+    },
+    {
+      "signal_id": "blockers_open_count",
+      "unit": "count",
+      "input_source": {"system": "Jira", "query": "project = CHK AND flagged = Impediment AND status != Done"},
+      "comparator": "gte",
+      "amber_threshold": 2,
+      "red_threshold": 4,
+      "evidence": ["baseline-chk-2026-q1-blockers"]
+    }
+  ],
+  "actions": {
+    "green": "continue the weekly cadence; record value, version and last_reviewed",
+    "amber": {"step": "PM runs a mid-week health check with the tech lead and posts findings in the status thread", "deadline_hours": 72},
+    "red": {"playbook": "distressed-project-rescue", "first_step": "sponsor notified and rescue playbook opened", "within_hours": 4, "fires_at": "compute_time"}
+  },
+  "review_log": [
+    {
+      "logged_at": "2026-05-10",
+      "kind": "review",
+      "person": "olena.k",
+      "version_after": "1.4.0",
+      "signals_removed": [{"signal_id": "pr_review_latency_hours", "reason": "no Amber or Red in Q4 2025 and Q1 2026"}],
+      "signals_justified": [{"signal_id": "budget_variance_pct", "reason": "no Amber in two periods but it is the sponsor's contractual tolerance"}],
+      "signals_added_or_tightened": [{"signal_id": "defect_escape_rate", "reason": "Q1 hotfix incident was not flagged ahead; amber tightened from 0.08 to 0.05", "evidence": ["postmortem-2026-Q1-checkout-hotfix"]}]
+    },
+    {
+      "logged_at": "2026-05-18",
+      "kind": "override",
+      "person": "olena.k",
+      "cycle_date": "2026-05-18",
+      "computed_colour": "amber",
+      "reported_colour": "green",
+      "reason": "Jira EV panel double-counted the sprint 14 carry-over; corrected SV% is 6"
+    }
+  ],
+  "colour_history": [
+    {
+      "computed_at": "2026-05-18",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {"signal_id": "schedule_variance_pct", "value": 12},
+        {"signal_id": "budget_variance_pct", "value": 3},
+        {"signal_id": "defect_escape_rate", "value": 0.02},
+        {"signal_id": "blockers_open_count", "value": 1}
+      ],
+      "computed_colour": "amber",
+      "reported_colour": "green"
+    },
+    {
+      "computed_at": "2026-05-25",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {"signal_id": "schedule_variance_pct", "value": 22},
+        {"signal_id": "budget_variance_pct", "value": 4},
+        {"signal_id": "defect_escape_rate", "value": 0.03},
+        {"signal_id": "blockers_open_count", "value": 1}
+      ],
+      "computed_colour": "red",
+      "reported_colour": "red",
+      "red_escalated_at": "2026-05-25T10:40"
+    }
+  ]
+}
+]]></code>
+      <note>Every threshold is a number in the unit the query returns: percent for the two earned-value variances, a ratio for defect escapes, a count for blockers. There is no "significant" anywhere (r-threshold-numeric-with-comparator).</note>
+      <note>All four signals use `gt` / `gte`, so red is the larger number on each; a coverage-style `lt` signal would carry the smaller number as red (r-red-strictly-beyond-amber).</note>
+      <note>`schedule_variance_pct` and `budget_variance_pct` are percent variances against plan, not "3 days late" or "12k over"; each `input_source` names the system and the panel, export or JQL a second person can run (r-input-source-is-a-query).</note>
+      <note>The 10 / 20 schedule thresholds are anchored to the Acme overrun and the PMO tolerance policy; the 0.05 defect line to the Q1 hotfix post-mortem; the blocker line to the Q1 baseline. Each is something the PM can point at when asked to loosen it (r-evidence-anchor-per-signal).</note>
+      <note>Week 20: SV% = 12 is over Amber (10), everything else is Green, so `computed_colour` is amber; it was reported green only because a logged override names the data glitch, the corrected value and the person (r-worst-signal-wins, r-override-logged-never-downgrades-red).</note>
+      <note>Week 21: SV% = 22 is over Red (20). Budget, defects and blockers are all Green and the colour is still red; `red_escalated_at` is 10:40 on the compute day, inside the 4-hour bound, and no override could have reported it lower (r-worst-signal-wins, r-red-action-named-and-time-bound).</note>
+      <note>The Amber deadline is 72 hours, inside the 168-hour weekly cycle; the Red action names the playbook, the first step, the bound and `compute_time` (r-red-action-named-and-time-bound).</note>
+      <note>The 2026-05-10 review removed a signal that never fired in two periods, justified one that did not fire but is contractual, and tightened the defect signal with the post-mortem as its new anchor; both cycles cite version 1.4.0 and a `policy_last_reviewed` 8 and 15 days earlier (r-review-within-90-days-prunes-and-adds).</note>
+    </example>
+  </section>
+
+  <section title="Bad artefact">
+    <example type="bad" title="What the validator and the sponsor reject">
+      <code lang="json"><![CDATA[
+{
+  "project_id": "checkout",
+  "header": {
+    "owner": {"role": "pm", "person": "olena.k"},
+    "version": "1.4.0",
+    "last_reviewed": "2026-05-10",
+    "reporting_cadence_days": 7
+  },
+  "signals": [
+    {
+      "signal_id": "schedule_variance_pct",
+      "unit": "percent",
+      "input_source": {"system": "PM", "query": "PM estimate at the weekly sync"},
+      "comparator": "gt",
+      "amber_threshold": "significant",
+      "red_threshold": 20,
+      "evidence": ["TBD"]
+    },
+    {
+      "signal_id": "test_coverage_pct",
+      "unit": "percent",
+      "input_source": {"system": "SonarQube", "query": "project CHK measure coverage"},
+      "comparator": "lt",
+      "amber_threshold": 60,
+      "red_threshold": 70,
+      "evidence": ["policy://eng/coverage-floor"]
+    }
+  ],
+  "actions": {
+    "green": "continue normal cadence",
+    "amber": {"step": "discuss at the next sync", "deadline_hours": 72},
+    "red": {"playbook": "distressed-project-rescue", "first_step": "sponsor notified and rescue playbook opened", "within_hours": 4, "fires_at": "next_sync"}
+  },
+  "review_log": [
+    {
+      "logged_at": "2026-05-25",
+      "kind": "override",
+      "person": "olena.k",
+      "cycle_date": "2026-05-25",
+      "computed_colour": "red",
+      "reported_colour": "amber",
+      "reason": "steering committee is on Thursday; the team is confident the slip recovers"
+    }
+  ],
+  "colour_history": [
+    {
+      "computed_at": "2026-05-25",
+      "policy_version": "1.4.0",
+      "policy_last_reviewed": "2026-05-10",
+      "values": [
+        {"signal_id": "schedule_variance_pct", "value": 22},
+        {"signal_id": "test_coverage_pct", "value": 80}
+      ],
+      "computed_colour": "amber",
+      "reported_colour": "amber"
+    }
+  ]
+}
+]]></code>
+      <note>Validator output: `$.signals[0].input_source.query: matches forbidden 'not' schema`, `$.signals[0].amber_threshold: expected number, got str`, `$.signals[0].evidence[0]: 'TBD' does not match pattern '^(incident-[A-Za-z0-9._-]+|postmortem-[A-Za-z0-9._-]+|policy://[^\s]+|baseline-[A-Za-z0-9._-]+)$'`, `$.actions.amber.step: matches forbidden 'not' schema`, `$.actions.red.fires_at: must equal 'compute_time', got 'next_sync'`, `$.review_log[0].reported_colour: must equal 'red', got 'amber'`.</note>
+      <note>Once those are fixed, the cross-field block reports: `signals[test_coverage_pct]: red_threshold 70 must be less than amber_threshold 60 for lt (r-red-strictly-beyond-amber)` and `colour_history[0]: computed_colour 'amber' but the worst signal is 'red'; no averaging (r-worst-signal-wins)`.</note>
+      <note>What the sponsor sees beyond the validator: a schedule number that is whatever the PM said on Monday, a coverage signal that can never be Amber (below 70 is already Red, so 60 is unreachable as a warning), and a week in which SV% = 22 crossed the Red line the policy itself set and the report said Amber because the steering committee was on Thursday. That is the Acme run of Green reports again, with a policy on file.</note>
+    </example>
+  </section>
+</text>
