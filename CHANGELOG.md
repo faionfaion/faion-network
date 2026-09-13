@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Stub rules, batch 1 of 6: eight `ai-agents` slugs.** The dedupe scan turned
+  out to be measuring something else: 102 of its first 123 near-duplicate pairs
+  were **literal stub rules** — `Stub rule for conclusion 'r-default-high'
+  referenced from 06-decision-tree.xml. Replace with the real testable rule…` —
+  written by `fix-methodology-phase-d.py` so a tree leaf would resolve and the
+  validator would go green. **129 of them in 57 slugs**, shipped in paid
+  documents, and the rules-say-something gate passed them because they are
+  longer than 40 characters. Each is now the rule its branch needs: the eight
+  here were all `skip-methodology` leaves, and each states the concrete
+  condition under which the reader must stop and what to record instead
+  (`agent-eval-test-set-curation`: no synthetic-only golden set when fewer than
+  100 production traces exist, because r1's 30% real-trace floor cannot be met).
+
 - **CR-011 layer 2 complete: the last seven `pm` documents, and all 61 are
   whole.** `retro-facilitation-multistyle` carries an 18-field contract
   (format, distribution, prime directive, safety check, one-to-three owned and

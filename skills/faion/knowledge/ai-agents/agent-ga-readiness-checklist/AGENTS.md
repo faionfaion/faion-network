@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale and source | ~500 |
 | `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
 | `content/06-decision-tree.xml` | essential | decision tree gating whether this methodology applies | ~500 |
