@@ -1,121 +1,285 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="C4 Drift Detection From IaC — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `c4-drift-detection-from-iac` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="C4 Drift Detection from IaC — Output Contract" version="1.2.0" est_tokens="4250" depth="essential">
+  <summary>The drift report is one JSON document with one section per rule in 01-core-rules.xml: the machine-readable C4 model and its commit, the applied-state source and its identity (Terraform serial and lineage, Pulumi export version, CloudFormation stack id), the compared level, the versioned mapping table and allowlist with suppressed counts, the run trigger and cadence, findings in exactly three classes with both ids and a closure, the unmapped residue, and a reconciliation of state resources. Subagent MUST satisfy this contract before returning to caller.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="system_name" type="string" required="true">the system whose C4 model and infrastructure are compared</field>
+      <field name="c4_model" type="object" required="true">format (Structurizr DSL or JSON, LikeC4, model YAML or JSON), path and commit; never a picture (r-c4-model-machine-readable)</field>
+      <field name="iac_state" type="object" required="true">tool, the applied-state source read (terraform show -json, pulumi stack export, DescribeStackResources) and the state identity per tool (r-compare-applied-state-not-source, r-run-on-apply-and-on-schedule)</field>
+      <field name="comparison_level" type="enum" required="true">container or system-context; component is not claimable from IaC (r-comparison-level-stated)</field>
+      <field name="mapping_table" type="object" required="true">path and commit of the resource-type to C4-element mapping (r-mapping-table-versioned)</field>
+      <field name="allowlist" type="object" required="true">path, commit and the count suppressed per entry; hardcoded_skips_in_script false (r-noise-allowlist-explicit)</field>
+      <field name="run" type="object" required="true">trigger post-apply or schedule, timestamp, and a cadence of at least weekly (r-run-on-apply-and-on-schedule)</field>
+      <field name="findings" type="list" required="true">each with id, class added / removed / edge-changed, iac_address, c4_element_id, closure (model-commit, iac-change, accepted with reason and expiry, or open) and reports_open (r-three-drift-classes-with-ids, r-finding-closes-by-commit-or-expiry)</field>
+      <field name="unmapped" type="list" required="true">resource types absent from the mapping table with counts; empty when none (r-mapping-table-versioned)</field>
+      <field name="reconciliation" type="object" required="true">state_resources_total = allowlisted + mapped + unmapped (fm-unmapped-silently-dropped)</field>
+      <field name="escalated_finding_ids" type="list" required="true">findings open across two consecutive reports; empty when none (r-finding-closes-by-commit-or-expiry)</field>
+      <field name="evidence" type="list" required="true">URLs: the comparison run, the mapping table and allowlist at their commits, the previous report</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">c4_model.format of png, drawio, miro or any rendering (fm-picture-as-canonical-model)</pattern>
+      <pattern id="f2">iac_state.source reading HCL, a Pulumi program or a template file, or a report with no state serial / export version / stack id (fm-diff-against-source-not-state)</pattern>
+      <pattern id="f3">comparison_level component, or findings whose c4_element_id sits inside a container (fm-component-level-from-iac)</pattern>
+      <pattern id="f4">unmapped absent, or reconciliation that does not sum to state_resources_total (fm-unmapped-silently-dropped)</pattern>
+      <pattern id="f5">allowlist.hardcoded_skips_in_script true, or a suppressed entry with no printed count (fm-noise-flood-or-hidden-skip)</pattern>
+      <pattern id="f6">a finding with a description but no iac_address or c4_element_id, or a class outside the three</pattern>
+      <pattern id="f7">closure accepted without reason or expiry, or a finding with reports_open of 2 or more absent from escalated_finding_ids (fm-findings-never-close)</pattern>
+      <pattern id="f8">run.cadence monthly or longer, or no post-apply trigger wired</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Where a finding's expected C4 element does not exist yet (class added), record c4_element_id as the id the model commit will introduce, prefixed expected:.</transformation>
+      <transformation>Group several resources that form one C4 container (a service plus its task definition and target group) under one finding whose iac_address lists them.</transformation>
+      <transformation>Report edge-changed findings derived from security groups, IAM policies, peering, network policies or queue subscriptions with the source of the edge named in the description.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "faion://c4-drift-detection-from-iac/output.schema.json",
+  "title": "C4 versus IaC drift report",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": [
+    "system_name", "c4_model", "iac_state", "comparison_level", "mapping_table", "allowlist",
+    "run", "findings", "unmapped", "reconciliation", "escalated_finding_ids", "evidence"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "date": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "datetime": {"type": "string", "format": "date-time"}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "system_name": {"type": "string", "minLength": 3},
+    "c4_model": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["format", "path", "commit"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "format": {"type": "string", "enum": ["structurizr-dsl", "structurizr-json", "likec4", "model-yaml", "model-json"]},
+        "path": {"type": "string", "minLength": 3},
+        "commit": {"$ref": "#/definitions/sha"}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["name", "value"],
-        "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+    "iac_state": {
+      "type": "object",
+      "required": ["tool", "source", "identity"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": {"type": "string", "enum": ["terraform", "pulumi", "cloudformation"]},
+        "source": {"type": "string", "enum": ["terraform-show-json", "pulumi-stack-export", "cloudformation-describe-stack-resources"]},
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "serial": {"type": "integer", "minimum": 0},
+            "lineage": {"type": "string", "minLength": 8},
+            "export_version": {"type": "integer", "minimum": 0},
+            "stack_id": {"type": "string", "minLength": 8},
+            "last_updated_at": {"$ref": "#/definitions/datetime"}
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"tool": {"const": "terraform"}}}, "then": {"properties": {"source": {"const": "terraform-show-json"}, "identity": {"required": ["serial", "lineage"]}}}},
+        {"if": {"properties": {"tool": {"const": "pulumi"}}}, "then": {"properties": {"source": {"const": "pulumi-stack-export"}, "identity": {"required": ["export_version"]}}}},
+        {"if": {"properties": {"tool": {"const": "cloudformation"}}}, "then": {"properties": {"source": {"const": "cloudformation-describe-stack-resources"}, "identity": {"required": ["stack_id", "last_updated_at"]}}}}
+      ]
+    },
+    "comparison_level": {"type": "string", "enum": ["container", "system-context"]},
+    "mapping_table": {
+      "type": "object",
+      "required": ["path", "commit"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"type": "string", "minLength": 3},
+        "commit": {"$ref": "#/definitions/sha"}
+      }
+    },
+    "allowlist": {
+      "type": "object",
+      "required": ["path", "commit", "hardcoded_skips_in_script", "suppressed"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {"type": "string", "minLength": 3},
+        "commit": {"$ref": "#/definitions/sha"},
+        "hardcoded_skips_in_script": {"type": "boolean", "const": false},
+        "suppressed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["entry", "count"],
+            "additionalProperties": false,
+            "properties": {
+              "entry": {"type": "string", "minLength": 2},
+              "count": {"type": "integer", "minimum": 0}
+            }
+          }
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
-    },
-    "review": {
+    "run": {
       "type": "object",
-      "required": ["cadence", "next_review_at"],
+      "required": ["trigger", "ran_at", "cadence", "post_apply_hook_wired"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "trigger": {"type": "string", "enum": ["post-apply", "schedule"]},
+        "ran_at": {"$ref": "#/definitions/datetime"},
+        "cadence": {"type": "string", "enum": ["hourly", "daily", "weekly"]},
+        "post_apply_hook_wired": {"type": "boolean", "const": true}
       }
-    }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "class", "iac_address", "c4_element_id", "description", "closure", "reports_open"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^drift-\\d{4,}$"},
+          "class": {"type": "string", "enum": ["added", "removed", "edge-changed"]},
+          "iac_address": {"type": "string", "minLength": 3},
+          "c4_element_id": {"type": "string", "minLength": 2},
+          "description": {"type": "string", "minLength": 10},
+          "closure": {
+            "type": "object",
+            "required": ["kind"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {"type": "string", "enum": ["model-commit", "iac-change", "accepted", "open"]},
+              "commit": {"$ref": "#/definitions/sha"},
+              "reason": {"type": "string", "minLength": 10},
+              "expires_on": {"$ref": "#/definitions/date"}
+            },
+            "allOf": [
+              {"if": {"properties": {"kind": {"enum": ["model-commit", "iac-change"]}}}, "then": {"required": ["commit"]}},
+              {"if": {"properties": {"kind": {"const": "accepted"}}}, "then": {"required": ["reason", "expires_on"]}}
+            ]
+          },
+          "reports_open": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "unmapped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["resource_type", "count"],
+        "additionalProperties": false,
+        "properties": {
+          "resource_type": {"type": "string", "minLength": 3},
+          "count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "required": ["state_resources_total", "allowlisted", "mapped", "unmapped"],
+      "additionalProperties": false,
+      "properties": {
+        "state_resources_total": {"type": "integer", "minimum": 0},
+        "allowlisted": {"type": "integer", "minimum": 0},
+        "mapped": {"type": "integer", "minimum": 0},
+        "unmapped": {"type": "integer", "minimum": 0}
+      }
+    },
+    "escalated_finding_ids": {"type": "array", "items": {"type": "string", "pattern": "^drift-\\d{4,}$"}},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uri"}}
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "system_name": "orders-platform (prod)",
+  "c4_model": {"format": "structurizr-dsl", "path": "docs/c4/workspace.dsl", "commit": "3f9a2c1d"},
+  "iac_state": {
+    "tool": "terraform",
+    "source": "terraform-show-json",
+    "identity": {"serial": 412, "lineage": "6c1f0b2e-8a3d-4f5e-9b7c-1d2e3f4a5b6c"}
   },
-  "additionalProperties": false
+  "comparison_level": "container",
+  "mapping_table": {"path": "docs/c4/iac-mapping.yaml", "commit": "3f9a2c1d"},
+  "allowlist": {
+    "path": "docs/c4/iac-allowlist.yaml",
+    "commit": "3f9a2c1d",
+    "hardcoded_skips_in_script": false,
+    "suppressed": [
+      {"entry": "aws_cloudwatch_log_group", "count": 14},
+      {"entry": "aws_iam_role", "count": 22},
+      {"entry": "aws_iam_role_policy_attachment", "count": 31},
+      {"entry": "random_id", "count": 3},
+      {"entry": "aws_route53_record (same host)", "count": 6}
+    ]
+  },
+  "run": {"trigger": "post-apply", "ran_at": "2026-09-08T14:02:11Z", "cadence": "weekly", "post_apply_hook_wired": true},
+  "findings": [
+    {"id": "drift-0041", "class": "added", "iac_address": "aws_sqs_queue.orders_dlq", "c4_element_id": "expected:orders.dlq", "description": "Dead-letter queue applied on 2026-09-04; no container in the model", "closure": {"kind": "model-commit", "commit": "8b1e4d7a"}, "reports_open": 1},
+    {"id": "drift-0042", "class": "edge-changed", "iac_address": "aws_security_group_rule.api_to_ledger_5432", "c4_element_id": "orders.api -> ledger.db", "description": "Security group now allows orders-api to reach the ledger database directly; model shows access only via ledger-service", "closure": {"kind": "open"}, "reports_open": 1},
+    {"id": "drift-0037", "class": "removed", "iac_address": "aws_elasticache_cluster.session_cache", "c4_element_id": "orders.session-cache", "description": "Session cache still in the model; removed from state at serial 398", "closure": {"kind": "accepted", "reason": "Cache is being replaced by the token service in Q4; model updated when the replacement lands", "expires_on": "2026-10-06"}, "reports_open": 2}
+  ],
+  "unmapped": [
+    {"resource_type": "aws_msk_serverless_cluster", "count": 1}
+  ],
+  "reconciliation": {"state_resources_total": 131, "allowlisted": 76, "mapped": 54, "unmapped": 1},
+  "escalated_finding_ids": ["drift-0037"],
+  "evidence": [
+    "https://ci.example.com/c4-drift/orders-platform/run/2026-09-08",
+    "https://github.com/acme/orders-infra/blob/3f9a2c1d/docs/c4/iac-mapping.yaml",
+    "https://github.com/acme/orders-infra/blob/3f9a2c1d/docs/c4/iac-allowlist.yaml",
+    "https://ci.example.com/c4-drift/orders-platform/run/2026-09-01"
+  ]
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "system_name": "orders-platform (prod)",
+  "c4_model": {"format": "png", "path": "docs/architecture.png", "commit": "3f9a2c1d"},
+  "iac_state": {
+    "tool": "terraform",
+    "source": "terraform-show-json",
+    "identity": {}
+  },
+  "comparison_level": "container",
+  "mapping_table": {"path": "docs/c4/iac-mapping.yaml", "commit": "3f9a2c1d"},
+  "allowlist": {
+    "path": "docs/c4/iac-allowlist.yaml",
+    "commit": "3f9a2c1d",
+    "hardcoded_skips_in_script": true,
+    "suppressed": []
+  },
+  "run": {"trigger": "schedule", "ran_at": "2026-09-08T14:02:11Z", "cadence": "weekly", "post_apply_hook_wired": false},
+  "findings": [
+    {"id": "drift-0041", "class": "added", "iac_address": "aws_sqs_queue.orders_dlq", "c4_element_id": "expected:orders.dlq", "description": "Dead-letter queue with no container in the model", "closure": {"kind": "model-commit"}, "reports_open": 1},
+    {"id": "drift-0037", "class": "removed", "iac_address": "aws_elasticache_cluster.session_cache", "c4_element_id": "orders.session-cache", "description": "Cache still in the model", "closure": {"kind": "accepted", "reason": "known, ignore"}, "reports_open": 3},
+    {"id": "drift-0043", "class": "diagram-stale", "iac_address": "", "c4_element_id": "", "description": "The diagram is a bit out of date", "closure": {"kind": "open"}, "reports_open": 1}
+  ],
+  "unmapped": [],
+  "reconciliation": {"state_resources_total": 131, "allowlisted": 0, "mapped": 54, "unmapped": 0},
+  "escalated_finding_ids": [],
+  "evidence": [
+    "https://ci.example.com/c4-drift/orders-platform/run/2026-09-08"
+  ]
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>c4_model is a machine-readable format at a commit; iac_state.source is an applied-state command and identity carries the serial and lineage, export version, or stack id and last-updated time.</item>
+      <item>comparison_level is container or system-context; no finding's element id sits inside a container.</item>
+      <item>mapping_table and allowlist are version-controlled at a commit; every suppressed entry prints its count; no skips live in the script.</item>
+      <item>The run is wired post-apply and scheduled at least weekly.</item>
+      <item>Every finding has one of the three classes, an iac_address and a c4_element_id, and a closure that is a commit, an accepted entry with reason and expiry, or open.</item>
+      <item>allowlisted + mapped + unmapped equals state_resources_total; every unmapped type is listed with its count.</item>
+      <item>Every finding with reports_open of 2 or more is in escalated_finding_ids.</item>
+      <item>The document validates with scripts/validate-c4-drift-detection-from-iac.py.</item>
     </list>
   </section>
 </text>

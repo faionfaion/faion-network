@@ -1,42 +1,54 @@
 <!--
-purpose: Canonical skeleton for the `c4-drift-detection-from-iac` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/c4-drift-detection-from-iac/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-c4-drift-detection-from-iac.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Canonical skeleton for the `c4-drift-detection-from-iac` drift report — one section per rule in content/01-core-rules.xml.
+consumes: The machine-readable C4 model at a commit, applied IaC state output with its identity, the mapping table, the allowlist, the previous report.
+produces: A committed report at .product/c4-drift-detection-from-iac/<system>-<serial>.md plus its JSON form validated by scripts/validate-c4-drift-detection-from-iac.py.
+depends-on: templates/header.yaml, content/02-output-contract.xml, scripts/validate-c4-drift-detection-from-iac.py.
+token-budget-impact: ~1000 tokens to fill for a report with five findings.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+system_name: {{ system_name }}
+model_commit: {{ model_commit }}
+state_identity: {{ state_identity }}
+comparison_level: {{ comparison_level }}
+run_url: {{ run_url }}
 ---
 
-# Trigger
+# Model and state
 
-- kind: {{ trigger_kind }}
-- url:  <URL>
+- system_name: {{ system_name }}
+- c4_model: <structurizr-dsl | structurizr-json | likec4 | model-yaml | model-json> at <path>, commit {{ model_commit }}
+- iac_state: <terraform | pulumi | cloudformation>; source <terraform-show-json | pulumi-stack-export | cloudformation-describe-stack-resources>; identity {{ state_identity }}
+- comparison_level: {{ comparison_level }} (container | system-context; never component)
+- run: trigger <post-apply | schedule>; ran_at <timestamp>; cadence <hourly | daily | weekly>; post_apply_hook_wired true
+- escalated: <finding ids open across two consecutive reports, or none>
 
-# Owner
+# Mapping and allowlist
 
-- role:<handle>
+- mapping_table: <path> at commit <sha>
+- allowlist: <path> at commit <sha>; hardcoded_skips_in_script false
 
-# Inputs
+| Allowlist entry | Suppressed count |
+|---|---|
+| <resource type or pattern> | <n> |
 
-- name: {{ input_name }}
-  value: {{ typed_value }}
+# Findings
 
-# Decision
+| Id | Class | IaC address | C4 element id | Description | Closure | Reports open |
+|---|---|---|---|---|---|---|
+| drift-NNNN | added \| removed \| edge-changed | <resource address> | <element id or expected:id> | <what differs and where the edge comes from> | model-commit <sha> \| iac-change <sha> \| accepted (<reason>, expires <date>) \| open | <n> |
 
-{{ decision_statement }}
+# Unmapped and reconciliation
+
+| Unmapped resource type | Count |
+|---|---|
+| <type not in the mapping table> | <n> |
+
+- state_resources_total: <n> = allowlisted <n> + mapped <n> + unmapped <n>
 
 # Evidence
 
-- {{ url_1 }}
-- {{ url_2 }}
-
-# Review
-
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- {{ run_url }}
+- <mapping table URL at commit>
+- <allowlist URL at commit>
+- <previous report URL>

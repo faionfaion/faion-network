@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- A root CLAUDE.md is being created for a repository that has none, or an existing one fails a check: secret scan, line budget, path existence or a command that does not run.
+- The build, test, lint and run commands exist in a machine-readable place (Makefile, package.json scripts, pyproject, CI workflow) or can be written as verbatim invocations and run on a fresh clone.
+- CI and pre-commit can host gitleaks or trufflehog, a wc -l line-budget check and a referenced-path existence check.
+- In a multi-package repository each package directory can carry its own CLAUDE.md that Claude Code loads on demand.
+- A named reviewer will approve the PR after the three checks are green.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- The root file exists, fits its declared budget, scans clean, and every path and command resolves; amend it in the PR that renames a referenced file, not on a schedule.
+- The directory is not a repository root or a deployable package (a docs folder, a data set); there is nothing for a session to run.
+- Personal or machine-specific instructions are the only content wanted; those belong in CLAUDE.local.md or ~/.claude/CLAUDE.md, not in a committed project file.
+- A platform-generated CLAUDE.md owns the commands section and its checks already run in the organisation's CI; contribute prohibitions and imports there instead.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/claude-md-creation/` |
+| Command source | Makefile, package.json scripts, pyproject tooling or CI workflow | repository |
+| Fresh clone | clean checkout at the commit being briefed, with the toolchain installed | local machine or CI |
+| Secret scanner in CI and pre-commit | gitleaks or trufflehog configuration | .pre-commit-config.yaml and CI workflow |
+| Repository docs to import | README, CONTRIBUTING, ADR index, style guide with their paths | repository |
+| Package layout | list of deployable packages and their directories | repository / architecture doc |
+| Named reviewer | role:handle of the person who approves CLAUDE.md changes | CODEOWNERS or team lead |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: no secrets, verbatim commands, line budget, import-not-paste, local scope, subdir scoping, argued prohibitions, refs exist | ~2000 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for the record: root_file with declared line budget, within_budget and CI line check, secrets scanner in CI and pre-commit and clean, verbatim commands with exit 0, imports within five hops and no pasted content, local scope, subdir_files required for multi-package with no per-package commands in the root, prohibitions with consequence stated and emphasis_ratio at most 0.25, refs check, named reviewer; valid and invalid examples | ~3550 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | ~900 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 9 steps: bootstrap and declare budget, verbatim commands run on a fresh clone, import not paste, personal content local, per-package scoping, argued prohibitions and rationed emphasis, secret / line / path checks in CI and pre-commit, reviewer approval, validate and merge | ~1700 |
+| `content/05-examples.xml` | recommended | Complete multi-package platform record at 84 of 100 lines with notes on every non-obvious value, plus the 480-line first draft breaking all eight rules and what the validator and reviewer say | ~1900 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing
@@ -67,6 +70,12 @@
 | `templates/skeleton.md.j2` | Markdown skeleton of the artefact with all required sections. |
 | `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-claude-md-creation-quality.py` | Validate the CLAUDE.md quality record JSON against the output-contract schema. | Pre-merge of the CLAUDE.md PR, after the secret scan, line check and path check are green. |
 
 ## Related
 

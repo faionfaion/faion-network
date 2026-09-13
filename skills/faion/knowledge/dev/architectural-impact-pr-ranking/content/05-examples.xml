@@ -1,45 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Architectural Impact PR Ranking — Worked Example" version="1.1.0" est_tokens="600" depth="recommended">
-  <summary>One end-to-end worked example showing `architectural-impact-pr-ranking` applied from trigger to committed artefact.</summary>
+<text id="05-examples" title="Architectural Impact PR Ranking — Worked Examples" version="1.2.0" est_tokens="2350" depth="recommended">
+  <summary>One complete Monday report over three repositories, with a note on every value a reader might question, and one report from the same week as first generated that breaks seven subject rules and what the validator and the architect say about it.</summary>
 
-  <section title="Worked example">
-    <example type="good" title="Quarterly review of a billing-service refactor">
-      <note>Trigger fired; owner assigned; typed inputs gathered; decision authored; evidence anchored; review scheduled.</note>
+  <section title="Scenario">
+    <p>Three repositories, 143 PRs opened or merged in the week, a 45-minute Monday slot. The first ranker read PR titles and put "BREAKING: rename test helper" on top while a "small refactor" that touched the OpenAPI contract sat at rank 9. The tech lead runs steps 1-9 of `content/04-procedure.xml` and produces the report below for week 37.</p>
+  </section>
+
+  <section title="Good example: week 37 report">
+    <example type="good" title="Four ranked PRs that fit the slot, one deferred, one merged without review">
       <code lang="json"><![CDATA[
 {
-  "trigger": {
-    "kind":  "quarterly-architecture-review",
-    "url":   "https://github.com/acme/billing/issues/4421"
-  },
-  "owner":   "arch:alice",
-  "inputs":  [
-    {"name": "scope",         "value": "billing-service"},
-    {"name": "window_days",   "value": 90},
-    {"name": "prs_in_window", "value": 142}
+  "window": {"from": "2026-09-01T00:00:00Z", "to": "2026-09-08T00:00:00Z", "state_filter": "opened-or-merged-in-window"},
+  "repositories": [
+    {"name": "acme/orders", "has_public_api_list": true, "public_api_paths_config": ".arch/public-api-paths.yaml"},
+    {"name": "acme/billing", "has_public_api_list": true, "public_api_paths_config": ".arch/public-api-paths.yaml"},
+    {"name": "acme/payments", "has_public_api_list": false}
   ],
-  "decision": "Adopt variant A behind feature flag; deprecate variant B by EOQ.",
+  "session": {"slot": "Monday 10:00", "time_box_minutes": 45, "top_n": 4, "summed_read_minutes": 41},
+  "weights": {"modules_touched": 1.0, "public_api_delta": 4.0, "dependency_changes": 2.0, "contract_changes": 4.0, "infra_or_config_changes": 1.5},
+  "dependency_kind_weights": {"new_dependency": 3.0, "major_bump": 2.0, "minor_bump": 0.5, "patch_bump": 0.1, "removal": 1.0, "lockfile_only": 0},
+  "signals_from_diff_only": true,
+  "review_threshold": 8.0,
+  "ranked": [
+    {"rank": 1, "pr": "acme/orders#4412", "title_context": "small refactor of order status", "score": 27.5, "signals": {"modules_touched": 5, "public_api_delta": 2, "dependency_changes": 0, "contract_changes": 3, "infra_or_config_changes": 1}, "changed_lines": 640, "read_minutes": 16, "outcome": "pending"},
+    {"rank": 2, "pr": "acme/billing#902", "title_context": "add stripe-sdk", "score": 14.0, "signals": {"modules_touched": 2, "public_api_delta": 0, "dependency_changes": 3.0, "contract_changes": 1, "infra_or_config_changes": 2}, "changed_lines": 310, "read_minutes": 10, "outcome": "pending"},
+    {"rank": 3, "pr": "acme/orders#4398", "title_context": "BREAKING: rename test helper", "score": 9.5, "signals": {"modules_touched": 3, "public_api_delta": 0, "dependency_changes": 0, "contract_changes": 1, "infra_or_config_changes": 1}, "changed_lines": 220, "read_minutes": 8, "outcome": "pending"},
+    {"rank": 4, "pr": "acme/payments#77", "title_context": "migration: split ledger table", "score": 8.5, "signals": {"modules_touched": 4, "public_api_delta": 0, "dependency_changes": 0, "contract_changes": 1, "infra_or_config_changes": 1}, "changed_lines": 190, "read_minutes": 7, "outcome": "pending"}
+  ],
+  "deferred": [
+    {"pr": "acme/orders#4405", "score": 8.2, "signals": {"modules_touched": 6, "public_api_delta": 0, "dependency_changes": 0.5, "contract_changes": 0, "infra_or_config_changes": 1}, "changed_lines": 1450, "read_minutes": 36}
+  ],
+  "exclusions": {"population_total": 143, "bot_authors": 31, "reverts": 2, "docs_only": 17, "generated_files": 4, "below_threshold": 84},
+  "merged_without_review": [
+    {"pr": "acme/billing#899", "score": 11.0, "merged_at": "2026-09-04T22:41:00Z", "merged_by": "swe:dpark"}
+  ],
+  "previous_precision": {"hits": 3, "n": 4, "value": 0.75},
+  "weights_changed": false,
   "evidence": [
-    "https://github.com/acme/billing/pull/9981",
-    "https://sentry.io/acme/issues/12345/",
-    "https://acme.grafana.net/dashboard/billing-p95"
-  ],
-  "review": {
-    "cadence":         "quarterly",
-    "next_review_at":  "2026-08-22"
-  }
+    "https://ci.example.com/arch-rank/run/2026-09-08",
+    "https://github.com/acme/orders/blob/main/.arch/public-api-paths.yaml",
+    "https://wiki.example.com/arch-review/2026-09-01"
+  ]
 }
 ]]></code>
+      <note>`acme/orders#4412` ranks first with `title_context` "small refactor of order status": the diff touched three contract files and two public API paths, and the title never entered the score. `acme/orders#4398`, titled "BREAKING", ranks third on its diff alone.</note>
+      <note>`acme/billing#902` scores `dependency_changes` 3.0 because it adds one new dependency (weight 3.0); the 31 Renovate patch-bump PRs are in `exclusions.bot_authors` and would have scored 0.1 each if ranked.</note>
+      <note>`acme/payments` has `has_public_api_list` false, so `acme/payments#77` carries `public_api_delta` 0 even though it is a migration; the report prints "no API surface list" for that repo until the list lands (the decision tree's conclusion for this week).</note>
+      <note>`top_n` is 4 with `summed_read_minutes` 41 against a 45-minute box; `acme/orders#4405` scored above threshold but would take 36 minutes, so it is deferred with its score rather than dropped.</note>
+      <note>4 ranked + 1 deferred + 31 + 2 + 17 + 4 + 84 below threshold = 143, the population total; the reader can tell "scored low" from "never scanned".</note>
+      <note>`acme/billing#899` merged on Thursday night above threshold and appears in `merged_without_review` with the merger's handle; last week's precision is 3 of 4, and `weights_changed` is false so no `weight_change` block is present.</note>
     </example>
   </section>
 
-  <section title="Walk-through">
+  <section title="Bad example: the same week from the first ranker">
+    <example type="bad" title="Seven subject rules broken">
+      <code lang="json"><![CDATA[
+{
+  "window": {"from": "2026-09-01T00:00:00Z", "to": "2026-09-08T00:00:00Z", "state_filter": "open-only"},
+  "repositories": [
+    {"name": "acme/orders", "has_public_api_list": true},
+    {"name": "acme/payments", "has_public_api_list": false}
+  ],
+  "session": {"slot": "Monday 10:00", "time_box_minutes": 45, "top_n": 10, "summed_read_minutes": 190},
+  "weights": {"modules_touched": 1.0, "public_api_delta": 4.0, "dependency_changes": 2.0, "contract_changes": 4.0},
+  "dependency_kind_weights": {"new_dependency": 1.0, "major_bump": 1.0, "minor_bump": 1.0, "patch_bump": 1.0, "removal": 1.0, "lockfile_only": 1.0},
+  "signals_from_diff_only": false,
+  "review_threshold": 8.0,
+  "ranked": [
+    {"rank": 1, "pr": "acme/orders#4398", "title_context": "BREAKING: rename test helper", "score": 30.0, "signals": {"modules_touched": 3, "public_api_delta": 0, "dependency_changes": 0, "contract_changes": 1, "infra_or_config_changes": 1}, "changed_lines": 220, "read_minutes": 8},
+    {"rank": 2, "pr": "acme/orders#4412", "score": 12.0, "signals": {"modules_touched": 5, "public_api_delta": 2, "dependency_changes": 0, "contract_changes": 3, "infra_or_config_changes": 1}, "outcome": "pending"}
+  ],
+  "deferred": [],
+  "exclusions": {"population_total": 143, "bot_authors": 0, "reverts": 2, "docs_only": 17, "generated_files": 4},
+  "previous_precision": null,
+  "weights_changed": true,
+  "weight_change": {
+    "previous_weights": {"modules_touched": 1.0, "public_api_delta": 3.0, "dependency_changes": 2.0, "contract_changes": 4.0, "infra_or_config_changes": 1.5},
+    "precision_weeks_cited": 1,
+    "precision_values": [0.5]
+  },
+  "evidence": [
+    "https://ci.example.com/arch-rank/run/2026-09-08"
+  ]
+}
+]]></code>
+      <note>What the validator prints: `window.state_filter: 'open-only' is not the required const` (r-window-repos-exclusions-stated, fm-merged-before-session-invisible); `repositories[0]: missing required field: public_api_paths_config` (r-public-api-surface-enumerated-per-repo); `weights: missing required field: infra_or_config_changes` (r-score-formula-published-in-report); `dependency_kind_weights.patch_bump: 1.0 is above maximum 0.5` and `lockfile_only: 1.0 is not the required const 0` (r-dependency-change-weighted-by-kind); `signals_from_diff_only: False is not the required const True` (r-signals-from-diff-not-metadata); `ranked[0]: missing required field: outcome` and `ranked[1]: missing required field: changed_lines` and `read_minutes` (r-top-n-fits-the-session, r-precision-recorded-per-session); `&lt;root&gt;: missing required field: merged_without_review` (r-merged-without-review-flagged); `weight_change.precision_weeks_cited: 1 is below minimum 4` and `precision_values: 1 items is under minItems 4` (r-precision-recorded-per-session).</note>
+      <note>What the architect sees beyond the validator: `summed_read_minutes` 190 for a 45-minute box means the bottom eight PRs get a glance (fm-top-n-exceeds-session); `bot_authors` is 0 while 31 Renovate PRs were in the week, so the totals cannot reconcile; and the rename of a test helper scores 30 while the contract change scores 12, the signature of fm-title-driven-score. The report goes back to step 1.</note>
+    </example>
+  </section>
+
+  <section title="Lessons">
     <list>
-      <item>Step 1 — trigger captured from the recurring quarterly-review calendar entry; URL points to the GitHub issue.</item>
-      <item>Step 2 — owner resolved to `arch:alice` from the RACI; alice on-call this quarter.</item>
-      <item>Step 3 — inputs typed: scope is a service slug, window_days is int, prs_in_window is int.</item>
-      <item>Step 4 — decision is a single declarative sentence with a deadline.</item>
-      <item>Step 5 — evidence anchors point at the canonical PR, the perf dashboard, and the related Sentry issue.</item>
-      <item>Step 6 — review scheduled three months out; entry on alice's calendar.</item>
+      <item>Print the signals, not just the score: the moment a reader can recompute rank 1 from the table, the argument about weights becomes an argument about evidence.</item>
+      <item>Reconciliation is the audit: a population total the exclusions do not sum to is how a merged contract change disappears.</item>
+      <item>Precision is cheap to record and expensive to reconstruct; four hit-or-miss marks a week is the whole cost of being allowed to tune the weights.</item>
     </list>
   </section>
 </text>

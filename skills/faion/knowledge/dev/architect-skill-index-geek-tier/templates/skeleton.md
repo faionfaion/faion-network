@@ -1,42 +1,76 @@
 <!--
-purpose: Canonical skeleton for the `architect-skill-index-geek-tier` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/architect-skill-index-geek-tier/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-architect-skill-index-geek-tier.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Canonical skeleton for the `architect-skill-index-geek-tier` index — one section per rule in content/01-core-rules.xml.
+consumes: Candidate slugs resolved against skills/faion/knowledge/*/<slug>/meta.json, the relink run, the uncovered-task list.
+produces: A committed index at .product/architect-skill-index-geek-tier/<index>.md plus its JSON form validated by scripts/validate-architect-skill-index-geek-tier.py.
+depends-on: templates/header.yaml, content/02-output-contract.xml, scripts/validate-architect-skill-index-geek-tier.py.
+token-budget-impact: ~2000 tokens to fill for a 50-entry index.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+index_title: <index_title>
+tier: geek
+entry_count: <entry_count>
+relink_run_url: <relink_run_url>
+next_due: <next_due>
 ---
 
-# Trigger
+# Index
 
-- kind: <trigger_kind>
-- url:  <URL>
+- index_title: <index_title>
+- tier: geek
+- entry_count: <entry_count> (distinct slugs; below 50 add the shortfall block)
+- shortfall: count_missing <n>; reason <why the corpus has no active methodology for the missing tasks>
 
-# Owner
+# Clusters
 
-- role:<handle>
+One block per architecture activity (r-clustered-by-architecture-activity); at least three entries each. Every entry has exactly the five fields (r-entry-fields-fixed).
 
-# Inputs
+## Eliciting architecturally significant requirements (activity: elicit-requirements)
 
-- name: <input_name>
-  value: <typed_value>
+| Slug | Architect why | Load when | est_tokens | Target status |
+|---|---|---|---|---|
+| [[<slug>]] | <one sentence naming the architecture task this entry serves> | <observable trigger to open it> | <from meta.json> | active |
 
-# Decision
+## Deciding and recording (activity: decide-and-record)
 
-<decision_statement>
+| Slug | Architect why | Load when | est_tokens | Target status |
+|---|---|---|---|---|
+| [[<slug>]] | <sentence> | <trigger> | <n> | active |
+
+## Documenting views and contracts (activity: document-views)
+
+| Slug | Architect why | Load when | est_tokens | Target status |
+|---|---|---|---|---|
+| [[<slug>]] | <sentence> | <trigger> | <n> | active |
+
+## Evaluating and reviewing (activity: evaluate-and-review)
+
+| Slug | Architect why | Load when | est_tokens | Target status |
+|---|---|---|---|---|
+| [[<slug>]] | <sentence> | <trigger> | <n> | active |
+
+## Governing drift (activity: govern-drift)
+
+| Slug | Architect why | Load when | est_tokens | Target status |
+|---|---|---|---|---|
+| [[<slug>]] | <sentence> | <trigger> | <n> | active |
+
+# Not covered
+
+One line per architecture task with no active methodology (r-uncovered-tasks-listed).
+
+| Task | Closest match |
+|---|---|
+| <architecture task> | [[<slug>]] or none |
+
+# Relink
+
+- script_path: <scripts/relink-...py>
+- last_run: YYYY-MM-DD
+- run_url: <relink_run_url>
+- next_due: <next_due>
 
 # Evidence
 
-- <url_1>
-- <url_2>
-
-# Review
-
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- <relink_run_url>
+- <PR that published the index>

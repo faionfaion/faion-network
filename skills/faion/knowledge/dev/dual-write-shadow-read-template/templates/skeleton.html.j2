@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Trigger</title>
+<title>Migration</title>
 <style>:root{color-scheme:light dark}
 body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
 font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -26,19 +26,26 @@ th{background:#1d1d1d} th,td{border-color:#333}
 blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
 <body>
 <hr/>
-<p>version: 0.1.0 owner: role:&lt;handle&gt; last_reviewed: YYYY-MM-DD trigger_url: &lt;URL&gt;</p>
+<p>version: 0.1.0 migration_name: {{ migration_name }} old_store: {{ old_store }} new_store: {{ new_store }} read_from_new_approver: {{ read_from_new_approver }} write_to_old_off_approver: {{ write_to_old_off_approver }}</p>
 <hr/>
-<h1>Trigger</h1>
-<ul><li>kind: {{ trigger_kind }}</li><li>url:  &lt;URL&gt;</li></ul>
-<h1>Owner</h1>
-<ul><li>role:&lt;handle&gt;</li></ul>
-<h1>Inputs</h1>
-<ul><li>name: {{ input_name }}</li></ul>
-<p>value: {{ typed_value }}</p>
-<h1>Decision</h1>
-<p>{{ decision_statement }}</p>
+<h1>Migration</h1>
+<ul><li>migration_name: {{ migration_name }}</li><li>kind: postgres-major-upgrade | monolith-to-service-split | schema-rewrite | datastore-swap | other</li><li>old_store: {{ old_store }} (system of record until read_from_new_on)</li><li>new_store: {{ new_store }}</li></ul>
+<h1>Entity types and gates</h1>
+<p>Written before shadow mode starts (r-cutover-gate-numeric); parity exclusions per entity (r-shadow-read-parity-diff).</p>
+<table><thead><tr><th>Entity</th><th>Primary key</th><th>Version field</th><th>Parity-excluded fields</th><th>mismatch_ratio_max</th><th>window_hours</th><th>min_comparisons</th></tr></thead><tbody><tr><td>&lt;entity&gt;</td><td>&lt;key&gt;</td><td>row_version \</td><td>updated_at \</td><td>lsn</td><td>&lt;auto timestamps, surrogate ids&gt;</td><td>&lt;ratio under 1&gt;</td><td>&lt;hours&gt;</td><td>&lt;count&gt;</td></tr></tbody></table>
+<h1>Dual write</h1>
+<ul><li>upsert_kind: version-guarded-upsert; compare_and_set_on_version: true</li><li>outside_old_store_transaction: true; failure_fails_user_request: false</li><li>retry_queue: &lt;durable queue&gt;; failure_metric: dual_write_failures_total; alert_threshold: &lt;n&gt;</li></ul>
+<h1>Reconciliation</h1>
+<ul><li>job_name: &lt;key-walk job&gt;; cadence: every-5-minutes | hourly | every-6-hours | daily | weekly</li><li>max_repairs_per_run: &lt;n&gt;; metric: reconciliation_repairs_total; declared_before_dual_write: true</li></ul>
+<h1>Backfill</h1>
+<ul><li>starts_after_dual_write: true; uses_same_upsert: true</li><li>per_partition_counts_match: true; checksum_match: true; completed_before_shadow_parity: true; partitions: &lt;n&gt;</li></ul>
+<h1>Shadow read</h1>
+<ul><li>comparator: normalising; returns_old_store_result: true</li><li>candidate_timeout_ms: &lt;at or under old p99&gt;; old_store_p99_ms: &lt;measured&gt;</li><li>exceptions_swallowed_and_counted: true</li><li>sampling_flag: &lt;runtime flag&gt;; sampling_percent_initial: &lt;under 100&gt;</li><li>mismatch_metric: shadow_read_mismatch_ratio; mismatch_samples_retained: true</li></ul>
+<h1>Flags and rollback</h1>
+<table><thead><tr><th>Stage</th><th>Flag name</th></tr></thead><tbody><tr><td>dual_write_on</td><td>&lt;flag&gt;</td></tr><tr><td>shadow_read_on</td><td>&lt;flag&gt;</td></tr><tr><td>read_from_new_on</td><td>&lt;flag&gt;</td></tr><tr><td>write_to_old_off</td><td>&lt;flag&gt;</td></tr></tbody></table>
+<ul><li>runtime_flippable: true</li><li>reverse_order: write_to_old_off, read_from_new_on, shadow_read_on, dual_write_on</li><li>retention_window_days: &lt;n&gt;; read_flipback_rehearsed_before_write_off: true</li></ul>
+<h1>Cutover</h1>
+<ul><li>gate_declared_before_shadow: true</li><li>gate_evaluation_url: &lt;dashboard over the declared window, required once reads are flipped&gt;</li><li>read_from_new_flipped: true | false</li><li>read_from_new_approver: {{ read_from_new_approver }}</li><li>write_to_old_off_approver: {{ write_to_old_off_approver }}</li></ul>
 <h1>Evidence</h1>
-<ul><li>{{ url_1 }}</li><li>{{ url_2 }}</li></ul>
-<h1>Review</h1>
-<ul><li>cadence: monthly | quarterly</li><li>next_review_at: YYYY-MM-DD</li><li>outcome: &lt;filled at the next review&gt;</li></ul>
+<ul><li>&lt;reconciliation dashboard&gt;</li><li>&lt;backfill verification run&gt;</li><li>&lt;gate evaluation at cutover&gt;</li><li>&lt;flip-back rehearsal record&gt;</li></ul>
 </body></html>

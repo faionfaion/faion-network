@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="GovTech FOIA / Records-Retention BA Pack — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `govtech-foia-ba-pack`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="GovTech FOIA / Records-Retention BA Pack — Procedure" version="1.2.0" est_tokens="2200" depth="recommended">
+  <summary>Nine steps that produce the pack in the order the obligations bite: record classes and their schedule first (nothing else is defensible without it), then the export path per store, the exemption map, the channel inventory, the accessibility plan, the clause log, the notice buffer, the two officer signatures, and finally validation against the contract. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="inventory-record-classes-and-schedule">
+      <input>Data model (ERD or migrations), list of stores, and the schedule authority for the jurisdiction: NARA General Records Schedules or the agency schedule (us-federal), the body's Public Records Act 1958 schedule (uk), the state or provincial archives schedule (us-state, ca-*).</input>
+      <action>List every record class the system creates or stores — citizen submissions, case notes, uploads, audit logs, chat transcripts, staff email, analytics events — and for each set `retention_period` as a finite ISO-8601 duration, `disposition` as destroy or transfer-to-archives, and `schedule_item` as the authority item it derives from. Fill `# Retention schedule` in `templates/skeleton.md.j2`.</action>
+      <output>`record_classes[]` with one row per class and the stores each class lives in.</output>
+      <decision-gate>Any class with no schedule item, or a proposed "retain indefinitely" / "delete when full" disposition, stops here (r-retention-schedule-per-record-class). Do not proceed to stores until every class has an authority.</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="name-export-path-per-store">
+      <input>`record_classes[].stores`, the jurisdiction's statutory clock (20 working days for us-federal, 5 U.S.C. §552(a)(6)(A)(i), and uk, FOIA 2000 s.10; confirm EU Regulation 1049/2001 or the Access to Information Act for eu / ca-*), and the owners of each store.</input>
+      <action>For every store name the `export_path` (tool, query, role:handle owner) that locates and produces the records responsive to a request, and measure `export_lead_time_working_days` end to end. Set `access_request_clock_working_days`. Fill `# Data stores and export paths`.</action>
+      <output>`data_stores[]`; any store whose lead time exceeds the clock, or whose path is "ask engineering", goes into `blocking_findings[]`.</output>
+      <decision-gate>A blocking store is either given a real export path before launch or removed from the design (r-request-export-within-statutory-clock, fm-store-without-export-path).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="build-exemption-map">
+      <input>Field-level data model, the disclosure exemptions for the jurisdiction (5 U.S.C. §552(b)(1)-(9); UK FOIA 2000 Part II; the state or provincial equivalent).</input>
+      <action>Tag every field that would be withheld with its `category`, `statutory_basis` and `redaction` mode; field-driven where the field is discrete, structural-split-required where a free-text column mixes exempt and non-exempt content, manual-review with a `manual_review_cost_estimate` where a split is not possible. Fill `# Exemption map`.</action>
+      <output>`exemption_map[]` as store.field rows.</output>
+      <decision-gate>Citizen PII inside an untagged notes column is fm-redaction-by-hand; split the column or estimate the review cost before continuing (r-exempt-fields-tagged-in-schema).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="inventory-staff-channels">
+      <input>Every channel in which staff conduct business about the system: email, ticketing, chat, SMS, personal devices, in-product messaging, vendor tools.</input>
+      <action>For each channel record the `capture_mechanism` into the system of record and whether `auto_delete` is on. For us-federal, record `non_official_copy_within_days` at or under 20 (44 U.S.C. §2911). Fill `# Staff channels`.</action>
+      <output>`staff_channels[]`.</output>
+      <decision-gate>An auto-deleting channel with no capture mechanism must have capture wired or auto-delete disabled before launch (r-ephemeral-channels-captured, fm-chat-records-uncaptured).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="write-accessibility-audit-plan">
+      <input>List of public-facing pages and flows; the standard in force (Section 508 / 36 CFR Part 1194, EN 301 549, UK PSBAR 2018, AODA).</input>
+      <action>Set `wcag_version` (2.1, or 2.2 where the jurisdiction has moved) and `level` AA. For every flow name the automated tool and all three manual tests (screen-reader, keyboard-only, zoom-200) and a role:handle `remediation_owner`. Set `launch_gate` to no-critical-or-serious-failure and, where the jurisdiction requires a published statement, its URL. Fill `# Accessibility audit plan`.</action>
+      <output>`accessibility_audit` object.</output>
+      <decision-gate>"Accessibility pass after launch" is rejected; a flow missing a manual test has no plan (r-wcag-aa-audit-gates-launch, fm-accessibility-after-launch).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="log-procurement-clauses">
+      <input>The contract, solicitation and framework terms; FAR / Procurement Act 2023 flow-down clauses.</input>
+      <action>For each of the seven mandatory topics — data residency, security authorisation, source-code escrow and IP, open-source licence, subcontractor flow-down, accessibility warranty, records transfer on termination — log every clause with `clause_id`, the `design_decision` it forces, `status` (met / open / waived with `waived_by`) and `evidence`. Fill `# Procurement clause review log`.</action>
+      <output>`clause_review_log` keyed by topic; every clause still open is echoed in `blocking_findings[]`.</output>
+      <decision-gate>A topic with no clause entry means the contract was not read for it; find the clause or record that the contract is silent, with evidence (r-procurement-clause-review-log).</decision-gate>
     </step>
+
+    <step n="7" name="assess-public-notice-and-reserve-buffer">
+      <input>Whether the launch introduces or changes a collection of information from the public; the notice regime (Paperwork Reduction Act, 44 U.S.C. §3506(c)(2)(A) and §3507; state APA; UK or EU consultation rules); the draft launch date.</input>
+      <action>Set `public_notice.assessed` true and `required` true or false. When required, set `regime`, `buffer_days` of at least 90 plus review time, and date each notice (60-day and 30-day Federal Register notices plus OMB submission under PRA). Move `launch_date` past the buffer. Fill `# Public notice`.</action>
+      <output>`public_notice` object and a `launch_date` that respects it.</output>
+      <decision-gate>A launch date inside the notice window is a blocking finding; re-baseline rather than launch without an OMB control number (r-public-notice-buffer-scheduled, fm-notice-period-missed).</decision-gate>
+    </step>
+
+    <step n="8" name="obtain-officer-signatures">
+      <input>The completed retention schedule (step 1), export paths and exemption map (steps 2-3); the agency's records officer and its Chief FOIA Officer / FOI officer or delegate (5 U.S.C. §552(j)).</input>
+      <action>Walk the records officer through the schedule and record `records_officer` and `schedule_approved_on`; walk the access-request officer through the export paths and exemption map and record `access_request_officer`. Both as role:handle persons.</action>
+      <output>Signed pack with both officers named.</output>
+      <decision-gate>A schedule approved by engineering alone is not a schedule; the pack is not complete until both signatures exist (r-named-records-and-access-officers).</decision-gate>
+    </step>
+
+    <step n="9" name="validate-and-file">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-govtech-foia-ba-pack.py --file &lt;pack.json&gt;`; fix every violation; commit the pack to `.product/govtech-foia-ba-pack/` with `blocking_findings[]` at the top of the summary.</action>
+      <output>A pack that validates, with every open blocker visible to the launch board.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON pack validates with `scripts/validate-govtech-foia-ba-pack.py`.</item>
+      <item>Every record class has a schedule item; every store has an export path inside the clock or is a blocking finding.</item>
+      <item>Both officers are named and `schedule_approved_on` is set.</item>
+      <item>`launch_date` is after the notice buffer and after every open clause is either met or listed as blocking.</item>
+    </list>
   </section>
 </text>

@@ -1,121 +1,432 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Pre-Screen Bias Guardrails — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `ai-pre-screen-bias-guardrails` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="AI Pre-Screen Bias Guardrails — Output Contract" version="1.2.0" est_tokens="5700" depth="essential">
+  <summary>The guardrail spec is one JSON document with one section per rule in 01-core-rules.xml: the redaction step and the ten attribute classes it strips, the versioned and hashed rubric with anchors, the proxy-criteria review, the real-pool calibration with a pre-set agreement threshold, per-stage four-fifths monitoring, the human of record, the applicable automated-employment-decision law with notice and bias audit, the per-candidate audit log with its retention, and the pinned model / prompt / rubric / redaction tuple. Subagent MUST satisfy this contract before returning to caller.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="role_title" type="string" required="true">the role the pre-screen or take-home review is used for</field>
+      <field name="candidate_jurisdictions" type="list" required="true">where candidates apply from; drives which law applies (r-candidate-notice-and-bias-audit)</field>
+      <field name="redaction" type="object" required="true">version, all ten stripped attribute classes, unit_tested true, fixture path, human sample inspected per release (r-protected-attributes-stripped-before-model)</field>
+      <field name="rubric" type="object" required="true">version, sha256 hash, written_before_first_score true, criteria each mapped to a job requirement with low / mid / high anchors (r-rubric-versioned-before-first-score)</field>
+      <field name="proxy_review" type="object" required="true">date of the review against the proxy list, zero proxy terms found, evidence URL (r-no-proxy-criteria-in-prompt)</field>
+      <field name="calibration" type="object" required="true">sample from the real applicant pool, at least two blind human reviewers, statistic, threshold set before the run, result, run URL, passed (r-calibration-sample-before-go-live)</field>
+      <field name="adverse_impact" type="object" required="true">self-ID store separate from scoring; per-stage selection rates by group; ratio below 0.8 puts the system on hold (r-adverse-impact-monitored-per-stage)</field>
+      <field name="human_of_record" type="object" required="true">no auto-reject filter; every decision carries a role:handle; the reviewer sees the redacted document and the score (r-human-of-record-decides)</field>
+      <field name="legal" type="object" required="true">which AEDT law applies; notice text and independent bias audit when one does; the counsel who confirmed when none does (r-candidate-notice-and-bias-audit)</field>
+      <field name="audit_log" type="object" required="true">all seven fields retained per candidate, retention of at least 12 months, queryable per candidate (r-per-candidate-audit-log-retained)</field>
+      <field name="pinned_tuple" type="object" required="true">model_id, prompt_hash, rubric_version, redaction_version — any change re-runs calibration and the proxy review (fm-model-swap-resets-nothing)</field>
+      <field name="evidence" type="list" required="true">URLs: calibration run, proxy review, bias audit summary, per-stage four-fifths table</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">redaction.stripped_attributes missing any of the ten classes, or unit_tested false (fm-proxy-leaks-through-redaction)</pattern>
+      <pattern id="f2">rubric.written_before_first_score false, a criterion without all three anchors, or a criterion with no job_requirement (fm-rubric-written-after-scores)</pattern>
+      <pattern id="f3">proxy_review.proxy_terms_found non-empty — "culture fit", "energy", "polish", "native speaker", "recent graduate", "digital native", employment gaps, years since graduation, commute distance, school or employer prestige</pattern>
+      <pattern id="f4">calibration.sample_source other than real-applicant-pool, fewer than two reviewers, or threshold_set_before_run false (fm-calibration-on-synthetic-cvs)</pattern>
+      <pattern id="f5">human_of_record.auto_reject_filter_present true, or a decision record without a role:handle (fm-threshold-auto-reject)</pattern>
+      <pattern id="f6">adverse_impact.per_stage empty, or a stage whose min_ratio is below 0.8 with on_hold false (fm-four-fifths-never-computed)</pattern>
+      <pattern id="f7">legal.applicable_law none without confirmed_by, or nyc-ll-144 without notice_lead_business_days of at least 10 and a bias audit within the year</pattern>
+      <pattern id="f8">audit_log.retention_months under 12, or fewer than the seven fields; pinned_tuple differing from the tuple on the last calibration run</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Where self-identification is collected by a separate HR system, reference its table in adverse_impact.self_id_store rather than copying counts into the scoring pipeline.</transformation>
+      <transformation>Record a longer retention_months than the statutory floor where a state or national rule requires it; never a shorter one.</transformation>
+      <transformation>Where several roles share one rubric, produce one spec per role with the same rubric hash rather than one spec for all roles.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "faion://ai-pre-screen-bias-guardrails/output.schema.json",
+  "title": "AI pre-screen bias guardrail spec",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": [
+    "role_title", "candidate_jurisdictions", "redaction", "rubric", "proxy_review",
+    "calibration", "adverse_impact", "human_of_record", "legal", "audit_log",
+    "pinned_tuple", "evidence"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "role_title": {"type": "string", "minLength": 3},
+    "candidate_jurisdictions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+    "redaction": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["version", "stripped_attributes", "unit_tested", "fixture_set_path", "human_sample_inspected_per_release"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "version": {"$ref": "#/definitions/version"},
+        "stripped_attributes": {
+          "type": "array",
+          "minItems": 10,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["name", "photo", "email-handle", "date-of-birth-and-age", "graduation-years", "address-below-city", "gender-markers-and-pronouns", "nationality-and-visa-status", "marital-and-parental-status", "protected-class-associations"]}
+        },
+        "unit_tested": {"type": "boolean", "const": true},
+        "fixture_set_path": {"type": "string", "minLength": 3},
+        "human_sample_inspected_per_release": {"type": "boolean", "const": true},
+        "sample_size_per_release": {"type": "integer", "minimum": 1}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["name", "value"],
-        "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+    "rubric": {
+      "type": "object",
+      "required": ["version", "hash", "written_before_first_score", "criteria"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {"$ref": "#/definitions/version"},
+        "hash": {"$ref": "#/definitions/sha256"},
+        "written_before_first_score": {"type": "boolean", "const": true},
+        "first_score_at": {"$ref": "#/definitions/date"},
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "job_requirement", "anchors"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"type": "string", "minLength": 2},
+              "job_requirement": {"type": "string", "minLength": 5},
+              "anchors": {
+                "type": "object",
+                "required": ["low", "mid", "high"],
+                "additionalProperties": false,
+                "properties": {
+                  "low": {"type": "string", "minLength": 10},
+                  "mid": {"type": "string", "minLength": 10},
+                  "high": {"type": "string", "minLength": 10}
+                }
+              }
+            }
+          }
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
-    },
-    "review": {
+    "proxy_review": {
       "type": "object",
-      "required": ["cadence", "next_review_at"],
+      "required": ["reviewed_on", "reviewed_by", "proxy_terms_found", "evidence_url"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "reviewed_on": {"$ref": "#/definitions/date"},
+        "reviewed_by": {"$ref": "#/definitions/handle"},
+        "proxy_terms_found": {"type": "array", "maxItems": 0, "items": {"type": "string"}},
+        "evidence_url": {"type": "string", "format": "uri"}
       }
-    }
+    },
+    "calibration": {
+      "type": "object",
+      "required": ["sample_source", "sample_size", "human_reviewers", "statistic", "threshold", "threshold_set_before_run", "result", "run_url", "passed"],
+      "additionalProperties": false,
+      "properties": {
+        "sample_source": {"type": "string", "const": "real-applicant-pool"},
+        "sample_size": {"type": "integer", "minimum": 1},
+        "human_reviewers": {"type": "integer", "minimum": 2},
+        "statistic": {"type": "string", "enum": ["cohens-kappa", "weighted-kappa", "spearman"]},
+        "threshold": {"type": "number", "minimum": -1, "maximum": 1},
+        "threshold_set_before_run": {"type": "boolean", "const": true},
+        "result": {"type": "number", "minimum": -1, "maximum": 1},
+        "run_url": {"type": "string", "format": "uri"},
+        "passed": {"type": "boolean"},
+        "run_at": {"$ref": "#/definitions/date"}
+      }
+    },
+    "adverse_impact": {
+      "type": "object",
+      "required": ["self_id_store", "self_id_store_separate_from_scoring", "hold_threshold", "per_stage"],
+      "additionalProperties": false,
+      "properties": {
+        "self_id_store": {"type": "string", "minLength": 2},
+        "self_id_store_separate_from_scoring": {"type": "boolean", "const": true},
+        "hold_threshold": {"type": "number", "const": 0.8},
+        "per_stage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["stage", "groups", "min_ratio", "on_hold"],
+            "additionalProperties": false,
+            "properties": {
+              "stage": {"type": "string", "minLength": 2},
+              "groups": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "required": ["group", "selection_rate"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "group": {"type": "string", "minLength": 1},
+                    "selection_rate": {"type": "number", "minimum": 0, "maximum": 1}
+                  }
+                }
+              },
+              "min_ratio": {"type": "number", "minimum": 0, "maximum": 1, "description": "lowest group rate divided by highest group rate"},
+              "on_hold": {"type": "boolean"}
+            },
+            "if": {"properties": {"min_ratio": {"exclusiveMaximum": 0.8}}},
+            "then": {"properties": {"on_hold": {"const": true}}}
+          }
+        },
+        "table_url": {"type": "string", "format": "uri"}
+      }
+    },
+    "human_of_record": {
+      "type": "object",
+      "required": ["auto_reject_filter_present", "decision_carries_role_handle", "reviewer_inputs"],
+      "additionalProperties": false,
+      "properties": {
+        "auto_reject_filter_present": {"type": "boolean", "const": false},
+        "decision_carries_role_handle": {"type": "boolean", "const": true},
+        "reviewer_inputs": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["redacted-document", "score-with-reasons"]}
+        },
+        "reviewers": {"type": "array", "items": {"$ref": "#/definitions/handle"}}
+      }
+    },
+    "legal": {
+      "type": "object",
+      "required": ["applicable_law"],
+      "additionalProperties": false,
+      "properties": {
+        "applicable_law": {"type": "string", "enum": ["nyc-ll-144", "illinois-aivi", "colorado-ai-act", "eu-ai-act", "other", "none"]},
+        "confirmed_by": {"$ref": "#/definitions/handle"},
+        "notice_text_url": {"type": "string", "format": "uri"},
+        "notice_lead_business_days": {"type": "integer", "minimum": 0},
+        "bias_audit": {
+          "type": "object",
+          "required": ["conducted_on", "independent", "summary_url"],
+          "additionalProperties": false,
+          "properties": {
+            "conducted_on": {"$ref": "#/definitions/date"},
+            "independent": {"type": "boolean", "const": true},
+            "summary_url": {"type": "string", "format": "uri"},
+            "auditor": {"type": "string"}
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"applicable_law": {"const": "none"}}},
+          "then": {"required": ["confirmed_by"]},
+          "else": {"required": ["notice_text_url", "bias_audit"]}
+        },
+        {
+          "if": {"properties": {"applicable_law": {"const": "nyc-ll-144"}}},
+          "then": {"required": ["notice_lead_business_days"], "properties": {"notice_lead_business_days": {"minimum": 10}}}
+        }
+      ]
+    },
+    "audit_log": {
+      "type": "object",
+      "required": ["fields", "retention_months", "queryable_per_candidate"],
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "type": "array",
+          "minItems": 7,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["submission_hash", "redacted_text", "model_id", "prompt_hash", "rubric_version", "score_with_reasons", "human_decision"]}
+        },
+        "retention_months": {"type": "integer", "minimum": 12},
+        "retention_basis": {"type": "string"},
+        "queryable_per_candidate": {"type": "boolean", "const": true},
+        "storage": {"type": "string"}
+      }
+    },
+    "pinned_tuple": {
+      "type": "object",
+      "required": ["model_id", "prompt_hash", "rubric_version", "redaction_version"],
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {"type": "string", "minLength": 3, "not": {"pattern": "(?i)(^|[-:@/_])latest$"}},
+        "prompt_hash": {"$ref": "#/definitions/sha256"},
+        "rubric_version": {"$ref": "#/definitions/version"},
+        "redaction_version": {"$ref": "#/definitions/version"}
+      }
+    },
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uri"}}
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "role_title": "Senior backend engineer",
+  "candidate_jurisdictions": ["US-NY", "US-CA", "DE"],
+  "redaction": {
+    "version": "1.3.0",
+    "stripped_attributes": ["name", "photo", "email-handle", "date-of-birth-and-age", "graduation-years", "address-below-city", "gender-markers-and-pronouns", "nationality-and-visa-status", "marital-and-parental-status", "protected-class-associations"],
+    "unit_tested": true,
+    "fixture_set_path": "hiring/redaction/fixtures/",
+    "human_sample_inspected_per_release": true,
+    "sample_size_per_release": 20
   },
-  "additionalProperties": false
+  "rubric": {
+    "version": "2.1",
+    "hash": "sha256:4c2a9b1e7f3d6a8c0b5e2f9d1a7c3e6b8f0d2a4c6e8b1d3f5a7c9e1b3d5f7a9c",
+    "written_before_first_score": true,
+    "first_score_at": "2026-02-10",
+    "criteria": [
+      {"name": "correctness", "job_requirement": "Ships services that pass the integration suite", "anchors": {"low": "Solution fails the provided test cases or does not run", "mid": "Passes the provided tests; misses at least one stated edge case", "high": "Passes provided tests and handles every stated edge case with tests of its own"}},
+      {"name": "design clarity", "job_requirement": "Designs modules other engineers can extend", "anchors": {"low": "Single function with mixed concerns; no explanation of trade-offs", "mid": "Reasonable separation; trade-offs partly explained", "high": "Clear module boundaries with the trade-offs and alternatives stated"}}
+    ]
+  },
+  "proxy_review": {
+    "reviewed_on": "2026-02-03",
+    "reviewed_by": "dei:rkim",
+    "proxy_terms_found": [],
+    "evidence_url": "https://hr.example.com/reviews/rubric-2.1-proxy-review"
+  },
+  "calibration": {
+    "sample_source": "real-applicant-pool",
+    "sample_size": 30,
+    "human_reviewers": 2,
+    "statistic": "weighted-kappa",
+    "threshold": 0.65,
+    "threshold_set_before_run": true,
+    "result": 0.71,
+    "run_url": "https://hr.example.com/calibration/backend-2026-02",
+    "passed": true,
+    "run_at": "2026-02-07"
+  },
+  "adverse_impact": {
+    "self_id_store": "hris.eeo_self_id",
+    "self_id_store_separate_from_scoring": true,
+    "hold_threshold": 0.8,
+    "per_stage": [
+      {"stage": "take-home forwarded to hiring manager", "groups": [{"group": "A", "selection_rate": 0.52}, {"group": "B", "selection_rate": 0.47}, {"group": "C", "selection_rate": 0.49}], "min_ratio": 0.9, "on_hold": false},
+      {"stage": "advanced to onsite", "groups": [{"group": "A", "selection_rate": 0.31}, {"group": "B", "selection_rate": 0.27}, {"group": "C", "selection_rate": 0.29}], "min_ratio": 0.87, "on_hold": false}
+    ],
+    "table_url": "https://hr.example.com/adverse-impact/backend-2026-q1"
+  },
+  "human_of_record": {
+    "auto_reject_filter_present": false,
+    "decision_carries_role_handle": true,
+    "reviewer_inputs": ["redacted-document", "score-with-reasons"],
+    "reviewers": ["em:jdoe", "em:apatel"]
+  },
+  "legal": {
+    "applicable_law": "nyc-ll-144",
+    "notice_text_url": "https://careers.example.com/aedt-notice",
+    "notice_lead_business_days": 10,
+    "bias_audit": {"conducted_on": "2025-11-15", "independent": true, "summary_url": "https://careers.example.com/aedt-bias-audit-2025", "auditor": "Example Audit LLP"}
+  },
+  "audit_log": {
+    "fields": ["submission_hash", "redacted_text", "model_id", "prompt_hash", "rubric_version", "score_with_reasons", "human_decision"],
+    "retention_months": 24,
+    "retention_basis": "29 CFR 1602.14 one-year floor; company policy two years",
+    "queryable_per_candidate": true,
+    "storage": "hiring.screen_audit table, candidate_id index"
+  },
+  "pinned_tuple": {
+    "model_id": "claude-sonnet-4-5-20250929",
+    "prompt_hash": "sha256:8e1f0a3c5b7d9f2e4a6c8b0d1f3e5a7c9b1d3f5e7a9c2b4d6f8a0c1e3b5d7f9a",
+    "rubric_version": "2.1",
+    "redaction_version": "1.3.0"
+  },
+  "evidence": [
+    "https://hr.example.com/calibration/backend-2026-02",
+    "https://hr.example.com/reviews/rubric-2.1-proxy-review",
+    "https://careers.example.com/aedt-bias-audit-2025",
+    "https://hr.example.com/adverse-impact/backend-2026-q1"
+  ]
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "role_title": "Senior backend engineer",
+  "candidate_jurisdictions": ["US-NY"],
+  "redaction": {
+    "version": "1.0",
+    "stripped_attributes": ["name", "photo", "email-handle"],
+    "unit_tested": false,
+    "fixture_set_path": "hiring/redaction/fixtures/",
+    "human_sample_inspected_per_release": false
+  },
+  "rubric": {
+    "version": "1.0",
+    "hash": "sha256:4c2a9b1e7f3d6a8c0b5e2f9d1a7c3e6b8f0d2a4c6e8b1d3f5a7c9e1b3d5f7a9c",
+    "written_before_first_score": false,
+    "criteria": [
+      {"name": "overall impression", "job_requirement": "rate 1-10", "anchors": {"low": "weak", "mid": "ok", "high": "strong"}}
+    ]
+  },
+  "proxy_review": {
+    "reviewed_on": "2026-02-03",
+    "reviewed_by": "dei:rkim",
+    "proxy_terms_found": ["culture fit", "recent graduate"],
+    "evidence_url": "https://hr.example.com/reviews/rubric-1.0-proxy-review"
+  },
+  "calibration": {
+    "sample_source": "synthetic-cvs",
+    "sample_size": 50,
+    "human_reviewers": 1,
+    "statistic": "cohens-kappa",
+    "threshold": 0.6,
+    "threshold_set_before_run": false,
+    "result": 0.92,
+    "run_url": "https://hr.example.com/calibration/backend-synthetic",
+    "passed": true
+  },
+  "adverse_impact": {
+    "self_id_store": "hris.eeo_self_id",
+    "self_id_store_separate_from_scoring": true,
+    "hold_threshold": 0.8,
+    "per_stage": [
+      {"stage": "take-home forwarded", "groups": [{"group": "A", "selection_rate": 0.6}, {"group": "B", "selection_rate": 0.4}], "min_ratio": 0.67, "on_hold": false}
+    ]
+  },
+  "human_of_record": {
+    "auto_reject_filter_present": true,
+    "decision_carries_role_handle": false,
+    "reviewer_inputs": ["score-with-reasons"]
+  },
+  "legal": {
+    "applicable_law": "nyc-ll-144",
+    "notice_lead_business_days": 3
+  },
+  "audit_log": {
+    "fields": ["model_id", "score_with_reasons"],
+    "retention_months": 3,
+    "queryable_per_candidate": false
+  },
+  "pinned_tuple": {
+    "model_id": "gpt-4o-latest",
+    "prompt_hash": "sha256:8e1f0a3c5b7d9f2e4a6c8b0d1f3e5a7c9b1d3f5e7a9c2b4d6f8a0c1e3b5d7f9a",
+    "rubric_version": "1.0",
+    "redaction_version": "1.0"
+  },
+  "evidence": [
+    "https://hr.example.com/calibration/backend-synthetic"
+  ]
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>redaction strips all ten attribute classes, is unit-tested on a fixture set, and a human inspects a sample every release.</item>
+      <item>rubric is versioned and hashed before the first score; every criterion maps to a job requirement and has low, mid and high anchors.</item>
+      <item>proxy_review found zero proxy terms and its evidence URL is in evidence[].</item>
+      <item>calibration used the real applicant pool, at least two blind reviewers, a threshold set before the run, and the run URL is in evidence[]; result at or above threshold means passed.</item>
+      <item>adverse_impact has a per-stage table from a self-ID store held apart from scoring; any stage with min_ratio under 0.8 is on_hold.</item>
+      <item>No auto-reject filter; every decision carries a role:handle; the reviewer sees the redacted document and the score.</item>
+      <item>legal names the applicable law with notice text and an independent bias audit, or none with the counsel who confirmed it; NYC LL 144 has at least 10 business days of notice.</item>
+      <item>audit_log retains all seven fields for at least 12 months and is queryable per candidate; pinned_tuple matches the tuple on the last calibration run.</item>
+      <item>The document validates with scripts/validate-ai-pre-screen-bias-guardrails.py.</item>
     </list>
   </section>
 </text>

@@ -1,45 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="C4 Drift Detection From IaC — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `c4-drift-detection-from-iac`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="C4 Drift Detection from IaC — Procedure" version="1.2.0" est_tokens="1750" depth="recommended">
+  <summary>Eight steps in the order the comparison depends on them: make the C4 model machine-readable, read applied state and record its identity, commit the mapping table and the allowlist, wire the post-apply and scheduled runs, difference the two inventories into three finding classes, reconcile the residue, close or escalate every finding, then validate and publish. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="make-c4-model-machine-readable">
+      <input>The current architecture diagram, in whatever form it exists (Structurizr, LikeC4, draw.io, PNG).</input>
+      <action>If the canonical model is a picture, transcribe it once into Structurizr DSL or JSON, LikeC4, or a model YAML / JSON with stable element ids, commit it, and render pictures from it. Record `c4_model.format`, `path` and `commit`. Fill `# Model and state` in `templates/skeleton.md.j2`.</action>
+      <output>`c4_model` object.</output>
+      <decision-gate>A PNG, draw.io or Miro board has no element ids to difference against (r-c4-model-machine-readable, fm-picture-as-canonical-model).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="read-applied-state-and-record-identity">
+      <input>The IaC tool's applied state: `terraform show -json` on the current state, `pulumi stack export`, or CloudFormation `DescribeStackResources` / `ListStackResources`.</input>
+      <action>Read the state output, never the HCL, program or template, and record `iac_state.tool`, `source` and `identity` (Terraform serial and lineage; Pulumi export version; CloudFormation stack id and last-updated time).</action>
+      <output>`iac_state` object.</output>
+      <decision-gate>A comparison that parses `.tf`, `.ts` or a template is fm-diff-against-source-not-state; a report without the state identity is rejected (r-compare-applied-state-not-source).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="commit-mapping-table-and-allowlist">
+      <input>The resource types in state; the C4 levels and element kinds; the plumbing types that never map (log groups, IAM roles and policies, random_id, null_resource, time_sleep, certificates, same-host DNS records).</input>
+      <action>Commit `mapping_table` (resource type to C4 level and element kind, and which tag or name attribute carries the element id) and `allowlist` (types suppressed, one entry each). Remove every type-based skip from the comparison script and set `hardcoded_skips_in_script` false. Record both paths and commits. Fill `# Mapping and allowlist`.</action>
+      <output>`mapping_table`, `allowlist` (suppressed counts filled at step 6).</output>
+      <decision-gate>A `continue` on a resource type in the script is a hidden skip; move it to the allowlist file (r-mapping-table-versioned, r-noise-allowlist-explicit, fm-noise-flood-or-hidden-skip).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="wire-post-apply-and-schedule">
+      <input>The IaC pipeline; the scheduler.</input>
+      <action>Add the comparison as a post-apply step after every successful `terraform apply`, `pulumi up` or stack update, and as a scheduled job at least weekly. Record `run.trigger`, `ran_at`, `cadence` and `post_apply_hook_wired` on every report.</action>
+      <output>`run` object.</output>
+      <decision-gate>Weekly-only lets drift live six days; apply-only misses out-of-band changes; the report needs both (r-run-on-apply-and-on-schedule).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="difference-into-three-classes">
+      <input>The model's element and relationship inventory; the state's mapped resources and the edges derived from security groups, IAM policies, VPC peering, network policies, queue subscriptions and dependency references.</input>
+      <action>Set `comparison_level` (container by default; system-context from external endpoints; never component). Classify every difference as `added`, `removed` or `edge-changed`, and give each finding an id, `iac_address`, `c4_element_id` (or `expected:` id) and a description. Fill `# Findings`.</action>
+      <output>`findings[]` with class and both ids.</output>
+      <decision-gate>A finding with a description but no ids cannot be actioned; component-level findings from state are rejected (r-three-drift-classes-with-ids, r-comparison-level-stated, fm-component-level-from-iac).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="reconcile-residue">
+      <input>Every resource in state; the mapping table; the allowlist.</input>
+      <action>Count `allowlisted` per entry into `allowlist.suppressed[]`, `mapped`, and every type the table does not know into `unmapped[]` with counts; check `allowlisted + mapped + unmapped = state_resources_total`. Extend the mapping table in the same review for each unmapped type. Fill `# Unmapped and reconciliation`.</action>
+      <output>`unmapped[]`, `reconciliation`, `allowlist.suppressed[]`.</output>
+      <decision-gate>Totals that do not reconcile mean a resource was dropped silently (fm-unmapped-silently-dropped, r-mapping-table-versioned).</decision-gate>
     </step>
+
+    <step n="7" name="close-or-escalate-findings">
+      <input>`findings[]`; the previous report's findings and their `reports_open`.</input>
+      <action>For each finding record the `closure`: a model commit, an IaC change commit, an `accepted` entry with a named reason and an `expires_on` no more than one cadence away, or `open`. Increment `reports_open` for findings carried over; list every finding open across two consecutive reports in `escalated_finding_ids[]` and in the header.</action>
+      <output>`findings[].closure`, `escalated_finding_ids[]`.</output>
+      <decision-gate>"Known, ignore" with no expiry is fm-findings-never-close (r-finding-closes-by-commit-or-expiry).</decision-gate>
+    </step>
+
+    <step n="8" name="validate-and-publish">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-c4-drift-detection-from-iac.py --file &lt;report.json&gt;`; fix every violation; publish the report with the run, the mapping table and allowlist at their commits, and the previous report in `evidence[]`.</action>
+      <output>A report that validates, with escalations in its header.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON report validates with `scripts/validate-c4-drift-detection-from-iac.py`.</item>
+      <item>The report names the model commit and the state identity, so a reader can tell "model is behind" from "state changed since".</item>
+      <item>Every finding has ids and a closure; every two-report-old finding is escalated.</item>
+      <item>The reconciliation sums to the state resource total with no hidden skips.</item>
+    </list>
   </section>
 </text>

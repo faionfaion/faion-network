@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- A repository or app directory has no CLAUDE.md, or its existing one names a command that no longer exists in package.json, the Makefile or pyproject.toml.
+- The repository's commands live in a manifest (package.json scripts, Makefile targets, pyproject.toml tooling, justfile) that templates/extract-commands.sh or a manual read can list.
+- A clean checkout is available (locally or in CI) on which every listed command can be run once before the file is committed.
+- A secret scanner (gitleaks, trufflehog or the host's built-in) can run on the file in CI or pre-commit.
+- CI or pre-commit can host the manifest-resync check.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- A CLAUDE.md exists, its commands match the manifests and the resync check is green; amend it in the PR that changes the code, not on a schedule.
+- The directory is not a repository root or an app with its own manifests (a docs folder, a data directory); there are no commands to brief.
+- The organisation mandates a generated CLAUDE.md from a platform tool that owns the commands section; contribute gotchas there rather than hand-writing a competing file.
+- The repository is archived or read-only; a brief for a repo nobody works in is tokens paid for nothing.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/claude-md-creation/` |
+| Manifest command list | output of templates/extract-commands.sh or the manifests themselves | repository root |
+| Clean checkout | fresh clone at the commit being briefed | local machine or CI |
+| Secret scanner | gitleaks / trufflehog / host scanner run over CLAUDE.md | CI or pre-commit |
+| Directory tree and key files | paths a developer needs in the first hour, verified to exist | repository |
+| .env.example | env var names with placeholders, no values | repository root |
+| Per-app manifests (monorepo) | one manifest per app directory | apps/*/ |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: commands extracted and executed, zero secrets, token budget held, load-bearing structure, monorepo delegates via imports, repo-specific gotchas, personal settings local, manifest resync check | ~2050 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for the record: layout and template with token_count capped at 250 / 500 / 700, commands with manifest source and ran_ok true, secret scan clean with env vars by name, structure of at most 20 purposed paths excluding generated dirs, key files that exist, gotchas naming a file / env var / command / pin / lint rule, personal paths clean, resync check that fails on drift, monorepo delegation block; valid and invalid examples | ~3700 |
 | `content/03-failure-modes.xml` | essential | 6 subject-specific antipatterns with detector + repair | ~1050 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 8 steps: template by layout, extract and run commands, structure and key files, gotchas and env by name, per-app delegation, personal content local, secret scan and budget, resync check then validate and commit | ~1750 |
+| `content/05-examples.xml` | recommended | Complete FastAPI service record from the standard template with notes on every non-obvious value, plus the first draft breaking six rules and what the validator and reviewer say | ~1900 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

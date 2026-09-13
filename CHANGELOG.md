@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 layer 2, batch 2: the two BA packs and eight `dev` documents.**
+  `govtech-foia-ba-pack` now has a 15-field contract (record classes, retention
+  schedule, statutory clock, exemption citations), `healthtech-fhir-ba-pack` a
+  12-field one (FHIR resource map, processors each with `baa_signed`, audit
+  retention years); `architect-skill-index-geek-tier` gained the procedure it
+  never had and a worked index over 54 real, active slugs with token estimates
+  read from their `meta.json`. All ten validators rewritten by hand — the
+  generator refused every one as unprovable — with `$ref`, `uniqueItems` and
+  the combinators, verified against `jsonschema.Draft7Validator` on both
+  examples. `claude-md-creation`'s monorepo template restated per-app commands
+  at the root, the exact thing its own rule forbids; it now delegates via
+  imports. Nineteen of the 61 are whole; 42 to go.
+
 - **CR-011 layer 2, batch 1 of 2: nine documents whose whole body is now about
   their subject.** `dev/evolutionary-architecture-fitness-functions`,
   `fitness-function-suite-bootstrap`, `incident-decision-template`,

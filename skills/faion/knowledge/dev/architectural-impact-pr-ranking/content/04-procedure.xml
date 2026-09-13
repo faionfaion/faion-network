@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Architectural Impact PR Ranking — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `architectural-impact-pr-ranking`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="Architectural Impact PR Ranking — Procedure" version="1.2.0" est_tokens="1800" depth="recommended">
+  <summary>Nine steps that produce the weekly report in the order the numbers depend on each other: fix the session and population, commit the public API path list per repo, publish the weights, compute signals from the diff, weight dependency changes by kind, rank and cut N to the time-box, reconcile exclusions and list what merged without review, record last week's hits, then validate and publish. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="fix-session-and-population">
+      <input>The review slot and its time-box (45 minutes by default); the list of repositories; the previous report's window end.</input>
+      <action>Record `session.slot` and `time_box_minutes`, the `repositories[]` to scan, and `window.from` / `to` as timestamps over PRs opened or merged, never state = open. Fill `# Header` in `templates/skeleton.md.j2`.</action>
+      <output>`window`, `repositories[]`, `session` (top_n and summed_read_minutes filled at step 6).</output>
+      <decision-gate>Without a time-box and a population there is nothing to rank against (decision tree root; r-window-repos-exclusions-stated).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="commit-public-api-path-list">
+      <input>Each repository's schema, migration, export, event and CLI paths.</input>
+      <action>For each repo commit a version-controlled list (OpenAPI, protobuf, GraphQL, AsyncAPI files, package entry points, migrations, event schemas, CLI flags) and record its path as `public_api_paths_config` with `has_public_api_list` true; a repo without one is recorded false and scores 0 on `public_api_delta`.</action>
+      <output>`repositories[]` complete.</output>
+      <decision-gate>Guessing the API surface from file names is fm-undefined-public-api; print "no API surface list" instead (r-public-api-surface-enumerated-per-repo).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="publish-weights">
+      <input>The current weights; the precision record of the last four sessions if a change is proposed.</input>
+      <action>Set `weights` for the five signals and `dependency_kind_weights` with lockfile_only 0 and patch bumps below new dependencies and major bumps. If a weight changes, set `weights_changed` true and fill `weight_change` with the previous weights and at least four weeks of precision. Fill `# Weights`.</action>
+      <output>`weights`, `dependency_kind_weights`, `weights_changed`, `weight_change` when true.</output>
+      <decision-gate>A weight change with fewer than four weeks of recorded precision is fm-weights-tuned-by-feel (r-precision-recorded-per-session).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="compute-signals-from-diff">
+      <input>For every PR in the window: `git diff --name-status` and `--stat`, the manifests, and the public API path list.</input>
+      <action>Compute `modules_touched`, `public_api_delta`, `contract_changes` and `infra_or_config_changes` from the file list and diff only; set `signals_from_diff_only` true. Show title and labels as `title_context`, never in the score.</action>
+      <output>Signal values per PR.</output>
+      <decision-gate>A scorer that reads title, body, labels or author is fm-title-driven-score (r-signals-from-diff-not-metadata).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="weight-dependency-changes-by-kind">
+      <input>Manifest diffs per PR (`package.json`, `go.mod`, `pyproject.toml`, `Cargo.toml`, `pom.xml`).</input>
+      <action>Classify each manifest change as new dependency, major bump, minor or patch bump, or removal; score lockfile-only churn 0; sum by `dependency_kind_weights` into the PR's `dependency_changes` signal.</action>
+      <output>`dependency_changes` per PR.</output>
+      <decision-gate>Bot patch bumps at the top of the list is fm-bot-bumps-on-top (r-dependency-change-weighted-by-kind).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="rank-and-cut-to-session">
+      <input>Scores per PR; `changed_lines` and an estimated `read_minutes` per PR; `time_box_minutes`.</input>
+      <action>Sort by score, take PRs above `review_threshold`, and choose `top_n` so `summed_read_minutes` fits `time_box_minutes`; list the rest above threshold in `deferred[]` with their scores. Fill `# Ranked` and `# Deferred`.</action>
+      <output>`ranked[]`, `deferred[]`, `session.top_n`, `session.summed_read_minutes`.</output>
+      <decision-gate>A top N the session cannot finish is fm-top-n-exceeds-session (r-top-n-fits-the-session).</decision-gate>
     </step>
+
+    <step n="7" name="reconcile-exclusions-and-merged">
+      <input>Every PR in the window; the exclusion rules (bot authors, reverts, docs-only, generated files); merge events.</input>
+      <action>Count each exclusion, count `below_threshold`, and check ranked + deferred + exclusions equals `population_total`. List every PR above threshold merged before the session in `merged_without_review[]` with score, `merged_at` and `merged_by`; print an empty list when there are none. Fill `# Exclusions` and `# Merged without architecture review`.</action>
+      <output>`exclusions`, `merged_without_review[]`.</output>
+      <decision-gate>Totals that do not reconcile, or a missing merged-without-review section, are fm-merged-before-session-invisible (r-window-repos-exclusions-stated, r-merged-without-review-flagged).</decision-gate>
+    </step>
+
+    <step n="8" name="record-last-session-precision">
+      <input>The previous report's ranked list; the architect's hit / miss marks from that session.</input>
+      <action>Mark every previously ranked PR hit or miss, compute `previous_precision` as hits over n, and print it in the header; set `outcome` pending on this week's ranked PRs for next week.</action>
+      <output>`previous_precision`; `outcome` per ranked PR.</output>
+      <decision-gate>A ranked PR from last week with no mark means the precision cannot be computed and no weight may change (r-precision-recorded-per-session).</decision-gate>
+    </step>
+
+    <step n="9" name="validate-and-publish">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-architectural-impact-pr-ranking.py --file &lt;report.json&gt;`; fix every violation; publish the report before the session and link the ranker run and the previous report in `evidence[]`.</action>
+      <output>A report that validates, ready for the session.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON report validates with `scripts/validate-architectural-impact-pr-ranking.py`.</item>
+      <item>A sceptical reader can recompute every ranked score from the printed signals and weights.</item>
+      <item>The ranked list fits the time-box and the totals reconcile to the population.</item>
+      <item>Merged-without-review is printed and last week's precision is in the header.</item>
+    </list>
   </section>
 </text>

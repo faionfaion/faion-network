@@ -1,28 +1,118 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for claude-md-creation: _smoke-test.json",
+    "purpose": "Template fixture for claude-md-creation: _smoke-test.json — the contract's valid example",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
-  },
-  "owner": "swe:alice",
-  "inputs": [
+  "repo": "acme/intake-api",
+  "layout": "single",
+  "template": "standard",
+  "token_count": 480,
+  "commands": [
     {
-      "name": "scope",
-      "value": "billing"
+      "command": "make dev",
+      "source": "Makefile",
+      "comment": "Start development server (port 8000)",
+      "ran_ok": true
+    },
+    {
+      "command": "pytest --cov=src -x",
+      "source": "pyproject.toml",
+      "comment": "Run tests, stop at first failure",
+      "ran_ok": true
+    },
+    {
+      "command": "ruff check . --fix",
+      "source": "pyproject.toml",
+      "comment": "Lint + auto-fix (rules: E/F/I/B/T20/DJ)",
+      "ran_ok": true
+    },
+    {
+      "command": "mypy src",
+      "source": "pyproject.toml",
+      "comment": "Type check",
+      "ran_ok": true
+    },
+    {
+      "command": "alembic upgrade head",
+      "source": "Makefile",
+      "comment": "Apply migrations",
+      "ran_ok": true
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
-  "evidence": [
-    "https://example.com/pr/1"
+  "secrets_scan": {
+    "tool": "gitleaks",
+    "clean": true,
+    "env_vars_by_name_only": true,
+    "env_example_referenced": true
+  },
+  "structure": [
+    {
+      "path": "src/api/",
+      "purpose": "FastAPI routes, v1/ per API version"
+    },
+    {
+      "path": "src/core/",
+      "purpose": "Business logic, config, security helpers"
+    },
+    {
+      "path": "src/models/",
+      "purpose": "SQLAlchemy models"
+    },
+    {
+      "path": "src/schemas/",
+      "purpose": "Pydantic schemas"
+    },
+    {
+      "path": "tests/",
+      "purpose": "unit/ mirrors src/, integration/ hits endpoints"
+    }
   ],
-  "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
-  }
+  "key_files": [
+    {
+      "path": "src/core/config.py",
+      "purpose": "Settings read from env; nothing else reads env directly",
+      "exists": true
+    },
+    {
+      "path": "src/api/deps.py",
+      "purpose": "FastAPI dependencies (auth, db session)",
+      "exists": true
+    },
+    {
+      "path": ".env.example",
+      "purpose": "Required env vars; copy to .env before running",
+      "exists": true
+    }
+  ],
+  "gotchas": [
+    {
+      "entry": "DATABASE_URL has no default; the app exits at startup without it",
+      "names": "env-var"
+    },
+    {
+      "entry": "No print() in production code; ruff T20 blocks the commit",
+      "names": "lint-rule"
+    },
+    {
+      "entry": "Run alembic upgrade head before first start or the health check returns 503",
+      "names": "command"
+    }
+  ],
+  "local_settings": {
+    "personal_paths_grep_clean": true,
+    "claude_local_md_gitignored": true
+  },
+  "resync_check": {
+    "kind": "ci-job",
+    "location": ".github/workflows/claude-md-sync.yml",
+    "fails_on_manifest_drift": true
+  },
+  "evidence": [
+    "https://ci.example.com/acme/intake-api/runs/8812",
+    "https://ci.example.com/acme/intake-api/runs/8812/gitleaks",
+    "https://github.com/acme/intake-api/blob/main/.github/workflows/claude-md-sync.yml"
+  ]
 }

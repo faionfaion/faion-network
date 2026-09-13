@@ -1,45 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="C4 Drift Detection From IaC — Worked Example" version="1.1.0" est_tokens="600" depth="recommended">
-  <summary>One end-to-end worked example showing `c4-drift-detection-from-iac` applied from trigger to committed artefact.</summary>
+<text id="05-examples" title="C4 Drift Detection from IaC — Worked Examples" version="1.2.0" est_tokens="2100" depth="recommended">
+  <summary>One complete post-apply drift report for an orders platform on Terraform, with a note on every value a reader might question, and one report from the same system as first scripted that breaks six subject rules and what the validator and the architect on rotation say about it.</summary>
 
-  <section title="Worked example">
-    <example type="good" title="Quarterly review of a billing-service refactor">
-      <note>Trigger fired; owner assigned; typed inputs gathered; decision authored; evidence anchored; review scheduled.</note>
+  <section title="Scenario">
+    <p>The orders platform keeps a Structurizr DSL model in `docs/c4/` and runs on Terraform in `orders-prod`. The first drift script parsed `.tf` files, skipped IAM roles with a `continue` statement, and reported "the diagram is a bit out of date". The architect on rotation runs steps 1-8 of `content/04-procedure.xml`; the post-apply run after Thursday's apply produces the report below.</p>
+  </section>
+
+  <section title="Good example: post-apply report at state serial 412">
+    <example type="good" title="Three findings, one unmapped type, one escalation">
       <code lang="json"><![CDATA[
 {
-  "trigger": {
-    "kind":  "quarterly-architecture-review",
-    "url":   "https://github.com/acme/billing/issues/4421"
+  "system_name": "orders-platform (prod)",
+  "c4_model": {"format": "structurizr-dsl", "path": "docs/c4/workspace.dsl", "commit": "3f9a2c1d"},
+  "iac_state": {
+    "tool": "terraform",
+    "source": "terraform-show-json",
+    "identity": {"serial": 412, "lineage": "6c1f0b2e-8a3d-4f5e-9b7c-1d2e3f4a5b6c"}
   },
-  "owner":   "arch:alice",
-  "inputs":  [
-    {"name": "scope",         "value": "billing-service"},
-    {"name": "window_days",   "value": 90},
-    {"name": "prs_in_window", "value": 142}
+  "comparison_level": "container",
+  "mapping_table": {"path": "docs/c4/iac-mapping.yaml", "commit": "3f9a2c1d"},
+  "allowlist": {
+    "path": "docs/c4/iac-allowlist.yaml",
+    "commit": "3f9a2c1d",
+    "hardcoded_skips_in_script": false,
+    "suppressed": [
+      {"entry": "aws_cloudwatch_log_group", "count": 14},
+      {"entry": "aws_iam_role", "count": 22},
+      {"entry": "aws_iam_role_policy_attachment", "count": 31},
+      {"entry": "random_id", "count": 3},
+      {"entry": "aws_route53_record (same host)", "count": 6}
+    ]
+  },
+  "run": {"trigger": "post-apply", "ran_at": "2026-09-08T14:02:11Z", "cadence": "weekly", "post_apply_hook_wired": true},
+  "findings": [
+    {"id": "drift-0041", "class": "added", "iac_address": "aws_sqs_queue.orders_dlq", "c4_element_id": "expected:orders.dlq", "description": "Dead-letter queue applied on 2026-09-04; no container in the model", "closure": {"kind": "model-commit", "commit": "8b1e4d7a"}, "reports_open": 1},
+    {"id": "drift-0042", "class": "edge-changed", "iac_address": "aws_security_group_rule.api_to_ledger_5432", "c4_element_id": "orders.api -> ledger.db", "description": "Security group now allows orders-api to reach the ledger database directly; model shows access only via ledger-service", "closure": {"kind": "open"}, "reports_open": 1},
+    {"id": "drift-0037", "class": "removed", "iac_address": "aws_elasticache_cluster.session_cache", "c4_element_id": "orders.session-cache", "description": "Session cache still in the model; removed from state at serial 398", "closure": {"kind": "accepted", "reason": "Cache is being replaced by the token service in Q4; model updated when the replacement lands", "expires_on": "2026-10-06"}, "reports_open": 2}
   ],
-  "decision": "Adopt variant A behind feature flag; deprecate variant B by EOQ.",
+  "unmapped": [
+    {"resource_type": "aws_msk_serverless_cluster", "count": 1}
+  ],
+  "reconciliation": {"state_resources_total": 131, "allowlisted": 76, "mapped": 54, "unmapped": 1},
+  "escalated_finding_ids": ["drift-0037"],
   "evidence": [
-    "https://github.com/acme/billing/pull/9981",
-    "https://sentry.io/acme/issues/12345/",
-    "https://acme.grafana.net/dashboard/billing-p95"
-  ],
-  "review": {
-    "cadence":         "quarterly",
-    "next_review_at":  "2026-08-22"
-  }
+    "https://ci.example.com/c4-drift/orders-platform/run/2026-09-08",
+    "https://github.com/acme/orders-infra/blob/3f9a2c1d/docs/c4/iac-mapping.yaml",
+    "https://github.com/acme/orders-infra/blob/3f9a2c1d/docs/c4/iac-allowlist.yaml",
+    "https://ci.example.com/c4-drift/orders-platform/run/2026-09-01"
+  ]
 }
 ]]></code>
+      <note>`iac_state.identity` carries the Terraform serial 412 and the lineage: with the model commit `3f9a2c1d` beside it, a reader can tell whether the model is behind or the state moved since the report.</note>
+      <note>`drift-0041` is `added` with `c4_element_id` prefixed `expected:` because the DLQ has no element yet; its closure is the model commit `8b1e4d7a` that adds one, made the same afternoon.</note>
+      <note>`drift-0042` is the `edge-changed` class the rule exists for: a security-group rule now lets the API reach the ledger database directly, which nobody drew. It is `open` and will be escalated if it survives the next report.</note>
+      <note>`drift-0037` is `accepted` with a reason and an expiry inside one cadence, and because it has been open for two reports it appears in `escalated_finding_ids` and in the header.</note>
+      <note>`allowlist.suppressed` prints a count per entry (76 resources in total) and `hardcoded_skips_in_script` is false: the IAM role `continue` that used to live in the script is now an allowlist entry with the number 22 next to it.</note>
+      <note>`reconciliation` is 76 + 54 + 1 = 131; the one unmapped `aws_msk_serverless_cluster` will be added to the mapping table in this review rather than dropped.</note>
     </example>
   </section>
 
-  <section title="Walk-through">
+  <section title="Bad example: the first script's report">
+    <example type="bad" title="Six subject rules broken">
+      <code lang="json"><![CDATA[
+{
+  "system_name": "orders-platform (prod)",
+  "c4_model": {"format": "png", "path": "docs/architecture.png", "commit": "3f9a2c1d"},
+  "iac_state": {
+    "tool": "terraform",
+    "source": "terraform-show-json",
+    "identity": {}
+  },
+  "comparison_level": "container",
+  "mapping_table": {"path": "docs/c4/iac-mapping.yaml", "commit": "3f9a2c1d"},
+  "allowlist": {
+    "path": "docs/c4/iac-allowlist.yaml",
+    "commit": "3f9a2c1d",
+    "hardcoded_skips_in_script": true,
+    "suppressed": []
+  },
+  "run": {"trigger": "schedule", "ran_at": "2026-09-08T14:02:11Z", "cadence": "weekly", "post_apply_hook_wired": false},
+  "findings": [
+    {"id": "drift-0041", "class": "added", "iac_address": "aws_sqs_queue.orders_dlq", "c4_element_id": "expected:orders.dlq", "description": "Dead-letter queue with no container in the model", "closure": {"kind": "model-commit"}, "reports_open": 1},
+    {"id": "drift-0037", "class": "removed", "iac_address": "aws_elasticache_cluster.session_cache", "c4_element_id": "orders.session-cache", "description": "Cache still in the model", "closure": {"kind": "accepted", "reason": "known, ignore"}, "reports_open": 3},
+    {"id": "drift-0043", "class": "diagram-stale", "iac_address": "", "c4_element_id": "", "description": "The diagram is a bit out of date", "closure": {"kind": "open"}, "reports_open": 1}
+  ],
+  "unmapped": [],
+  "reconciliation": {"state_resources_total": 131, "allowlisted": 0, "mapped": 54, "unmapped": 0},
+  "escalated_finding_ids": [],
+  "evidence": [
+    "https://ci.example.com/c4-drift/orders-platform/run/2026-09-08"
+  ]
+}
+]]></code>
+      <note>What the validator prints: `c4_model.format: 'png' not in allowed enum` (r-c4-model-machine-readable); `iac_state.identity: missing required field: serial` and `lineage` (r-compare-applied-state-not-source, r-run-on-apply-and-on-schedule); `allowlist.hardcoded_skips_in_script: True is not the required const False` (r-noise-allowlist-explicit); `run.post_apply_hook_wired: False` (r-run-on-apply-and-on-schedule); `findings[0].closure: missing required field: commit` on a model-commit closure and `findings[1].closure: missing required field: expires_on` with reason "known, ignore" under minLength (r-finding-closes-by-commit-or-expiry); `findings[2].class: 'diagram-stale' not in allowed enum` and `iac_address` / `c4_element_id` under minLength (r-three-drift-classes-with-ids).</note>
+      <note>What the architect sees beyond the validator: `reconciliation` says 0 allowlisted and 54 mapped out of 131, so 77 resources vanished between state and report; `drift-0037` has been open three reports and is not escalated; and the report is scheduled only, so Thursday's apply would have gone unreported until Monday. The report goes back to step 1.</note>
+    </example>
+  </section>
+
+  <section title="Lessons">
     <list>
-      <item>Step 1 — trigger captured from the recurring quarterly-review calendar entry; URL points to the GitHub issue.</item>
-      <item>Step 2 — owner resolved to `arch:alice` from the RACI; alice on-call this quarter.</item>
-      <item>Step 3 — inputs typed: scope is a service slug, window_days is int, prs_in_window is int.</item>
-      <item>Step 4 — decision is a single declarative sentence with a deadline.</item>
-      <item>Step 5 — evidence anchors point at the canonical PR, the perf dashboard, and the related Sentry issue.</item>
-      <item>Step 6 — review scheduled three months out; entry on alice's calendar.</item>
+      <item>Two identities, not one: the model commit and the state serial are what separate "update the diagram" from "someone changed production by hand".</item>
+      <item>The suppressed count is the allowlist's honesty check; a skip in code has no count and therefore no reviewer.</item>
+      <item>An expiry date is what turns "known" into a question that gets asked again on a schedule.</item>
     </list>
   </section>
 </text>

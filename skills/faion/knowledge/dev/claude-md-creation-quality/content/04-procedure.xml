@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="CLAUDE.md Creation — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `claude-md-creation`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="CLAUDE.md Creation (Quality) — Procedure" version="1.2.0" est_tokens="1700" depth="recommended">
+  <summary>Nine steps in the order the checks depend on each other: bootstrap or read the root file and declare its line budget, write the verbatim command set and run it, replace pasted content with imports within five hops, move personal content to the local file, split per-package rules into subdirectory files, argue every prohibition and ration emphasis, wire the secret scan, line check and path check into CI and pre-commit, get the named reviewer's approval, then validate and merge. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="bootstrap-and-declare-budget">
+      <input>The repository at HEAD; `/init` output if no root CLAUDE.md exists.</input>
+      <action>Create or open the root CLAUDE.md, put a numeric line budget in its first comment (100 is the workable default), and record `root_file.line_budget` and `budget_declared_in_first_comment`. Fill `# Root file` in `templates/skeleton.md.j2`.</action>
+      <output>`root_file.line_budget` declared.</output>
+      <decision-gate>Without a number in the file, the budget cannot be enforced by anyone but the author (r-claude-md-line-budget).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="write-verbatim-commands-and-run-them">
+      <input>Makefile, package.json scripts, pyproject, the CI workflow; a fresh clone.</input>
+      <action>Write every build, test, lint and run command as the exact invocation (`poetry run pytest -m "not slow"`, never "run the tests"), run each on the fresh clone, and record `commands[]` with `verbatim` true and `exit_code` 0. Fill `# Commands`.</action>
+      <output>`commands[]`.</output>
+      <decision-gate>A description instead of an invocation, or a non-zero exit, is fm-stale-commands before the file is even merged (r-claude-md-commands-verbatim).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="import-not-paste">
+      <input>README, CONTRIBUTING, ADRs, the style guide; the draft.</input>
+      <action>Replace every pasted block that already lives in the repository with an `@path` import, count its hop depth, and link anything past five hops as a plain path with a one-line description. Record `imports.entries[]` with `exists` and `hop_depth`, and `pasted_repo_content` false. Fill `# Imports`.</action>
+      <output>`imports` object.</output>
+      <decision-gate>A pasted README is fm-readme-pasted; an import past five hops is silently not loaded (r-claude-md-import-not-paste).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="move-personal-content-local">
+      <input>The draft; `.gitignore`.</input>
+      <action>Move absolute home paths, local ports and individual habits to `CLAUDE.local.md` (gitignored) or `~/.claude/CLAUDE.md`; record `local_scope.personal_content_in_committed_file` false and `claude_local_md_gitignored` true.</action>
+      <output>`local_scope` object.</output>
+      <decision-gate>One developer's venv path in the shared file is fm-personal-prefs-committed (r-claude-md-personal-goes-local).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="scope-per-package-rules">
+      <input>The repository layout: one package or several deployables with their own manifests.</input>
+      <action>Set `layout`. For multi-package repositories create `&lt;subdir&gt;/CLAUDE.md` per package with its commands and style rules, remove every `cd &lt;pkg&gt; &amp;&amp;` command and package-specific rule from the root, and record `subdir_files[]` with `exists` true and `root_has_per_package_commands` false. Fill `# Subdirectory files`.</action>
+      <output>`layout`, `subdir_files[]`, `root_has_per_package_commands`.</output>
+      <decision-gate>A root listing three packages' test commands is fm-monorepo-root-dump and usually the reason the budget is blown (r-claude-md-subdir-scoping).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="argue-prohibitions-and-ration-emphasis">
+      <input>Every never / do-not line in the draft.</input>
+      <action>Attach the consequence to each prohibition in the same line (`never edit /srv/app directly: it is the deploy target, the repo is the source`); keep `IMPORTANT` / `YOU MUST` only where violation is irreversible or costly; compute `emphasis_ratio` over non-empty lines. Record `prohibitions[]`. Fill `# Prohibitions`.</action>
+      <output>`prohibitions[]`, `emphasis_ratio` at most 0.25.</output>
+      <decision-gate>A bare prohibition is reasoned around; a file where everything is IMPORTANT is fm-emphasis-inflation (r-claude-md-prohibitions-argued).</decision-gate>
     </step>
+
+    <step n="7" name="wire-scan-line-and-path-checks">
+      <input>CI and pre-commit configuration.</input>
+      <action>Add gitleaks or trufflehog over CLAUDE.md and every `@`-imported file to both CI and pre-commit; add a CI check that fails when `wc -l` exceeds the declared budget; add a CI check that extracts every referenced path, script and import and fails when any is missing. Record `secrets`, `root_file.ci_line_check` and `refs_check`.</action>
+      <output>`secrets`, `root_file.within_budget` and `ci_line_check`, `refs_check`.</output>
+      <decision-gate>A scan hit means rotate first, then replace (fm-secret-in-brief); a missing path fails the PR that renamed it, not the session that suffers it (r-claude-md-no-secrets, r-claude-md-line-budget, r-claude-md-refs-exist).</decision-gate>
+    </step>
+
+    <step n="8" name="reviewer-approval">
+      <input>The PR with the three checks green.</input>
+      <action>A named reviewer reads the file against the rules and approves; record `reviewer` as role:handle. AI-drafted output is a draft, not an approval.</action>
+      <output>`reviewer`.</output>
+      <decision-gate>No named reviewer, no merge (human checkpoint in 03-failure-modes.xml).</decision-gate>
+    </step>
+
+    <step n="9" name="validate-and-merge">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-claude-md-creation-quality.py --file &lt;record.json&gt;`; fix every violation; merge the PR and link the CI run and the PR in `evidence[]`.</action>
+      <output>A committed CLAUDE.md that is green on every check, and its record.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The record validates with `scripts/validate-claude-md-creation-quality.py`.</item>
+      <item>Secret scan, line-budget check and path-existence check are all green in CI on the merged commit.</item>
+      <item>Every command in the file exits 0 on a fresh clone.</item>
+      <item>A named reviewer approved the PR.</item>
+    </list>
   </section>
 </text>

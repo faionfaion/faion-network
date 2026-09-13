@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Dual-Write Shadow-Read Template — Worked Examples" version="1.0.0" est_tokens="2600" depth="recommended">
+  <summary>One complete runbook for a Postgres 13 to 16 upgrade with a partitioned ledger, with a note on every value a reader might question, and one runbook for the same upgrade as first drafted that breaks all eight subject rules and what the validator and the architect say about it.</summary>
+
+  <section title="Scenario">
+    <p>The orders database moves from Postgres 13 to 16 and the ledger table becomes partitioned on the way. The first draft was a single `orders.migrated` flag, plain inserts into the new cluster inside the checkout transaction, and a parity dashboard that read 100 percent mismatch because it compared `updated_at`. The architect runs steps 1-9 of `content/04-procedure.xml`; the runbook below is the state after reads were flipped and before write-to-old goes off.</p>
+  </section>
+
+  <section title="Good example: reads flipped, retention window running">
+    <example type="good" title="Complete runbook with gate evaluation and approvers">
+      <code lang="json"><![CDATA[
+{
+  "migration_name": "orders-db Postgres 13 to 16 with partitioned ledger",
+  "kind": "postgres-major-upgrade",
+  "old_store": "pg13.orders",
+  "new_store": "pg16.orders",
+  "entity_types": [
+    {"name": "order", "primary_key": "order_id", "version_field": "row_version", "parity_excluded_fields": ["updated_at", "search_vector"], "gate": {"mismatch_ratio_max": 0.001, "window_hours": 72, "min_comparisons": 50000}},
+    {"name": "ledger_entry", "primary_key": "entry_id", "version_field": "lsn", "parity_excluded_fields": ["inserted_at"], "gate": {"mismatch_ratio_max": 0.0001, "window_hours": 72, "min_comparisons": 200000}},
+    {"name": "customer_note", "primary_key": "note_id", "version_field": "updated_at", "parity_excluded_fields": ["updated_at", "tsv"], "gate": {"mismatch_ratio_max": 0.005, "window_hours": 168, "min_comparisons": 2000}}
+  ],
+  "dual_write": {
+    "upsert_kind": "version-guarded-upsert",
+    "compare_and_set_on_version": true,
+    "outside_old_store_transaction": true,
+    "failure_fails_user_request": false,
+    "retry_queue": "sqs.orders-dual-write-retry",
+    "failure_metric": "dual_write_failures_total",
+    "alert_threshold": 50
+  },
+  "reconciliation": {
+    "job_name": "orders-reconcile-keywalk",
+    "cadence": "hourly",
+    "max_repairs_per_run": 20,
+    "metric": "reconciliation_repairs_total",
+    "declared_before_dual_write": true
+  },
+  "backfill": {
+    "starts_after_dual_write": true,
+    "uses_same_upsert": true,
+    "per_partition_counts_match": true,
+    "checksum_match": true,
+    "completed_before_shadow_parity": true,
+    "partitions": 64
+  },
+  "shadow_read": {
+    "comparator": "normalising",
+    "returns_old_store_result": true,
+    "candidate_timeout_ms": 45,
+    "old_store_p99_ms": 48,
+    "exceptions_swallowed_and_counted": true,
+    "sampling_flag": "orders.shadow_read_percent",
+    "sampling_percent_initial": 5,
+    "mismatch_metric": "shadow_read_mismatch_ratio",
+    "mismatch_samples_retained": true
+  },
+  "flags": {
+    "dual_write_on": "orders.dual_write_on",
+    "shadow_read_on": "orders.shadow_read_on",
+    "read_from_new_on": "orders.read_from_new_on",
+    "write_to_old_off": "orders.write_to_old_off",
+    "runtime_flippable": true,
+    "reverse_order": ["write_to_old_off", "read_from_new_on", "shadow_read_on", "dual_write_on"],
+    "retention_window_days": 14,
+    "read_flipback_rehearsed_before_write_off": true
+  },
+  "cutover": {
+    "gate_declared_before_shadow": true,
+    "gate_evaluation_url": "https://grafana.example.com/d/orders-parity?from=2026-09-01&to=2026-09-04",
+    "read_from_new_flipped": true,
+    "read_from_new_approver": "arch:nkovacs",
+    "write_to_old_off_approver": "dba:marta"
+  },
+  "evidence": [
+    "https://grafana.example.com/d/orders-reconciliation",
+    "https://ci.example.com/orders/backfill-verify/run/77",
+    "https://grafana.example.com/d/orders-parity?from=2026-09-01&to=2026-09-04",
+    "https://wiki.example.com/orders/flipback-rehearsal-2026-09-05"
+  ]
+}
+]]></code>
+      <note>`ledger_entry` uses `lsn` as its version field and a stricter gate (0.0001 over 200,000 comparisons) than `order` or `customer_note`: a lost ledger row is money, and the minimum-comparison count is what stops the quiet `customer_note` entity (2,000 reads in a week) from passing on luck.</note>
+      <note>`dual_write.alert_threshold` 50 with `retry_queue` `sqs.orders-dual-write-retry`: a failed new-store write is queued and counted, and the checkout still succeeds because the old store is authoritative until `read_from_new_on`.</note>
+      <note>`backfill.partitions` 64 with counts and checksum matched before any parity number was published; the backfill used the same version-guarded upsert, so a live update during the window was not clobbered.</note>
+      <note>`shadow_read.candidate_timeout_ms` 45 sits under the measured `old_store_p99_ms` 48, and sampling started at 5 percent behind the runtime flag `orders.shadow_read_percent`; the comparator excludes `updated_at` and the search vector per entity, so the mismatch ratio measures data, not noise.</note>
+      <note>`cutover.read_from_new_flipped` is true, so the schema demands `gate_evaluation_url`; the approver is `arch:nkovacs`, a person, and `write_to_old_off_approver` is the DBA who will sign the last flip after the 14-day window and the rehearsed flip-back.</note>
+      <note>`flags.reverse_order` lists all four flags exactly once, newest first: that is the rollback runbook in one line.</note>
+    </example>
+  </section>
+
+  <section title="Bad example: the first draft">
+    <example type="bad" title="Eight subject rules broken">
+      <code lang="json"><![CDATA[
+{
+  "migration_name": "orders-db Postgres 13 to 16",
+  "kind": "postgres-major-upgrade",
+  "old_store": "pg13.orders",
+  "new_store": "pg16.orders",
+  "entity_types": [
+    {"name": "order", "primary_key": "order_id", "version_field": "row_version", "parity_excluded_fields": [], "gate": {"mismatch_ratio_max": 1, "window_hours": 0, "min_comparisons": 0}}
+  ],
+  "dual_write": {
+    "upsert_kind": "plain-insert",
+    "compare_and_set_on_version": false,
+    "outside_old_store_transaction": false,
+    "failure_fails_user_request": true,
+    "retry_queue": "",
+    "failure_metric": "errors",
+    "alert_threshold": 0
+  },
+  "reconciliation": {
+    "job_name": "none",
+    "cadence": "weekly",
+    "max_repairs_per_run": 0,
+    "metric": "reconciliation_repairs_total",
+    "declared_before_dual_write": false
+  },
+  "backfill": {
+    "starts_after_dual_write": false,
+    "uses_same_upsert": false,
+    "per_partition_counts_match": true,
+    "checksum_match": false,
+    "completed_before_shadow_parity": false
+  },
+  "shadow_read": {
+    "comparator": "raw",
+    "returns_old_store_result": false,
+    "candidate_timeout_ms": 5000,
+    "old_store_p99_ms": 48,
+    "exceptions_swallowed_and_counted": false,
+    "sampling_flag": "orders.shadow_read_percent",
+    "sampling_percent_initial": 100,
+    "mismatch_metric": "shadow_read_mismatch_ratio",
+    "mismatch_samples_retained": false
+  },
+  "flags": {
+    "dual_write_on": "orders.migrated",
+    "shadow_read_on": "orders.migrated",
+    "read_from_new_on": "orders.migrated",
+    "write_to_old_off": "orders.migrated",
+    "runtime_flippable": false,
+    "reverse_order": ["write_to_old_off"],
+    "retention_window_days": 0,
+    "read_flipback_rehearsed_before_write_off": false
+  },
+  "cutover": {
+    "gate_declared_before_shadow": false,
+    "read_from_new_flipped": true,
+    "read_from_new_approver": "team:data",
+    "write_to_old_off_approver": "team:data"
+  },
+  "evidence": [
+    "https://grafana.example.com/d/orders-parity"
+  ]
+}
+]]></code>
+      <note>What the validator prints: `entity_types[0].gate.mismatch_ratio_max: 1 is not below exclusiveMaximum 1`, `window_hours: 0 is below minimum 1`, `min_comparisons: 0 is below minimum 1` (r-cutover-gate-numeric); `dual_write.upsert_kind: 'plain-insert' is not the required const`, `compare_and_set_on_version: False`, `outside_old_store_transaction: False`, `failure_fails_user_request: True`, `retry_queue: length 0`, `failure_metric: 'errors'`, `alert_threshold: 0 is not above exclusiveMinimum 0` (r-dual-write-idempotent-writes, r-old-store-authoritative); `reconciliation.declared_before_dual_write: False` (r-reconciliation-job-required); `backfill.starts_after_dual_write: False`, `uses_same_upsert: False`, `checksum_match: False`, `completed_before_shadow_parity: False` (r-backfill-before-shadow); `shadow_read.comparator: 'raw'`, `returns_old_store_result: False`, `exceptions_swallowed_and_counted: False`, `sampling_percent_initial: 100 is not below exclusiveMaximum 100`, `mismatch_samples_retained: False` (r-shadow-read-parity-diff, r-shadow-read-no-user-impact); `flags.runtime_flippable: False`, `reverse_order: 1 items is under minItems 4`, `retention_window_days: 0 is below minimum 1`, `read_flipback_rehearsed_before_write_off: False` (r-rollback-flag-per-stage); `cutover.gate_declared_before_shadow: False` and `missing required field: gate_evaluation_url` with reads already flipped.</note>
+      <note>What the architect sees beyond the validator: all four flags are the same name `orders.migrated`, so there is no per-stage rollback at all (fm-old-store-dropped-early); the candidate timeout of 5,000 ms against a 48 ms old p99 would double request latency at 100 percent sampling (fm-shadow-read-latency); and the approvers are a team alias, so nobody signed the read flip. The draft goes back to step 1.</note>
+    </example>
+  </section>
+
+  <section title="Lessons">
+    <list>
+      <item>The gate is three numbers per entity type written before shadow mode; everything after that is evidence against a fixed bar, not a judgement call.</item>
+      <item>Order is the safety: dual-write on, then backfill with the same upsert, then shadow, then reads, then (after the window and a rehearsal) writes off.</item>
+      <item>The old store is the rollback until the last flag flips; keeping it current through the retention window is what makes the cutover reversible.</item>
+    </list>
+  </section>
+</text>

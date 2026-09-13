@@ -1,45 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="CLAUDE.md Creation (Software Developer) — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `claude-md-creation`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="CLAUDE.md Creation — Procedure" version="1.2.0" est_tokens="1750" depth="recommended">
+  <summary>Eight steps that produce the CLAUDE.md and its record in the order the rules bite: pick the template by layout, extract and run the commands, write the structure and key files, write repo-specific gotchas with env vars by name, split a monorepo root into per-app files, move personal content local, run the secret scan and hold the token budget, wire the manifest-resync check, then validate and commit. Each step names its rule and the template it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="pick-template-by-layout">
+      <input>The repository: one package or several apps with their own manifests.</input>
+      <action>Set `layout` single or monorepo and choose `template`: `templates/claude-md-minimal.md.j2` (250 tokens) for a single-language repo, `templates/claude-md-standard.md.j2` (500) for a product repo, `templates/claude-md-monorepo.md.j2` (700) for a monorepo root. Record the budget from the template header.</action>
+      <output>`layout`, `template`.</output>
+      <decision-gate>A monorepo takes the monorepo template; a single repo never takes it (r-token-budget-declared-and-held, r-monorepo-root-delegates-via-imports).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="extract-and-run-commands">
+      <input>`package.json` scripts, `Makefile` targets, `pyproject.toml` tooling, `justfile`; a clean checkout.</input>
+      <action>Run `templates/extract-commands.sh` (or read the manifests) to list the commands, keep the ones a developer runs in the first hour, run each once on the clean checkout, and add a trailing comment saying what it does. Record each as `commands[]` with `source`, `comment`, `ran_ok`. Fill `## Commands`.</action>
+      <output>`commands[]` with `ran_ok` true.</output>
+      <decision-gate>A command the author believes exists but did not run is fm-stale-commands and is not written (r-commands-extracted-and-executed).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="write-structure-and-key-files">
+      <input>The directory tree; the files a developer needs in the first hour.</input>
+      <action>List at most 20 load-bearing paths with a one-phrase purpose each, excluding generated directories, as `structure[]`. Where a `## Key Files` table helps, list each file with purpose and confirm it exists at the stated path (`exists` true). Fill `## Structure` and `## Key Files`.</action>
+      <output>`structure[]`, `key_files[]`.</output>
+      <decision-gate>A `tree -L 3` paste or an entry without a purpose is fm-tree-dump-structure (r-structure-lists-load-bearing-paths-only).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="write-gotchas-and-env-by-name">
+      <input>The incidents, lint rules, version pins and env vars that have cost a session before; `.env.example`.</input>
+      <action>Write each gotcha as trigger plus consequence naming a file, env var, command, version pin or lint rule (`names`). Reference env vars as `NAME=&lt;required&gt;` and point at `.env.example`; set `secrets_scan.env_vars_by_name_only` and `env_example_referenced` true. Fill `## Gotchas`.</action>
+      <output>`gotchas[]`; env references by name.</output>
+      <decision-gate>"Write clean code" is fm-generic-advice-as-gotchas and is deleted (r-gotchas-are-repo-specific, r-zero-secrets-env-by-name-only).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="delegate-per-app-in-monorepo">
+      <input>For a monorepo: each app directory and its manifests.</input>
+      <action>Keep only cross-cutting content in the root (workspace layout, shared packages, commands that run across all apps). Create a per-app `CLAUDE.md` next to each app with that app's commands and conventions, reference each by `@path` import or relative path, and confirm every referenced file exists. Record `monorepo.per_app_files[]` and `root_restates_app_commands` false. Fill `## Per-App Instructions`.</action>
+      <output>`monorepo` object (single repos skip this step).</output>
+      <decision-gate>A root that restates `cd apps/api &amp;&amp; make dev` duplicates what the per-app file owns; the two copies will diverge (r-monorepo-root-delegates-via-imports).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="move-personal-content-local">
+      <input>The draft; `.gitignore`.</input>
+      <action>Grep the draft for `/Users/`, `/home/`, `C:\` and personal handles; move machine paths, ports and personal preferences to `CLAUDE.local.md` (gitignored) or `~/.claude/CLAUDE.md`. Record `local_settings.personal_paths_grep_clean` and `claude_local_md_gitignored`.</action>
+      <output>`local_settings` object.</output>
+      <decision-gate>One developer's venv path in the shared file is fm-personal-paths-committed (r-personal-and-machine-specifics-stay-local).</decision-gate>
     </step>
+
+    <step n="7" name="scan-secrets-and-hold-budget">
+      <input>The draft; gitleaks, trufflehog or the host's scanner; a tokenizer.</input>
+      <action>Run the secret scanner over the file and record `secrets_scan.tool` and `clean`. Count tokens into `token_count`; if it exceeds the template budget, move narrative behind `@path` imports or one-line pointers until it fits — split, never trim the commands.</action>
+      <output>`secrets_scan`, `token_count` within budget.</output>
+      <decision-gate>A pasted `.env` block is fm-secret-pasted-in: rotate first, then replace; a 3,000-token brief is fm-three-thousand-token-novel (r-zero-secrets-env-by-name-only, r-token-budget-declared-and-held).</decision-gate>
+    </step>
+
+    <step n="8" name="wire-resync-check-validate-and-commit">
+      <input>CI or pre-commit; the filled record.</input>
+      <action>Add a check that fails when `package.json` scripts, `Makefile` targets or `pyproject.toml` tooling change without a CLAUDE.md `## Commands` edit, or when a listed command is no longer in the manifest; record `resync_check` and put its location in `evidence[]`. Run `scripts/validate-claude-md-creation.py --file &lt;record.json&gt;`; fix every violation; commit CLAUDE.md and the record.</action>
+      <output>A committed CLAUDE.md, its record, and a red build on the next silent rename.</output>
+      <decision-gate>Without the check the file drifts one renamed script at a time (r-commands-resync-on-manifest-change).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The record validates with `scripts/validate-claude-md-creation.py`.</item>
+      <item>Every listed command ran with exit 0 on a clean checkout and the secret scan is clean.</item>
+      <item>The file is within its template's token budget and greps clean for personal paths.</item>
+      <item>The resync check is in CI or pre-commit and its location is in evidence[].</item>
+    </list>
   </section>
 </text>

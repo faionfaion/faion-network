@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="AI Pre-Screen Bias Guardrails — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `ai-pre-screen-bias-guardrails`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="AI Pre-Screen Bias Guardrails — Procedure" version="1.2.0" est_tokens="2000" depth="recommended">
+  <summary>Nine steps in the order the rules depend on each other: the redaction step first (nothing may be scored before it exists), the rubric with anchors before the first score, the proxy review of that rubric, real-pool calibration with a pre-set threshold, the human-of-record path, the applicable-law check with notice and audit, per-stage four-fifths monitoring, the per-candidate audit log and pinned tuple, then validation. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="build-and-test-redaction">
+      <input>Sample CVs, cover letters and take-homes; the ten attribute classes in r-protected-attributes-stripped-before-model.</input>
+      <action>Write a separate redaction function that strips name, photo, email handle, date of birth and age, graduation years, address below city, gender markers and pronouns, nationality and visa status, marital and parental status, and protected-class associations. Build a fixture set with every class represented, unit-test the function on it, and schedule a 20-document human inspection per release. Record `redaction.version`. Fill `# Redaction` in `templates/skeleton.md.j2`.</action>
+      <output>`redaction` object with all ten `stripped_attributes`.</output>
+      <decision-gate>Until this step passes no model reads a candidate document; a graduation year or a maternity gap surviving redaction is fm-proxy-leaks-through-redaction.</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="write-and-hash-rubric">
+      <input>The job requirements for the role; the hiring manager.</input>
+      <action>Write criteria that each map to a stated job requirement, with behavioural anchors for the lowest, middle and highest score. Version the file, hash it as `rubric.hash`, and record that it exists before `first_score_at`. Fill `# Rubric`.</action>
+      <output>`rubric` object with `written_before_first_score` true.</output>
+      <decision-gate>A prompt that says "rate this candidate 1-10" with the rubric written later is fm-rubric-written-after-scores (r-rubric-versioned-before-first-score).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="review-for-proxy-criteria">
+      <input>The rubric and the prompt; the proxy list in r-no-proxy-criteria-in-prompt.</input>
+      <action>Have a reviewer outside the hiring team check every criterion and prompt line against the list: culture fit, energy, polish, native speaker, recent graduate, digital native, employment gaps, years since graduation, commute distance, school or employer prestige. Record `reviewed_on`, `reviewed_by`, the (empty) `proxy_terms_found` and the `evidence_url`. Fill `# Proxy review`.</action>
+      <output>`proxy_review` object; URL added to `evidence[]`.</output>
+      <decision-gate>Any proxy term found sends the rubric back to step 2; a rubric change re-runs this step and step 4.</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="calibrate-on-real-pool">
+      <input>The last real applicant pool (with consent as the jurisdiction requires); two human reviewers; the agreement statistic and its threshold, chosen now.</input>
+      <action>Draw `sample_size` submissions from the real pool, set `statistic` and `threshold` and record `threshold_set_before_run` true, have at least two reviewers score blind, run the system, compute `result`, and record `run_url`. Set `passed`. Fill `# Calibration`.</action>
+      <output>`calibration` object; URL added to `evidence[]`.</output>
+      <decision-gate>Below threshold the system does not score candidates. A sample from a generator or template is fm-calibration-on-synthetic-cvs (r-calibration-sample-before-go-live).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="route-every-candidate-to-a-human">
+      <input>The applicant-tracking pipeline; the list of hiring managers.</input>
+      <action>Remove any threshold filter that drops candidates before a person sees them. Make every advance or reject record carry the human of record's `role:handle`, and give that reviewer the redacted document together with the score and rubric-referenced reasons. Fill `# Human of record`.</action>
+      <output>`human_of_record` with `auto_reject_filter_present` false and both `reviewer_inputs`.</output>
+      <decision-gate>Reject records with no handle, or one handle stamped by a batch job, are fm-threshold-auto-reject (r-human-of-record-decides).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="confirm-applicable-law-notice-and-audit">
+      <input>`candidate_jurisdictions`; counsel; the vendor's or employer's latest bias audit.</input>
+      <action>Record `legal.applicable_law`. For NYC Local Law 144: link the candidate notice text, record `notice_lead_business_days` of at least 10, and link an independent bias audit conducted within the preceding year with its published summary. For other laws record the equivalents; for none record the `confirmed_by` counsel. Fill `# Legal`.</action>
+      <output>`legal` object; audit summary URL added to `evidence[]`.</output>
+      <decision-gate>"None applies" without a named counsel has not been checked (r-candidate-notice-and-bias-audit).</decision-gate>
     </step>
+
+    <step n="7" name="monitor-adverse-impact-per-stage">
+      <input>Self-identification data held in the HR system apart from the scoring pipeline; pass-through counts per stage.</input>
+      <action>For every stage where the system filters or ranks, compute the selection rate per group, record `min_ratio` (lowest rate over highest), and set `on_hold` true for any stage under `hold_threshold` 0.8. Attach the table URL and repeat every review cycle. Fill `# Adverse impact`.</action>
+      <output>`adverse_impact.per_stage[]`; table URL added to `evidence[]`.</output>
+      <decision-gate>A ratio under 0.8 holds the system and opens a review; no table at all is fm-four-fifths-never-computed (r-adverse-impact-monitored-per-stage).</decision-gate>
+    </step>
+
+    <step n="8" name="retain-audit-log-and-pin-tuple">
+      <input>The scoring pipeline's storage; the record-keeping period for the jurisdiction (29 CFR 1602.14: one year for most private US employers).</input>
+      <action>Store per candidate the submission hash, the redacted text as sent, the model id, prompt hash, rubric version, the score with reasons and the human decision; set `retention_months` at or above the statutory floor and make the log queryable by candidate. Record `pinned_tuple` (model id, prompt hash, rubric version, redaction version) and treat any change to it as a trigger for steps 3 and 4. Fill `# Audit log` and `# Pinned tuple`.</action>
+      <output>`audit_log` and `pinned_tuple` objects.</output>
+      <decision-gate>A model or prompt change without a new calibration entry is fm-model-swap-resets-nothing (r-per-candidate-audit-log-retained).</decision-gate>
+    </step>
+
+    <step n="9" name="validate-and-file">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-ai-pre-screen-bias-guardrails.py --file &lt;spec.json&gt;`; fix every violation; commit the spec to `.product/ai-pre-screen-bias-guardrails/` and share it with legal and DEI before the first candidate is scored.</action>
+      <output>A spec that validates and that legal and DEI can audit.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON spec validates with `scripts/validate-ai-pre-screen-bias-guardrails.py`.</item>
+      <item>No candidate has been scored before redaction, rubric and calibration existed.</item>
+      <item>Every decision in the tracking system carries a human of record's handle.</item>
+      <item>The per-stage four-fifths table for the current cycle is attached and no stage is on hold.</item>
+    </list>
   </section>
 </text>

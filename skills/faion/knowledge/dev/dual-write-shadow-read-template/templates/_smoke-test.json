@@ -1,28 +1,119 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for dual-write-shadow-read-template: _smoke-test.json",
+    "purpose": "Template fixture for dual-write-shadow-read-template: _smoke-test.json — the contract's valid example",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
-  },
-  "owner": "swe:alice",
-  "inputs": [
+  "migration_name": "orders-db Postgres 13 to 16 with partitioned ledger",
+  "kind": "postgres-major-upgrade",
+  "old_store": "pg13.orders",
+  "new_store": "pg16.orders",
+  "entity_types": [
     {
-      "name": "scope",
-      "value": "billing"
+      "name": "order",
+      "primary_key": "order_id",
+      "version_field": "row_version",
+      "parity_excluded_fields": [
+        "updated_at",
+        "search_vector"
+      ],
+      "gate": {
+        "mismatch_ratio_max": 0.001,
+        "window_hours": 72,
+        "min_comparisons": 50000
+      }
+    },
+    {
+      "name": "ledger_entry",
+      "primary_key": "entry_id",
+      "version_field": "lsn",
+      "parity_excluded_fields": [
+        "inserted_at"
+      ],
+      "gate": {
+        "mismatch_ratio_max": 0.0001,
+        "window_hours": 72,
+        "min_comparisons": 200000
+      }
+    },
+    {
+      "name": "customer_note",
+      "primary_key": "note_id",
+      "version_field": "updated_at",
+      "parity_excluded_fields": [
+        "updated_at",
+        "tsv"
+      ],
+      "gate": {
+        "mismatch_ratio_max": 0.005,
+        "window_hours": 168,
+        "min_comparisons": 2000
+      }
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
+  "dual_write": {
+    "upsert_kind": "version-guarded-upsert",
+    "compare_and_set_on_version": true,
+    "outside_old_store_transaction": true,
+    "failure_fails_user_request": false,
+    "retry_queue": "sqs.orders-dual-write-retry",
+    "failure_metric": "dual_write_failures_total",
+    "alert_threshold": 50
+  },
+  "reconciliation": {
+    "job_name": "orders-reconcile-keywalk",
+    "cadence": "hourly",
+    "max_repairs_per_run": 20,
+    "metric": "reconciliation_repairs_total",
+    "declared_before_dual_write": true
+  },
+  "backfill": {
+    "starts_after_dual_write": true,
+    "uses_same_upsert": true,
+    "per_partition_counts_match": true,
+    "checksum_match": true,
+    "completed_before_shadow_parity": true,
+    "partitions": 64
+  },
+  "shadow_read": {
+    "comparator": "normalising",
+    "returns_old_store_result": true,
+    "candidate_timeout_ms": 45,
+    "old_store_p99_ms": 48,
+    "exceptions_swallowed_and_counted": true,
+    "sampling_flag": "orders.shadow_read_percent",
+    "sampling_percent_initial": 5,
+    "mismatch_metric": "shadow_read_mismatch_ratio",
+    "mismatch_samples_retained": true
+  },
+  "flags": {
+    "dual_write_on": "orders.dual_write_on",
+    "shadow_read_on": "orders.shadow_read_on",
+    "read_from_new_on": "orders.read_from_new_on",
+    "write_to_old_off": "orders.write_to_old_off",
+    "runtime_flippable": true,
+    "reverse_order": [
+      "write_to_old_off",
+      "read_from_new_on",
+      "shadow_read_on",
+      "dual_write_on"
+    ],
+    "retention_window_days": 14,
+    "read_flipback_rehearsed_before_write_off": true
+  },
+  "cutover": {
+    "gate_declared_before_shadow": true,
+    "gate_evaluation_url": "https://grafana.example.com/d/orders-parity?from=2026-09-01&to=2026-09-04",
+    "read_from_new_flipped": true,
+    "read_from_new_approver": "arch:nkovacs",
+    "write_to_old_off_approver": "dba:marta"
+  },
   "evidence": [
-    "https://example.com/pr/1"
-  ],
-  "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
-  }
+    "https://grafana.example.com/d/orders-reconciliation",
+    "https://ci.example.com/orders/backfill-verify/run/77",
+    "https://grafana.example.com/d/orders-parity?from=2026-09-01&to=2026-09-04",
+    "https://wiki.example.com/orders/flipback-rehearsal-2026-09-05"
+  ]
 }

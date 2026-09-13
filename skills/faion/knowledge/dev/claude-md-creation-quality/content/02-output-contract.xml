@@ -1,121 +1,256 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="CLAUDE.md Creation — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `claude-md-creation` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="CLAUDE.md Creation (Quality) — Output Contract" version="1.2.0" est_tokens="3550" depth="essential">
+  <summary>The artefact is the committed root CLAUDE.md plus this JSON record of how it satisfies 01-core-rules.xml: a secret scan clean and wired into CI and pre-commit, every command verbatim and exiting 0 on a fresh clone, a numeric line budget declared in the first comment and held under a CI check, repository content imported within five hops rather than pasted, personal content kept local, per-package rules in subdirectory files, every prohibition carrying its consequence with emphasis on at most one line in four, and every referenced path existing under a CI check. A named reviewer approves. Subagent MUST satisfy this contract before returning to caller.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="repo" type="string" required="true">owner/name of the repository</field>
+      <field name="layout" type="enum" required="true">single-package or multi-package; multi-package requires subdir_files (r-claude-md-subdir-scoping)</field>
+      <field name="root_file" type="object" required="true">line_budget declared in the first comment (100 is the workable default), line_count, within_budget true, ci_line_check true (r-claude-md-line-budget)</field>
+      <field name="secrets" type="object" required="true">scanner, runs in CI and pre-commit, clean true, secrets referenced by env var or vault item name (r-claude-md-no-secrets)</field>
+      <field name="commands" type="list" required="true">each invocation verbatim and copy-pasteable with exit_code 0 on a fresh clone (r-claude-md-commands-verbatim)</field>
+      <field name="imports" type="list" required="true">every @path import with exists true and hop_depth at most 5; pasted_repo_content false (r-claude-md-import-not-paste)</field>
+      <field name="local_scope" type="object" required="true">no personal content in the committed file; CLAUDE.local.md gitignored (r-claude-md-personal-goes-local)</field>
+      <field name="subdir_files" type="list" required="conditional">for multi-package layouts: each package's own CLAUDE.md with exists true; root_has_per_package_commands false (r-claude-md-subdir-scoping)</field>
+      <field name="prohibitions" type="list" required="true">each never / do-not line with consequence_stated true and whether it carries emphasis; emphasis_ratio at most 0.25 (r-claude-md-prohibitions-argued)</field>
+      <field name="refs_check" type="object" required="true">CI job that extracts referenced paths and fails when any is missing; all_refs_exist true (r-claude-md-refs-exist)</field>
+      <field name="reviewer" type="string" required="true">role:handle of the named reviewer who approved the PR after the three checks were green</field>
+      <field name="evidence" type="list" required="true">URLs: the CI run with secret scan, line check and path check; the PR</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">secrets.clean false, or a scanner that runs in CI but not pre-commit (fm-secret-in-brief)</pattern>
+      <pattern id="f2">a command described in prose ("run the tests") or with exit_code other than 0 (fm-stale-commands)</pattern>
+      <pattern id="f3">root_file.within_budget false, or no budget declared in the first comment (fm-readme-pasted)</pattern>
+      <pattern id="f4">imports.pasted_repo_content true, or an import with hop_depth above 5 (fm-readme-pasted)</pattern>
+      <pattern id="f5">local_scope.personal_content_in_committed_file true (fm-personal-prefs-committed)</pattern>
+      <pattern id="f6">layout multi-package with root_has_per_package_commands true or no subdir_files (fm-monorepo-root-dump)</pattern>
+      <pattern id="f7">a prohibition with consequence_stated false, or emphasis_ratio above 0.25 (fm-emphasis-inflation)</pattern>
+      <pattern id="f8">refs_check.all_refs_exist false, or no reviewer (fm-stale-commands; human checkpoint)</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Where a referenced doc would exceed five import hops, link it as a plain path with a one-line description and record it in imports with hop_depth of the link, not the chain.</transformation>
+      <transformation>Where a command needs an environment (a venv, a container), record the invocation exactly as run in CI, including the wrapper.</transformation>
+      <transformation>Count emphasis_ratio over non-empty lines of the committed file; blank lines and code fences do not count.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://claude-md-creation/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "faion://claude-md-creation-quality/output.schema.json",
+  "title": "CLAUDE.md quality record",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": [
+    "repo", "layout", "root_file", "secrets", "commands", "imports", "local_scope",
+    "prohibitions", "emphasis_ratio", "refs_check", "reviewer", "evidence"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "repo": {"type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},
+    "layout": {"type": "string", "enum": ["single-package", "multi-package"]},
+    "root_file": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["line_budget", "budget_declared_in_first_comment", "line_count", "within_budget", "ci_line_check"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "line_budget": {"type": "integer", "minimum": 10, "maximum": 300},
+        "budget_declared_in_first_comment": {"type": "boolean", "const": true},
+        "line_count": {"type": "integer", "minimum": 1},
+        "within_budget": {"type": "boolean", "const": true},
+        "ci_line_check": {"type": "boolean", "const": true}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
+    "secrets": {
+      "type": "object",
+      "required": ["scanner", "runs_in_ci", "runs_in_pre_commit", "clean", "referenced_by_name_only"],
+      "additionalProperties": false,
+      "properties": {
+        "scanner": {"type": "string", "enum": ["gitleaks", "trufflehog"]},
+        "runs_in_ci": {"type": "boolean", "const": true},
+        "runs_in_pre_commit": {"type": "boolean", "const": true},
+        "clean": {"type": "boolean", "const": true},
+        "referenced_by_name_only": {"type": "boolean", "const": true}
+      }
+    },
+    "commands": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["name", "value"],
+        "required": ["invocation", "verbatim", "exit_code"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+          "invocation": {"type": "string", "minLength": 2, "not": {"pattern": "(?i)^(run|execute|start) the "}},
+          "verbatim": {"type": "boolean", "const": true},
+          "exit_code": {"type": "integer", "const": 0}
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
+    "imports": {
+      "type": "object",
+      "required": ["pasted_repo_content", "entries"],
+      "additionalProperties": false,
+      "properties": {
+        "pasted_repo_content": {"type": "boolean", "const": false},
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "exists", "hop_depth"],
+            "additionalProperties": false,
+            "properties": {
+              "path": {"type": "string", "minLength": 1},
+              "exists": {"type": "boolean", "const": true},
+              "hop_depth": {"type": "integer", "minimum": 1, "maximum": 5}
+            }
+          }
+        }
+      }
+    },
+    "local_scope": {
+      "type": "object",
+      "required": ["personal_content_in_committed_file", "claude_local_md_gitignored"],
+      "additionalProperties": false,
+      "properties": {
+        "personal_content_in_committed_file": {"type": "boolean", "const": false},
+        "claude_local_md_gitignored": {"type": "boolean", "const": true}
+      }
+    },
+    "subdir_files": {
       "type": "array",
       "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
-    },
-    "review": {
-      "type": "object",
-      "required": ["cadence", "next_review_at"],
-      "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+      "items": {
+        "type": "object",
+        "required": ["package", "path", "exists"],
+        "additionalProperties": false,
+        "properties": {
+          "package": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "pattern": "/CLAUDE\\.md$"},
+          "exists": {"type": "boolean", "const": true}
+        }
       }
-    }
+    },
+    "root_has_per_package_commands": {"type": "boolean", "const": false},
+    "prohibitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["line", "consequence_stated", "emphasised"],
+        "additionalProperties": false,
+        "properties": {
+          "line": {"type": "string", "minLength": 10, "pattern": "(?i)(never|do not|don't|must not)"},
+          "consequence_stated": {"type": "boolean", "const": true},
+          "emphasised": {"type": "boolean"}
+        }
+      }
+    },
+    "emphasis_ratio": {"type": "number", "minimum": 0, "maximum": 0.25},
+    "refs_check": {
+      "type": "object",
+      "required": ["kind", "location", "all_refs_exist"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["ci-job", "pre-commit-hook"]},
+        "location": {"type": "string", "minLength": 3},
+        "all_refs_exist": {"type": "boolean", "const": true}
+      }
+    },
+    "reviewer": {"$ref": "#/definitions/handle"},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uri"}}
   },
-  "additionalProperties": false
+  "if": {"properties": {"layout": {"const": "multi-package"}}},
+  "then": {"required": ["subdir_files", "root_has_per_package_commands"]}
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="true"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "repo": "acme/platform",
+  "layout": "multi-package",
+  "root_file": {"line_budget": 100, "budget_declared_in_first_comment": true, "line_count": 84, "within_budget": true, "ci_line_check": true},
+  "secrets": {"scanner": "gitleaks", "runs_in_ci": true, "runs_in_pre_commit": true, "clean": true, "referenced_by_name_only": true},
+  "commands": [
+    {"invocation": "pnpm install --frozen-lockfile", "verbatim": true, "exit_code": 0},
+    {"invocation": "pnpm turbo run test --filter=...[origin/main]", "verbatim": true, "exit_code": 0},
+    {"invocation": "pnpm turbo run lint", "verbatim": true, "exit_code": 0}
+  ],
+  "imports": {
+    "pasted_repo_content": false,
+    "entries": [
+      {"path": "CONTRIBUTING.md", "exists": true, "hop_depth": 1},
+      {"path": "docs/adr/README.md", "exists": true, "hop_depth": 2}
+    ]
+  },
+  "local_scope": {"personal_content_in_committed_file": false, "claude_local_md_gitignored": true},
+  "subdir_files": [
+    {"package": "api", "path": "apps/api/CLAUDE.md", "exists": true},
+    {"package": "web", "path": "apps/web/CLAUDE.md", "exists": true},
+    {"package": "infra", "path": "infra/CLAUDE.md", "exists": true}
+  ],
+  "root_has_per_package_commands": false,
+  "prohibitions": [
+    {"line": "never edit /srv/app directly: it is the deploy target, the repo is the source", "consequence_stated": true, "emphasised": true},
+    {"line": "do not run pnpm install without --frozen-lockfile: the lockfile drifts and CI fails on the next push", "consequence_stated": true, "emphasised": false},
+    {"line": "never commit CLAUDE.local.md: it carries machine paths that break every other clone", "consequence_stated": true, "emphasised": false}
+  ],
+  "emphasis_ratio": 0.04,
+  "refs_check": {"kind": "ci-job", "location": ".github/workflows/claude-md-refs.yml", "all_refs_exist": true},
+  "reviewer": "tl:mreyes",
+  "evidence": [
+    "https://ci.example.com/acme/platform/runs/5120",
+    "https://github.com/acme/platform/pull/1187"
+  ]
 }
-]]></code>
-    </example>
-  </section>
+]]></example>
 
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
+  "repo": "acme/platform",
+  "layout": "multi-package",
+  "root_file": {"line_budget": 100, "budget_declared_in_first_comment": false, "line_count": 480, "within_budget": false, "ci_line_check": false},
+  "secrets": {"scanner": "gitleaks", "runs_in_ci": true, "runs_in_pre_commit": false, "clean": false, "referenced_by_name_only": false},
+  "commands": [
+    {"invocation": "run the tests", "verbatim": false, "exit_code": 1}
+  ],
+  "imports": {
+    "pasted_repo_content": true,
+    "entries": [
+      {"path": "docs/deep/chain/six/hops/README.md", "exists": true, "hop_depth": 6}
+    ]
+  },
+  "local_scope": {"personal_content_in_committed_file": true, "claude_local_md_gitignored": false},
+  "root_has_per_package_commands": true,
+  "prohibitions": [
+    {"line": "IMPORTANT: never touch the config", "consequence_stated": false, "emphasised": true}
+  ],
+  "emphasis_ratio": 0.6,
+  "refs_check": {"kind": "ci-job", "location": ".github/workflows/claude-md-refs.yml", "all_refs_exist": false},
+  "reviewer": "team:platform",
+  "evidence": [
+    "https://ci.example.com/acme/platform/runs/5119"
+  ]
 }
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>The scanner runs in CI and pre-commit, the file is clean, and every secret is referenced by env var or vault item name.</item>
+      <item>Every command is a verbatim invocation that exited 0 on a fresh clone at this commit.</item>
+      <item>The first comment declares a numeric line budget, wc -l is within it, and CI fails when it is not.</item>
+      <item>Repository content is imported with @path within five hops, never pasted; every import exists.</item>
+      <item>No machine paths, local ports or personal habits are in the committed file; CLAUDE.local.md is gitignored.</item>
+      <item>In a multi-package repository every package has its own CLAUDE.md and the root carries no per-package commands.</item>
+      <item>Every never / do-not line states its consequence; emphasis markers sit on at most one line in four.</item>
+      <item>A CI check extracts every referenced path and all exist; a named reviewer approved the PR.</item>
+      <item>The record validates with scripts/validate-claude-md-creation-quality.py.</item>
     </list>
   </section>
 </text>

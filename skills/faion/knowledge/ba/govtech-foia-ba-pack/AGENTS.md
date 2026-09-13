@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- The system is operated by or for a public body subject to access-to-information and records law (US federal or state, UK, EU institution, Canadian federal or provincial).
+- The data model exists at least as an ERD or migration set, so record classes and fields can be enumerated and tagged.
+- The agency's records officer and its Chief FOIA Officer / FOI officer (or delegate) are identified and available to sign the schedule and the export paths.
+- The contract or solicitation text is in hand, so clauses can be logged against design decisions while the design is still cheap to change.
+- A launch date is proposed, so the public-notice buffer can be tested against it.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- The system is private-sector with no public-body operator; use the ordinary privacy and accessibility methodologies instead.
+- The agency already has a signed, current retention schedule, export runbook, exemption map and accessibility plan covering this exact system; update that pack rather than producing a second one.
+- The system stores no records at all (a stateless static site with no forms, uploads, logs or messaging) and has no public-facing flow to audit.
+- No records officer exists or will engage; the pack cannot be approved and the work belongs upstream with the agency's records-management function.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/govtech-foia-ba-pack/` |
+| Data model with stores and fields | ERD, migrations or schema dump | engineering repo |
+| Schedule authority for the jurisdiction | NARA GRS / agency schedule, Public Records Act 1958 body schedule, state or provincial archives schedule (PDF or URL) | agency records officer |
+| Statutory access-request clock | working days per statute (5 U.S.C. §552(a)(6)(A)(i); FOIA 2000 s.10; Reg. 1049/2001; Access to Information Act) | agency counsel / FOI officer |
+| Contract, solicitation and framework clauses | PDF or clause register | procurement |
+| Public-facing page and flow inventory | list with URLs | product / design |
+| Proposed launch date and notice regime | date plus PRA / APA / consultation determination | programme manager |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: retention schedule per record class, export within statutory clock, exempt fields tagged, ephemeral channels captured, WCAG AA launch gate, clause review log, public-notice buffer, named officers | ~2450 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for the pack: record_classes with finite retention and schedule item, data_stores with export path and lead time capped at the 20-day clock for us-federal / uk, exemption_map, staff_channels, WCAG AA audit with launch gate, seven-topic clause log, public_notice buffer >= 90, both officers; valid and invalid examples | ~6200 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 9 steps: record classes and schedule, export path per store, exemption map, staff channels, accessibility plan, clause log, notice buffer, officer signatures, validate and file | ~2200 |
+| `content/05-examples.xml` | recommended | Complete state benefits portal pack with notes on every non-obvious value, plus a federal grants pack breaking four rules and what the validator and reviewer say | ~3150 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

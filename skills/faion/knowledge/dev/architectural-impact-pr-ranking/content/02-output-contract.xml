@@ -1,121 +1,302 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Architectural Impact PR Ranking — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `architectural-impact-pr-ranking` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="Architectural Impact PR Ranking — Output Contract" version="1.2.0" est_tokens="4600" depth="essential">
+  <summary>The weekly report is one JSON document with one section per rule in 01-core-rules.xml: a header with window, repositories, session time-box, the published weights over the five named signals and last week's precision; a ranked list whose signals come from the diff with line counts and read estimates that fit the session; a deferred list; exclusion counts that reconcile to the population; a merged-without-review section that is never omitted; and the per-repo public API path list. Subagent MUST satisfy this contract before returning to caller.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="window" type="object" required="true">from / to timestamps over which PRs opened or merged were scanned (r-window-repos-exclusions-stated)</field>
+      <field name="repositories" type="list" required="true">every repo scanned, each with has_public_api_list and, when true, the committed config path (r-public-api-surface-enumerated-per-repo)</field>
+      <field name="session" type="object" required="true">slot, time_box_minutes (45 by default), top_n and the summed read estimate of the ranked list (r-top-n-fits-the-session)</field>
+      <field name="weights" type="object" required="true">one number per signal: modules_touched, public_api_delta, dependency_changes, contract_changes, infra_or_config_changes (r-score-formula-published-in-report)</field>
+      <field name="dependency_kind_weights" type="object" required="true">new_dependency, major_bump, minor_bump, patch_bump, removal, lockfile_only (0) (r-dependency-change-weighted-by-kind)</field>
+      <field name="signals_from_diff_only" type="boolean" required="true">true: no title, label, author or description term enters the score (r-signals-from-diff-not-metadata)</field>
+      <field name="ranked" type="list" required="true">top N with rank, pr, score, the five signal values, changed_lines, read_minutes and outcome hit / miss / pending (r-score-formula-published-in-report, r-precision-recorded-per-session)</field>
+      <field name="deferred" type="list" required="true">PRs above the review threshold the session cannot fit, with their scores; empty when none (r-top-n-fits-the-session)</field>
+      <field name="exclusions" type="object" required="true">count excluded by bot_authors, reverts, docs_only, generated_files; population_total reconciles (r-window-repos-exclusions-stated)</field>
+      <field name="merged_without_review" type="list" required="true">PRs above threshold merged before the session, with score, merged_at and merged_by; an empty list is printed, never omitted (r-merged-without-review-flagged)</field>
+      <field name="previous_precision" type="object" required="true">last session's hits over n, or null for the first report (r-precision-recorded-per-session)</field>
+      <field name="weight_change" type="object" required="conditional">required when weights_changed is true: previous weights and at least four weeks of recorded precision (r-precision-recorded-per-session)</field>
+      <field name="evidence" type="list" required="true">URLs: the ranker run, the public API path configs, the previous report</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">signals_from_diff_only false, or a scorer that reads title, body, labels or author (fm-title-driven-score)</pattern>
+      <pattern id="f2">dependency_kind_weights.lockfile_only above 0, or patch_bump at or above new_dependency or major_bump (fm-bot-bumps-on-top)</pattern>
+      <pattern id="f3">a repository with has_public_api_list false whose PRs carry a non-zero public_api_delta (fm-undefined-public-api)</pattern>
+      <pattern id="f4">session.summed_read_minutes above time_box_minutes, or a ranked PR without changed_lines and read_minutes (fm-top-n-exceeds-session)</pattern>
+      <pattern id="f5">merged_without_review absent, or a window filter on state = open (fm-merged-before-session-invisible)</pattern>
+      <pattern id="f6">weights_changed true with fewer than four precision weeks cited, or ranked PRs from the previous report without hit / miss marks (fm-weights-tuned-by-feel)</pattern>
+      <pattern id="f7">ranked + deferred + every exclusion count not equal to population_total</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Where a repo has no committed public API path list, print "no API surface list" for it and score public_api_delta as 0 rather than guessing from file names.</transformation>
+      <transformation>Collapse a stack of dependent PRs into one ranked entry whose pr field lists them, with signals computed over the combined diff.</transformation>
+      <transformation>Round read_minutes to whole minutes; the estimate is for fitting the session, not for billing.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "faion://architectural-impact-pr-ranking/output.schema.json",
+  "title": "Architectural impact PR ranking report",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
-  "properties": {
-    "trigger": {
+  "required": [
+    "window", "repositories", "session", "weights", "dependency_kind_weights",
+    "signals_from_diff_only", "review_threshold", "ranked", "deferred", "exclusions",
+    "merged_without_review", "previous_precision", "weights_changed", "evidence"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "datetime": {"type": "string", "format": "date-time"},
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "pr_ref": {"type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+#\\d+$", "description": "owner/repo#number"},
+    "weights": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["modules_touched", "public_api_delta", "dependency_changes", "contract_changes", "infra_or_config_changes"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "modules_touched": {"type": "number", "minimum": 0},
+        "public_api_delta": {"type": "number", "minimum": 0},
+        "dependency_changes": {"type": "number", "minimum": 0},
+        "contract_changes": {"type": "number", "minimum": 0},
+        "infra_or_config_changes": {"type": "number", "minimum": 0}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
+    "signals": {
+      "type": "object",
+      "required": ["modules_touched", "public_api_delta", "dependency_changes", "contract_changes", "infra_or_config_changes"],
+      "additionalProperties": false,
+      "properties": {
+        "modules_touched": {"type": "integer", "minimum": 0},
+        "public_api_delta": {"type": "integer", "minimum": 0},
+        "dependency_changes": {"type": "number", "minimum": 0},
+        "contract_changes": {"type": "integer", "minimum": 0},
+        "infra_or_config_changes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "scored_pr": {
+      "type": "object",
+      "required": ["pr", "score", "signals", "changed_lines", "read_minutes"],
+      "properties": {
+        "pr": {"$ref": "#/definitions/pr_ref"},
+        "title_context": {"type": "string"},
+        "score": {"type": "number", "minimum": 0},
+        "signals": {"$ref": "#/definitions/signals"},
+        "changed_lines": {"type": "integer", "minimum": 0},
+        "read_minutes": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "properties": {
+    "__faion_header__": {"type": "object"},
+    "window": {
+      "type": "object",
+      "required": ["from", "to", "state_filter"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {"$ref": "#/definitions/datetime"},
+        "to": {"$ref": "#/definitions/datetime"},
+        "state_filter": {"type": "string", "const": "opened-or-merged-in-window"}
+      }
+    },
+    "repositories": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["name", "value"],
+        "required": ["name", "has_public_api_list"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+          "name": {"type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"},
+          "has_public_api_list": {"type": "boolean"},
+          "public_api_paths_config": {"type": "string", "minLength": 3}
+        },
+        "if": {"properties": {"has_public_api_list": {"const": true}}},
+        "then": {"required": ["public_api_paths_config"]}
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["slot", "time_box_minutes", "top_n", "summed_read_minutes"],
+      "additionalProperties": false,
+      "properties": {
+        "slot": {"type": "string", "minLength": 3},
+        "time_box_minutes": {"type": "integer", "minimum": 1},
+        "top_n": {"type": "integer", "minimum": 1},
+        "summed_read_minutes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "weights": {"$ref": "#/definitions/weights"},
+    "dependency_kind_weights": {
+      "type": "object",
+      "required": ["new_dependency", "major_bump", "minor_bump", "patch_bump", "removal", "lockfile_only"],
+      "additionalProperties": false,
+      "properties": {
+        "new_dependency": {"type": "number", "exclusiveMinimum": 0},
+        "major_bump": {"type": "number", "exclusiveMinimum": 0},
+        "minor_bump": {"type": "number", "minimum": 0},
+        "patch_bump": {"type": "number", "minimum": 0, "maximum": 0.5},
+        "removal": {"type": "number", "minimum": 0},
+        "lockfile_only": {"type": "number", "const": 0}
+      }
+    },
+    "signals_from_diff_only": {"type": "boolean", "const": true},
+    "review_threshold": {"type": "number", "minimum": 0},
+    "ranked": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {"$ref": "#/definitions/scored_pr"},
+          {
+            "type": "object",
+            "required": ["rank", "outcome"],
+            "properties": {
+              "rank": {"type": "integer", "minimum": 1},
+              "outcome": {"type": "string", "enum": ["hit", "miss", "pending"]}
+            }
+          }
+        ]
+      }
+    },
+    "deferred": {"type": "array", "items": {"$ref": "#/definitions/scored_pr"}},
+    "exclusions": {
+      "type": "object",
+      "required": ["population_total", "bot_authors", "reverts", "docs_only", "generated_files"],
+      "additionalProperties": false,
+      "properties": {
+        "population_total": {"type": "integer", "minimum": 0},
+        "bot_authors": {"type": "integer", "minimum": 0},
+        "reverts": {"type": "integer", "minimum": 0},
+        "docs_only": {"type": "integer", "minimum": 0},
+        "generated_files": {"type": "integer", "minimum": 0},
+        "below_threshold": {"type": "integer", "minimum": 0}
+      }
+    },
+    "merged_without_review": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pr", "score", "merged_at", "merged_by"],
+        "additionalProperties": false,
+        "properties": {
+          "pr": {"$ref": "#/definitions/pr_ref"},
+          "score": {"type": "number", "minimum": 0},
+          "merged_at": {"$ref": "#/definitions/datetime"},
+          "merged_by": {"$ref": "#/definitions/handle"}
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
-    },
-    "review": {
-      "type": "object",
-      "required": ["cadence", "next_review_at"],
+    "previous_precision": {
+      "type": ["object", "null"],
+      "required": ["hits", "n", "value"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "hits": {"type": "integer", "minimum": 0},
+        "n": {"type": "integer", "minimum": 1},
+        "value": {"type": "number", "minimum": 0, "maximum": 1}
       }
-    }
+    },
+    "weights_changed": {"type": "boolean"},
+    "weight_change": {
+      "type": "object",
+      "required": ["previous_weights", "precision_weeks_cited", "precision_values"],
+      "additionalProperties": false,
+      "properties": {
+        "previous_weights": {"$ref": "#/definitions/weights"},
+        "precision_weeks_cited": {"type": "integer", "minimum": 4},
+        "precision_values": {"type": "array", "minItems": 4, "items": {"type": "number", "minimum": 0, "maximum": 1}}
+      }
+    },
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uri"}}
   },
-  "additionalProperties": false
+  "if": {"properties": {"weights_changed": {"const": true}}},
+  "then": {"required": ["weight_change"]}
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="true"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "window": {"from": "2026-09-01T00:00:00Z", "to": "2026-09-08T00:00:00Z", "state_filter": "opened-or-merged-in-window"},
+  "repositories": [
+    {"name": "acme/orders", "has_public_api_list": true, "public_api_paths_config": ".arch/public-api-paths.yaml"},
+    {"name": "acme/billing", "has_public_api_list": true, "public_api_paths_config": ".arch/public-api-paths.yaml"},
+    {"name": "acme/payments", "has_public_api_list": false}
+  ],
+  "session": {"slot": "Monday 10:00", "time_box_minutes": 45, "top_n": 4, "summed_read_minutes": 41},
+  "weights": {"modules_touched": 1.0, "public_api_delta": 4.0, "dependency_changes": 2.0, "contract_changes": 4.0, "infra_or_config_changes": 1.5},
+  "dependency_kind_weights": {"new_dependency": 3.0, "major_bump": 2.0, "minor_bump": 0.5, "patch_bump": 0.1, "removal": 1.0, "lockfile_only": 0},
+  "signals_from_diff_only": true,
+  "review_threshold": 8.0,
+  "ranked": [
+    {"rank": 1, "pr": "acme/orders#4412", "title_context": "small refactor of order status", "score": 27.5, "signals": {"modules_touched": 5, "public_api_delta": 2, "dependency_changes": 0, "contract_changes": 3, "infra_or_config_changes": 1}, "changed_lines": 640, "read_minutes": 16, "outcome": "pending"},
+    {"rank": 2, "pr": "acme/billing#902", "title_context": "add stripe-sdk", "score": 14.0, "signals": {"modules_touched": 2, "public_api_delta": 0, "dependency_changes": 3.0, "contract_changes": 1, "infra_or_config_changes": 2}, "changed_lines": 310, "read_minutes": 10, "outcome": "pending"},
+    {"rank": 3, "pr": "acme/orders#4398", "title_context": "BREAKING: rename test helper", "score": 9.5, "signals": {"modules_touched": 3, "public_api_delta": 0, "dependency_changes": 0, "contract_changes": 1, "infra_or_config_changes": 1}, "changed_lines": 220, "read_minutes": 8, "outcome": "pending"},
+    {"rank": 4, "pr": "acme/payments#77", "title_context": "migration: split ledger table", "score": 8.5, "signals": {"modules_touched": 4, "public_api_delta": 0, "dependency_changes": 0, "contract_changes": 1, "infra_or_config_changes": 1}, "changed_lines": 190, "read_minutes": 7, "outcome": "pending"}
+  ],
+  "deferred": [
+    {"pr": "acme/orders#4405", "score": 8.2, "signals": {"modules_touched": 6, "public_api_delta": 0, "dependency_changes": 0.5, "contract_changes": 0, "infra_or_config_changes": 1}, "changed_lines": 1450, "read_minutes": 36}
+  ],
+  "exclusions": {"population_total": 143, "bot_authors": 31, "reverts": 2, "docs_only": 17, "generated_files": 4, "below_threshold": 84},
+  "merged_without_review": [
+    {"pr": "acme/billing#899", "score": 11.0, "merged_at": "2026-09-04T22:41:00Z", "merged_by": "swe:dpark"}
+  ],
+  "previous_precision": {"hits": 3, "n": 4, "value": 0.75},
+  "weights_changed": false,
+  "evidence": [
+    "https://ci.example.com/arch-rank/run/2026-09-08",
+    "https://github.com/acme/orders/blob/main/.arch/public-api-paths.yaml",
+    "https://wiki.example.com/arch-review/2026-09-01"
+  ]
 }
-]]></code>
-    </example>
-  </section>
+]]></example>
 
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
+  "window": {"from": "2026-09-01T00:00:00Z", "to": "2026-09-08T00:00:00Z", "state_filter": "open-only"},
+  "repositories": [
+    {"name": "acme/orders", "has_public_api_list": true},
+    {"name": "acme/payments", "has_public_api_list": false}
+  ],
+  "session": {"slot": "Monday 10:00", "time_box_minutes": 45, "top_n": 10, "summed_read_minutes": 190},
+  "weights": {"modules_touched": 1.0, "public_api_delta": 4.0, "dependency_changes": 2.0, "contract_changes": 4.0},
+  "dependency_kind_weights": {"new_dependency": 1.0, "major_bump": 1.0, "minor_bump": 1.0, "patch_bump": 1.0, "removal": 1.0, "lockfile_only": 1.0},
+  "signals_from_diff_only": false,
+  "review_threshold": 8.0,
+  "ranked": [
+    {"rank": 1, "pr": "acme/orders#4398", "title_context": "BREAKING: rename test helper", "score": 30.0, "signals": {"modules_touched": 3, "public_api_delta": 0, "dependency_changes": 0, "contract_changes": 1, "infra_or_config_changes": 1}, "changed_lines": 220, "read_minutes": 8},
+    {"rank": 2, "pr": "acme/orders#4412", "score": 12.0, "signals": {"modules_touched": 5, "public_api_delta": 2, "dependency_changes": 0, "contract_changes": 3, "infra_or_config_changes": 1}, "outcome": "pending"}
+  ],
+  "deferred": [],
+  "exclusions": {"population_total": 143, "bot_authors": 0, "reverts": 2, "docs_only": 17, "generated_files": 4},
+  "previous_precision": null,
+  "weights_changed": true,
+  "weight_change": {
+    "previous_weights": {"modules_touched": 1.0, "public_api_delta": 3.0, "dependency_changes": 2.0, "contract_changes": 4.0, "infra_or_config_changes": 1.5},
+    "precision_weeks_cited": 1,
+    "precision_values": [0.5]
+  },
+  "evidence": [
+    "https://ci.example.com/arch-rank/run/2026-09-08"
+  ]
 }
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>The header prints window, repositories, time-box, top N, the five weights and last week's precision; a reader can recompute every score from the printed signals.</item>
+      <item>signals_from_diff_only is true and no title, label, author or description term is in the scorer.</item>
+      <item>Every repo either has a committed public API path list or is scored 0 on public_api_delta with "no API surface list" printed.</item>
+      <item>dependency_kind_weights put a new dependency and a major bump above any patch bump; lockfile-only churn is 0.</item>
+      <item>summed_read_minutes of the ranked list is at or under time_box_minutes; everything above threshold that does not fit is in deferred.</item>
+      <item>ranked + deferred + bot_authors + reverts + docs_only + generated_files + below_threshold equals population_total.</item>
+      <item>merged_without_review is present, even when empty, and every entry names the merger.</item>
+      <item>Every ranked PR from the previous report carries hit or miss; weights change only with four weeks of precision cited.</item>
+      <item>The document validates with scripts/validate-architectural-impact-pr-ranking.py.</item>
     </list>
   </section>
 </text>

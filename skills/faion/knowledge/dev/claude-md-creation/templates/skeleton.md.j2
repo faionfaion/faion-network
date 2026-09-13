@@ -1,42 +1,75 @@
 <!--
-purpose: Canonical skeleton for the `claude-md-creation` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/claude-md-creation/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-claude-md-creation.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Record of how a committed CLAUDE.md satisfies content/01-core-rules.xml — one section per rule; the CLAUDE.md itself is built from claude-md-minimal / -standard / -monorepo.md.j2.
+consumes: The committed CLAUDE.md, the manifests its commands came from, the CI run that executed them, the secret scan, the resync check.
+produces: A committed record at .product/claude-md-creation/<repo>.md plus its JSON form validated by scripts/validate-claude-md-creation.py.
+depends-on: templates/header.yaml, templates/extract-commands.sh, content/02-output-contract.xml, scripts/validate-claude-md-creation.py.
+token-budget-impact: ~600 tokens to fill end-to-end.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+repo: {{ repo_name }}
+layout: {{ layout }}
+template: {{ template }}
+token_count: {{ token_count }}
 ---
 
-# Trigger
+# Repository and template
 
-- kind: {{ trigger_kind }}
-- url:  <URL>
+- repo: {{ repo_name }}
+- layout: {{ layout }} (single | monorepo)
+- template: {{ template }} (minimal 250 | standard 500 | monorepo 700 tokens)
+- token_count: {{ token_count }} (within the template budget; split, never trim commands)
 
-# Owner
+# Commands
 
-- role:<handle>
+One row per command in `## Commands`, extracted with templates/extract-commands.sh and run once on a clean checkout (r-commands-extracted-and-executed).
 
-# Inputs
+| Command | Source manifest | Comment | Ran ok |
+|---|---|---|---|
+| <command> | package.json \| Makefile \| pyproject.toml \| justfile \| other-manifest | <what it does> | true |
 
-- name: {{ input_name }}
-  value: {{ typed_value }}
+# Secrets
 
-# Decision
+- secrets_scan.tool: gitleaks | trufflehog | host-builtin; clean: true
+- env_vars_by_name_only: true (NAME=<required>); env_example_referenced: true
 
-{{ decision_statement }}
+# Structure and key files
+
+At most 20 load-bearing paths, each with a purpose; no generated directories (r-structure-lists-load-bearing-paths-only).
+
+| Path | Purpose |
+|---|---|
+| <dir or file> | <one phrase> |
+
+| Key file | Purpose | Exists at commit |
+|---|---|---|
+| <path> | <what only this file decides> | true |
+
+# Gotchas
+
+| Entry | Names |
+|---|---|
+| <trigger plus consequence> | file \| env-var \| command \| version-pin \| lint-rule |
+
+# Monorepo delegation (layout monorepo only)
+
+- root_restates_app_commands: false
+
+| App | Per-app CLAUDE.md | Exists | Referenced by |
+|---|---|---|---|
+| <app> | <apps/x/CLAUDE.md> | true | import \| relative-path |
+
+# Local settings
+
+- personal_paths_grep_clean: true (/Users/, /home/, C:\, personal handles)
+- claude_local_md_gitignored: true
+
+# Resync check
+
+- kind: ci-job | pre-commit-hook; location: <path>; fails_on_manifest_drift: true
 
 # Evidence
 
-- {{ url_1 }}
-- {{ url_2 }}
-
-# Review
-
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- <CI run that executed the commands>
+- <secret scan run>
+- <resync check definition>

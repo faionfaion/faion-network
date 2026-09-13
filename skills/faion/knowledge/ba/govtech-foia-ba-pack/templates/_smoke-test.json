@@ -1,28 +1,264 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for govtech-foia-ba-pack: _smoke-test.json",
+    "purpose": "Template fixture for govtech-foia-ba-pack: _smoke-test.json — the contract's valid example",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
-  },
-  "owner": "swe:alice",
-  "inputs": [
+  "system_name": "State benefits intake portal",
+  "jurisdiction": "us-state",
+  "access_request_clock_working_days": 10,
+  "record_classes": [
     {
-      "name": "scope",
-      "value": "billing"
+      "name": "citizen benefit applications",
+      "retention_period": "P7Y",
+      "disposition": "destroy",
+      "schedule_item": "State Archives GRS 4-100 item 12",
+      "stores": [
+        "postgres.applications",
+        "s3.uploads"
+      ]
+    },
+    {
+      "name": "caseworker notes",
+      "retention_period": "P7Y",
+      "disposition": "destroy",
+      "schedule_item": "State Archives GRS 4-100 item 14",
+      "stores": [
+        "postgres.case_notes"
+      ]
+    },
+    {
+      "name": "audit logs",
+      "retention_period": "P3Y",
+      "disposition": "destroy",
+      "schedule_item": "State Archives GRS 1-200 item 3",
+      "stores": [
+        "cloudwatch.audit"
+      ]
+    },
+    {
+      "name": "program policy decisions",
+      "retention_period": "P10Y",
+      "disposition": "transfer-to-archives",
+      "schedule_item": "State Archives GRS 2-050 item 1",
+      "stores": [
+        "sharepoint.policy"
+      ]
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
-  "evidence": [
-    "https://example.com/pr/1"
+  "data_stores": [
+    {
+      "name": "postgres.applications",
+      "export_path": {
+        "tool": "pg_dump + redaction script",
+        "query": "SELECT * FROM applications WHERE applicant_id = ANY($1)",
+        "owner": "dba:marta"
+      },
+      "export_lead_time_working_days": 2
+    },
+    {
+      "name": "postgres.case_notes",
+      "export_path": {
+        "tool": "records-export CLI",
+        "query": "records-export notes --case",
+        "owner": "dba:marta"
+      },
+      "export_lead_time_working_days": 2
+    },
+    {
+      "name": "s3.uploads",
+      "export_path": {
+        "tool": "aws s3 sync by applicant prefix",
+        "query": "s3://intake-uploads/<applicant_id>/",
+        "owner": "sre:dmitri"
+      },
+      "export_lead_time_working_days": 1
+    },
+    {
+      "name": "cloudwatch.audit",
+      "export_path": {
+        "tool": "CloudWatch Logs Insights",
+        "query": "fields @timestamp, actor, action | filter subject_id = <id>",
+        "owner": "sre:dmitri"
+      },
+      "export_lead_time_working_days": 3
+    },
+    {
+      "name": "sharepoint.policy",
+      "export_path": {
+        "tool": "SharePoint eDiscovery",
+        "query": "site:policy-decisions",
+        "owner": "records:jlee"
+      },
+      "export_lead_time_working_days": 5
+    }
   ],
-  "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
-  }
+  "exemption_map": [
+    {
+      "field": "postgres.applications.ssn",
+      "category": "personal-privacy",
+      "statutory_basis": "State Public Records Act s.6254(c); 5 U.S.C. §552(b)(6) analogue",
+      "redaction": "field-driven"
+    },
+    {
+      "field": "postgres.applications.bank_account",
+      "category": "personal-privacy",
+      "statutory_basis": "State Public Records Act s.6254(c)",
+      "redaction": "field-driven"
+    },
+    {
+      "field": "postgres.case_notes.fraud_referral_detail",
+      "category": "law-enforcement",
+      "statutory_basis": "State Public Records Act s.6254(f)",
+      "redaction": "structural-split-required"
+    },
+    {
+      "field": "postgres.case_notes.body",
+      "category": "personal-privacy",
+      "statutory_basis": "State Public Records Act s.6254(c)",
+      "redaction": "manual-review",
+      "manual_review_cost_estimate": "about 4 minutes per note; 600 notes per request average = 40 reviewer hours"
+    }
+  ],
+  "staff_channels": [
+    {
+      "channel": "agency email (Exchange)",
+      "capture_mechanism": "journaling to records archive",
+      "auto_delete": false
+    },
+    {
+      "channel": "Teams caseworker chat",
+      "capture_mechanism": "Purview retention policy, 7 years, auto-delete disabled",
+      "auto_delete": false
+    },
+    {
+      "channel": "vendor ticket tool (Zendesk)",
+      "capture_mechanism": "nightly export to postgres.case_notes via API",
+      "auto_delete": false
+    }
+  ],
+  "accessibility_audit": {
+    "wcag_version": "2.1",
+    "level": "AA",
+    "standard_reference": "section-508",
+    "flows": [
+      {
+        "flow": "apply for benefits",
+        "automated_tool": "axe-core in CI",
+        "manual_tests": [
+          "screen-reader",
+          "keyboard-only",
+          "zoom-200"
+        ],
+        "remediation_owner": "fe:priya"
+      },
+      {
+        "flow": "upload supporting documents",
+        "automated_tool": "axe-core in CI",
+        "manual_tests": [
+          "screen-reader",
+          "keyboard-only",
+          "zoom-200"
+        ],
+        "remediation_owner": "fe:priya"
+      },
+      {
+        "flow": "check application status",
+        "automated_tool": "axe-core in CI",
+        "manual_tests": [
+          "screen-reader",
+          "keyboard-only",
+          "zoom-200"
+        ],
+        "remediation_owner": "fe:priya"
+      }
+    ],
+    "launch_gate": "no-critical-or-serious-failure",
+    "accessibility_statement_required": true,
+    "accessibility_statement_url": "https://benefits.example.gov/accessibility"
+  },
+  "clause_review_log": {
+    "data_residency": [
+      {
+        "clause_id": "C-4.2",
+        "design_decision": "All stores in us-west-2 and us-east-1 only; no cross-border replication",
+        "status": "met",
+        "evidence": "https://git.example.gov/intake/infra/pull/88"
+      }
+    ],
+    "security_authorisation": [
+      {
+        "clause_id": "C-7.1",
+        "design_decision": "StateRAMP Moderate authorisation for the hosting vendor before go-live",
+        "status": "open",
+        "evidence": "https://tickets.example.gov/SEC-311"
+      }
+    ],
+    "source_code_escrow_and_ip": [
+      {
+        "clause_id": "C-12",
+        "design_decision": "State owns the code; repository mirrored to the state GitLab weekly",
+        "status": "met",
+        "evidence": "https://git.example.gov/intake/mirror"
+      }
+    ],
+    "open_source_licence": [
+      {
+        "clause_id": "C-12.3",
+        "design_decision": "No AGPL dependencies; SBOM scanned in CI",
+        "status": "met",
+        "evidence": "https://git.example.gov/intake/app/-/jobs/4410"
+      }
+    ],
+    "subcontractor_flow_down": [
+      {
+        "clause_id": "C-15",
+        "design_decision": "Identity-proofing subcontractor signed the same residency and security terms",
+        "status": "met",
+        "evidence": "https://contracts.example.gov/idp-flowdown.pdf"
+      }
+    ],
+    "accessibility_warranty": [
+      {
+        "clause_id": "C-9",
+        "design_decision": "WCAG 2.1 AA warranted; audit report attached to acceptance",
+        "status": "met",
+        "evidence": "https://tickets.example.gov/A11Y-20"
+      }
+    ],
+    "records_transfer_on_termination": [
+      {
+        "clause_id": "C-21",
+        "design_decision": "Records exported as CSV plus PDF/A with schedule metadata within 30 days of termination",
+        "status": "waived",
+        "waived_by": "procurement:hwong",
+        "evidence": "https://contracts.example.gov/waiver-c21.pdf"
+      }
+    ]
+  },
+  "public_notice": {
+    "assessed": true,
+    "required": true,
+    "regime": "state-apa",
+    "buffer_days": 120,
+    "notices_filed": [
+      {
+        "notice": "consultation-open",
+        "date": "2026-03-02"
+      },
+      {
+        "notice": "consultation-close",
+        "date": "2026-04-16"
+      }
+    ]
+  },
+  "records_officer": "records:jlee",
+  "access_request_officer": "pra-officer:tnguyen",
+  "schedule_approved_on": "2026-02-20",
+  "launch_date": "2026-07-01",
+  "blocking_findings": [
+    "clause C-7.1 security_authorisation is open: StateRAMP Moderate letter not yet issued for the hosting vendor"
+  ]
 }

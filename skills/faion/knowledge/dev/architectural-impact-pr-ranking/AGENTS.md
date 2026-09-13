@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- A time-boxed architecture review session exists with a fixed slot (45 minutes by default) and an architect or tech lead who reads what the ranking selects.
+- The PR population is defined: a list of repositories and a window of opened-or-merged timestamps the ranker can query.
+- Each repository's diff, file list and dependency manifests are readable by the ranker (git access or the hosting API), so signals can be computed from the change itself.
+- Each repository has, or can commit, a version-controlled list of its public API paths (schemas, migrations, exports, event definitions, CLI flags).
+- The architect will mark each ranked PR hit or miss after the session, so precision can be recorded.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- There is no recurring architecture review session; ranking PRs for a slot that does not exist produces a list nobody reads.
+- The week's population is small enough to read in full inside the time-box; rank only when the queue exceeds the session.
+- The repositories expose no diff access to the ranker (mirrored read-only snapshots without history), so signals would have to come from PR metadata, which the rules forbid.
+- A platform team already publishes an architecture-impact ranking over the same repositories and window; consume that report rather than running a second scorer.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/architectural-impact-pr-ranking/` |
+| PR population for the window | list of owner/repo#number with opened and merged timestamps | hosting API (GitHub, GitLab) |
+| Diff and file list per PR | git diff --name-status and --stat output | git / hosting API |
+| Dependency manifests | package.json, go.mod, pyproject.toml, Cargo.toml, pom.xml diffs | repository |
+| Public API path list per repository | version-controlled YAML or JSON listing schema, migration, export and event paths | each repository's .arch/ or docs/ directory |
+| Session parameters | slot, time-box minutes, review threshold | review owner |
+| Previous report with hit / miss marks | last week's report JSON with outcome per ranked PR | .product/architectural-impact-pr-ranking/ |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: published formula, signals from diff, public API list per repo, dependency kinds, top N fits session, window and exclusions, merged-without-review, precision recorded | ~1850 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for the report: window over opened-or-merged PRs, repositories with public API path config, session time-box and summed read minutes, five published weights, dependency kind weights with lockfile_only 0 and patch bumps capped, signals_from_diff_only, ranked PRs with signals, lines, read minutes and hit / miss outcome, deferred, reconciling exclusions, merged_without_review, previous precision, weight_change requiring four weeks; valid and invalid examples | ~4600 |
 | `content/03-failure-modes.xml` | essential | 6 subject-specific antipatterns with detector + repair | ~1000 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 9 steps: session and population, public API path list per repo, publish weights, signals from diff, dependency kinds, rank and cut to the time-box, reconcile exclusions and merged-without-review, record precision, validate and publish | ~1800 |
+| `content/05-examples.xml` | recommended | Complete week 37 report over three repositories with notes on every non-obvious value, plus the same week from the first ranker breaking seven rules and what the validator and architect say | ~2350 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

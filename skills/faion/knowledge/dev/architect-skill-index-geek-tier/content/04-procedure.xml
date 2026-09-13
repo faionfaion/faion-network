@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Architect Skill Index (Geek Tier) — Procedure" version="1.0.0" est_tokens="1400" depth="recommended">
+  <summary>Seven steps that build the index in the order the rules depend on each other: resolve candidate slugs against meta.json, write the architect-perspective sentence and load signal per entry, cluster by activity, check the count and record any shortfall, list uncovered tasks, wire and run the relink script, then validate and publish. Each step names its rule and the skeleton section it fills.</summary>
+
+  <section title="Steps">
+    <step n="1" name="resolve-candidate-slugs">
+      <input>The candidate list of sdlc-ai, dev and sdd methodologies with an architecture angle; `skills/faion/knowledge/*/&lt;slug&gt;/meta.json` for each.</input>
+      <action>For every candidate resolve the wikilink slug to its directory, read `status` and `est_tokens` from `meta.json`, and drop any slug that does not resolve or is not `active`. Deduplicate so each slug appears once. Fill the slug and est_tokens columns of `# Clusters` in `templates/skeleton.md.j2`.</action>
+      <output>A resolved candidate table: slug, est_tokens, target_status active.</output>
+      <decision-gate>A slug that does not resolve, or a draft target, is out until it does (r-entry-resolves-to-existing-slug, fm-dangling-wikilinks).</decision-gate>
+    </step>
+
+    <step n="2" name="write-architect-why-and-load-when">
+      <input>The resolved table; each target's own summary (to diff against, not to copy).</input>
+      <action>For each entry write one `architect_why` sentence naming the architecture task it serves (boundary decision, ADR, fitness function, quality-attribute trade-off, cross-cutting review) and one `load_when` line naming the observable trigger to open it. Diff each sentence against the target summary and rewrite any paraphrase.</action>
+      <output>Entries with all five fixed fields.</output>
+      <decision-gate>An entry for which no architecture task can be named is removed, not kept for the count (r-architect-why-not-copied-summary, r-entry-fields-fixed, fm-copied-developer-summary).</decision-gate>
+    </step>
+
+    <step n="3" name="cluster-by-activity">
+      <input>The entries from step 2.</input>
+      <action>Assign each entry to one cluster named by architecture activity — eliciting requirements, deciding and recording, documenting views, evaluating and reviewing, governing drift — never by the source tool. Merge any cluster with fewer than three entries into its nearest activity.</action>
+      <output>`clusters[]` with `name`, `activity` and at least three entries each.</output>
+      <decision-gate>A cluster called spec-kit, plan-mode or RAG is fm-tool-named-clusters; rename by the task the reader arrives with (r-clustered-by-architecture-activity).</decision-gate>
+    </step>
+
+    <step n="4" name="count-and-record-shortfall">
+      <input>`clusters[]`.</input>
+      <action>Set `entry_count` to the number of distinct slugs. If it is below 50, add `shortfall` with `count_missing` and the reason, and carry the missing tasks into step 5; never add near-duplicates or entries with no architectural angle to reach the number.</action>
+      <output>`entry_count`, and `shortfall` when under 50.</output>
+      <decision-gate>Reaching 50 by listing one slug under two clusters is fm-padding-to-fifty (r-minimum-fifty-distinct-targets).</decision-gate>
+    </step>
+
+    <step n="5" name="list-uncovered-tasks">
+      <input>The architecture activities from step 3 and the tasks architects asked for that no entry serves.</input>
+      <action>Write the `uncovered_tasks[]` section: one line per task with the closest partial match slug or `none`. Fill `# Not covered`.</action>
+      <output>`uncovered_tasks[]` with at least one line.</output>
+      <decision-gate>An index with no uncovered-tasks section is treated as unreviewed (r-uncovered-tasks-listed, fm-implied-completeness).</decision-gate>
+    </step>
+
+    <step n="6" name="wire-and-run-relink">
+      <input>The finished entries; CI.</input>
+      <action>Commit a relink script that re-resolves every slug, re-reads `status` and `est_tokens` from each `meta.json`, and fails on any miss or mismatch; run it, record `relink.script_path`, `last_run`, `run_url` and `next_due` (one review cadence out), and put the run URL in `evidence[]`. Fill `# Relink`.</action>
+      <output>`relink` object; run URL in `evidence[]`.</output>
+      <decision-gate>Any est_tokens differing from the target's meta.json fails the run and is corrected before publishing (r-relinked-at-review-cadence, fm-no-load-signal).</decision-gate>
+    </step>
+
+    <step n="7" name="validate-and-publish">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-architect-skill-index-geek-tier.py --file &lt;index.json&gt;`; fix every violation; publish the index in the geek tier and link the publishing PR in `evidence[]`.</action>
+      <output>An index that validates and a relink run scheduled at the review cadence.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON index validates with `scripts/validate-architect-skill-index-geek-tier.py`.</item>
+      <item>The relink run passes: every slug active, every est_tokens equal to meta.json, no slug twice.</item>
+      <item>Every cluster is named by activity and every entry names an architecture task.</item>
+      <item>entry_count is at least 50, or the shortfall and uncovered tasks say why not.</item>
+    </list>
+  </section>
+</text>

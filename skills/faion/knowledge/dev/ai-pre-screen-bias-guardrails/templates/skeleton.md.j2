@@ -1,42 +1,90 @@
 <!--
-purpose: Canonical skeleton for the `ai-pre-screen-bias-guardrails` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/ai-pre-screen-bias-guardrails/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-ai-pre-screen-bias-guardrails.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Canonical skeleton for the `ai-pre-screen-bias-guardrails` spec — one section per rule in content/01-core-rules.xml.
+consumes: Job requirements, redaction fixtures, rubric, calibration run, HRIS self-identification table, legal determination, pipeline storage.
+produces: A committed spec at .product/ai-pre-screen-bias-guardrails/<role>.md plus its JSON form validated by scripts/validate-ai-pre-screen-bias-guardrails.py.
+depends-on: templates/header.yaml, content/02-output-contract.xml, scripts/validate-ai-pre-screen-bias-guardrails.py.
+token-budget-impact: ~1400 tokens to fill end-to-end.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+role_title: {{ role_title }}
+hiring_manager: {{ hiring_manager }}
+applicable_law: {{ applicable_law }}
+calibration_run_url: {{ calibration_run_url }}
 ---
 
-# Trigger
+# Role
 
-- kind: {{ trigger_kind }}
-- url:  <URL>
+- role_title: {{ role_title }}
+- candidate_jurisdictions: <US-NY, US-CA, DE, ...>
+- hiring_manager (human of record): {{ hiring_manager }}
 
-# Owner
+# Redaction
 
-- role:<handle>
+- version: <x.y.z>
+- stripped_attributes: name, photo, email-handle, date-of-birth-and-age, graduation-years, address-below-city, gender-markers-and-pronouns, nationality-and-visa-status, marital-and-parental-status, protected-class-associations
+- unit_tested: true (fixture_set_path: <path>)
+- human_sample_inspected_per_release: true (sample_size_per_release: <n>)
 
-# Inputs
+# Rubric
 
-- name: {{ input_name }}
-  value: {{ typed_value }}
+- version: <x.y>
+- hash: sha256:<hash of the rubric file>
+- written_before_first_score: true (first_score_at: YYYY-MM-DD)
 
-# Decision
+| Criterion | Job requirement | Low anchor | Mid anchor | High anchor |
+|---|---|---|---|---|
+| <criterion> | <requirement it maps to> | <behaviour at the lowest score> | <behaviour at the middle score> | <behaviour at the highest score> |
 
-{{ decision_statement }}
+# Proxy review
+
+- reviewed_on: YYYY-MM-DD; reviewed_by: role:<handle>
+- proxy_terms_found: none (culture fit, energy, polish, native speaker, recent graduate, digital native, employment gaps, years since graduation, commute distance, school or employer prestige)
+- evidence_url: <URL>
+
+# Calibration
+
+- sample_source: real-applicant-pool; sample_size: <n>; human_reviewers: <at least 2>
+- statistic: cohens-kappa | weighted-kappa | spearman
+- threshold: <set before the run>; threshold_set_before_run: true
+- result: <n>; passed: true | false
+- run_url: {{ calibration_run_url }}
+
+# Adverse impact
+
+- self_id_store: <HRIS table>; self_id_store_separate_from_scoring: true
+- hold_threshold: 0.8
+
+| Stage | Group | Selection rate | Min ratio | On hold |
+|---|---|---|---|---|
+| <stage where the system filters or ranks> | <group> | <rate> | <lowest / highest> | false unless ratio under 0.8 |
+
+# Human of record
+
+- auto_reject_filter_present: false
+- decision_carries_role_handle: true
+- reviewer_inputs: redacted-document, score-with-reasons
+
+# Legal
+
+- applicable_law: {{ applicable_law }}
+- notice_text_url: <URL>; notice_lead_business_days: <at least 10 for nyc-ll-144>
+- bias_audit: conducted_on YYYY-MM-DD; independent true; summary_url <URL>; auditor <name>
+- confirmed_by: role:<handle> (when applicable_law is none)
+
+# Audit log
+
+- fields: submission_hash, redacted_text, model_id, prompt_hash, rubric_version, score_with_reasons, human_decision
+- retention_months: <at least 12>; retention_basis: <29 CFR 1602.14 or jurisdiction rule>
+- queryable_per_candidate: true; storage: <table and index>
+
+# Pinned tuple
+
+- model_id: <dated id>; prompt_hash: sha256:<hash>; rubric_version: <x.y>; redaction_version: <x.y.z>
 
 # Evidence
 
-- {{ url_1 }}
-- {{ url_2 }}
-
-# Review
-
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- {{ calibration_run_url }}
+- <proxy review URL>
+- <bias audit summary URL>
+- <per-stage four-fifths table URL>

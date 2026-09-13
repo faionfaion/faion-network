@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="HealthTech FHIR BA Pack — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `healthtech-fhir-ba-pack`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="HealthTech FHIR BA Pack — Procedure" version="1.2.0" est_tokens="2050" depth="recommended">
+  <summary>Nine steps in the order the dependencies run: the FHIR element map first (every later section refers to element paths), terminology bindings on it, then the flow table, the processor list, the overlap matrix, the consent model, the audit trail, the encryption inventory, and validation. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="map-clinical-elements-to-fhir">
+      <input>The feature's data model or screen inventory; the FHIR version (R4 or R5) and the implementation guide in force (US Core, UK Core, or the customer's profile).</input>
+      <action>List every clinical element the feature reads or writes and assign a `resource` and `element_path` (`Patient.identifier`, `Encounter.period`, `Observation.value[x]`, `Condition.clinicalStatus`) against the profile. Mark each element `coded` true or false. Fill `# FHIR element map` in `templates/skeleton.md.j2`.</action>
+      <output>`fhir_version`, `profile`, `element_map[]` without bindings yet.</output>
+      <decision-gate>Any clinical element that only maps to an application JSON blob or bespoke table stops here (r-clinical-elements-map-to-fhir-resources, fm-clinical-data-in-custom-json).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="bind-coded-elements-to-terminology">
+      <input>`element_map[]` rows with `coded` true; the profile's binding requirements.</input>
+      <action>For each coded element set `binding.code_system` and `system_uri`: `Observation.code` to LOINC (`http://loinc.org`), `Condition.code` to SNOMED CT (`http://snomed.info/sct`) or ICD-10-CM where billing or the profile demands, medications to RxNorm or dm+d, units to UCUM. Record the value set where the profile fixes one.</action>
+      <output>`element_map[]` complete.</output>
+      <decision-gate>A coded field with free text only, or a locally invented code list for a concept a standard covers, is rejected (r-coded-terminology-bindings, fm-free-text-in-coded-fields).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="build-phi-flow-table">
+      <input>The architecture diagram: every service, vendor, environment, analytics store and model provider a record reaches.</input>
+      <action>For every boundary crossed add a `data_flows[]` row with `from`, `to`, the `phi_elements[]` (element paths from step 1) that cross, the `purpose`, and what is `excluded_elements` at the boundary. For analytics and model-training rows set `de_identification` to safe-harbor or expert-determination and name the method (which of the 18 identifier classes are stripped, or who certified). Fill `# PHI data flows`.</action>
+      <output>`data_flows[]`.</output>
+      <decision-gate>An analytics or training flow that receives identified PHI is a blocking finding until de-identified (r-phi-minimum-necessary-per-flow).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="list-processors-and-agreements">
+      <input>`data_flows[]` destinations that are third parties; the contracts register.</input>
+      <action>For every third party storing, processing or transmitting PHI record `service_kind`, `phi_in_scope`, `baa_signed` with `baa_signed_on` and `agreement_evidence`, `dpa_art28_signed` where GDPR applies, and `status`. A processor with PHI in scope and no signed BAA is `blocking`. Fill `# Processors`.</action>
+      <output>`processors[]`; each blocking processor echoed in `blocking_findings[]`.</output>
+      <decision-gate>"The vendor says they are HIPAA compliant" is not an agreement; either sign or strip PHI from the payload before data flows (r-baa-or-dpa-per-processor, fm-vendor-without-baa).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="fill-overlap-matrix">
+      <input>`regimes` (which of hipaa / gdpr / nhs apply); counsel's position per regime.</input>
+      <action>When both HIPAA and GDPR apply, fill the five mandatory rows — lawful_basis, breach_notification_clock (72 hours vs 60 days), individual_access (one month vs 30 days), retention_and_deletion (erasure vs six-year retention), cross_border_transfer — each with the HIPAA position, the GDPR position, the design decision and the stricter clock the system honours. Fill `# HIPAA-GDPR overlap matrix`.</action>
+      <output>`overlap_matrix` with at least the five rows, or omitted when only one regime applies.</output>
+      <decision-gate>A row without `stricter_clock_honoured` has not been decided (r-hipaa-gdpr-overlap-matrix-minimum-rows, fm-regime-clocks-conflated).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="model-consent-and-irb">
+      <input>Every use of the data: treatment, research, marketing, data sharing; the IRB or ethics committee approval where research applies.</input>
+      <action>Create one `consent.records[]` entry per use as a FHIR `Consent` (or equivalent) with `scope`, `provision[]` (permit / deny per data category and purpose), `period`, `text_version`, and `capture` (timestamp field and channel). Keep treatment and research as separate records. When `research_use` is true add `irb` with `protocol_number`, `approval_date` and `waiver_of_consent`. Fill `# Consent model`.</action>
+      <output>`consent` object.</output>
+      <decision-gate>One checkbox covering care and research is fm-single-consent-for-care-and-research; split before continuing (r-consent-as-fhir-consent-with-irb-reference).</decision-gate>
     </step>
+
+    <step n="7" name="specify-audit-trail">
+      <input>The list of reads, writes, exports and disclosures of PHI in the feature; the platform's log storage.</input>
+      <action>Set `audit_trail.model` (fhir-auditevent or equivalent), list all six `fields` (actor, subject_id, action, timestamp, source_system, purpose), set `append_only` true with no application role holding UPDATE or DELETE, `retention_years` at least 6, and `per_patient_query` true with the index that makes it so. Fill `# Audit trail`.</action>
+      <output>`audit_trail` object.</output>
+      <decision-gate>A log the application can rewrite, rotates under six years, or cannot be filtered by patient cannot answer an accounting-of-disclosures request (r-audit-trail-append-only-six-years, fm-mutable-or-short-audit-log).</decision-gate>
+    </step>
+
+    <step n="8" name="inventory-encryption">
+      <input>Every store holding PHI — database, backups, object storage, logs, search indexes, queues, caches — and every hop between them.</input>
+      <action>For every store record `encrypted_at_rest` and `key_management_separated`; a store that is not encrypted is `status` blocking. For every hop record `tls_min` (1.2 or 1.3; no plaintext internal hops). Fill `# Encryption inventory`.</action>
+      <output>`encryption.stores[]` and `encryption.hops[]`; blockers echoed in `blocking_findings[]`.</output>
+      <decision-gate>An unencrypted backup bucket or log file is unsecured PHI under HHS guidance; fix or block launch (r-phi-encrypted-transit-and-rest).</decision-gate>
+    </step>
+
+    <step n="9" name="validate-and-file">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-healthtech-fhir-ba-pack.py --file &lt;pack.json&gt;`; fix every violation; commit the pack to `.product/healthtech-fhir-ba-pack/` with `blocking_findings[]` at the top of the summary.</action>
+      <output>A pack that validates, with every processor, flow and store blocker visible to the privacy officer.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON pack validates with `scripts/validate-healthtech-fhir-ba-pack.py`.</item>
+      <item>Every coded element carries a standard terminology binding; every analytics or training flow is de-identified by a named method.</item>
+      <item>Every PHI processor has a signed BAA (and Art. 28 agreement where GDPR applies) or is a blocking finding.</item>
+      <item>The audit trail is append-only, six years, per-patient queryable; every PHI store is encrypted or blocking.</item>
+    </list>
   </section>
 </text>

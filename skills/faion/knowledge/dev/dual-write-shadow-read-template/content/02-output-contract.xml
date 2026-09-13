@@ -1,121 +1,330 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Dual-Write Shadow-Read Template — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `dual-write-shadow-read-template` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="Dual-Write Shadow-Read Template — Output Contract" version="1.2.0" est_tokens="4750" depth="essential">
+  <summary>The runbook is one JSON document with one section per rule in 01-core-rules.xml: per entity type the primary key, version field, parity exclusions and the numeric cutover gate; the dual-write path as a version-guarded upsert outside the old store's transaction with a durable retry queue and failure metric; the scheduled reconciliation job with its repair budget; the backfill ordered after dual-write and verified by counts and checksums; the shadow read that returns the old result, bounded by its own timeout and sampled by a runtime flag; four per-stage flags with their reverse order, a retention window and a rehearsed flip-back; and the named humans who approve the two production-affecting flips. Subagent MUST satisfy this contract before returning to caller.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="migration_name" type="string" required="true">the cutover the runbook governs (Postgres major upgrade, monolith-to-service split, schema rewrite)</field>
+      <field name="old_store" type="string" required="true">the system of record until read cutover (r-old-store-authoritative)</field>
+      <field name="new_store" type="string" required="true">the store being proven</field>
+      <field name="entity_types" type="list" required="true">per entity: primary_key, version_field, parity_excluded_fields, and the gate: mismatch_ratio_max, window_hours, min_comparisons — all written before shadow mode starts (r-dual-write-idempotent-writes, r-shadow-read-parity-diff, r-cutover-gate-numeric)</field>
+      <field name="dual_write" type="object" required="true">version-guarded upsert with compare-and-set, outside the old store's transaction, failures to a durable retry queue with dual_write_failures_total and an alert threshold (r-dual-write-idempotent-writes, r-old-store-authoritative)</field>
+      <field name="reconciliation" type="object" required="true">named scheduled job, cadence, max repairs per run, reconciliation_repairs_total, declared before dual-write is enabled (r-reconciliation-job-required)</field>
+      <field name="backfill" type="object" required="true">starts after dual-write, uses the same upsert, verified by per-partition counts and checksum before any parity number (r-backfill-before-shadow)</field>
+      <field name="shadow_read" type="object" required="true">normalising comparator, returns the old store's result, candidate timeout at or under the old p99, exceptions swallowed and counted, runtime sampling flag starting under 100 percent, shadow_read_mismatch_ratio with retained samples (r-shadow-read-parity-diff, r-shadow-read-no-user-impact)</field>
+      <field name="flags" type="object" required="true">four per-stage runtime flags, the reverse order, retention window for old-store writes, flip-back rehearsed before write-to-old is turned off (r-rollback-flag-per-stage)</field>
+      <field name="cutover" type="object" required="true">gate declared before shadow; the gate evaluation URL and named approvers for read-from-new and write-to-old-off (r-cutover-gate-numeric; human checkpoint)</field>
+      <field name="evidence" type="list" required="true">URLs: reconciliation dashboard, backfill verification, gate evaluation at cutover, flip-back rehearsal</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">dual_write.upsert_kind other than version-guarded-upsert, or compare_and_set_on_version false (fm-non-idempotent-fanout)</pattern>
+      <pattern id="f2">dual_write.outside_old_store_transaction false, or failures that propagate to the user request (fm-new-store-fails-request)</pattern>
+      <pattern id="f3">no reconciliation job, or a cadence of monthly or longer, or declared_before_dual_write false (fm-no-reconciliation)</pattern>
+      <pattern id="f4">backfill.starts_after_dual_write false, uses_same_upsert false, or parity reported before counts and checksum matched (fm-backfill-clobbers-live)</pattern>
+      <pattern id="f5">shadow_read.comparator raw, or an entity with no parity_excluded_fields declared (fm-parity-noise)</pattern>
+      <pattern id="f6">shadow_read.returns_old_store_result false, no candidate timeout, or sampling_percent_initial of 100 (fm-shadow-read-latency)</pattern>
+      <pattern id="f7">a single combined migrated flag, retention_window_days under 1, or write-to-old off before the flip-back was rehearsed (fm-old-store-dropped-early)</pattern>
+      <pattern id="f8">cutover.gate_declared_before_shadow false, or read_from_new flipped without an evaluation URL and a named approver</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Where an entity type has no natural version column, derive the version from the change-data-capture log sequence number and name it as version_field.</transformation>
+      <transformation>Group entity types that share a table family under one entry when their key, version field and gate are identical; list the members in name.</transformation>
+      <transformation>Express the candidate timeout as a measured old-store p99 at runbook time; re-measure and update it when shadow sampling is raised.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "faion://dual-write-shadow-read-template/output.schema.json",
+  "title": "Dual-write + shadow-read migration runbook",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": [
+    "migration_name", "kind", "old_store", "new_store", "entity_types", "dual_write",
+    "reconciliation", "backfill", "shadow_read", "flags", "cutover", "evidence"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "flag_name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]*$"}
+  },
   "properties": {
-    "trigger": {
-      "type": "object",
-      "required": ["kind", "url"],
-      "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
-      }
-    },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
+    "__faion_header__": {"type": "object"},
+    "migration_name": {"type": "string", "minLength": 3},
+    "kind": {"type": "string", "enum": ["postgres-major-upgrade", "monolith-to-service-split", "schema-rewrite", "datastore-swap", "other"]},
+    "old_store": {"type": "string", "minLength": 2},
+    "new_store": {"type": "string", "minLength": 2},
+    "entity_types": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["name", "value"],
+        "required": ["name", "primary_key", "version_field", "parity_excluded_fields", "gate"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+          "name": {"type": "string", "minLength": 2},
+          "primary_key": {"type": "string", "minLength": 1},
+          "version_field": {"type": "string", "minLength": 1, "description": "row version, updated_at, or log sequence number"},
+          "parity_excluded_fields": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "gate": {
+            "type": "object",
+            "required": ["mismatch_ratio_max", "window_hours", "min_comparisons"],
+            "additionalProperties": false,
+            "properties": {
+              "mismatch_ratio_max": {"type": "number", "minimum": 0, "exclusiveMaximum": 1},
+              "window_hours": {"type": "integer", "minimum": 1},
+              "min_comparisons": {"type": "integer", "minimum": 1}
+            }
+          }
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
-    },
-    "review": {
+    "dual_write": {
       "type": "object",
-      "required": ["cadence", "next_review_at"],
+      "required": ["upsert_kind", "compare_and_set_on_version", "outside_old_store_transaction", "failure_fails_user_request", "retry_queue", "failure_metric", "alert_threshold"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "upsert_kind": {"type": "string", "const": "version-guarded-upsert"},
+        "compare_and_set_on_version": {"type": "boolean", "const": true},
+        "outside_old_store_transaction": {"type": "boolean", "const": true},
+        "failure_fails_user_request": {"type": "boolean", "const": false},
+        "retry_queue": {"type": "string", "minLength": 2},
+        "failure_metric": {"type": "string", "const": "dual_write_failures_total"},
+        "alert_threshold": {"type": "number", "exclusiveMinimum": 0}
       }
-    }
+    },
+    "reconciliation": {
+      "type": "object",
+      "required": ["job_name", "cadence", "max_repairs_per_run", "metric", "declared_before_dual_write"],
+      "additionalProperties": false,
+      "properties": {
+        "job_name": {"type": "string", "minLength": 2},
+        "cadence": {"type": "string", "enum": ["every-5-minutes", "hourly", "every-6-hours", "daily", "weekly"]},
+        "max_repairs_per_run": {"type": "integer", "minimum": 0},
+        "metric": {"type": "string", "const": "reconciliation_repairs_total"},
+        "declared_before_dual_write": {"type": "boolean", "const": true}
+      }
+    },
+    "backfill": {
+      "type": "object",
+      "required": ["starts_after_dual_write", "uses_same_upsert", "per_partition_counts_match", "checksum_match", "completed_before_shadow_parity"],
+      "additionalProperties": false,
+      "properties": {
+        "starts_after_dual_write": {"type": "boolean", "const": true},
+        "uses_same_upsert": {"type": "boolean", "const": true},
+        "per_partition_counts_match": {"type": "boolean", "const": true},
+        "checksum_match": {"type": "boolean", "const": true},
+        "completed_before_shadow_parity": {"type": "boolean", "const": true},
+        "partitions": {"type": "integer", "minimum": 1}
+      }
+    },
+    "shadow_read": {
+      "type": "object",
+      "required": ["comparator", "returns_old_store_result", "candidate_timeout_ms", "old_store_p99_ms", "exceptions_swallowed_and_counted", "sampling_flag", "sampling_percent_initial", "mismatch_metric", "mismatch_samples_retained"],
+      "additionalProperties": false,
+      "properties": {
+        "comparator": {"type": "string", "const": "normalising"},
+        "returns_old_store_result": {"type": "boolean", "const": true},
+        "candidate_timeout_ms": {"type": "integer", "minimum": 1},
+        "old_store_p99_ms": {"type": "integer", "minimum": 1},
+        "exceptions_swallowed_and_counted": {"type": "boolean", "const": true},
+        "sampling_flag": {"$ref": "#/definitions/flag_name"},
+        "sampling_percent_initial": {"type": "number", "minimum": 0, "exclusiveMaximum": 100},
+        "mismatch_metric": {"type": "string", "const": "shadow_read_mismatch_ratio"},
+        "mismatch_samples_retained": {"type": "boolean", "const": true}
+      }
+    },
+    "flags": {
+      "type": "object",
+      "required": ["dual_write_on", "shadow_read_on", "read_from_new_on", "write_to_old_off", "runtime_flippable", "reverse_order", "retention_window_days", "read_flipback_rehearsed_before_write_off"],
+      "additionalProperties": false,
+      "properties": {
+        "dual_write_on": {"$ref": "#/definitions/flag_name"},
+        "shadow_read_on": {"$ref": "#/definitions/flag_name"},
+        "read_from_new_on": {"$ref": "#/definitions/flag_name"},
+        "write_to_old_off": {"$ref": "#/definitions/flag_name"},
+        "runtime_flippable": {"type": "boolean", "const": true},
+        "reverse_order": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["write_to_old_off", "read_from_new_on", "shadow_read_on", "dual_write_on"]}
+        },
+        "retention_window_days": {"type": "integer", "minimum": 1},
+        "read_flipback_rehearsed_before_write_off": {"type": "boolean", "const": true}
+      }
+    },
+    "cutover": {
+      "type": "object",
+      "required": ["gate_declared_before_shadow", "read_from_new_approver", "write_to_old_off_approver"],
+      "additionalProperties": false,
+      "properties": {
+        "gate_declared_before_shadow": {"type": "boolean", "const": true},
+        "gate_evaluation_url": {"type": "string", "format": "uri"},
+        "read_from_new_flipped": {"type": "boolean"},
+        "read_from_new_approver": {"$ref": "#/definitions/handle"},
+        "write_to_old_off_approver": {"$ref": "#/definitions/handle"}
+      },
+      "if": {"properties": {"read_from_new_flipped": {"const": true}}},
+      "then": {"required": ["gate_evaluation_url"]}
+    },
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uri"}}
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "migration_name": "orders-db Postgres 13 to 16 with partitioned ledger",
+  "kind": "postgres-major-upgrade",
+  "old_store": "pg13.orders",
+  "new_store": "pg16.orders",
+  "entity_types": [
+    {"name": "order", "primary_key": "order_id", "version_field": "row_version", "parity_excluded_fields": ["updated_at", "search_vector"], "gate": {"mismatch_ratio_max": 0.001, "window_hours": 72, "min_comparisons": 50000}},
+    {"name": "ledger_entry", "primary_key": "entry_id", "version_field": "lsn", "parity_excluded_fields": ["inserted_at"], "gate": {"mismatch_ratio_max": 0.0001, "window_hours": 72, "min_comparisons": 200000}},
+    {"name": "customer_note", "primary_key": "note_id", "version_field": "updated_at", "parity_excluded_fields": ["updated_at", "tsv"], "gate": {"mismatch_ratio_max": 0.005, "window_hours": 168, "min_comparisons": 2000}}
+  ],
+  "dual_write": {
+    "upsert_kind": "version-guarded-upsert",
+    "compare_and_set_on_version": true,
+    "outside_old_store_transaction": true,
+    "failure_fails_user_request": false,
+    "retry_queue": "sqs.orders-dual-write-retry",
+    "failure_metric": "dual_write_failures_total",
+    "alert_threshold": 50
   },
-  "additionalProperties": false
+  "reconciliation": {
+    "job_name": "orders-reconcile-keywalk",
+    "cadence": "hourly",
+    "max_repairs_per_run": 20,
+    "metric": "reconciliation_repairs_total",
+    "declared_before_dual_write": true
+  },
+  "backfill": {
+    "starts_after_dual_write": true,
+    "uses_same_upsert": true,
+    "per_partition_counts_match": true,
+    "checksum_match": true,
+    "completed_before_shadow_parity": true,
+    "partitions": 64
+  },
+  "shadow_read": {
+    "comparator": "normalising",
+    "returns_old_store_result": true,
+    "candidate_timeout_ms": 45,
+    "old_store_p99_ms": 48,
+    "exceptions_swallowed_and_counted": true,
+    "sampling_flag": "orders.shadow_read_percent",
+    "sampling_percent_initial": 5,
+    "mismatch_metric": "shadow_read_mismatch_ratio",
+    "mismatch_samples_retained": true
+  },
+  "flags": {
+    "dual_write_on": "orders.dual_write_on",
+    "shadow_read_on": "orders.shadow_read_on",
+    "read_from_new_on": "orders.read_from_new_on",
+    "write_to_old_off": "orders.write_to_old_off",
+    "runtime_flippable": true,
+    "reverse_order": ["write_to_old_off", "read_from_new_on", "shadow_read_on", "dual_write_on"],
+    "retention_window_days": 14,
+    "read_flipback_rehearsed_before_write_off": true
+  },
+  "cutover": {
+    "gate_declared_before_shadow": true,
+    "gate_evaluation_url": "https://grafana.example.com/d/orders-parity?from=2026-09-01&to=2026-09-04",
+    "read_from_new_flipped": true,
+    "read_from_new_approver": "arch:nkovacs",
+    "write_to_old_off_approver": "dba:marta"
+  },
+  "evidence": [
+    "https://grafana.example.com/d/orders-reconciliation",
+    "https://ci.example.com/orders/backfill-verify/run/77",
+    "https://grafana.example.com/d/orders-parity?from=2026-09-01&to=2026-09-04",
+    "https://wiki.example.com/orders/flipback-rehearsal-2026-09-05"
+  ]
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "migration_name": "orders-db Postgres 13 to 16",
+  "kind": "postgres-major-upgrade",
+  "old_store": "pg13.orders",
+  "new_store": "pg16.orders",
+  "entity_types": [
+    {"name": "order", "primary_key": "order_id", "version_field": "row_version", "parity_excluded_fields": [], "gate": {"mismatch_ratio_max": 1, "window_hours": 0, "min_comparisons": 0}}
+  ],
+  "dual_write": {
+    "upsert_kind": "plain-insert",
+    "compare_and_set_on_version": false,
+    "outside_old_store_transaction": false,
+    "failure_fails_user_request": true,
+    "retry_queue": "",
+    "failure_metric": "errors",
+    "alert_threshold": 0
+  },
+  "reconciliation": {
+    "job_name": "none",
+    "cadence": "weekly",
+    "max_repairs_per_run": 0,
+    "metric": "reconciliation_repairs_total",
+    "declared_before_dual_write": false
+  },
+  "backfill": {
+    "starts_after_dual_write": false,
+    "uses_same_upsert": false,
+    "per_partition_counts_match": true,
+    "checksum_match": false,
+    "completed_before_shadow_parity": false
+  },
+  "shadow_read": {
+    "comparator": "raw",
+    "returns_old_store_result": false,
+    "candidate_timeout_ms": 5000,
+    "old_store_p99_ms": 48,
+    "exceptions_swallowed_and_counted": false,
+    "sampling_flag": "orders.shadow_read_percent",
+    "sampling_percent_initial": 100,
+    "mismatch_metric": "shadow_read_mismatch_ratio",
+    "mismatch_samples_retained": false
+  },
+  "flags": {
+    "dual_write_on": "orders.migrated",
+    "shadow_read_on": "orders.migrated",
+    "read_from_new_on": "orders.migrated",
+    "write_to_old_off": "orders.migrated",
+    "runtime_flippable": false,
+    "reverse_order": ["write_to_old_off"],
+    "retention_window_days": 0,
+    "read_flipback_rehearsed_before_write_off": false
+  },
+  "cutover": {
+    "gate_declared_before_shadow": false,
+    "read_from_new_flipped": true,
+    "read_from_new_approver": "team:data",
+    "write_to_old_off_approver": "team:data"
+  },
+  "evidence": [
+    "https://grafana.example.com/d/orders-parity"
+  ]
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>Every entity type names its primary key, version field, parity exclusions and a numeric gate (ratio, window, minimum comparisons) written before shadow mode.</item>
+      <item>Dual writes are version-guarded upserts outside the old store's transaction; a failed new-store write is queued and counted, never surfaced to the user.</item>
+      <item>A named reconciliation job runs at least weekly with a repair budget and was declared before dual-write went on.</item>
+      <item>Backfill started after dual-write, used the same upsert, and matched per-partition counts and checksum before any parity number was reported.</item>
+      <item>Shadow reads return the old store's result, time out at or under the old p99, swallow and count exceptions, and are sampled by a runtime flag starting under 100 percent.</item>
+      <item>Four distinct runtime flags with the reverse order recorded; old-store writes continue through the retention window; the read flip-back was rehearsed before write-to-old goes off.</item>
+      <item>read-from-new was flipped only with a linked gate evaluation and a named approver; write-to-old-off has its own named approver.</item>
+      <item>The runbook validates with scripts/validate-dual-write-shadow-read-template.py.</item>
     </list>
   </section>
 </text>

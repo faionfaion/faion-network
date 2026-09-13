@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Dual-Write Shadow-Read Template — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `dual-write-shadow-read-template`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="Dual-Write Shadow-Read Template — Procedure" version="1.2.0" est_tokens="2050" depth="recommended">
+  <summary>Nine steps in the order the migration runs: declare entity types and their gates, implement the version-guarded dual write outside the old transaction, declare and schedule reconciliation, enable dual-write and backfill in that order with verification, define the four flags and the reverse order, turn on sampled shadow reads with a bounded candidate, evaluate the numeric gate and flip reads with a named approver, hold the retention window and rehearse the flip-back, then validate and file. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="declare-entity-types-and-gates">
+      <input>The tables or aggregates being migrated; their primary keys and a monotonic version per row (row version, `updated_at`, or log sequence number); the fields that legitimately differ between stores.</input>
+      <action>For each entity type record `primary_key`, `version_field`, `parity_excluded_fields` (auto-generated timestamps, surrogate ids, search vectors) and the gate: `mismatch_ratio_max`, `window_hours`, `min_comparisons`. Write these before any shadow read runs and set `cutover.gate_declared_before_shadow` true. Fill `# Entity types and gates` in `templates/skeleton.md.j2`.</action>
+      <output>`entity_types[]`, `cutover.gate_declared_before_shadow`.</output>
+      <decision-gate>A gate written after seeing the parity number is a gate that can be lowered under schedule pressure (r-cutover-gate-numeric, r-shadow-read-parity-diff).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="implement-version-guarded-dual-write">
+      <input>The write path of the old store; the new store's upsert semantics.</input>
+      <action>Fan out every write to the new store as an upsert keyed by primary key with a compare-and-set on the version field, outside the old store's transaction. Route failures to a durable `retry_queue`, emit `dual_write_failures_total`, and set an `alert_threshold`. Record `dual_write`. Fill `# Dual write`.</action>
+      <output>`dual_write` object with `failure_fails_user_request` false.</output>
+      <decision-gate>A plain insert or unversioned overwrite is fm-non-idempotent-fanout; a new-store write inside the request path is fm-new-store-fails-request (r-dual-write-idempotent-writes, r-old-store-authoritative).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="declare-and-schedule-reconciliation">
+      <input>The key space of the old store; the scheduler.</input>
+      <action>Name the key-walk job that compares each old-store record to the new store and repairs the new store, set its `cadence` (at least weekly, hourly for high-write entities) and `max_repairs_per_run`, and emit `reconciliation_repairs_total`. Record `reconciliation` with `declared_before_dual_write` true. Fill `# Reconciliation`.</action>
+      <output>`reconciliation` object.</output>
+      <decision-gate>Trusting dual-write to be complete is fm-no-reconciliation; two stores are never atomic (r-reconciliation-job-required).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="enable-dual-write-then-backfill">
+      <input>The `dual_write_on` flag; the historical data partitioned for backfill.</input>
+      <action>Flip `flags.dual_write_on`, then start the backfill using the same version-guarded upsert. Verify per-partition row counts and a content checksum against the old store and record `backfill` with every verification true. Do not report any parity number until this is done. Fill `# Backfill`.</action>
+      <output>`backfill` object.</output>
+      <decision-gate>Backfill before dual-write leaves a gap; backfill with plain overwrites clobbers live updates (r-backfill-before-shadow, fm-backfill-clobbers-live).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="define-flags-and-reverse-order">
+      <input>The feature-flag system.</input>
+      <action>Create four runtime flags — `dual_write_on`, `shadow_read_on`, `read_from_new_on`, `write_to_old_off` — flippable without a deploy, write the reverse order (write_to_old_off, read_from_new_on, shadow_read_on, dual_write_on), and set `retention_window_days` for old-store writes after read cutover. Record `flags`. Fill `# Flags and rollback`.</action>
+      <output>`flags` object.</output>
+      <decision-gate>A single combined migrated flag has no rollback once the old store stops receiving writes (r-rollback-flag-per-stage, fm-old-store-dropped-early).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="enable-sampled-shadow-reads">
+      <input>The read path; the measured old-store p99; the `sampling_flag`.</input>
+      <action>Issue every sampled read to both stores, compare with a normalising comparator honouring `parity_excluded_fields`, return the old store's result, bound the new-store read by `candidate_timeout_ms` at or under `old_store_p99_ms`, swallow and count its exceptions, publish `shadow_read_mismatch_ratio` per entity type and retain mismatching keys. Start `sampling_percent_initial` low. Record `shadow_read`. Fill `# Shadow read`.</action>
+      <output>`shadow_read` object.</output>
+      <decision-gate>A raw-row comparator is fm-parity-noise; 100 percent sampling with no timeout is fm-shadow-read-latency (r-shadow-read-parity-diff, r-shadow-read-no-user-impact).</decision-gate>
     </step>
+
+    <step n="7" name="evaluate-gate-and-flip-reads">
+      <input>The parity dashboard over the declared window; the named approver.</input>
+      <action>When every entity type's `shadow_read_mismatch_ratio` is under its `mismatch_ratio_max` over `window_hours` with at least `min_comparisons`, link the evaluation as `cutover.gate_evaluation_url`, have `read_from_new_approver` review it, flip `read_from_new_on`, and set `read_from_new_flipped` true. Keep `write_to_old_off` false.</action>
+      <output>`cutover` with evaluation URL and approver; reads on the new store.</output>
+      <decision-gate>"Parity looks fine" is not the gate; a quiet entity with twelve reads does not pass on luck (r-cutover-gate-numeric; human checkpoint).</decision-gate>
+    </step>
+
+    <step n="8" name="hold-retention-and-rehearse-flipback">
+      <input>`retention_window_days`; the `read_from_new_on` flag.</input>
+      <action>Keep old-store writes on for the retention window. Once, flip `read_from_new_on` back to the old store, confirm callers see correct data, flip forward again, and record the rehearsal URL in `evidence[]` with `read_flipback_rehearsed_before_write_off` true. Only then may `write_to_old_off_approver` approve turning off writes to the old store, the last flag in the documented order.</action>
+      <output>`flags.read_flipback_rehearsed_before_write_off` true; rehearsal in `evidence[]`.</output>
+      <decision-gate>Write-to-old off before the window and the rehearsal is fm-old-store-dropped-early (r-rollback-flag-per-stage).</decision-gate>
+    </step>
+
+    <step n="9" name="validate-and-file">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-dual-write-shadow-read-template.py --file &lt;runbook.json&gt;`; fix every violation; commit the runbook to `.product/dual-write-shadow-read-template/` with the reconciliation dashboard, backfill verification, gate evaluation and rehearsal in `evidence[]`.</action>
+      <output>A runbook that validates and records each production-affecting flip with its approver.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON runbook validates with `scripts/validate-dual-write-shadow-read-template.py`.</item>
+      <item>Reads were flipped only after the declared numeric gate held for every entity type, with the evaluation linked and a named approver.</item>
+      <item>Old-store writes continued through the retention window and the flip-back was rehearsed before write-to-old went off.</item>
+      <item>Reconciliation repairs and dual-write failures are both metrics with declared budgets, not assumptions.</item>
+    </list>
   </section>
 </text>

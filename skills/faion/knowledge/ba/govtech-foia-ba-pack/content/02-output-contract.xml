@@ -1,121 +1,381 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="GovTech FOIA / Records-Retention BA Pack — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `govtech-foia-ba-pack` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="GovTech FOIA / Records-Retention BA Pack — Output Contract" version="1.2.0" est_tokens="6200" depth="essential">
+  <summary>The pack is one JSON document with eight sections, one per rule in 01-core-rules.xml: a retention schedule per record class, an export path per data store inside the statutory clock, an exemption map, a staff-channel capture inventory, a WCAG AA audit plan with a launch gate, a procurement clause log keyed by the seven mandatory topics, the public-notice buffer, and the two named officers. Subagent MUST satisfy this contract before returning to caller.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="system_name" type="string" required="true">the public-facing system or service the pack covers</field>
+      <field name="jurisdiction" type="enum" required="true">us-federal | us-state | uk | eu | ca-federal | ca-provincial — selects the statutory clock and schedule authority</field>
+      <field name="access_request_clock_working_days" type="integer" required="true">statutory response window; 20 working days for us-federal (5 U.S.C. §552(a)(6)(A)(i)) and uk (FOIA 2000 s.10), confirmed per jurisdiction otherwise (r-request-export-within-statutory-clock)</field>
+      <field name="record_classes" type="list" required="true">every record class the system creates or stores, each with retention_period, disposition (destroy | transfer-to-archives) and the schedule_item it derives from (r-retention-schedule-per-record-class)</field>
+      <field name="data_stores" type="list" required="true">every store holding records, each with an export_path (tool, query, owner) and export_lead_time_working_days; blocking when the lead time exceeds the clock (r-request-export-within-statutory-clock)</field>
+      <field name="exemption_map" type="list" required="true">every field withheld under an exemption: field, category, statutory_basis, redaction mode; manual-review entries carry a cost estimate (r-exempt-fields-tagged-in-schema)</field>
+      <field name="staff_channels" type="list" required="true">every channel staff use for business about the system, each with its capture_mechanism into the system of record (r-ephemeral-channels-captured)</field>
+      <field name="accessibility_audit" type="object" required="true">wcag_version 2.1 or 2.2, level AA, per-flow automated tool plus the three manual assistive-technology tests, remediation_owner, launch_gate, accessibility statement (r-wcag-aa-audit-gates-launch)</field>
+      <field name="clause_review_log" type="object" required="true">keyed by the seven mandatory topics; each entry carries clause_id, design_decision, status (met | open | waived), evidence, and waived_by when waived (r-procurement-clause-review-log)</field>
+      <field name="public_notice" type="object" required="true">whether a notice / comment / PRA clearance period applies; when it does, buffer_days of at least 90 plus review and the notice dates (r-public-notice-buffer-scheduled)</field>
+      <field name="records_officer" type="string" required="true">role:handle of the officer who approved the retention schedule (r-named-records-and-access-officers)</field>
+      <field name="access_request_officer" type="string" required="true">role:handle of the Chief FOIA Officer / FOI officer or delegate who signed off the export paths and exemption map (r-named-records-and-access-officers)</field>
+      <field name="schedule_approved_on" type="date" required="true">ISO-8601 date of the records officer's signature</field>
+      <field name="launch_date" type="date" required="true">planned go-live; must sit after the notice buffer when one applies</field>
+      <field name="blocking_findings" type="list" required="true">open blockers the rules name: a store past the clock, an untagged exempt field, an unscheduled notice period; empty when none</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">record_classes[].disposition of "retain indefinitely" or "delete when storage is full" — both rejected by r-retention-schedule-per-record-class (fm-keep-forever-default)</pattern>
+      <pattern id="f2">data_stores[].export_path.tool of "ask engineering" / blank, or export_lead_time_working_days above access_request_clock_working_days without a matching blocking_findings entry (fm-store-without-export-path)</pattern>
+      <pattern id="f3">citizen PII or law-enforcement detail in a free-text field with no exemption_map row, or a manual-review row with no manual_review_cost_estimate (fm-redaction-by-hand)</pattern>
+      <pattern id="f4">staff_channels[] entry with auto_delete true and capture_mechanism empty (fm-chat-records-uncaptured)</pattern>
+      <pattern id="f5">accessibility_audit.launch_gate other than no-critical-or-serious-failure, level below AA, or a flow missing any of screen-reader / keyboard-only / zoom-200 (fm-accessibility-after-launch)</pattern>
+      <pattern id="f6">public_notice.required true with buffer_days under 90 or no notices_filed, or public_notice.assessed false (fm-notice-period-missed)</pattern>
+      <pattern id="f7">clause_review_log entry with status open at launch that is absent from blocking_findings, or status waived without waived_by</pattern>
+      <pattern id="f8">records_officer or access_request_officer naming a team ("eng", "team:platform") rather than a role:handle person</pattern>
+    </forbidden>
+
+    <allowed-transformations>
+      <transformation>Collapse record classes that share retention_period, disposition and schedule_item into one row whose name lists the members.</transformation>
+      <transformation>Where a jurisdiction's clock is set in calendar days (Canada: 30), record the working-day equivalent and cite the statute in the store's notes.</transformation>
+      <transformation>Move a store that cannot produce records inside the clock into blocking_findings rather than inventing an export path.</transformation>
+    </allowed-transformations>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "faion://govtech-foia-ba-pack/output.schema.json",
+  "title": "GovTech FOIA / records-retention BA pack",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
-  "properties": {
-    "trigger": {
-      "type": "object",
-      "required": ["kind", "url"],
-      "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
-      }
-    },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
+  "required": [
+    "system_name", "jurisdiction", "access_request_clock_working_days",
+    "record_classes", "data_stores", "exemption_map", "staff_channels",
+    "accessibility_audit", "clause_review_log", "public_notice",
+    "records_officer", "access_request_officer", "schedule_approved_on",
+    "launch_date", "blocking_findings"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+    "clause_entries": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["name", "value"],
+        "required": ["clause_id", "design_decision", "status", "evidence"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
-          "value": {}
-        }
-      }
-    },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
-    },
-    "review": {
-      "type": "object",
-      "required": ["cadence", "next_review_at"],
-      "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+          "clause_id": {"type": "string", "minLength": 2},
+          "design_decision": {"type": "string", "minLength": 10},
+          "status": {"type": "string", "enum": ["met", "open", "waived"]},
+          "waived_by": {"$ref": "#/definitions/handle"},
+          "evidence": {"type": "string", "format": "uri"}
+        },
+        "if": {"properties": {"status": {"const": "waived"}}},
+        "then": {"required": ["waived_by"]}
       }
     }
   },
-  "additionalProperties": false
+  "properties": {
+    "__faion_header__": {"type": "object"},
+    "system_name": {"type": "string", "minLength": 3},
+    "jurisdiction": {"type": "string", "enum": ["us-federal", "us-state", "uk", "eu", "ca-federal", "ca-provincial"]},
+    "access_request_clock_working_days": {"type": "integer", "minimum": 1, "maximum": 60},
+    "record_classes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "retention_period", "disposition", "schedule_item"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 3},
+          "retention_period": {"type": "string", "pattern": "^P(\\d+Y)?(\\d+M)?(\\d+D)?$", "description": "ISO-8601 duration, e.g. P7Y; never open-ended"},
+          "disposition": {"type": "string", "enum": ["destroy", "transfer-to-archives"]},
+          "schedule_item": {"type": "string", "minLength": 5, "description": "NARA GRS item, agency schedule, PRA 1958 body schedule, state or provincial archives item"},
+          "stores": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "data_stores": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "export_path", "export_lead_time_working_days"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "export_path": {
+            "type": "object",
+            "required": ["tool", "query", "owner"],
+            "additionalProperties": false,
+            "properties": {
+              "tool": {"type": "string", "minLength": 2},
+              "query": {"type": "string", "minLength": 2},
+              "owner": {"$ref": "#/definitions/handle"}
+            }
+          },
+          "export_lead_time_working_days": {"type": "integer", "minimum": 0},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+    "exemption_map": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "category", "statutory_basis", "redaction"],
+        "additionalProperties": false,
+        "properties": {
+          "field": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+\\.[A-Za-z0-9_.-]+$", "description": "store.field"},
+          "category": {"type": "string", "enum": ["personal-privacy", "law-enforcement", "deliberative", "commercial-confidentiality", "security", "other-statutory"]},
+          "statutory_basis": {"type": "string", "minLength": 5, "description": "e.g. 5 U.S.C. §552(b)(6); UK FOIA 2000 s.40"},
+          "redaction": {"type": "string", "enum": ["field-driven", "structural-split-required", "manual-review"]},
+          "manual_review_cost_estimate": {"type": "string", "minLength": 5}
+        },
+        "if": {"properties": {"redaction": {"const": "manual-review"}}},
+        "then": {"required": ["manual_review_cost_estimate"]}
+      }
+    },
+    "staff_channels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["channel", "capture_mechanism", "auto_delete"],
+        "additionalProperties": false,
+        "properties": {
+          "channel": {"type": "string", "minLength": 2},
+          "capture_mechanism": {"type": "string", "minLength": 5},
+          "auto_delete": {"type": "boolean"},
+          "non_official_copy_within_days": {"type": "integer", "minimum": 1, "maximum": 20, "description": "44 U.S.C. §2911 for us-federal"}
+        }
+      }
+    },
+    "accessibility_audit": {
+      "type": "object",
+      "required": ["wcag_version", "level", "flows", "launch_gate", "accessibility_statement_required"],
+      "additionalProperties": false,
+      "properties": {
+        "wcag_version": {"type": "string", "enum": ["2.1", "2.2"]},
+        "level": {"type": "string", "const": "AA"},
+        "standard_reference": {"type": "string", "enum": ["section-508", "en-301-549", "uk-psbar-2018", "aoda", "other"]},
+        "flows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["flow", "automated_tool", "manual_tests", "remediation_owner"],
+            "additionalProperties": false,
+            "properties": {
+              "flow": {"type": "string", "minLength": 3},
+              "automated_tool": {"type": "string", "minLength": 2},
+              "manual_tests": {
+                "type": "array",
+                "minItems": 3,
+                "uniqueItems": true,
+                "items": {"type": "string", "enum": ["screen-reader", "keyboard-only", "zoom-200"]}
+              },
+              "remediation_owner": {"$ref": "#/definitions/handle"}
+            }
+          }
+        },
+        "launch_gate": {"type": "string", "const": "no-critical-or-serious-failure"},
+        "accessibility_statement_required": {"type": "boolean"},
+        "accessibility_statement_url": {"type": "string", "format": "uri"}
+      },
+      "if": {"properties": {"accessibility_statement_required": {"const": true}}},
+      "then": {"required": ["accessibility_statement_url"]}
+    },
+    "clause_review_log": {
+      "type": "object",
+      "required": ["data_residency", "security_authorisation", "source_code_escrow_and_ip", "open_source_licence", "subcontractor_flow_down", "accessibility_warranty", "records_transfer_on_termination"],
+      "properties": {
+        "data_residency": {"$ref": "#/definitions/clause_entries"},
+        "security_authorisation": {"$ref": "#/definitions/clause_entries"},
+        "source_code_escrow_and_ip": {"$ref": "#/definitions/clause_entries"},
+        "open_source_licence": {"$ref": "#/definitions/clause_entries"},
+        "subcontractor_flow_down": {"$ref": "#/definitions/clause_entries"},
+        "accessibility_warranty": {"$ref": "#/definitions/clause_entries"},
+        "records_transfer_on_termination": {"$ref": "#/definitions/clause_entries"}
+      },
+      "additionalProperties": {"$ref": "#/definitions/clause_entries"}
+    },
+    "public_notice": {
+      "type": "object",
+      "required": ["assessed", "required"],
+      "additionalProperties": false,
+      "properties": {
+        "assessed": {"type": "boolean", "const": true},
+        "required": {"type": "boolean"},
+        "regime": {"type": "string", "enum": ["pra", "state-apa", "uk-consultation", "eu-consultation", "other"]},
+        "buffer_days": {"type": "integer", "minimum": 90},
+        "notices_filed": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["notice", "date"],
+            "additionalProperties": false,
+            "properties": {
+              "notice": {"type": "string", "enum": ["60-day-federal-register", "30-day-federal-register", "omb-submission", "consultation-open", "consultation-close", "other"]},
+              "date": {"$ref": "#/definitions/date"}
+            }
+          }
+        },
+        "omb_control_number": {"type": "string", "pattern": "^\\d{4}-\\d{4}$"}
+      },
+      "if": {"properties": {"required": {"const": true}}},
+      "then": {"required": ["regime", "buffer_days", "notices_filed"]}
+    },
+    "records_officer": {"$ref": "#/definitions/handle"},
+    "access_request_officer": {"$ref": "#/definitions/handle"},
+    "schedule_approved_on": {"$ref": "#/definitions/date"},
+    "launch_date": {"$ref": "#/definitions/date"},
+    "blocking_findings": {"type": "array", "items": {"type": "string", "minLength": 10}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"jurisdiction": {"enum": ["us-federal", "uk"]}}},
+      "then": {
+        "properties": {
+          "access_request_clock_working_days": {"const": 20},
+          "data_stores": {"items": {"properties": {"export_lead_time_working_days": {"maximum": 20}}}}
+        }
+      }
+    }
+  ]
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="true"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "system_name": "State benefits intake portal",
+  "jurisdiction": "us-state",
+  "access_request_clock_working_days": 10,
+  "record_classes": [
+    {"name": "citizen benefit applications", "retention_period": "P7Y", "disposition": "destroy", "schedule_item": "State Archives GRS 4-100 item 12", "stores": ["postgres.applications", "s3.uploads"]},
+    {"name": "caseworker notes", "retention_period": "P7Y", "disposition": "destroy", "schedule_item": "State Archives GRS 4-100 item 14", "stores": ["postgres.case_notes"]},
+    {"name": "audit logs", "retention_period": "P3Y", "disposition": "destroy", "schedule_item": "State Archives GRS 1-200 item 3", "stores": ["cloudwatch.audit"]},
+    {"name": "program policy decisions", "retention_period": "P10Y", "disposition": "transfer-to-archives", "schedule_item": "State Archives GRS 2-050 item 1", "stores": ["sharepoint.policy"]}
+  ],
+  "data_stores": [
+    {"name": "postgres.applications", "export_path": {"tool": "pg_dump + redaction script", "query": "SELECT * FROM applications WHERE applicant_id = ANY($1)", "owner": "dba:marta"}, "export_lead_time_working_days": 2},
+    {"name": "postgres.case_notes", "export_path": {"tool": "records-export CLI", "query": "records-export notes --case", "owner": "dba:marta"}, "export_lead_time_working_days": 2},
+    {"name": "s3.uploads", "export_path": {"tool": "aws s3 sync by applicant prefix", "query": "s3://intake-uploads/<applicant_id>/", "owner": "sre:dmitri"}, "export_lead_time_working_days": 1},
+    {"name": "cloudwatch.audit", "export_path": {"tool": "CloudWatch Logs Insights", "query": "fields @timestamp, actor, action | filter subject_id = <id>", "owner": "sre:dmitri"}, "export_lead_time_working_days": 3},
+    {"name": "sharepoint.policy", "export_path": {"tool": "SharePoint eDiscovery", "query": "site:policy-decisions", "owner": "records:jlee"}, "export_lead_time_working_days": 5}
+  ],
+  "exemption_map": [
+    {"field": "postgres.applications.ssn", "category": "personal-privacy", "statutory_basis": "State Public Records Act s.6254(c); 5 U.S.C. §552(b)(6) analogue", "redaction": "field-driven"},
+    {"field": "postgres.applications.bank_account", "category": "personal-privacy", "statutory_basis": "State Public Records Act s.6254(c)", "redaction": "field-driven"},
+    {"field": "postgres.case_notes.fraud_referral_detail", "category": "law-enforcement", "statutory_basis": "State Public Records Act s.6254(f)", "redaction": "structural-split-required"},
+    {"field": "postgres.case_notes.body", "category": "personal-privacy", "statutory_basis": "State Public Records Act s.6254(c)", "redaction": "manual-review", "manual_review_cost_estimate": "about 4 minutes per note; 600 notes per request average = 40 reviewer hours"}
+  ],
+  "staff_channels": [
+    {"channel": "agency email (Exchange)", "capture_mechanism": "journaling to records archive", "auto_delete": false},
+    {"channel": "Teams caseworker chat", "capture_mechanism": "Purview retention policy, 7 years, auto-delete disabled", "auto_delete": false},
+    {"channel": "vendor ticket tool (Zendesk)", "capture_mechanism": "nightly export to postgres.case_notes via API", "auto_delete": false}
+  ],
+  "accessibility_audit": {
+    "wcag_version": "2.1",
+    "level": "AA",
+    "standard_reference": "section-508",
+    "flows": [
+      {"flow": "apply for benefits", "automated_tool": "axe-core in CI", "manual_tests": ["screen-reader", "keyboard-only", "zoom-200"], "remediation_owner": "fe:priya"},
+      {"flow": "upload supporting documents", "automated_tool": "axe-core in CI", "manual_tests": ["screen-reader", "keyboard-only", "zoom-200"], "remediation_owner": "fe:priya"},
+      {"flow": "check application status", "automated_tool": "axe-core in CI", "manual_tests": ["screen-reader", "keyboard-only", "zoom-200"], "remediation_owner": "fe:priya"}
+    ],
+    "launch_gate": "no-critical-or-serious-failure",
+    "accessibility_statement_required": true,
+    "accessibility_statement_url": "https://benefits.example.gov/accessibility"
+  },
+  "clause_review_log": {
+    "data_residency": [{"clause_id": "C-4.2", "design_decision": "All stores in us-west-2 and us-east-1 only; no cross-border replication", "status": "met", "evidence": "https://git.example.gov/intake/infra/pull/88"}],
+    "security_authorisation": [{"clause_id": "C-7.1", "design_decision": "StateRAMP Moderate authorisation for the hosting vendor before go-live", "status": "open", "evidence": "https://tickets.example.gov/SEC-311"}],
+    "source_code_escrow_and_ip": [{"clause_id": "C-12", "design_decision": "State owns the code; repository mirrored to the state GitLab weekly", "status": "met", "evidence": "https://git.example.gov/intake/mirror"}],
+    "open_source_licence": [{"clause_id": "C-12.3", "design_decision": "No AGPL dependencies; SBOM scanned in CI", "status": "met", "evidence": "https://git.example.gov/intake/app/-/jobs/4410"}],
+    "subcontractor_flow_down": [{"clause_id": "C-15", "design_decision": "Identity-proofing subcontractor signed the same residency and security terms", "status": "met", "evidence": "https://contracts.example.gov/idp-flowdown.pdf"}],
+    "accessibility_warranty": [{"clause_id": "C-9", "design_decision": "WCAG 2.1 AA warranted; audit report attached to acceptance", "status": "met", "evidence": "https://tickets.example.gov/A11Y-20"}],
+    "records_transfer_on_termination": [{"clause_id": "C-21", "design_decision": "Records exported as CSV plus PDF/A with schedule metadata within 30 days of termination", "status": "waived", "waived_by": "procurement:hwong", "evidence": "https://contracts.example.gov/waiver-c21.pdf"}]
+  },
+  "public_notice": {
+    "assessed": true,
+    "required": true,
+    "regime": "state-apa",
+    "buffer_days": 120,
+    "notices_filed": [
+      {"notice": "consultation-open", "date": "2026-03-02"},
+      {"notice": "consultation-close", "date": "2026-04-16"}
+    ]
+  },
+  "records_officer": "records:jlee",
+  "access_request_officer": "pra-officer:tnguyen",
+  "schedule_approved_on": "2026-02-20",
+  "launch_date": "2026-07-01",
+  "blocking_findings": [
+    "clause C-7.1 security_authorisation is open: StateRAMP Moderate letter not yet issued for the hosting vendor"
+  ]
 }
-]]></code>
-    </example>
-  </section>
+]]></example>
 
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
+  "system_name": "Federal grant application portal",
+  "jurisdiction": "us-federal",
+  "access_request_clock_working_days": 20,
+  "record_classes": [
+    {"name": "grant applications", "retention_period": "P7Y", "disposition": "retain indefinitely", "schedule_item": "NARA GRS 1.2 item 020"}
+  ],
+  "data_stores": [
+    {"name": "kafka.intake-events", "export_path": {"tool": "ask engineering", "query": "custom consumer, not written", "owner": "eng:platform"}, "export_lead_time_working_days": 45}
+  ],
+  "exemption_map": [
+    {"field": "postgres.applications.notes", "category": "personal-privacy", "statutory_basis": "5 U.S.C. §552(b)(6)", "redaction": "manual-review"}
+  ],
+  "staff_channels": [
+    {"channel": "Slack #grants-review", "capture_mechanism": "", "auto_delete": true}
+  ],
+  "accessibility_audit": {
+    "wcag_version": "2.1",
+    "level": "A",
+    "flows": [
+      {"flow": "submit application", "automated_tool": "axe-core", "manual_tests": ["keyboard-only"], "remediation_owner": "fe:priya"}
+    ],
+    "launch_gate": "post-launch-review",
+    "accessibility_statement_required": true
+  },
+  "clause_review_log": {
+    "data_residency": [{"clause_id": "H.4", "design_decision": "US regions only", "status": "met", "evidence": "https://git.example.gov/grants/infra/pull/3"}]
+  },
+  "public_notice": {
+    "assessed": true,
+    "required": true,
+    "regime": "pra",
+    "buffer_days": 30,
+    "notices_filed": []
+  },
+  "records_officer": "records:jlee",
+  "access_request_officer": "foia:delegate",
+  "schedule_approved_on": "2026-02-20",
+  "launch_date": "2026-05-01",
+  "blocking_findings": []
 }
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>Every record class has a finite ISO-8601 retention_period, a disposition of destroy or transfer-to-archives, and a schedule_item that names the authority.</item>
+      <item>Every data store's export_lead_time_working_days is at or under access_request_clock_working_days (20 for us-federal and uk), or the store is in blocking_findings.</item>
+      <item>Every exempt field is a store.field row with a statutory basis; every manual-review row carries a cost estimate.</item>
+      <item>Every staff channel names a capture mechanism; none is auto-delete without capture.</item>
+      <item>accessibility_audit is WCAG 2.1 or 2.2 at level AA, every flow lists all three manual tests and a remediation owner, and launch_gate is no-critical-or-serious-failure.</item>
+      <item>clause_review_log has all seven mandatory topics; every open clause is echoed in blocking_findings; every waiver names who waived it.</item>
+      <item>public_notice.assessed is true; when required, buffer_days is at least 90 and the notices are dated before launch_date.</item>
+      <item>records_officer and access_request_officer are role:handle persons and schedule_approved_on is set.</item>
+      <item>The document validates with scripts/validate-govtech-foia-ba-pack.py.</item>
     </list>
   </section>
 </text>

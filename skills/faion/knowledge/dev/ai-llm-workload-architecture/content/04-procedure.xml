@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="AI LLM Workload Architecture — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `ai-llm-workload-architecture`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="AI LLM Workload Architecture — Procedure" version="1.2.0" est_tokens="1850" depth="recommended">
+  <summary>Nine steps in dependency order: pin the eval set, make scoring deterministic and measure its noise floor, run the baseline and set numeric thresholds, wire the merge-blocking gate on watched paths, pin the production model id, add latency and cost budgets to the run, add an injection case per untrusted channel, define and evaluate the degradation path, then validate and file the spec. Each step names its rule and the skeleton section it fills.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="pin-eval-set">
+      <input>The current eval cases, wherever they live (notebook, spreadsheet, dataset export); the prompt files and few-shot blocks of the feature.</input>
+      <action>Move the cases into a versioned file (`evals/&lt;feature&gt;/cases.jsonl` or a dataset export with a content hash) and record its git ref or `sha256:` hash as `eval_set.ref`. Grep every prompt, few-shot block and fine-tuning file for each case input and record the job as `contamination_check_job`. Fill `# Eval set` in `templates/skeleton.md.j2`.</action>
+      <output>`eval_set` with `path`, `ref`, `case_count`, `contamination_check_passed` true.</output>
+      <decision-gate>A case found in a prompt file is fm-eval-contamination: remove it and regenerate the baseline before continuing (r-eval-set-version-pinned).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="make-scoring-deterministic">
+      <input>The scoring code or judge prompt; the judge model in use.</input>
+      <action>Choose `scoring.kind`. For exact-match, regex, json-schema or unit-assertion nothing more is needed. For an llm-judge, pin `judge.model_id` to a dated id, set `temperature` 0, hash the judge prompt into `prompt_hash`, then run the suite twice at the same commit and record the largest per-metric delta as `noise_floor`. Fill `# Scoring`.</action>
+      <output>`scoring` object.</output>
+      <decision-gate>A judge on an alias or with temperature above 0 is fm-judge-drift; no threshold set on top of it means anything (r-scoring-function-deterministic).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="run-baseline-and-set-thresholds">
+      <input>The pinned eval set and deterministic scorer; the current production commit.</input>
+      <action>Run the suite at the current commit and record `baseline_run.url` and `commit`. For every metric record `baseline`, choose a signed `tolerance` no tighter than the noise floor, compute `threshold` = baseline + tolerance, and state `direction`. Put the baseline URL in `evidence[]`. Fill `# Metrics and thresholds`.</action>
+      <output>`baseline_run`, `metrics[]`.</output>
+      <decision-gate>"Looks fine" is not a threshold; a metric without a numeric baseline is fm-vibes-threshold (r-thresholds-numeric-against-baseline).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="wire-merge-blocking-gate">
+      <input>The CI system; the directories holding prompts, model config, retrieval config and tool schemas.</input>
+      <action>Move any prompt assembled from string literals into a file under a watched directory. Create `regression_gate.ci_job` that runs the full suite on changes to every `watched_paths` entry and mark it a required check so `blocks_merge` is true. Log the prompt hash at startup and fail deploy when it differs from the last gated hash. Fill `# Regression gate`.</action>
+      <output>`regression_gate` object.</output>
+      <decision-gate>A prompt in an f-string or a database row is outside the path filter: fm-gate-bypassed-by-config-edit (r-regression-gate-blocks-merge).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="pin-production-model-id">
+      <input>Runtime config and SDK calls; the vendor's model-versioning page.</input>
+      <action>Replace any alias (`latest`, an undated family name) with the dated or versioned snapshot id and record it as `production_model_id`. Add the id to the watched paths so a model upgrade runs the gate like a code change.</action>
+      <output>`production_model_id` pinned; model upgrade routed through step 4.</output>
+      <decision-gate>An alias in production is fm-silent-model-swap (r-model-id-pinned).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="add-latency-and-cost-budgets">
+      <input>The SLO for the feature; current p95 latency and per-request token or cost figures from the baseline run.</input>
+      <action>Set `budgets.p95_latency_ms` and `budgets.per_request.tokens` or `cost_usd` as numeric ceilings, make the eval run measure both and print them beside the quality metrics, and make the gate fail on either. Fill `# Budgets`.</action>
+      <output>`budgets` with `measured_in_eval_run` true.</output>
+      <decision-gate>A quality-only gate drives latency and spend upward; a budget the run does not measure does not exist (r-latency-and-cost-budgets).</decision-gate>
     </step>
+
+    <step n="7" name="add-injection-cases-per-channel">
+      <input>Every untrusted input the feature reads: each retrieval source, each tool output, the user turn.</input>
+      <action>List each as an `untrusted_input_channels[]` entry and write at least one eval case per channel in which the data carries an instruction; score pass only when the instruction is not followed. Record the case ids. Fill `# Untrusted input channels`.</action>
+      <output>`untrusted_input_channels[]` with `injection_case_ids` per channel.</output>
+      <decision-gate>A channel with no injection case is untested in production first (r-injection-cases-in-eval-set).</decision-gate>
+    </step>
+
+    <step n="8" name="define-and-evaluate-degradation">
+      <input>The client code's retry logic; what the product should show on timeout, 429 and 5xx.</input>
+      <action>Set `degradation.retry` with `max_attempts` (bounded), `backoff` (exponential with jitter) and `base_delay_ms`; choose `fallback.kind` (a secondary pinned model with its id, a cached answer, or explicit refusal); write `user_message`. Add eval cases that inject a 429 and a timeout and score the fallback output; record their ids. Fill `# Degradation path`.</action>
+      <output>`degradation` object.</output>
+      <decision-gate>Unbounded retries or a fallback no eval case exercises is fm-no-degradation-path (r-degradation-path-defined).</decision-gate>
+    </step>
+
+    <step n="9" name="validate-and-file">
+      <input>The filled skeleton and its JSON form.</input>
+      <action>Run `scripts/validate-ai-llm-workload-architecture.py --file &lt;spec.json&gt;`; fix every violation; commit the spec to `.product/ai-llm-workload-architecture/` beside the eval set it pins.</action>
+      <output>A spec that validates and a CI gate that enforces it.</output>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>The JSON spec validates with `scripts/validate-ai-llm-workload-architecture.py`.</item>
+      <item>Two eval runs at the same commit differ by no more than the recorded noise floor.</item>
+      <item>A prompt-only change opens a PR whose required check is the eval job, and a metric below threshold blocks the merge.</item>
+      <item>The production model id, the judge model id and any fallback model id are all dated or versioned.</item>
+    </list>
   </section>
 </text>

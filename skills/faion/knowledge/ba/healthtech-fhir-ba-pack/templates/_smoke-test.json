@@ -1,28 +1,318 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for healthtech-fhir-ba-pack: _smoke-test.json",
+    "purpose": "Template fixture for healthtech-fhir-ba-pack: _smoke-test.json — the contract's valid example",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
+  "feature_name": "Remote blood-pressure monitoring dashboard",
+  "regimes": {
+    "hipaa": true,
+    "gdpr": true,
+    "nhs": false
   },
-  "owner": "swe:alice",
-  "inputs": [
+  "fhir_version": "R4",
+  "profile": "US Core 6.1.0",
+  "element_map": [
     {
-      "name": "scope",
-      "value": "billing"
+      "clinical_element": "patient MRN",
+      "resource": "Patient",
+      "element_path": "Patient.identifier",
+      "coded": false
+    },
+    {
+      "clinical_element": "monitoring encounter",
+      "resource": "Encounter",
+      "element_path": "Encounter.period",
+      "coded": false
+    },
+    {
+      "clinical_element": "systolic blood pressure",
+      "resource": "Observation",
+      "element_path": "Observation.component.value[x]",
+      "coded": true,
+      "binding": {
+        "code_system": "LOINC",
+        "system_uri": "http://loinc.org",
+        "value_set": "8480-6"
+      }
+    },
+    {
+      "clinical_element": "diastolic blood pressure",
+      "resource": "Observation",
+      "element_path": "Observation.component.value[x]",
+      "coded": true,
+      "binding": {
+        "code_system": "LOINC",
+        "system_uri": "http://loinc.org",
+        "value_set": "8462-4"
+      }
+    },
+    {
+      "clinical_element": "hypertension diagnosis",
+      "resource": "Condition",
+      "element_path": "Condition.code",
+      "coded": true,
+      "binding": {
+        "code_system": "SNOMED CT",
+        "system_uri": "http://snomed.info/sct",
+        "value_set": "38341003"
+      }
+    },
+    {
+      "clinical_element": "antihypertensive prescription",
+      "resource": "MedicationRequest",
+      "element_path": "MedicationRequest.medication[x]",
+      "coded": true,
+      "binding": {
+        "code_system": "RxNorm",
+        "system_uri": "http://www.nlm.nih.gov/research/umls/rxnorm"
+      }
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
-  "evidence": [
-    "https://example.com/pr/1"
+  "data_flows": [
+    {
+      "from": "home cuff app",
+      "to": "ingest-api",
+      "phi_elements": [
+        "Patient.identifier",
+        "Observation.component.value[x]",
+        "Observation.effective[x]"
+      ],
+      "purpose": "treatment",
+      "de_identification": "none"
+    },
+    {
+      "from": "ingest-api",
+      "to": "clinician dashboard",
+      "phi_elements": [
+        "Patient.name",
+        "Patient.identifier",
+        "Observation.component.value[x]",
+        "Condition.code"
+      ],
+      "purpose": "treatment",
+      "de_identification": "none"
+    },
+    {
+      "from": "ingest-api",
+      "to": "analytics warehouse",
+      "phi_elements": [
+        "Observation.component.value[x]",
+        "Observation.effective[x]",
+        "Patient.birthDate"
+      ],
+      "purpose": "analytics",
+      "de_identification": "safe-harbor",
+      "de_identification_method": "All 18 Safe Harbor identifier classes removed at the ETL step: name, MRN, dates shifted to year only for ages 89 and under, zip truncated to 3 digits; pipeline job deid-v3",
+      "excluded_elements": [
+        "Patient.name",
+        "Patient.identifier",
+        "Patient.address"
+      ]
+    },
+    {
+      "from": "ingest-api",
+      "to": "error tracker",
+      "phi_elements": [
+        "Patient.identifier"
+      ],
+      "purpose": "operations",
+      "de_identification": "none"
+    }
   ],
-  "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
-  }
+  "processors": [
+    {
+      "name": "AWS (us-east-1)",
+      "service_kind": "cloud-host",
+      "phi_in_scope": true,
+      "baa_signed": true,
+      "baa_signed_on": "2025-11-04",
+      "dpa_art28_signed": true,
+      "agreement_evidence": "https://contracts.example.health/aws-baa-2025.pdf",
+      "status": "cleared"
+    },
+    {
+      "name": "Twilio SMS reminders",
+      "service_kind": "sms-gateway",
+      "phi_in_scope": true,
+      "baa_signed": true,
+      "baa_signed_on": "2026-01-12",
+      "dpa_art28_signed": true,
+      "agreement_evidence": "https://contracts.example.health/twilio-baa.pdf",
+      "status": "cleared"
+    },
+    {
+      "name": "Sentry error tracking",
+      "service_kind": "error-tracking",
+      "phi_in_scope": true,
+      "baa_signed": false,
+      "dpa_art28_signed": false,
+      "status": "blocking"
+    },
+    {
+      "name": "Snowflake analytics",
+      "service_kind": "analytics",
+      "phi_in_scope": false,
+      "baa_signed": false,
+      "status": "cleared"
+    }
+  ],
+  "overlap_matrix": {
+    "lawful_basis": {
+      "hipaa_position": "Permitted use for treatment under 45 CFR §164.506",
+      "gdpr_position": "Art. 6(1)(e) or (b) plus Art. 9(2)(h) provision of health care",
+      "design_decision": "Record the Art. 9(2)(h) condition per EU tenant; no marketing use without separate consent",
+      "stricter_clock_honoured": "n/a - basis documented per tenant"
+    },
+    "breach_notification_clock": {
+      "hipaa_position": "Individuals without unreasonable delay, no later than 60 days, 45 CFR §164.404",
+      "gdpr_position": "Supervisory authority within 72 hours, Art. 33",
+      "design_decision": "Incident runbook targets authority notice within 72 hours for every tenant",
+      "stricter_clock_honoured": "72 hours"
+    },
+    "individual_access": {
+      "hipaa_position": "Right of access within 30 days, 45 CFR §164.524",
+      "gdpr_position": "Art. 15, one month",
+      "design_decision": "Patient export endpoint returns a FHIR bundle within 30 days for all tenants",
+      "stricter_clock_honoured": "30 days"
+    },
+    "retention_and_deletion": {
+      "hipaa_position": "Documentation retained six years, 45 CFR §164.316(b)(2)",
+      "gdpr_position": "Erasure on request, Art. 17, subject to Art. 17(3)(c) health exception",
+      "design_decision": "Clinical records retained six years; marketing and analytics derivatives erased on request",
+      "stricter_clock_honoured": "six-year retention for clinical records; erasure for derivatives"
+    },
+    "cross_border_transfer": {
+      "hipaa_position": "No transfer restriction",
+      "gdpr_position": "Chapter V; SCCs or adequacy required for EU to US",
+      "design_decision": "EU tenants pinned to eu-central-1; no EU PHI in us-east-1",
+      "stricter_clock_honoured": "GDPR Chapter V - regional pinning"
+    }
+  },
+  "consent": {
+    "model": "fhir-consent",
+    "research_use": true,
+    "records": [
+      {
+        "kind": "treatment",
+        "scope": "remote monitoring by the care team",
+        "provision": [
+          {
+            "action": "permit",
+            "data_category": "vital signs",
+            "purpose": "treatment"
+          }
+        ],
+        "period": {
+          "start": "2026-02-01"
+        },
+        "text_version": "treatment-consent-v3",
+        "capture": {
+          "timestamp_field": "Consent.dateTime",
+          "channel": "mobile"
+        }
+      },
+      {
+        "kind": "research",
+        "scope": "hypertension outcomes study",
+        "provision": [
+          {
+            "action": "permit",
+            "data_category": "de-identified vital signs",
+            "purpose": "research"
+          },
+          {
+            "action": "deny",
+            "data_category": "free-text notes",
+            "purpose": "research"
+          }
+        ],
+        "period": {
+          "start": "2026-02-01",
+          "end": "2028-01-31"
+        },
+        "text_version": "research-consent-v1",
+        "capture": {
+          "timestamp_field": "Consent.dateTime",
+          "channel": "mobile"
+        }
+      }
+    ],
+    "irb": {
+      "protocol_number": "IRB-2026-0142",
+      "approval_date": "2026-01-20",
+      "waiver_of_consent": false,
+      "committee": "Example Health IRB"
+    }
+  },
+  "audit_trail": {
+    "model": "fhir-auditevent",
+    "fields": [
+      "actor",
+      "subject_id",
+      "action",
+      "timestamp",
+      "source_system",
+      "purpose"
+    ],
+    "append_only": true,
+    "application_roles_with_update_or_delete": [],
+    "retention_years": 6,
+    "per_patient_query": true,
+    "storage": "append-only Postgres partition with row-level security; indexed on subject_id"
+  },
+  "encryption": {
+    "stores": [
+      {
+        "name": "postgres.clinical",
+        "kind": "database",
+        "encrypted_at_rest": true,
+        "key_management_separated": true,
+        "status": "cleared"
+      },
+      {
+        "name": "s3.backups",
+        "kind": "backup",
+        "encrypted_at_rest": true,
+        "key_management_separated": true,
+        "status": "cleared"
+      },
+      {
+        "name": "opensearch.notes",
+        "kind": "search-index",
+        "encrypted_at_rest": true,
+        "key_management_separated": true,
+        "status": "cleared"
+      },
+      {
+        "name": "cloudwatch.app-logs",
+        "kind": "log",
+        "encrypted_at_rest": true,
+        "key_management_separated": true,
+        "status": "cleared"
+      }
+    ],
+    "hops": [
+      {
+        "from": "home cuff app",
+        "to": "ingest-api",
+        "tls_min": "1.2"
+      },
+      {
+        "from": "ingest-api",
+        "to": "postgres.clinical",
+        "tls_min": "1.2"
+      },
+      {
+        "from": "ingest-api",
+        "to": "analytics warehouse",
+        "tls_min": "1.2"
+      }
+    ]
+  },
+  "blocking_findings": [
+    "Sentry receives Patient.identifier in request bodies with no BAA: scrub identifiers from error payloads or sign the BAA before launch"
+  ]
 }
