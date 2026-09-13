@@ -1,152 +1,303 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Activation Tactics Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `playbook-step` artefact this methodology produces. Validator at scripts/validate-activation-tactics.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Activation Tactics Output Contract" version="1.2.0" est_tokens="4950" depth="essential">
+  <summary>JSON Schema (draft-07) for the activation tactics playbook step: the activation event and window, the measured drop-off steps with their current conversion and whether a tactic is already live on them, the tactics (checklist with 3-5 event-bound items and one activation item, email sequence of at most four sends with one deep-linked CTA each and send-time suppression, in-app guide on the drop-off screen only, segmented onboarding keyed at signup), a rollout step per tactic whose exit criterion states metric, baseline and minimum lift, and decision branches including the deferral when a step already has a live tactic. Validator at scripts/validate-activation-tactics.py enforces it, including the one-tactic-per-step and checklist-item counts.</summary>
+
+  <output-contract>
+    <required>
+      <field name="activation_event" type="string" required="true">the tracked activation event every tactic moves users toward, snake_case (r-tactic-targets-named-dropoff-step)</field>
+      <field name="window_days" type="integer" required="true">the activation window; no email is scheduled after it (r-email-sequence-suppressed-on-activation)</field>
+      <field name="dropoffs" type="list" required="true">measured drop-off steps: `step`, `screen`, `current_conversion`, `live_tactic` (r-tactic-targets-named-dropoff-step, r-one-tactic-per-step-at-a-time)</field>
+      <field name="tactics" type="list" required="true">each with `id`, `type`, `target_step` (a `dropoffs[].step`), `step_conversion_baseline` equal to that step's `current_conversion`, and the type's own block: `checklist.items[]` (3-5, one `activation_event: true` that is `required: true`, each with `action` or `tracked_event`), `emails[]` (at most 4, `day` 0 first, `cta_count: 1`, `cta_url` deep link, `expected_time_minutes`, `send_condition: not_activated` after Day 0, `condition_evaluated_at: send_time`), `guide` (`screen` of the target step, one per screen, dismissible, hidden after completion), `segmentation` (`segment_key.captured_at: signup`, segments with distinct `first_action`) (r-checklist-single-activation-item, r-email-one-cta-direct-link, r-email-sequence-suppressed-on-activation, r-in-app-guide-at-dropoff-only, r-segmented-onboarding-keyed-at-signup)</field>
+      <field name="steps" type="list" required="true">one rollout step per tactic: `id`, `tactic_id`, `action`, `output_location`, `exit_criterion` with `metric` (step_conversion or activation_rate), `baseline` and `minimum_lift` (r-exit-criterion-states-metric-and-threshold)</field>
+      <field name="decision_branches" type="list" required="true">`when` / `then` pairs with a `kind`; must include `kind: defer_live_tactic` (r-one-tactic-per-step-at-a-time)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a tactic whose `target_step` is not in `dropoffs[]`, or whose `step_conversion_baseline` differs from that step's `current_conversion` — tactic-without-target-step</pattern>
+      <pattern id="f2">a checklist with fewer than 3 or more than 5 items, with zero or several `activation_event: true` items, or with an item that has neither `action` nor `tracked_event` — checklist-bloat</pattern>
+      <pattern id="f3">an email after Day 0 with `send_condition: always`, or `condition_evaluated_at: enrolment` — email-fires-after-activation</pattern>
+      <pattern id="f4">an email with `cta_count` other than 1, or a `cta_url` ending at `/`, `/login`, `/dashboard` or `/home` — cta-lands-on-dashboard</pattern>
+      <pattern id="f5">a guide on a screen that is not the target step's screen, or `guides_on_screen` above 1 — tooltip-stack</pattern>
+      <pattern id="f6">two tactics with the same `target_step` and no shared `experiment_id`, a tactic on a step with `live_tactic: true`, or no `defer_live_tactic` branch — two-tactics-same-step</pattern>
+      <pattern id="f7">an `exit_criterion` without `baseline` and `minimum_lift`, or a rollout step whose exit criterion is "shipped" or "reviewed" — r-exit-criterion-states-metric-and-threshold</pattern>
+      <pattern id="f8">more than 4 emails, or an email `day` beyond `window_days` — r-email-sequence-suppressed-on-activation</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/activation-tactics.json",
   "title": "Activation Tactics playbook step",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "steps",
-    "decision_branches",
-    "deviation_log_reference"
-  ],
+  "required": ["activation_event", "window_days", "dropoffs", "tactics", "steps", "decision_branches"],
+  "additionalProperties": false,
+  "definitions": {
+    "snake": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "path": {"type": "string", "pattern": "^/"},
+    "deep_link": {"type": "string", "pattern": "^https://[^\\s]+/[^\\s]+$", "not": {"pattern": "/(login|dashboard|home)?/?$"}}
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "activation-tactics"
+    "__faion_header__": {"type": ["object", "string"]},
+    "activation_event": {"$ref": "#/definitions/snake"},
+    "window_days": {"type": "integer", "minimum": 1},
+    "dropoffs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step", "screen", "current_conversion", "live_tactic"],
+        "additionalProperties": false,
+        "properties": {
+          "step": {"type": "string", "minLength": 2},
+          "screen": {"$ref": "#/definitions/path"},
+          "current_conversion": {"$ref": "#/definitions/rate"},
+          "live_tactic": {"type": "boolean"}
+        }
+      }
     },
-    "owner": {
-      "type": "string",
-      "minLength": 1
+    "tactics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "target_step", "step_conversion_baseline"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^t[0-9]+$"},
+          "type": {"type": "string", "enum": ["checklist", "email_sequence", "in_app_guide", "segmented_onboarding"]},
+          "target_step": {"type": "string", "minLength": 2},
+          "step_conversion_baseline": {"$ref": "#/definitions/rate"},
+          "experiment_id": {"type": "string", "minLength": 2},
+          "checklist": {
+            "type": "object",
+            "required": ["items"],
+            "additionalProperties": false,
+            "properties": {
+              "items": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "required": ["id", "label", "required", "activation_event", "action", "tracked_event"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {"$ref": "#/definitions/snake"},
+                    "label": {"type": "string", "minLength": 3},
+                    "required": {"type": "boolean"},
+                    "activation_event": {"type": "boolean"},
+                    "action": {"anyOf": [{"$ref": "#/definitions/path"}, {"type": "null"}]},
+                    "tracked_event": {"anyOf": [{"$ref": "#/definitions/snake"}, {"type": "null"}]}
+                  },
+                  "anyOf": [{"properties": {"action": {"type": "string"}}}, {"properties": {"tracked_event": {"type": "string"}}}]
+                }
+              }
+            }
+          },
+          "emails": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "required": ["day", "subject", "cta_count", "cta_url", "expected_time_minutes", "send_condition", "condition_evaluated_at"],
+              "additionalProperties": false,
+              "properties": {
+                "day": {"type": "integer", "minimum": 0},
+                "subject": {"type": "string", "minLength": 5},
+                "cta_count": {"const": 1},
+                "cta_url": {"$ref": "#/definitions/deep_link"},
+                "expected_time_minutes": {"type": "integer", "minimum": 1},
+                "send_condition": {"type": "string", "enum": ["always", "not_activated"]},
+                "condition_evaluated_at": {"const": "send_time"}
+              },
+              "if": {"properties": {"day": {"minimum": 1}}},
+              "then": {"properties": {"send_condition": {"const": "not_activated"}}}
+            }
+          },
+          "guide": {
+            "type": "object",
+            "required": ["screen", "guides_on_screen", "dismissible_in_one_click", "hidden_after_step_complete"],
+            "additionalProperties": false,
+            "properties": {
+              "screen": {"$ref": "#/definitions/path"},
+              "guides_on_screen": {"const": 1},
+              "dismissible_in_one_click": {"const": true},
+              "hidden_after_step_complete": {"const": true}
+            }
+          },
+          "segmentation": {
+            "type": "object",
+            "required": ["segment_key", "segments"],
+            "additionalProperties": false,
+            "properties": {
+              "segment_key": {
+                "type": "object",
+                "required": ["name", "captured_at"],
+                "additionalProperties": false,
+                "properties": {"name": {"$ref": "#/definitions/snake"}, "captured_at": {"const": "signup"}}
+              },
+              "segments": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "required": ["name", "first_action"],
+                  "additionalProperties": false,
+                  "properties": {"name": {"type": "string", "minLength": 2}, "first_action": {"type": "string", "minLength": 3}}
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"type": {"const": "checklist"}}}, "then": {"required": ["checklist"]}},
+          {"if": {"properties": {"type": {"const": "email_sequence"}}}, "then": {"required": ["emails"]}},
+          {"if": {"properties": {"type": {"const": "in_app_guide"}}}, "then": {"required": ["guide"]}},
+          {"if": {"properties": {"type": {"const": "segmented_onboarding"}}}, "then": {"required": ["segmentation"]}}
+        ]
+      }
     },
     "steps": {
       "type": "array",
-      "minItems": 4,
+      "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "input",
-          "owner",
-          "exit_criterion",
-          "output_location"
-        ],
+        "required": ["id", "tactic_id", "action", "exit_criterion", "output_location"],
+        "additionalProperties": false,
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "input": {
-            "type": "string"
-          },
-          "owner": {
-            "type": "string"
-          },
+          "id": {"type": "string", "pattern": "^s[0-9]+$"},
+          "tactic_id": {"type": "string", "pattern": "^t[0-9]+$"},
+          "action": {"type": "string", "minLength": 10},
           "exit_criterion": {
-            "type": "string",
-            "minLength": 10
+            "type": "object",
+            "required": ["metric", "baseline", "minimum_lift"],
+            "additionalProperties": false,
+            "properties": {
+              "metric": {"type": "string", "enum": ["step_conversion", "activation_rate"]},
+              "baseline": {"$ref": "#/definitions/rate"},
+              "minimum_lift": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+            }
           },
-          "output_location": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
+          "output_location": {"type": "string", "minLength": 3}
+        }
       }
     },
     "decision_branches": {
       "type": "array",
+      "minItems": 1,
+      "contains": {"properties": {"kind": {"const": "defer_live_tactic"}}},
       "items": {
         "type": "object",
-        "required": [
-          "when",
-          "then"
-        ],
+        "required": ["kind", "when", "then"],
+        "additionalProperties": false,
         "properties": {
-          "when": {
-            "type": "string"
-          },
-          "then": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
+          "kind": {"type": "string", "enum": ["defer_live_tactic", "keep", "remove", "loop_back"]},
+          "when": {"type": "string", "minLength": 10},
+          "then": {"type": "string", "minLength": 10}
+        }
       }
-    },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "activation-tactics",
-  "owner": "playbook owner",
-  "steps": [
+  "activation_event": "project_created",
+  "window_days": 7,
+  "dropoffs": [
+    {"step": "project created", "screen": "/projects/new", "current_conversion": 0.326, "live_tactic": false},
+    {"step": "email verified", "screen": "/verify", "current_conversion": 0.73, "live_tactic": false},
+    {"step": "workspace named", "screen": "/workspace/setup", "current_conversion": 0.94, "live_tactic": true}
+  ],
+  "tactics": [
     {
-      "id": "s1",
-      "input": "brief",
-      "owner": "lead",
-      "exit_criterion": "brief reviewed + scope confirmed",
-      "output_location": "docs/briefs/"
+      "id": "t1", "type": "checklist", "target_step": "project created", "step_conversion_baseline": 0.326,
+      "checklist": {"items": [
+        {"id": "workspace_named", "label": "Name your workspace", "required": false, "activation_event": false, "action": null, "tracked_event": "workspace_named"},
+        {"id": "first_project", "label": "Create your first project", "required": true, "activation_event": true, "action": "/projects/new", "tracked_event": "project_created"},
+        {"id": "invite", "label": "Invite a team member", "required": false, "activation_event": false, "action": "/team/invite", "tracked_event": "invite_sent"}
+      ]}
     },
     {
-      "id": "s2",
-      "input": "data",
-      "owner": "analyst",
-      "exit_criterion": "dataset >=30 records validated",
-      "output_location": "warehouse:tbl"
-    },
-    {
-      "id": "s3",
-      "input": "draft",
-      "owner": "writer",
-      "exit_criterion": "draft passes editorial check",
-      "output_location": "docs/drafts/"
-    },
-    {
-      "id": "s4",
-      "input": "draft",
-      "owner": "lead",
-      "exit_criterion": "signed off by named reviewer",
-      "output_location": "docs/published/"
+      "id": "t2", "type": "email_sequence", "target_step": "email verified", "step_conversion_baseline": 0.73,
+      "emails": [
+        {"day": 0, "subject": "Verify your email to open your workspace", "cta_count": 1, "cta_url": "https://app.acme.com/verify?token={{token}}", "expected_time_minutes": 1, "send_condition": "always", "condition_evaluated_at": "send_time"},
+        {"day": 1, "subject": "One click and your first project is 2 minutes away", "cta_count": 1, "cta_url": "https://app.acme.com/verify?token={{token}}", "expected_time_minutes": 1, "send_condition": "not_activated", "condition_evaluated_at": "send_time"},
+        {"day": 3, "subject": "Need a hand getting in?", "cta_count": 1, "cta_url": "https://app.acme.com/verify?token={{token}}", "expected_time_minutes": 1, "send_condition": "not_activated", "condition_evaluated_at": "send_time"}
+      ]
     }
+  ],
+  "steps": [
+    {"id": "s1", "tactic_id": "t1", "action": "Ship the 3-item checklist on /projects/new to 100 percent of new signups for two closed signup weeks", "exit_criterion": {"metric": "step_conversion", "baseline": 0.326, "minimum_lift": 0.03}, "output_location": "growth/activation/2026-05-checklist.md"},
+    {"id": "s2", "tactic_id": "t2", "action": "Enable the 3-send verification sequence with send-time suppression for two closed signup weeks", "exit_criterion": {"metric": "step_conversion", "baseline": 0.73, "minimum_lift": 0.05}, "output_location": "growth/activation/2026-05-verify-emails.md"}
   ],
   "decision_branches": [
-    {
-      "when": "data_records < 30",
-      "then": "loop back to s2"
-    }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L101"
-}
-]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
-{
-  "slug": "activation-tactics",
-  "steps": [
-    {
-      "id": "s1"
-    }
+    {"kind": "defer_live_tactic", "when": "the target step already has a live tactic in this period (workspace named)", "then": "defer the new tactic until the live one has hit or missed its exit criterion"},
+    {"kind": "remove", "when": "step conversion after two closed weeks is below baseline plus minimum_lift", "then": "remove the tactic and return to the drop-off ranking"},
+    {"kind": "keep", "when": "step conversion after two closed weeks is at or above baseline plus minimum_lift", "then": "keep the tactic and move to the next drop-off step"}
   ]
 }
-]]></code>
-    <note>Step missing exit_criterion, output_location, owner, input; deviation_log_reference missing.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "activation_event": "project_created",
+  "window_days": 7,
+  "dropoffs": [
+    {"step": "project created", "screen": "/projects/new", "current_conversion": 0.326, "live_tactic": false}
+  ],
+  "tactics": [
+    {
+      "id": "t1", "type": "checklist", "target_step": "onboarding", "step_conversion_baseline": 0.5,
+      "checklist": {"items": [
+        {"id": "profile", "label": "Complete your profile", "required": false, "activation_event": false, "action": "/settings/profile", "tracked_event": null},
+        {"id": "read_docs", "label": "Read the getting-started guide", "required": false, "activation_event": false, "action": null, "tracked_event": null},
+        {"id": "first_project", "label": "Create your first project", "required": false, "activation_event": true, "action": "/projects/new", "tracked_event": "project_created"},
+        {"id": "invite", "label": "Invite a team member", "required": false, "activation_event": true, "action": "/team/invite", "tracked_event": "invite_sent"},
+        {"id": "watch_video", "label": "Watch the intro video", "required": false, "activation_event": false, "action": null, "tracked_event": null},
+        {"id": "connect", "label": "Connect an integration", "required": false, "activation_event": false, "action": "/integrations", "tracked_event": null}
+      ]}
+    },
+    {
+      "id": "t2", "type": "email_sequence", "target_step": "project created", "step_conversion_baseline": 0.326,
+      "emails": [
+        {"day": 0, "subject": "Welcome to Acme", "cta_count": 2, "cta_url": "https://app.acme.com/", "expected_time_minutes": 2, "send_condition": "always", "condition_evaluated_at": "send_time"},
+        {"day": 3, "subject": "Quick win: do this in 5 minutes", "cta_count": 1, "cta_url": "https://app.acme.com/login", "expected_time_minutes": 5, "send_condition": "always", "condition_evaluated_at": "send_time"},
+        {"day": 10, "subject": "Your account is waiting", "cta_count": 1, "cta_url": "https://app.acme.com/projects/new", "expected_time_minutes": 2, "send_condition": "not_activated", "condition_evaluated_at": "send_time"}
+      ]
+    },
+    {
+      "id": "t3", "type": "in_app_guide", "target_step": "project created", "step_conversion_baseline": 0.326,
+      "guide": {"screen": "/dashboard", "guides_on_screen": 3, "dismissible_in_one_click": true, "hidden_after_step_complete": false}
+    }
+  ],
+  "steps": [
+    {"id": "s1", "tactic_id": "t1", "action": "Ship the checklist to everyone", "exit_criterion": {"metric": "step_conversion", "baseline": 0.5, "minimum_lift": 0.02}, "output_location": "docs/published/"}
+  ],
+  "decision_branches": [
+    {"kind": "loop_back", "when": "activation does not improve", "then": "try another tactic from the list"}
+  ]
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every tactic's `target_step` is a measured `dropoffs[].step` and its `step_conversion_baseline` equals that step's `current_conversion` (r-tactic-targets-named-dropoff-step).</item>
+      <item>A checklist has 3-5 items, exactly one `activation_event: true` item and it is `required: true`; every item has an `action` path or a `tracked_event` (r-checklist-single-activation-item).</item>
+      <item>Every email has `cta_count: 1`, a `cta_url` that lands on the action screen, and `expected_time_minutes` (r-email-one-cta-direct-link).</item>
+      <item>Every email after Day 0 has `send_condition: not_activated` evaluated at `send_time`; at most 4 emails, none scheduled past `window_days` (r-email-sequence-suppressed-on-activation).</item>
+      <item>Segmented onboarding has `segment_key.captured_at: signup` and every segment a distinct `first_action` toward the same activation event (r-segmented-onboarding-keyed-at-signup).</item>
+      <item>A guide sits on its target step's `screen`, one per screen, dismissible, hidden after the step is done (r-in-app-guide-at-dropoff-only).</item>
+      <item>Each tactic has a rollout step whose `exit_criterion` names `metric`, `baseline` and `minimum_lift` (r-exit-criterion-states-metric-and-threshold).</item>
+      <item>No two tactics share a `target_step` outside one `experiment_id`, no tactic targets a step with `live_tactic: true`, and a `defer_live_tactic` branch exists (r-one-tactic-per-step-at-a-time).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-activation-tactics.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-activation-tactics.py">Validator implementing this schema and the cross-field checks.</reference>
 </text>

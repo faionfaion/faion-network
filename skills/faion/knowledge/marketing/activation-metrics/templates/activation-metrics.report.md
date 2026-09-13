@@ -1,26 +1,50 @@
-<!-- purpose: activation-metrics report template -->
-<!-- consumes: inputs named in AGENTS.md Prerequisites -->
+<!-- purpose: weekly activation metrics report skeleton — closed period, rate against all signups, per-channel rates with a sample floor, time-to-activation quantiles, D30 lift table, funnel with both drops, findings citing metric and period -->
+<!-- consumes: signup table, event table, first-touch channel per signup, data cutoff date -->
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml + content/06-decision-tree.xml -->
-<!-- token-budget-impact: ~600 tokens when loaded -->
-# Activation Metrics — Report
+<!-- token-budget-impact: ~800 tokens when loaded -->
+# Activation Metrics — Report for signups <period_start> to <period_end>
 
-## Owner
-<name>
+## Definition and period
+- activation_event: <activation_event_name> within window_days: <window_days>
+- period_start / period_end (signup dates): <period_start> / <period_end> (period_end + window_days on or before data_cutoff)
+- data_cutoff: <data_cutoff>
+- previous_period: <start> to <end> (same length, same window)
+- signups_total: <all signups in the period, no filter>
+- sample_floor: <sample_floor> signups per channel
+- channel_attribution: true | false
 
-## Period
-- start: YYYY-MM-DD
-- end: YYYY-MM-DD
+## Metrics (snake_case names; unit in ratio / count / days / hours / pp; ratios 0..1)
 
-## Metrics
-| Name | Value | Unit |
-|------|-------|------|
-| metric-1 | 0.0 | ratio |
-| metric-2 | 0 | count |
+| name | value | unit | numerator | denominator | low_sample |
+|---|---|---|---|---|---|
+| signups | <n> | count | | | |
+| activation_rate | <numerator / denominator, 3 decimals> | ratio | <activated in window> | <signups_total> | |
+| activation_rate__<channel> | <0.xxx> | ratio | <n> | <n> | <true when denominator below sample_floor> |
+| activation_rate_wow_delta | <+/- x.x> | pp | | | |
+| activation_rate_partial | <0.xxx> | ratio | <n> | <n> | <only for the still-open cohort> |
 
-## Findings
-- finding 1 (>=10 chars)
-- finding 2 (>=10 chars)
+## Time to activation (activated users only)
+- unit: hours | days
+- median: <x.x>
+- p75 / p90: <x.x> (at least one)
+- mean: <optional, never alone>
 
-## Deviation log reference
-<path_link>
+## D30 lift (omit if no cohort is 30 days old at the cutoff)
+
+| event | cohort_signup_start | cohort_signup_end | performed users | performed D30 | not_performed users | not_performed D30 | wording |
+|---|---|---|---|---|---|---|---|
+| <event> | <YYYY-MM-DD> | <YYYY-MM-DD, at least 30 days before data_cutoff> | <n> | <0.xx> | <n> | <0.xx> | correlation |
+
+## Funnel (in traversal order; a step with no event carries no numbers)
+
+| step | status | event | entering | completing | absolute_drop | relative_drop | instrumentation_task |
+|---|---|---|---|---|---|---|---|
+| <name> | instrumented | <event_name> | <n> | <n> | <entering - completing> | <absolute_drop / entering, 3 decimals> | |
+| <name> | uninstrumented | | | | | | <ticket id> |
+
+## Findings (each names a metric and its comparison period; causal only with an A/B result)
+
+| metric | text | compared_to | causal | product_change (name, released_at, ab_test_result) |
+|---|---|---|---|---|
+| <metrics[].name> | <sentence containing the metric name and the period compared> | <start> to <end> | false | <optional> |

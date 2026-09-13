@@ -1,69 +1,212 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Cohort Implementation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `config` artefact this methodology produces. Validator at scripts/validate-cohort-implementation.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Cohort Implementation Output Contract" version="1.2.0" est_tokens="3650" depth="essential">
+  <summary>JSON Schema (draft-07) for the weekly retention cohort config: `settings` (engine, one retention event, fixed day offsets, Monday week start, UTC), `sources` (users and events tables joined on a post-identification `user_id`, UTC timestamp columns), the dbt `model` (incremental, composite unique key, partitioned on cohort_week, lookback at least the largest offset, Monday-UTC cohort expression, events-after-signup join, denominator from the users table), the `tests` schema.yml must carry, the `chart` spec with a data cutoff and immature cells as null, and optional computed `cells`. Validator at scripts/validate-cohort-implementation.py enforces it, including the lookback, offset-set and maturity arithmetic.</summary>
+
+  <output-contract>
+    <required>
+      <field name="settings" type="object" required="true">`warehouse_engine` in bigquery / snowflake / postgres / redshift, `retention_event`, `day_offsets[]`, `week_start: monday`, `timezone: UTC` (r-settings-declare-engine-event-offsets)</field>
+      <field name="sources" type="object" required="true">`users_table`, `events_table`, `user_id_column: user_id` with `identity_resolved_upstream: true`, `signup_ts_column` and `event_ts_column` ending in `_utc` (r-stable-user-id-not-anonymous, r-cohort-key-signup-week-monday-utc)</field>
+      <field name="model" type="object" required="true">`materialized: incremental`, `unique_key: [cohort_week, day_offset, user_id]`, `partition_by: cohort_week`, `lookback_days` at least the largest offset, `cohort_week_expr` truncating UTC signup to a Monday week, `join_condition: event_ts_utc &gt;= signup_ts_utc`, `denominator_source: users_table`, `retention_event_declared_in` all of sql / schema_yml / settings (r-incremental-key-partition-and-lookback, r-cohort-key-signup-week-monday-utc, r-only-events-after-signup-count, r-denominator-is-full-cohort, r-retention-event-defined-once)</field>
+      <field name="tests" type="object" required="true">`not_null` on cohort_week, day_offset, user_id; `accepted_values` on `day_offset` equal to `settings.day_offsets` (r-fixed-day-offsets-enforced-by-test, r-incremental-key-partition-and-lookback)</field>
+      <field name="chart" type="object" required="true">`data_cutoff`, `x: cohort_week`, `series: day_offset`, `metric: retained_users / cohort_users`, `immature_value: null`, `render_immature_as: blank` (r-incomplete-cells-null-not-zero)</field>
+      <field name="cells" type="list" required="false">computed `(cohort_week, day_offset)` cells with `cohort_users`, `retained_users` and `retention`; null where `cohort_week` + 6 days + `day_offset` is after `data_cutoff` (r-denominator-is-full-cohort, r-incomplete-cells-null-not-zero)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a `cohort_week_expr` without a Monday week start, or a `signup_ts_column` / `event_ts_column` not ending in `_utc` — week-boundary-mismatch</pattern>
+      <pattern id="f2">`user_id_column` equal to `distinct_id`, `device_id`, `anonymous_id` or `cookie_id`, or `identity_resolved_upstream: false` — anonymous-id-cohorts</pattern>
+      <pattern id="f3">`denominator_source` other than `users_table`, or a cell with `retained_users` above `cohort_users` — row-count-denominator</pattern>
+      <pattern id="f4">a cell past the cutoff with `retained_users: 0` or `retention: 0`, or `chart.immature_value` not null — immature-cells-as-zero</pattern>
+      <pattern id="f5">`model.lookback_days` below the largest `day_offsets` value — lookback-shorter-than-max-offset</pattern>
+      <pattern id="f6">`retention_event_declared_in` missing sql, schema_yml or settings, or `tests.accepted_values.values` different from `settings.day_offsets` — retention-event-changed-in-place, r-fixed-day-offsets-enforced-by-test</pattern>
+      <pattern id="f7">`join_condition` other than `event_ts_utc &gt;= signup_ts_utc`, or a cell `day_offset` outside `settings.day_offsets` — r-only-events-after-signup-count</pattern>
+      <pattern id="f8">`unique_key` other than `[cohort_week, day_offset, user_id]`, `materialized` other than incremental, or `not_null` missing one of the three key columns — r-incremental-key-partition-and-lookback</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/cohort-implementation.json",
   "title": "Cohort Implementation config",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "settings",
-    "deviation_log_reference"
-  ],
+  "required": ["settings", "sources", "model", "tests", "chart"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "ident": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "utc_col": {"type": "string", "pattern": "^[a-z][a-z0-9_]*_utc$"},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1}
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "cohort-implementation"
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 1
-    },
+    "__faion_header__": {"type": ["object", "string"]},
     "settings": {
       "type": "object",
-      "minProperties": 3,
-      "additionalProperties": true
+      "required": ["warehouse_engine", "retention_event", "day_offsets", "week_start", "timezone"],
+      "additionalProperties": false,
+      "properties": {
+        "warehouse_engine": {"type": "string", "enum": ["bigquery", "snowflake", "postgres", "redshift"]},
+        "retention_event": {"$ref": "#/definitions/ident"},
+        "day_offsets": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "integer", "minimum": 1}},
+        "week_start": {"const": "monday"},
+        "timezone": {"const": "UTC"}
+      }
     },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
+    "sources": {
+      "type": "object",
+      "required": ["users_table", "events_table", "user_id_column", "identity_resolved_upstream", "signup_ts_column", "event_ts_column"],
+      "additionalProperties": false,
+      "properties": {
+        "users_table": {"$ref": "#/definitions/ident"},
+        "events_table": {"$ref": "#/definitions/ident"},
+        "user_id_column": {"const": "user_id"},
+        "identity_resolved_upstream": {"const": true},
+        "signup_ts_column": {"$ref": "#/definitions/utc_col"},
+        "event_ts_column": {"$ref": "#/definitions/utc_col"}
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": ["name", "materialized", "unique_key", "partition_by", "lookback_days", "cohort_week_expr", "join_condition", "denominator_source", "retention_event_declared_in"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/definitions/ident"},
+        "materialized": {"const": "incremental"},
+        "unique_key": {"type": "array", "minItems": 3, "maxItems": 3, "items": [{"const": "cohort_week"}, {"const": "day_offset"}, {"const": "user_id"}]},
+        "partition_by": {"const": "cohort_week"},
+        "lookback_days": {"type": "integer", "minimum": 1},
+        "cohort_week_expr": {"type": "string", "minLength": 10, "pattern": "(?i)monday"},
+        "join_condition": {"const": "event_ts_utc >= signup_ts_utc"},
+        "denominator_source": {"const": "users_table"},
+        "retention_event_declared_in": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "string", "enum": ["sql", "schema_yml", "settings"]},
+          "allOf": [{"contains": {"const": "sql"}}, {"contains": {"const": "schema_yml"}}, {"contains": {"const": "settings"}}]
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "required": ["not_null", "accepted_values"],
+      "additionalProperties": false,
+      "properties": {
+        "not_null": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"$ref": "#/definitions/ident"},
+          "allOf": [{"contains": {"const": "cohort_week"}}, {"contains": {"const": "day_offset"}}, {"contains": {"const": "user_id"}}]
+        },
+        "accepted_values": {
+          "type": "object",
+          "required": ["column", "values"],
+          "additionalProperties": false,
+          "properties": {
+            "column": {"const": "day_offset"},
+            "values": {"type": "array", "minItems": 1, "items": {"type": "integer", "minimum": 1}}
+          }
+        }
+      }
+    },
+    "chart": {
+      "type": "object",
+      "required": ["data_cutoff", "x", "series", "metric", "immature_value", "render_immature_as"],
+      "additionalProperties": false,
+      "properties": {
+        "data_cutoff": {"$ref": "#/definitions/date"},
+        "x": {"const": "cohort_week"},
+        "series": {"const": "day_offset"},
+        "metric": {"const": "retained_users / cohort_users"},
+        "immature_value": {"type": "null"},
+        "render_immature_as": {"const": "blank"}
+      }
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cohort_week", "day_offset", "cohort_users", "retained_users", "retention"],
+        "additionalProperties": false,
+        "properties": {
+          "cohort_week": {"$ref": "#/definitions/date"},
+          "day_offset": {"type": "integer", "minimum": 1},
+          "cohort_users": {"type": "integer", "minimum": 1},
+          "retained_users": {"type": ["integer", "null"], "minimum": 0},
+          "retention": {"anyOf": [{"$ref": "#/definitions/rate"}, {"type": "null"}]}
+        }
+      }
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "cohort-implementation",
-  "owner": "growth ops",
-  "settings": {
-    "property_id": "G-XXXXXXX",
-    "stream": "web",
-    "consent_mode": "v2"
+  "settings": {"warehouse_engine": "bigquery", "retention_event": "login", "day_offsets": [1, 7, 14, 30, 60, 90], "week_start": "monday", "timezone": "UTC"},
+  "sources": {"users_table": "stg_users", "events_table": "stg_events", "user_id_column": "user_id", "identity_resolved_upstream": true, "signup_ts_column": "signup_ts_utc", "event_ts_column": "event_ts_utc"},
+  "model": {
+    "name": "cohort_retention_weekly",
+    "materialized": "incremental",
+    "unique_key": ["cohort_week", "day_offset", "user_id"],
+    "partition_by": "cohort_week",
+    "lookback_days": 90,
+    "cohort_week_expr": "CAST(DATE_TRUNC(DATE(signup_ts_utc), WEEK(MONDAY)) AS DATE)",
+    "join_condition": "event_ts_utc >= signup_ts_utc",
+    "denominator_source": "users_table",
+    "retention_event_declared_in": ["sql", "schema_yml", "settings"]
   },
-  "deviation_log_reference": "ops/deviation-log.md#L120"
+  "tests": {"not_null": ["cohort_week", "day_offset", "user_id"], "accepted_values": {"column": "day_offset", "values": [1, 7, 14, 30, 60, 90]}},
+  "chart": {"data_cutoff": "2026-05-04", "x": "cohort_week", "series": "day_offset", "metric": "retained_users / cohort_users", "immature_value": null, "render_immature_as": "blank"},
+  "cells": [
+    {"cohort_week": "2026-01-05", "day_offset": 90, "cohort_users": 1502, "retained_users": 240, "retention": 0.16},
+    {"cohort_week": "2026-03-30", "day_offset": 1, "cohort_users": 1810, "retained_users": 1050, "retention": 0.58},
+    {"cohort_week": "2026-03-30", "day_offset": 7, "cohort_users": 1810, "retained_users": 706, "retention": 0.39},
+    {"cohort_week": "2026-03-30", "day_offset": 14, "cohort_users": 1810, "retained_users": 543, "retention": 0.3},
+    {"cohort_week": "2026-03-30", "day_offset": 30, "cohort_users": 1810, "retained_users": null, "retention": null}
+  ]
 }
-]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+]]></example>
+
+    <example valid="false"><![CDATA[
 {
-  "slug": "cohort-implementation",
-  "settings": {}
+  "settings": {"warehouse_engine": "bigquery", "retention_event": "login", "day_offsets": [1, 7, 14, 30, 60, 90], "week_start": "monday", "timezone": "UTC"},
+  "sources": {"users_table": "stg_users", "events_table": "stg_events", "user_id_column": "distinct_id", "identity_resolved_upstream": false, "signup_ts_column": "signup_ts_local", "event_ts_column": "event_ts_utc"},
+  "model": {
+    "name": "cohort_retention_weekly",
+    "materialized": "incremental",
+    "unique_key": ["cohort_week", "day_offset", "user_id"],
+    "partition_by": "cohort_week",
+    "lookback_days": 30,
+    "cohort_week_expr": "DATE_TRUNC(DATE(signup_ts_local), WEEK)",
+    "join_condition": "event_ts_utc >= signup_ts_utc",
+    "denominator_source": "model_rows",
+    "retention_event_declared_in": ["sql"]
+  },
+  "tests": {"not_null": ["cohort_week", "day_offset"], "accepted_values": {"column": "day_offset", "values": [1, 7, 30]}},
+  "chart": {"data_cutoff": "2026-05-04", "x": "cohort_week", "series": "day_offset", "metric": "retained_users / cohort_users", "immature_value": 0, "render_immature_as": "zero"},
+  "cells": [
+    {"cohort_week": "2026-03-30", "day_offset": 1, "cohort_users": 1050, "retained_users": 1050, "retention": 1.0},
+    {"cohort_week": "2026-03-30", "day_offset": 30, "cohort_users": 1810, "retained_users": 0, "retention": 0},
+    {"cohort_week": "2026-04-01", "day_offset": 3, "cohort_users": 1810, "retained_users": 900, "retention": 0.497}
+  ]
 }
-]]></code>
-    <note>settings empty (need &gt;=3 properties), owner and deviation_log_reference missing.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`cohort_week_expr` truncates a UTC signup timestamp to a Monday-start week and both timestamp columns end in `_utc` (r-cohort-key-signup-week-monday-utc).</item>
+      <item>`user_id_column` is `user_id` with identity resolved upstream; no distinct, device or cookie id anywhere in the model (r-stable-user-id-not-anonymous).</item>
+      <item>`settings.retention_event` is declared in the SQL, in `schema.yml` and in settings, and a change means a new model version with backfill (r-retention-event-defined-once).</item>
+      <item>`tests.accepted_values.values` equals `settings.day_offsets`, and the SQL `WHERE` restricts `day_offset` to the same set (r-fixed-day-offsets-enforced-by-test).</item>
+      <item>`join_condition` is `event_ts_utc &gt;= signup_ts_utc`; no cell has a `day_offset` outside the set (r-only-events-after-signup-count).</item>
+      <item>`denominator_source` is the users table; every cell's `retained_users` is at most `cohort_users` and `retention` = retained / cohort (r-denominator-is-full-cohort).</item>
+      <item>Every cell with `cohort_week` + 6 days + `day_offset` after `data_cutoff` is null, and the chart renders nulls blank (r-incomplete-cells-null-not-zero).</item>
+      <item>Incremental with `unique_key` cohort_week / day_offset / user_id, partitioned on cohort_week, `lookback_days` at least `max(day_offsets)`, `not_null` on the three keys (r-incremental-key-partition-and-lookback).</item>
+      <item>`settings` names engine, event, offsets, Monday and UTC, matching the deployed SQL and `schema.yml` (r-settings-declare-engine-event-offsets).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-cohort-implementation.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-cohort-implementation.py">Validator implementing this schema and the lookback, offset-set and maturity arithmetic.</reference>
 </text>

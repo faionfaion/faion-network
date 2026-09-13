@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Cohort Implementation Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Cohort Implementation end-to-end from inputs to a validated `config` artefact + human signoff.</summary>
+<text id="04-procedure" title="Cohort Implementation Procedure" version="1.2.0" est_tokens="1500" depth="essential">
+  <summary>Seven steps from the warehouse to a deployed weekly-cohort model: confirm the users and events tables carry a stable user_id and UTC timestamps, declare engine, retention event and offsets once in settings, write the incremental model with the composite key and 90-day lookback, wire the not_null and accepted_values tests, set the chart spec with the cutoff and null immature cells, backfill and validate, then treat any event change as a new version.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="confirm-sources-and-identity">
+      <input>The warehouse (BigQuery, Snowflake, Postgres or Redshift); the staging users and events models.</input>
+      <action>Record `sources`: `users_table`, `events_table`, `user_id_column: user_id` (identity resolved in staging), `signup_ts_column` and `event_ts_column` as UTC columns. Set `settings.warehouse_engine`, `week_start: monday`, `timezone: UTC` in `templates/cohort-implementation.config.yaml`.</action>
+      <output>`sources` and the engine, week and timezone settings.</output>
+      <decision-gate>Events carry only `distinct_id` or a device id, or timestamps have no UTC column: fix staging first (06-decision-tree.xml, r-stable-user-id-not-anonymous, r-cohort-key-signup-week-monday-utc).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="declare-the-retention-event-and-offsets-once">
+      <input>The event that means "came back" for this product; the offsets the team reads.</input>
+      <action>Set `settings.retention_event` and `settings.day_offsets` (template: 1, 7, 14, 30, 60, 90). Write the same event into the SQL `WHERE event_type = ...` and into the `schema.yml` model description; set `model.retention_event_declared_in` to sql, schema_yml, settings.</action>
+      <output>`settings.retention_event`, `settings.day_offsets`, `model.retention_event_declared_in`.</output>
+      <decision-gate>The event differs between SQL, schema.yml and settings: the config fails review (r-retention-event-defined-once, r-settings-declare-engine-event-offsets).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `config` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="write-the-incremental-model">
+      <input>`templates/cohort-retention-weekly.sql`; `sources`; `settings`.</input>
+      <action>Set `model.name`, `materialized: incremental`, `unique_key: [cohort_week, day_offset, user_id]`, `partition_by: cohort_week`, `lookback_days` at least `max(day_offsets)`, `cohort_week_expr` = `DATE_TRUNC(DATE(signup_ts_utc), WEEK(MONDAY))` or the engine's equivalent, `join_condition: event_ts_utc &gt;= signup_ts_utc`, and restrict `day_offset` in the `WHERE` clause to `settings.day_offsets`.</action>
+      <output>`model` block and the deployed SQL.</output>
+      <decision-gate>Lookback shorter than the largest offset: late day-90 events never land; raise it (r-incremental-key-partition-and-lookback, r-only-events-after-signup-count).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-cohort-implementation.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="wire-the-tests">
+      <input>`templates/schema.yml`.</input>
+      <action>Set `tests.not_null` to cohort_week, day_offset, user_id and `tests.accepted_values` on `day_offset` to exactly `settings.day_offsets`.</action>
+      <output>`tests` block and the deployed schema.yml.</output>
+      <decision-gate>An offset exists only in a BI query: it is not in the set and is dropped, never added by editing the dashboard (r-fixed-day-offsets-enforced-by-test).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="set-the-chart-spec-and-denominator">
+      <input>The data cutoff date; the users table.</input>
+      <action>Set `model.denominator_source: users_table` and `chart` with `data_cutoff`, `x: cohort_week`, `series: day_offset`, `metric: retained_users / cohort_users`, `immature_value: null`, `render_immature_as: blank`. A cell is reported only when `cohort_week` + 6 days + `day_offset` is on or before `data_cutoff`.</action>
+      <output>`chart`, `model.denominator_source`.</output>
+      <decision-gate>The chart's denominator comes from the model's own rows, or immature cells show 0: fix before publishing (r-denominator-is-full-cohort, r-incomplete-cells-null-not-zero).</decision-gate>
     </step>
 
+    <step n="6" name="backfill-and-validate">
+      <input>The model, tests and chart spec; a sample of computed cells.</input>
+      <action>Run a full refresh for all historical cohorts, then `dbt test`. Copy a few `cells[]` (a mature cohort at day 90, the newest cohort at day 1 to 30) into the config and run `scripts/validate-cohort-implementation.py --file`.</action>
+      <output>Validated config; deployed model with passing tests.</output>
+      <decision-gate>A cell has `retained_users` above `cohort_users`, or a cell past the cutoff carries a number: the query or the cutoff is wrong (r-denominator-is-full-cohort, r-incomplete-cells-null-not-zero).</decision-gate>
+    </step>
+
+    <step n="7" name="version-any-change-to-the-event">
+      <input>A request to change the retention event or the offsets.</input>
+      <action>Bump the model version, change the event or offsets in all three places, re-run the full backfill, update `tests.accepted_values.values`, and re-validate. Never edit the live filter in place.</action>
+      <output>New model version with a complete history on one definition.</output>
+      <decision-gate>An in-place change without backfill is rejected (r-retention-event-defined-once).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Config validates via `scripts/validate-cohort-implementation.py` with no violation.</item>
+      <item>`dbt test` passes not_null on the three keys and accepted_values on day_offset.</item>
+      <item>The chart shows blank cells below the maturity diagonal and no cohort with day-1 retention of 100 percent.</item>
+    </list>
   </section>
 </text>

@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=playbook-step`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- The agency sells a repeatable service to a defined ICP and currently offers it as a single engagement.
+- Delivery cost per deliverable is known: estimated hours from past engagements, a loaded hourly cost, and pass-through costs.
+- The deliverables can be listed with quantities and turnaround times, so tiers can nest as strict supersets.
+- One deliverable the ICP needs for its outcome can be withheld from the entry tier as the fence.
+- Someone at the agency can be named as approver for mid-engagement scope changes.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=playbook-step` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- Work is bespoke per client with no repeatable deliverable list: price per proposal, not as tiers.
+- Delivery cost is unknown: cost the service first; the margin rule cannot be checked.
+- The buyer is procurement-led with a fixed rate card and no choice of scope: a ladder has nothing to anchor.
+- The agency wants a fourth priced tier or a "discuss" band between tiers: this methodology holds exactly three.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+| Deliverable list with hours | deliverable, quantity, turnaround days, estimated hours | timesheets from the last three engagements |
+| Loaded hourly cost | one number in the agency's currency | finance |
+| Pass-through costs per tier | tools, ad-platform fees, per month | finance / ops |
+| ICP and its outcome | one sentence naming who buys and what result they need | agency positioning doc |
+| Target price of the middle tier | number in the agency's currency | founders / current engagement price |
+| Approver for scope changes | role name | agency org chart |
 
 ## Assumes Loaded
 
@@ -48,9 +52,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: three priced tiers, best has highest margin, 3/5/8 gaps, nested supersets, fenced good and complete better, scope-up procedure, discount by scope, present best first | 1700 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the ladder: three ordered tiers with price, delivery cost and gross margin, nested deliverables with quantity and turnaround, 3 / 5 / 8 band or gap justification, the fence, better as default, best-first presentation, scope-up and concession rules, rollout steps; valid and invalid ladders; 8 forbidden patterns | ~4050 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/04-procedure.xml` | essential | 7 steps: list nested deliverables, cost each tier, set prices on 3 / 5 / 8, compute margin and check best leads, name the fence and default, write scope-up and concession rules, publish best-first and validate | ~1450 |
+| `content/05-examples.xml` | recommended | Complete 3,000 / 5,000 / 8,000 EUR ladder (best at 54.5 percent margin, conversion tracking as the fence, scope-up procedure, three rollout steps) with a note per value, plus the ladder as usually built and what the validator prints | ~2300 |
 | `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
@@ -66,8 +71,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agency-pricing-tiers.playbook-step.md.j2` | Markdown playbook-step skeleton with 5-line header |
-| `templates/agency-pricing-tiers.playbook-step.md` | Markdown playbook-step skeleton with 5-line header Generated from `templates/agency-pricing-tiers.playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/agency-pricing-tiers.playbook-step.md.j2` | Markdown rate-sheet skeleton: three costed tiers with margin, nested deliverables, fence and default, presentation, scope-up, concessions, rollout steps |
+| `templates/agency-pricing-tiers.playbook-step.md` | Markdown rate-sheet skeleton: three costed tiers with margin, nested deliverables, fence and default, presentation, scope-up, concessions, rollout steps. Generated from `templates/agency-pricing-tiers.playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/agency-pricing-tiers.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

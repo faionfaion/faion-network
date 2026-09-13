@@ -1,40 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Google Analytics 4 Setup Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Google Analytics 4 Setup end-to-end from inputs to a validated `config` artefact + human signoff.</summary>
+<text id="04-procedure" title="Google Analytics 4 Setup Procedure" version="1.2.0" est_tokens="1900" depth="essential">
+  <summary>Nine steps from an empty property to a validated config: create the property and record both ids, link BigQuery and set retention before any traffic, declare enhanced measurement with one page_view source, register custom dimensions within the limits, install the snippet with Consent Mode v2 defaults first, define the purchase event, mark key events by exact name, wire Measurement Protocol with the browser client_id, then set the internal filter, unwanted referrals and cross-domain list and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="create-the-property-and-record-both-ids">
+      <input>Google Analytics admin access; the site's domains and platforms.</input>
+      <action>Create the GA4 property and one data stream per platform. Record the numeric `property_id` and each stream's `G-` `measurement_id` as separate fields in `templates/google-analytics.config.yaml`, with `type`, `spa`, `manual_page_view` and `send_page_view`.</action>
+      <output>`property_id`, `site_domain`, `data_streams[]`.</output>
+      <decision-gate>No property is being created or reconfigured: stop (06-decision-tree.xml). An API call uses the `G-` id or the snippet uses the numeric id: fix before continuing (r-property-id-and-measurement-id-distinct).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="link-bigquery-and-set-retention-before-launch">
+      <input>A Google Cloud project; the data residency requirement.</input>
+      <action>Link the BigQuery export with daily export on, record `linked_at`, `project` and `dataset_location`, set `data_retention_months: 14`, set `sampling_threshold_events` for the plan and `decision_reports_source: bigquery`.</action>
+      <output>`bigquery_export`, `data_retention_months`.</output>
+      <decision-gate>Production traffic is already flowing and the export is not linked: link it today; the months before are not recoverable (r-bigquery-export-linked-before-launch).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `config` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="declare-enhanced-measurement-with-one-page-view-source">
+      <input>The stream's enhanced measurement settings; whether the app is a SPA that pushes its own `page_view`.</input>
+      <action>Record every toggle in `enhanced_measurement`. For a SPA that sends `page_view` on route change set `manual_page_view: true`, `send_page_view: false` and `history_change_page_view: false`; otherwise leave the browser-history option on and `send_page_view: true`.</action>
+      <output>`enhanced_measurement`, the stream's page_view fields.</output>
+      <decision-gate>Both the manual push and the history-change option are on: page views double; pick one (r-enhanced-measurement-declared-no-double-page-view).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-google-analytics.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="register-custom-dimensions-within-limits">
+      <input>Every custom parameter or user property a report will read; the plan's limits.</input>
+      <action>Register each as a dimension or metric with scope event, user or item before the first event carrying it is sent; list them in `custom_dimensions.registered[]`, fill `limits` for the plan and `used` counts per scope.</action>
+      <output>`custom_dimensions`.</output>
+      <decision-gate>A parameter is already being sent unregistered: register now and note that history before today is only in BigQuery; `used` at the limit: consolidate before adding (r-custom-dimensions-registered-within-limits).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="install-the-snippet-with-consent-defaults-first">
+      <input>`templates/gtag-snippet.html`; the consent management platform; the markets in scope.</input>
+      <action>Place `gtag('consent', 'default', ...)` with `ad_storage`, `analytics_storage`, `ad_user_data`, `ad_personalization` and `region` before `gtag('config', 'G-...')`; have the CMP call `gtag('consent', 'update', ...)` on choice. Record `consent` with `implementation` basic or advanced, `regions[]` and `update_on_choice: true`.</action>
+      <output>`consent`; the installed snippet.</output>
+      <decision-gate>The default push sits after the config call: cookies are set before the banner; move it (r-consent-mode-v2-defaults-before-config).</decision-gate>
     </step>
 
+    <step n="6" name="define-the-purchase-event">
+      <input>The order system's order id; the product catalogue for `items`.</input>
+      <action>Set `purchase.enabled: true` with `required_parameters` transaction_id, value, currency, items; `transaction_id_source: order_id`; `stable_across_retries: true` so browser and server sends and reloads share one id.</action>
+      <output>`purchase`.</output>
+      <decision-gate>No order id is available at the confirmation page: the purchase event is not sent until it is (r-purchase-transaction-id-dedup).</decision-gate>
+    </step>
+
+    <step n="7" name="mark-key-events-by-exact-name">
+      <input>The property's event list; the conversions the business counts.</input>
+      <action>List `events[]` as the property reports them. Add at most 30 `key_events[]`, each with an `event_name` copied exactly from `events[]` and a `counting` method.</action>
+      <output>`events[]`, `key_events[]`.</output>
+      <decision-gate>A key event name differs from the sent name in case or spelling: it never fires; correct it (r-key-events-declared-by-exact-name).</decision-gate>
+    </step>
+
+    <step n="8" name="wire-measurement-protocol-with-the-browser-client-id">
+      <input>`templates/mp_track.py`; the server that sends events; the secret store.</input>
+      <action>Set `measurement_protocol.used: true`, `client_id_source: _ga cookie`, `session_id_included: true`, `engagement_time_msec_included: true`, `api_secret_storage: server_only`, `fresh_client_id: false`. Read the `_ga` cookie for `client_id` on every hit.</action>
+      <output>`measurement_protocol`.</output>
+      <decision-gate>The server generates a UUID or the api_secret is in a browser bundle: server events become new direct users and anyone can inject events; fix before enabling (r-measurement-protocol-reuses-client-id).</decision-gate>
+    </step>
+
+    <step n="9" name="set-traffic-filters-and-validate">
+      <input>Office and VPN IP ranges; every payment and authentication domain the checkout passes through; the domains in the journey.</input>
+      <action>Define `traffic_filters.internal.ip_rules` and set the filter `state: active` (not testing). List `checkout_and_auth_domains[]` and put each in `unwanted_referrals[]`; fill `cross_domain[]` when the journey spans domains. Run `scripts/validate-google-analytics.py --file`.</action>
+      <output>`traffic_filters`; validated config.</output>
+      <decision-gate>A payment or auth domain is missing from the referral list: purchases will attribute to it; add it before launch (r-internal-traffic-referral-and-cross-domain).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Config validates via `scripts/validate-google-analytics.py` with no violation.</item>
+      <item>BigQuery daily export and 14-month retention were in place before the first production hit.</item>
+      <item>Every key event matches a sent event name, every reported parameter is a registered dimension, and every checkout and auth domain is an unwanted referral.</item>
+    </list>
   </section>
 </text>

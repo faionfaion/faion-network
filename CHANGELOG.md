@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 layer 2, batch 4: `dev/regression-test-first-bugfix-workflow` and
+  ten `marketing` documents.** `google-analytics` — the CR's own headline —
+  now has a 13-field contract (measurement id, key events, custom dimensions
+  under the property limit, consent-mode defaults, BigQuery link state, purchase
+  `transaction_id`), a nine-step procedure ending in DebugView verification, and
+  a worked example; `activation-metrics` a 14-field one with closed-cohort
+  windows and a D30 lift table. Six slugs gained a `05-examples.xml`. All
+  eleven validators carry an `extra()` block for the arithmetic the rules state
+  (ICE scores, denominators, date offsets, exact-host matching). Forty-one of
+  61 whole.
+
 - **CR-011 layer 2, batch 3: eleven more — `ai-core`, three `comms`, seven
   `dev`.** These carried the corpus's other stamp (`artefact_id / version /
   last_reviewed / decision / inputs_used / rationale / owner`). Now

@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Agency Pricing Tiers Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Agency Pricing Tiers end-to-end from inputs to a validated `playbook-step` artefact + human signoff.</summary>
+<text id="04-procedure" title="Agency Pricing Tiers Procedure" version="1.2.0" est_tokens="1450" depth="essential">
+  <summary>Seven steps from a costed service to a published ladder: list nested deliverables for three tiers, cost each tier and compute gross margin, set prices on the 3 / 5 / 8 shape, check best leads on margin, name the fence and the default recommendation, write the scope-up and concession rules, then publish best-first and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="list-nested-deliverables">
+      <input>The repeatable service the agency sells; the ICP and the outcome it buys; the deliverables the team actually produces.</input>
+      <action>In `templates/agency-pricing-tiers.playbook-step.md.j2` write `tiers[]` good, better, best in that order. Give each tier `deliverables[]` with `quantity` and `turnaround_days`, so that everything in good is in better and everything in better is in best with equal or higher quantity and equal or faster turnaround.</action>
+      <output>`tiers[].name` and `tiers[].deliverables`.</output>
+      <decision-gate>The service is bespoke per client, or the delivery cost per deliverable is unknown: stop (06-decision-tree.xml). A tier swaps a deliverable out instead of adding: rebuild it as a superset (r-exactly-three-priced-tiers, r-tiers-are-strict-supersets).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="cost-each-tier">
+      <input>Estimated hours per deliverable, the loaded hourly cost, pass-through costs (ad platform fees, tools).</input>
+      <action>For each tier record `delivery_cost.hours`, `loaded_hourly_cost`, `pass_through`.</action>
+      <output>`tiers[].delivery_cost`.</output>
+      <decision-gate>Hours are a guess with no timesheet or estimate behind them: take them from the last three engagements before pricing (r-best-tier-highest-margin).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `playbook-step` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="set-prices-on-the-3-5-8-shape">
+      <input>The agency's target price for the better tier (the complete core offer).</input>
+      <action>Set `tiers[].price` so that better is about 1.67 x good and best about 1.6 x better, within 15 percent. If a gap must sit outside the band, add `gap_justification.scope_difference` naming the deliverable difference and repeat it in a step's `exit_criterion`.</action>
+      <output>`tiers[].price`, optional `gap_justification`.</output>
+      <decision-gate>Prices are linear (1x / 2x / 3x) or best is above 1.84 x better with no named scope difference: reshape (r-price-gaps-follow-3-5-8).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-agency-pricing-tiers.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="compute-margin-and-check-best-leads">
+      <input>`tiers[].price` and `tiers[].delivery_cost`.</input>
+      <action>For each tier set `gross_margin_abs` = price - (hours x loaded_hourly_cost + pass_through) and `gross_margin_pct` = abs / price to three decimals. Confirm best has the highest of both.</action>
+      <output>`tiers[].gross_margin_abs`, `tiers[].gross_margin_pct`.</output>
+      <decision-gate>Best does not lead on margin: strip deliverables from best or raise its price, then return to step 3 (r-best-tier-highest-margin).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="name-the-fence-and-the-default">
+      <input>The ICP outcome; the good and better deliverable lists.</input>
+      <action>Pick one deliverable the ICP needs for its outcome that good omits and better includes; write it as `fence.omitted_deliverable` with `needed_for`, `named_on_rate_sheet: true`. Set `default_recommendation: better`.</action>
+      <output>`fence`, `default_recommendation`.</output>
+      <decision-gate>Good already contains everything the ICP needs: move one needed deliverable up to better, or the middle tier will not sell (r-good-tier-fenced-middle-tier-complete).</decision-gate>
     </step>
 
+    <step n="6" name="write-scope-up-and-concession-rules">
+      <input>Who at the agency may approve a scope change; the contract's term.</input>
+      <action>Write `scope_up` with `trigger`, the pro-rated `price_rule`, `approver`, `written_confirmation_required: true`, `free_goodwill_allowed: false`. Write `concessions` with `method: remove_named_deliverable_or_quantity` and `published_prices_vary_by_client: false`.</action>
+      <output>`scope_up`, `concessions`.</output>
+      <decision-gate>Account managers want room for goodwill extras or a per-client discount: the answer is a custom scope with its own list, never a changed published price (r-scope-up-procedure-documented, r-discount-by-scope-not-price).</decision-gate>
+    </step>
+
+    <step n="7" name="publish-best-first-and-validate">
+      <input>The completed ladder.</input>
+      <action>Set `presentation.order` to best, better, good with `prices_visible: true`. Add `steps[]` for costing, publishing and the account-manager briefing, each with a measurable `exit_criterion` and `output_location`. Run `scripts/validate-agency-pricing-tiers.py --file`.</action>
+      <output>Validated playbook step and the rate sheet.</output>
+      <decision-gate>The validator reports a margin, ratio or superset violation: fix the ladder, not the rule (r-present-best-first).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Playbook step validates via `scripts/validate-agency-pricing-tiers.py` with no violation.</item>
+      <item>Best has the highest gross margin in currency and percent, and the prices sit on the 3 / 5 / 8 shape or carry a named scope justification.</item>
+      <item>The rate sheet names the fence under good, recommends better, and lists best first with every price visible.</item>
+    </list>
   </section>
 </text>

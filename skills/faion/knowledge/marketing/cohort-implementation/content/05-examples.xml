@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Cohort Implementation Worked Example" version="1.0.0" est_tokens="1850" depth="recommended">
+  <summary>One complete cohort config for a BigQuery warehouse: login as the retention event at offsets 1 / 7 / 14 / 30 / 60 / 90, an incremental model keyed on cohort_week / day_offset / user_id with a 90-day lookback, the two dbt tests, a chart spec with the May 4 cutoff and null immature cells, and five computed cells including one that is not yet mature, with a note on each non-obvious value; then the config as it is usually written and what the validator prints.</summary>
+
+  <section title="Scenario">
+    <p>A B2B SaaS keeps `stg_users` and `stg_events` in BigQuery with identity resolved in staging. Growth wants a weekly retention curve per signup-week cohort read at 1, 7, 14, 30, 60 and 90 days, with "login" as the retention event. Data is pulled on 2026-05-04.</p>
+  </section>
+
+  <section title="Resulting config">
+    <example type="good" title="cohort_retention_weekly on BigQuery">
+      <code lang="json"><![CDATA[
+{
+  "settings": {"warehouse_engine": "bigquery", "retention_event": "login", "day_offsets": [1, 7, 14, 30, 60, 90], "week_start": "monday", "timezone": "UTC"},
+  "sources": {"users_table": "stg_users", "events_table": "stg_events", "user_id_column": "user_id", "identity_resolved_upstream": true, "signup_ts_column": "signup_ts_utc", "event_ts_column": "event_ts_utc"},
+  "model": {
+    "name": "cohort_retention_weekly",
+    "materialized": "incremental",
+    "unique_key": ["cohort_week", "day_offset", "user_id"],
+    "partition_by": "cohort_week",
+    "lookback_days": 90,
+    "cohort_week_expr": "CAST(DATE_TRUNC(DATE(signup_ts_utc), WEEK(MONDAY)) AS DATE)",
+    "join_condition": "event_ts_utc >= signup_ts_utc",
+    "denominator_source": "users_table",
+    "retention_event_declared_in": ["sql", "schema_yml", "settings"]
+  },
+  "tests": {"not_null": ["cohort_week", "day_offset", "user_id"], "accepted_values": {"column": "day_offset", "values": [1, 7, 14, 30, 60, 90]}},
+  "chart": {"data_cutoff": "2026-05-04", "x": "cohort_week", "series": "day_offset", "metric": "retained_users / cohort_users", "immature_value": null, "render_immature_as": "blank"},
+  "cells": [
+    {"cohort_week": "2026-01-05", "day_offset": 90, "cohort_users": 1502, "retained_users": 240, "retention": 0.16},
+    {"cohort_week": "2026-03-30", "day_offset": 1, "cohort_users": 1810, "retained_users": 1050, "retention": 0.58},
+    {"cohort_week": "2026-03-30", "day_offset": 7, "cohort_users": 1810, "retained_users": 706, "retention": 0.39},
+    {"cohort_week": "2026-03-30", "day_offset": 14, "cohort_users": 1810, "retained_users": 543, "retention": 0.3},
+    {"cohort_week": "2026-03-30", "day_offset": 30, "cohort_users": 1810, "retained_users": null, "retention": null}
+  ]
+}
+]]></code>
+      <note>`cohort_week_expr` is BigQuery's `DATE_TRUNC(..., WEEK(MONDAY))` over `signup_ts_utc`, because BigQuery's default week starts on Sunday and a local-time column would move Sunday-night signups between cohorts (r-cohort-key-signup-week-monday-utc). The join is on `user_id` with identity resolved in staging, so a user who signs up on mobile and logs in on desktop is one retained user (r-stable-user-id-not-anonymous). "login" appears in the SQL filter, in the schema.yml description and in `settings.retention_event`, which is what `retention_event_declared_in` records (r-retention-event-defined-once, r-settings-declare-engine-event-offsets). `tests.accepted_values.values` is the same list as `settings.day_offsets`, so an offset that exists only in a dashboard fails the build (r-fixed-day-offsets-enforced-by-test). The join condition excludes imported events dated before signup (r-only-events-after-signup-count). `lookback_days` is 90, the largest offset, so the incremental run still sees a January cohort's day-90 logins (r-incremental-key-partition-and-lookback). Every cell divides by the cohort's 1,810 or 1,502 signups from the users table; day-1 retention is 0.58, not 1.0 (r-denominator-is-full-cohort). The March 30 cohort's day-30 cell is null: its last signup day, April 5, plus 30 days is May 5, after the May 4 cutoff, while the January 5 cohort's day-90 cell (April 11) is mature (r-incomplete-cells-null-not-zero).</note>
+    </example>
+  </section>
+
+  <section title="Rejected config">
+    <example type="bad" title="the same model as usually written">
+      <code lang="json"><![CDATA[
+{
+  "settings": {"warehouse_engine": "bigquery", "retention_event": "login", "day_offsets": [1, 7, 14, 30, 60, 90], "week_start": "monday", "timezone": "UTC"},
+  "sources": {"users_table": "stg_users", "events_table": "stg_events", "user_id_column": "distinct_id", "identity_resolved_upstream": false, "signup_ts_column": "signup_ts_local", "event_ts_column": "event_ts_utc"},
+  "model": {
+    "name": "cohort_retention_weekly",
+    "materialized": "incremental",
+    "unique_key": ["cohort_week", "day_offset", "user_id"],
+    "partition_by": "cohort_week",
+    "lookback_days": 30,
+    "cohort_week_expr": "DATE_TRUNC(DATE(signup_ts_local), WEEK)",
+    "join_condition": "event_ts_utc >= signup_ts_utc",
+    "denominator_source": "model_rows",
+    "retention_event_declared_in": ["sql"]
+  },
+  "tests": {"not_null": ["cohort_week", "day_offset"], "accepted_values": {"column": "day_offset", "values": [1, 7, 30]}},
+  "chart": {"data_cutoff": "2026-05-04", "x": "cohort_week", "series": "day_offset", "metric": "retained_users / cohort_users", "immature_value": 0, "render_immature_as": "zero"},
+  "cells": [
+    {"cohort_week": "2026-03-30", "day_offset": 1, "cohort_users": 1050, "retained_users": 1050, "retention": 1.0},
+    {"cohort_week": "2026-03-30", "day_offset": 30, "cohort_users": 1810, "retained_users": 0, "retention": 0},
+    {"cohort_week": "2026-04-01", "day_offset": 3, "cohort_users": 1810, "retained_users": 900, "retention": 0.497}
+  ]
+}
+]]></code>
+      <note>What the validator prints: `user_id_column` is `distinct_id` with identity unresolved (r-stable-user-id-not-anonymous); `signup_ts_column` does not end in `_utc` and `cohort_week_expr` names no Monday week start (r-cohort-key-signup-week-monday-utc); `denominator_source` is `model_rows` (r-denominator-is-full-cohort); `retention_event_declared_in` lacks schema_yml and settings (r-retention-event-defined-once); `not_null` lacks `user_id` (r-incremental-key-partition-and-lookback); `chart.immature_value` is 0 and `render_immature_as` is zero (r-incomplete-cells-null-not-zero). Once those are fixed the cross-field checks add: `lookback_days` 30 is below the largest offset 90, so day-60 and day-90 events for older cohorts never land (lookback-shorter-than-max-offset); `accepted_values.values` [1, 7, 30] differs from `settings.day_offsets` (r-fixed-day-offsets-enforced-by-test); the day-1 cell has 1,050 cohort users and 1,050 retained, a 100 percent retention that only a row-count denominator produces (row-count-denominator); the day-30 cell for the March 30 cohort is not mature on May 4 and carries 0 instead of null (immature-cells-as-zero); and the third cell has `cohort_week` on a Wednesday with `day_offset` 3, which is in neither the Monday grid nor the offset set (r-only-events-after-signup-count). What the reviewer sees: a chart whose newest cohorts plunge to zero every week and whose day-1 line sits at 100 percent.</note>
+    </example>
+  </section>
+</text>

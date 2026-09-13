@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Activation Tactics Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Activation Tactics end-to-end from inputs to a validated `playbook-step` artefact + human signoff.</summary>
+<text id="04-procedure" title="Activation Tactics Procedure" version="1.2.0" est_tokens="1550" depth="essential">
+  <summary>Seven steps from the measured drop-off ranking to a validated playbook step: take the drop-offs with their conversion and live tactics, pick one tactic per step by where the user is when they drop, build the checklist or the email sequence or the guide or the segmentation to its rules, write the rollout step with a numeric exit criterion, add the deferral branch, and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="take-the-measured-dropoffs">
+      <input>The drop-off ranking and funnel from activation-metrics or activation-framework; the activation event and window; the list of tactics currently live.</input>
+      <action>Write `activation_event` and `window_days`. For each drop-off step record `step`, its `screen` path, `current_conversion` and `live_tactic` in `dropoffs[]` of `templates/activation-tactics.playbook-step.md.j2`.</action>
+      <output>`dropoffs[]`.</output>
+      <decision-gate>No measured drop-off with a conversion rate: stop and run activation-metrics first (06-decision-tree.xml, r-tactic-targets-named-dropoff-step).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="pick-one-tactic-per-step">
+      <input>`dropoffs[]`; where the user is when they drop (in the product or gone); whether a use-case or role key is captured at signup.</input>
+      <action>For each step with `live_tactic: false` choose one `type`: `in_app_guide` or `checklist` when the user drops inside the product, `email_sequence` when they leave and do not return, `segmented_onboarding` only when a segment key exists at signup. Set `target_step` and `step_conversion_baseline` = the step's `current_conversion`.</action>
+      <output>`tactics[]` with `id`, `type`, `target_step`, `step_conversion_baseline`.</output>
+      <decision-gate>The step has `live_tactic: true`: defer via the `defer_live_tactic` branch. Two tactics want the same step: run them as arms of one `experiment_id` or drop one (r-one-tactic-per-step-at-a-time).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `playbook-step` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="build-the-checklist">
+      <input>A `checklist` tactic; the tracked events between the step and the activation event; `templates/activation-checklist.yaml`.</input>
+      <action>List 3-5 `items[]`, each with an `action` path or a `tracked_event` that checks it automatically. Flag exactly one item `activation_event: true` and make it `required: true`.</action>
+      <output>`tactics[].checklist`.</output>
+      <decision-gate>An item can only be ticked by hand, or two items claim the activation event: remove or rebind before continuing (r-checklist-single-activation-item).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-activation-tactics.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="build-the-email-sequence">
+      <input>An `email_sequence` tactic; the deep link of the targeted action; `templates/email-sequence.md.j2`.</input>
+      <action>Write at most 4 `emails[]` on Day 0 / 1 / 3 / 7 inside `window_days`, each with one CTA (`cta_count: 1`) whose `cta_url` lands on the action screen, `expected_time_minutes`, and for every send after Day 0 `send_condition: not_activated` with `condition_evaluated_at: send_time`.</action>
+      <output>`tactics[].emails`.</output>
+      <decision-gate>A CTA lands on the home page or a login wall, or the suppression is checked at enrolment: fix before rollout (r-email-one-cta-direct-link, r-email-sequence-suppressed-on-activation).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="place-the-guide-or-split-the-segments">
+      <input>An `in_app_guide` or `segmented_onboarding` tactic; the target step's screen; the signup form fields.</input>
+      <action>Guide: set `guide.screen` to the target step's `screen`, `guides_on_screen: 1`, `dismissible_in_one_click: true`, `hidden_after_step_complete: true`. Segmentation: set `segment_key.captured_at: signup`, and for each segment a distinct `first_action` toward the same activation event; merge segments that share a first action.</action>
+      <output>`tactics[].guide` or `tactics[].segmentation`.</output>
+      <decision-gate>The screen has no measured drop-off, or the segment key is only known after the first session: the tactic is not placed (r-in-app-guide-at-dropoff-only, r-segmented-onboarding-keyed-at-signup).</decision-gate>
     </step>
 
+    <step n="6" name="write-the-rollout-step-and-exit-criterion">
+      <input>Each tactic; its `step_conversion_baseline`; the activation rate baseline.</input>
+      <action>Add one `steps[]` entry per tactic with `tactic_id`, the rollout `action` (audience and duration in closed signup weeks), `output_location`, and `exit_criterion` = `metric` (step_conversion or activation_rate), `baseline`, `minimum_lift`.</action>
+      <output>`steps[]`.</output>
+      <decision-gate>An exit criterion reads "shipped" or "reviewed": rewrite it with the number the tactic must beat (r-exit-criterion-states-metric-and-threshold).</decision-gate>
+    </step>
+
+    <step n="7" name="add-the-branches-and-validate">
+      <input>`steps[]`, `dropoffs[]`.</input>
+      <action>Write `decision_branches[]`: `defer_live_tactic` when the target step already has a live tactic, `keep` when the exit criterion is met, `remove` when it is missed. Run `scripts/validate-activation-tactics.py --file`.</action>
+      <output>Validated playbook step.</output>
+      <decision-gate>The validator reports two tactics on one step, a checklist outside 3-5 items or an email past the window: fix the playbook step, not the rule (r-one-tactic-per-step-at-a-time).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Playbook step validates via `scripts/validate-activation-tactics.py` with no violation.</item>
+      <item>Every tactic targets one measured drop-off step, and no step carries two tactics outside an experiment.</item>
+      <item>Every rollout step states the metric, baseline and minimum lift that decides whether the tactic stays.</item>
+    </list>
   </section>
 </text>

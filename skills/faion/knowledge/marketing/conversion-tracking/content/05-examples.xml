@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Conversion Tracking Worked Example" version="1.0.0" est_tokens="3000" depth="recommended">
+  <summary>One complete tracking config for an e-commerce site sending to GA4, Google Ads and Meta: events.yml enforced in CI, Consent Mode v2 with EU and GB denied defaults, a server container on gtm.example.com forwarding the browser identifiers, three events (purchase with transaction_id dedup, sign_up with a hashed email for matching, funnel_step browser-only) and fixtures run in three browsers plus an ad-blocker profile, with a note on each non-obvious value; then the config as it is usually shipped and what the validator prints.</summary>
+
+  <section title="Scenario">
+    <p>example.com sells online and runs paid search and Meta campaigns. Checkout tracking v3 (PR-2214) adds server-side sends through a GTM server container so purchases survive ad blockers. EU and UK visitors need consent before any tag; the order id `ORD-104233` is the identifier finance reconciles against.</p>
+  </section>
+
+  <section title="Resulting config">
+    <example type="good" title="checkout tracking v3">
+      <code lang="json"><![CDATA[
+{
+  "site_domain": "example.com",
+  "destinations": ["ga4", "google_ads", "meta"],
+  "registry": {"file": "events.yml", "ci_validator": "validate-events.py", "enforced_in_ci": true},
+  "consent": {
+    "mode": "v2",
+    "defaults_before_config": true,
+    "signals": ["ad_storage", "analytics_storage", "ad_user_data", "ad_personalization"],
+    "regional_defaults": [
+      {"region": "default", "ad_storage": "granted", "analytics_storage": "granted", "ad_user_data": "granted", "ad_personalization": "granted"},
+      {"region": "EU", "ad_storage": "denied", "analytics_storage": "denied", "ad_user_data": "denied", "ad_personalization": "denied"},
+      {"region": "GB", "ad_storage": "denied", "analytics_storage": "denied", "ad_user_data": "denied", "ad_personalization": "denied"}
+    ],
+    "server_honours_consent": true
+  },
+  "server_side": {
+    "enabled": true,
+    "endpoint": "gtm.example.com",
+    "cookies_http_only": true,
+    "forwards": ["_fbp", "_fbc", "client_id", "session_id"],
+    "client_id_source": "_ga cookie",
+    "fresh_ids_generated": false
+  },
+  "events": [
+    {
+      "name": "purchase", "recommended": true, "monetary": true, "sent_from": ["browser", "server"],
+      "parameters": [
+        {"name": "transaction_id", "type": "string", "max_string_length": 64, "pii": false},
+        {"name": "value", "type": "number", "pii": false},
+        {"name": "currency", "type": "currency", "pii": false},
+        {"name": "items", "type": "array", "pii": false},
+        {"name": "coupon", "type": "string", "max_string_length": 40, "pii": false}
+      ],
+      "conversion_role": {"ga4": "key_event", "google_ads": "primary", "meta": "standard"},
+      "dedup": {"event_id_field": "transaction_id", "shared_across_destinations": true}
+    },
+    {
+      "name": "sign_up", "recommended": true, "monetary": false, "sent_from": ["browser", "server"],
+      "parameters": [
+        {"name": "method", "type": "string", "max_string_length": 20, "pii": false},
+        {"name": "event_id", "type": "string", "max_string_length": 36, "pii": false},
+        {"name": "em", "type": "string", "max_string_length": 64, "pii": false, "hashed": true}
+      ],
+      "conversion_role": {"ga4": "key_event", "google_ads": "secondary", "meta": "standard"},
+      "dedup": {"event_id_field": "event_id", "shared_across_destinations": true}
+    },
+    {
+      "name": "funnel_step", "recommended": false, "monetary": false, "sent_from": ["browser"],
+      "parameters": [
+        {"name": "funnel_name", "type": "string", "max_string_length": 40, "pii": false},
+        {"name": "step_number", "type": "number", "pii": false},
+        {"name": "step_name", "type": "string", "max_string_length": 40, "pii": false}
+      ],
+      "conversion_role": {"ga4": "event", "google_ads": null, "meta": null}
+    }
+  ],
+  "qa": {
+    "change_ref": "PR-2214 checkout tracking v3",
+    "browsers": ["chrome", "safari", "firefox"],
+    "adblock_profile": true,
+    "fixtures": [
+      {
+        "event": "purchase",
+        "expected_parameters": ["transaction_id", "value", "currency", "items"],
+        "example_payload": {"transaction_id": "ORD-104233", "value": 129.0, "currency": "EUR", "items": [{"item_id": "SKU-88", "quantity": 1}]},
+        "results": [
+          {"browser": "chrome", "destination": "ga4", "seen": true}, {"browser": "chrome", "destination": "google_ads", "seen": true}, {"browser": "chrome", "destination": "meta", "seen": true},
+          {"browser": "safari", "destination": "ga4", "seen": true}, {"browser": "safari", "destination": "google_ads", "seen": true}, {"browser": "safari", "destination": "meta", "seen": true},
+          {"browser": "firefox", "destination": "ga4", "seen": true}, {"browser": "firefox", "destination": "google_ads", "seen": true}, {"browser": "firefox", "destination": "meta", "seen": true},
+          {"browser": "chrome_adblock", "destination": "ga4", "seen": true}, {"browser": "chrome_adblock", "destination": "google_ads", "seen": true}, {"browser": "chrome_adblock", "destination": "meta", "seen": true}
+        ]
+      },
+      {
+        "event": "sign_up",
+        "expected_parameters": ["method", "event_id"],
+        "example_payload": {"method": "google", "event_id": "5f2a1c9e-3b7d-4e1a-9c6b-2d8e7f1a0b3c", "em": "b4c9a289323b21a01c3e940f150eb9b8c542587f1abfd8f0e1cc1ffc5e475514"},
+        "results": [
+          {"browser": "chrome", "destination": "ga4", "seen": true}, {"browser": "chrome", "destination": "google_ads", "seen": true}, {"browser": "chrome", "destination": "meta", "seen": true},
+          {"browser": "safari", "destination": "ga4", "seen": true}, {"browser": "safari", "destination": "google_ads", "seen": true}, {"browser": "safari", "destination": "meta", "seen": true},
+          {"browser": "firefox", "destination": "ga4", "seen": true}, {"browser": "firefox", "destination": "google_ads", "seen": true}, {"browser": "firefox", "destination": "meta", "seen": true},
+          {"browser": "chrome_adblock", "destination": "ga4", "seen": true}, {"browser": "chrome_adblock", "destination": "google_ads", "seen": true}, {"browser": "chrome_adblock", "destination": "meta", "seen": true}
+        ]
+      },
+      {
+        "event": "funnel_step",
+        "expected_parameters": ["funnel_name", "step_number", "step_name"],
+        "example_payload": {"funnel_name": "checkout", "step_number": 2, "step_name": "shipping_info"},
+        "results": [
+          {"browser": "chrome", "destination": "ga4", "seen": true}, {"browser": "safari", "destination": "ga4", "seen": true}, {"browser": "firefox", "destination": "ga4", "seen": true}, {"browser": "chrome_adblock", "destination": "ga4", "seen": false}
+        ]
+      }
+    ]
+  }
+}
+]]></code>
+      <note>Every event is an `events.yml` entry with its conversion role per destination, and CI fails on a name that is not there (r-event-registry-single-source). `purchase` and `sign_up` are the recommended names, not `order_completed` or `signup`, so the built-in ecommerce and lead reports work; all names and parameters are inside the 40-character and 25-parameter limits (r-ga4-naming-and-parameter-limits). `purchase` carries `value`, `currency` and `transaction_id`, and `transaction_id` is the dedup field, so a reloaded thank-you page and the server copy collapse to one order in GA4, Meta and Google Ads (r-monetary-conversion-carries-transaction-id). Both dual-sent events have a `dedup` block, and the server container forwards `_fbp`, `_fbc`, the `_ga` client_id and the session_id rather than minting ids (r-browser-server-dedup-and-identifiers). Consent defaults with all four signals go before the config call; EU and GB default to denied, the rest of the world to granted, and the server honours the same state (r-consent-state-before-any-tag). No parameter is PII; the `em` sent to Meta for matching is a SHA-256 hash of the normalised email, and the example payloads contain no address or phone (r-no-pii-in-parameters). The endpoint is `gtm.example.com`, a subdomain of the site, with HttpOnly cookies, which is what keeps Safari's cookie beyond 7 days (r-server-endpoint-first-party-domain). Each event has a fixture with results for Chrome, Safari, Firefox and the ad-blocker profile on every destination it targets; `funnel_step` is browser-only, so the ad-blocker row honestly shows `seen: false` and the record says so (r-qa-fixtures-per-tracking-change).</note>
+    </example>
+  </section>
+
+  <section title="Rejected config">
+    <example type="bad" title="the same change as usually shipped">
+      <code lang="json"><![CDATA[
+{
+  "site_domain": "example.com",
+  "destinations": ["ga4", "google_ads", "meta"],
+  "registry": {"file": "events.yml", "ci_validator": "validate-events.py", "enforced_in_ci": false},
+  "consent": {
+    "mode": "v2",
+    "defaults_before_config": false,
+    "signals": ["ad_storage", "analytics_storage"],
+    "regional_defaults": [
+      {"region": "default", "ad_storage": "granted", "analytics_storage": "granted", "ad_user_data": "granted", "ad_personalization": "granted"}
+    ],
+    "server_honours_consent": false
+  },
+  "server_side": {
+    "enabled": true,
+    "endpoint": "gtm-server.vendor.app",
+    "cookies_http_only": false,
+    "forwards": ["client_id"],
+    "client_id_source": "uuid4 per hit",
+    "fresh_ids_generated": true
+  },
+  "events": [
+    {
+      "name": "Order_Completed", "recommended": false, "monetary": true, "sent_from": ["browser", "server"],
+      "parameters": [
+        {"name": "value", "type": "number", "pii": false},
+        {"name": "email", "type": "string", "max_string_length": 100, "pii": true}
+      ],
+      "conversion_role": {"ga4": "key_event", "google_ads": "primary", "meta": "custom"}
+    },
+    {
+      "name": "checkout_step_completed_with_shipping_option_selected", "recommended": false, "monetary": false, "sent_from": ["browser"],
+      "parameters": [],
+      "conversion_role": {"ga4": "event"}
+    }
+  ],
+  "qa": {
+    "change_ref": "hotfix",
+    "browsers": ["chrome"],
+    "adblock_profile": false,
+    "fixtures": [
+      {
+        "event": "Order_Completed",
+        "expected_parameters": ["value"],
+        "example_payload": {"value": 129.0, "email": "jane.doe@example.com", "phone": "+44 7700 900123"},
+        "results": [{"browser": "chrome", "destination": "ga4", "seen": true}]
+      }
+    ]
+  }
+}
+]]></code>
+      <note>What the validator prints: `registry.enforced_in_ci` is false (r-event-registry-single-source); consent defaults are pushed after config, `ad_user_data` and `ad_personalization` are missing, and the server ignores consent (r-consent-state-before-any-tag); the endpoint is not a subdomain of example.com, cookies are not HttpOnly, `_fbp`, `_fbc` and `session_id` are not forwarded, and the server mints a UUID per hit (r-server-endpoint-first-party-domain, r-browser-server-dedup-and-identifiers); `Order_Completed` is not snake_case and the second name is 53 characters (r-ga4-naming-and-parameter-limits); the `email` parameter is `pii: true` (r-no-pii-in-parameters); the monetary event has no `dedup` block (r-monetary-conversion-carries-transaction-id); QA ran in Chrome only without the ad-blocker profile (r-qa-fixtures-per-tracking-change). Once those are fixed the cross-field checks add: the monetary event lacks `transaction_id` and `currency`, `order_completed` is a synonym of the recommended `purchase`, the example payload carries an email address and a phone number, and the second event has no fixture at all. What the reviewer sees: purchases counted twice in Ads Manager, new users doubled in GA4, and EEA conversions Google Ads will refuse to measure (double-counted-conversions, fresh-client-id-server-side, tags-fire-before-consent).</note>
+    </example>
+  </section>
+</text>

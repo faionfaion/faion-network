@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=config`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- A warehouse (BigQuery, Snowflake, Postgres or Redshift) holds a users table with signup timestamps and an events table with per-user events, built with dbt or equivalent.
+- Events and users carry a stable post-identification `user_id`, resolved in staging before this model reads them.
+- Signup and event timestamps are stored in UTC or convertible to UTC columns with a known source zone.
+- One event can be named as "came back" for this product and a fixed set of day offsets is agreed.
+- The team will run a full backfill whenever the retention event or the offsets change.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=config` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- No warehouse or no event table: use the analytics vendor's built-in cohort report instead.
+- Events carry only `distinct_id`, device or cookie ids: resolve identity in staging first; cohorts on anonymous ids under-report retention.
+- Timestamps exist only in local time with no source zone: add UTC columns before truncating to cohort weeks.
+- The question is which event predicts retention: that is activation-framework's D30 validation; this methodology implements the curve for an already chosen event.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+| Staging users model | `stg_users` with `user_id`, `signup_ts_utc` | dbt staging layer |
+| Staging events model | `stg_events` with `user_id`, `event_type`, `event_ts_utc`, identity resolved | dbt staging layer |
+| Retention event and offsets | event name; integer day offsets (template: 1, 7, 14, 30, 60, 90) | growth team decision |
+| Warehouse engine | one of bigquery, snowflake, postgres, redshift | data platform |
+| Data cutoff date | YYYY-MM-DD of the latest complete data | the reporting run |
+| `templates/cohort-retention-weekly.sql`, `templates/schema.yml` | dbt model and tests skeletons | this methodology |
 
 ## Assumes Loaded
 
@@ -48,9 +52,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 9 rules: Monday UTC cohort week, stable user_id, retention event declared once, fixed day offsets with test, events after signup only, full-cohort denominator, immature cells null, incremental key and 90-day lookback, settings declare engine and event | 1900 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the cohort config: settings (engine, event, offsets, Monday, UTC), sources with user_id and UTC columns, incremental model with composite key, partition, lookback and Monday-UTC expression, dbt tests, chart spec with cutoff and null immature cells, computed cells; valid and invalid configs; 8 forbidden patterns | ~3650 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/04-procedure.xml` | essential | 7 steps: confirm sources and identity, declare event and offsets once, write the incremental model, wire the tests, set the chart spec and denominator, backfill and validate, version any event change | ~1500 |
+| `content/05-examples.xml` | recommended | Complete BigQuery config (login at 1 / 7 / 14 / 30 / 60 / 90, 90-day lookback, tests, May 4 cutoff, five cells with one immature) with a note per value, plus the config as usually written and what the validator prints | ~1850 |
 | `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
@@ -66,7 +71,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cohort-implementation.config.yaml` | YAML config skeleton with 5-line header |
+| `templates/cohort-implementation.config.yaml` | YAML config skeleton matching the contract: settings, sources, incremental model, tests, chart spec, cells |
 | `templates/cohort-implementation.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

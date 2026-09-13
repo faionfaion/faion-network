@@ -1,34 +1,66 @@
-# purpose: google-analytics config template
-# consumes: inputs named in AGENTS.md Prerequisites
+# purpose: GA4 property config skeleton — both ids, streams with one page_view source, enhanced measurement toggles, registered custom dimensions with limits, key events by exact name, purchase with transaction_id, Consent Mode v2, BigQuery export and retention, Measurement Protocol, traffic filters (matches content/02-output-contract.xml)
+# consumes: property and stream ids, enhanced measurement settings, parameters to register, the property's event list, consent regions, the BigQuery project, office IP ranges, checkout and auth domains
 # produces: artefact conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml + content/06-decision-tree.xml
-# token-budget-impact: ~500 tokens when loaded
-slug: google-analytics
-owner: ""
-settings:
-  property_id: ""                # numeric property id (Data API, BigQuery); r-property-id-and-measurement-id-distinct
-  measurement_id: ""             # G-XXXXXXXXXX (gtag, Measurement Protocol)
-  stream: ""
-  consent_mode: "v2"             # basic | advanced implementation recorded in consent_mode_implementation
-  consent_mode_implementation: ""
-  enhanced_measurement:          # r-enhanced-measurement-declared-no-double-page-view
-    page_views: true
-    history_change_page_view: true   # set false when the app sends page_view manually
-    scrolls: true
-    outbound_clicks: true
-    site_search: false
-    video_engagement: false
-    file_downloads: true
-    form_interactions: false
-  custom_dimensions: []          # [{name, parameter, scope: event|user|item}]; r-custom-dimensions-registered-within-limits
-  key_events: []                 # [{event_name, counting: once_per_event|once_per_session}]; r-key-events-declared-by-exact-name
-  bigquery_export:               # r-bigquery-export-linked-before-launch
-    linked: false
-    dataset_location: ""
-    daily: true
-    streaming: false
-  data_retention_months: 14
-  internal_traffic_ips: []       # filter must be active, not testing
-  unwanted_referrals: []         # payment + auth domains
-  cross_domain_list: []
-deviation_log_reference: ""
+# depends-on: content/01-core-rules.xml + content/06-decision-tree.xml + templates/gtag-snippet.html + templates/mp_track.py + templates/ga4_pull.py
+# token-budget-impact: ~700 tokens when loaded
+property_id: ""                        # numeric; Data API, Admin API, BigQuery dataset (r-property-id-and-measurement-id-distinct)
+site_domain: ""
+data_streams:
+  - name: ""
+    type: web                          # web | ios | android
+    measurement_id: ""                 # G-XXXXXXXXXX; gtag snippet and Measurement Protocol
+    spa: false
+    manual_page_view: false            # true when the app sends page_view on route change
+    send_page_view: true               # false whenever manual_page_view is true
+enhanced_measurement:                  # r-enhanced-measurement-declared-no-double-page-view
+  page_views: true
+  history_change_page_view: true       # false when manual_page_view is true; never both
+  scrolls: true
+  outbound_clicks: true
+  site_search: false
+  video_engagement: false
+  file_downloads: true
+  form_interactions: false
+custom_dimensions:                     # r-custom-dimensions-registered-within-limits
+  limits: {event: 50, user: 25, item: 10, metrics: 50}   # check the current limit for your plan
+  registered: []                       # [{name, parameter, scope: event|user|item, kind: dimension|metric, registered_before_first_send: true}]
+  used: {event: 0, user: 0, item: 0, metrics: 0}          # must equal the counts in registered
+events: []                             # the property's event list, exact names
+key_events: []                         # at most 30; [{event_name: <exact name from events>, counting: once_per_event|once_per_session}] (r-key-events-declared-by-exact-name)
+purchase:                              # r-purchase-transaction-id-dedup
+  enabled: false
+  required_parameters: [transaction_id, value, currency, items]
+  transaction_id_source: order_id
+  stable_across_retries: true
+consent:                               # r-consent-mode-v2-defaults-before-config
+  in_scope: true
+  implementation: ""                   # basic | advanced
+  defaults_before_config: true         # gtag('consent','default') precedes gtag('config')
+  signals: [ad_storage, analytics_storage, ad_user_data, ad_personalization]
+  regions: []                          # e.g. [EU, GB, CH]
+  update_on_choice: true
+bigquery_export:                       # r-bigquery-export-linked-before-launch
+  linked: true
+  linked_before_launch: true
+  linked_at: ""                        # YYYY-MM-DD, before the first production hit
+  project: ""
+  dataset_location: ""                 # e.g. EU, US
+  daily: true
+  streaming: false
+  sampling_threshold_events: 10000000  # explorations above this are sampled; check the current limit for your plan
+  decision_reports_source: bigquery
+data_retention_months: 14
+measurement_protocol:                  # r-measurement-protocol-reuses-client-id
+  used: false
+  client_id_source: "_ga cookie"
+  session_id_included: true
+  engagement_time_msec_included: true
+  api_secret_storage: server_only
+  fresh_client_id: false
+traffic_filters:                       # r-internal-traffic-referral-and-cross-domain
+  internal:
+    ip_rules: []                       # CIDR or IPs
+    state: active                      # never testing
+  checkout_and_auth_domains: []        # payment providers, SSO
+  unwanted_referrals: []               # must contain every checkout_and_auth_domains entry
+  cross_domain: []                     # every domain in the journey, including site_domain

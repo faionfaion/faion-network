@@ -1,40 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Content Refresh SOP Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Content Refresh SOP end-to-end from inputs to a validated `playbook-step` artefact + human signoff.</summary>
+<text id="04-procedure" title="Content Refresh SOP Procedure" version="1.2.0" est_tokens="1650" depth="essential">
+  <summary>Eight steps from the evergreen inventory to re-evaluated refreshes: write the thresholds and windows, filter eligible URLs, build the GSC plus GA4 plus rank dataset for both windows, compute the three signals and assign one verdict per URL, then execute consolidate with redirects, kill with 410, or refresh through the nine-step checklist with baseline and day-90 re-score, and validate the playbook step.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="write-thresholds-and-windows">
+      <input>The site's seasonality; how far back the persisted Search Console export reaches.</input>
+      <action>In `templates/content-refresh-sop.playbook-step.md.j2` set `thresholds` (`impressions_trend_pct`, `position_decay_positions`, `intent_shift_query_mix_pct`), `window` with equal `trailing_days` and `prior_days`, `span_months` and `source`, and `decision_branches` mapping each signal's threshold to a verdict.</action>
+      <output>`thresholds`, `window`, `decision_branches`.</output>
+      <decision-gate>Span over 16 months with `source: search_console_ui`: the comparison is 12 months against 4; switch to the persisted export (r-one-dataset-gsc-ga4-rank, r-three-signals-with-thresholds).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="filter-eligible-urls">
+      <input>The content inventory with content type and publish date.</input>
+      <action>Keep URLs tagged evergreen with `url_age_months` at least 12; leave news, release notes, dated announcements and campaign pages out of the queue regardless of decline.</action>
+      <output>`urls[]` rows with `url`, `evergreen: true`, `url_age_months`.</output>
+      <decision-gate>A URL is under 12 months or not evergreen: it is not scored (06-decision-tree.xml, r-eligibility-evergreen-12-months).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `playbook-step` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="build-the-three-source-dataset">
+      <input>Search Console export (clicks, impressions, average position by page), GA4 landing-page report (sessions, key events), rank tracker (target query position), for the trailing and prior windows.</input>
+      <action>Fill `dataset.trailing` and `dataset.prior` with `gsc`, `ga4` and `rank` for every URL.</action>
+      <output>`urls[].dataset`.</output>
+      <decision-gate>Any source is missing for a URL: do not score it; complete the dataset first (r-one-dataset-gsc-ga4-rank).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-content-refresh-sop.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="compute-signals-and-assign-one-verdict">
+      <input>`urls[].dataset`, `thresholds`, `decision_branches`.</input>
+      <action>Set `signals.impressions_trend_pct` = (trailing - prior) / prior x 100, `signals.position_decay_positions` = trailing avg_position - prior avg_position, and `signals.intent_shift` with a note on query mix and SERP features. Assign exactly one `verdict`; for `leave` record `reason` and `next_review_at`.</action>
+      <output>`urls[].signals`, `urls[].verdict`, `urls[].leave` where applicable.</output>
+      <decision-gate>An intent shift routes to kill or leave, never refresh; a URL tagged "later" is rejected (r-three-signals-with-thresholds, r-four-verdicts-exhaustive).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="execute-consolidate">
+      <input>Rows with `verdict: consolidate`.</input>
+      <action>Name `survivor_url`, list `merged_urls`, add one 301 or 308 in `redirects[]` from each merged URL to the survivor, rewrite every internal link that pointed at a merged URL (`internal_links_rewritten: true`), record the 28-day `baseline` on publication and `reevaluation_at` 90 days later.</action>
+      <output>`urls[].consolidate`.</output>
+      <decision-gate>A merged URL without a redirect: the sources are not deleted until it has one (r-consolidate-301-to-survivor).</decision-gate>
     </step>
 
+    <step n="6" name="execute-kill">
+      <input>Rows with `verdict: kill`.</input>
+      <action>Return 410 (404 acceptable), remove the URL from the XML sitemap and navigation, drop inbound internal links, `redirect_target: null`.</action>
+      <output>`urls[].kill`.</output>
+      <decision-gate>An equivalent page exists: the verdict was consolidate; a redirect to the homepage is a soft 404 and is rejected (r-kill-returns-410-never-homepage).</decision-gate>
+    </step>
+
+    <step n="7" name="execute-refresh-through-the-nine-steps">
+      <input>Rows with `verdict: refresh`; the top-ranking pages for the target query.</input>
+      <action>Keep the URL. Run the nine `checklist[]` steps in order, recording an `exit_criterion` and `done` for each (a skipped step gets `skipped_reason`): query and intent research; facts and dates with sources; title, meta and intro; missing sections; media; internal links in and out; technical fixes; `dateModified` and changelog; re-index request and baseline. Set `substantive_change`, `date_modified_updated`, `title_changed_for_intent`, the 28-day `baseline` and `reevaluation_at` = published_at + 90 days.</action>
+      <output>`urls[].refresh`.</output>
+      <decision-gate>Only the intro and the date changed: `substantive_change` is false and `dateModified` stays; a new slug turns the refresh into a migration and is rejected (r-refresh-keeps-url-honest-date, r-nine-step-checklist-complete).</decision-gate>
+    </step>
+
+    <step n="8" name="validate-and-schedule-the-day-90-rescore">
+      <input>The filled playbook step.</input>
+      <action>Run `scripts/validate-content-refresh-sop.py --file`. Put every `reevaluation_at` in the calendar; on that day re-score the URL against its baseline with the same thresholds.</action>
+      <output>Validated playbook step; day-90 re-evaluations scheduled.</output>
+      <decision-gate>A refresh or consolidate has no baseline: it cannot be called a success or a failure; record the baseline before closing (r-baseline-and-90-day-reevaluation).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Playbook step validates via `scripts/validate-content-refresh-sop.py` with no violation.</item>
+      <item>Every eligible URL has one verdict; every refresh has nine checklist exit criteria, an unchanged URL and a baseline; every consolidate has its redirect map; every kill returns 410 with no redirect.</item>
+      <item>Every refresh and consolidate has a day-90 re-evaluation date 90 days after publication.</item>
+    </list>
   </section>
 </text>

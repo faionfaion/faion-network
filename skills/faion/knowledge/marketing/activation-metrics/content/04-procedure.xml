@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Activation Metrics Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Activation Metrics end-to-end from inputs to a validated `report` artefact + human signoff.</summary>
+<text id="04-procedure" title="Activation Metrics Procedure" version="1.2.0" est_tokens="1400" depth="essential">
+  <summary>Seven steps from the signup and event tables to the weekly report: fix the event, window and closed period, compute the aggregate rate against all signups, segment by acquisition channel with a sample floor, take time-to-activation quantiles, build the D30 lift table on a cohort old enough, fill the funnel with absolute and relative drops, and write findings that cite a metric and a period.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="fix-event-window-and-closed-period">
+      <input>The activation event and window from the activation-framework spec, the signup table, and the data cutoff date.</input>
+      <action>Write `activation_event`, `window_days`, `data_cutoff`. Set `period_start` and `period_end` as signup dates such that `period_end` + `window_days` is on or before `data_cutoff`. Record `previous_period` with the same length and the same window.</action>
+      <output>Header of `templates/activation-metrics.report.md.j2`.</output>
+      <decision-gate>No activation event: stop, run activation-framework first (06-decision-tree.xml). The last signup week is still open: move `period_end` back, or report it only as `activation_rate_partial` (r-one-fixed-window-closed-cohorts-only).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="compute-the-aggregate-rate-against-all-signups">
+      <input>All signups in the period; the event table.</input>
+      <action>Set `signups_total` to every signup in the period, with no filter. Add the `signups` count metric and the `activation_rate` metric with `numerator` = activated users inside the window, `denominator` = `signups_total`, `value` = `numerator` / `denominator` as a ratio to three decimals. Add `activation_rate_wow_delta` in `pp` against `previous_period`.</action>
+      <output>`signups_total`, the first `metrics[]` entries.</output>
+      <decision-gate>The signup table is unavailable and only a later-step count exists: no rate can be reported (r-activation-rate-denominator-is-signups).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `report` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="segment-by-acquisition-channel">
+      <input>First-touch channel per signup; the team's sample floor.</input>
+      <action>Set `channel_attribution` and `sample_floor`. For each channel add `activation_rate__&lt;channel&gt;` with its own `numerator` and `denominator`; set `low_sample: true` on any channel whose `denominator` is below `sample_floor`.</action>
+      <output>Per-channel `metrics[]` entries.</output>
+      <decision-gate>No channel attribution: set `channel_attribution: false` and say so in a finding rather than inventing a split (r-segment-by-acquisition-channel).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-activation-metrics.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="take-time-to-activation-quantiles">
+      <input>Signup and activation timestamps of activated users only.</input>
+      <action>Compute the median and p75 or p90 of activation time minus signup time; choose `unit` hours or days. Record `mean` only alongside the quantiles.</action>
+      <output>`time_to_activation`.</output>
+      <decision-gate>Only a mean is available: compute the quantiles before reporting (r-time-to-activation-uses-quantiles).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="build-the-d30-lift-table">
+      <input>A signup cohort whose last signup day is at least 30 days before `data_cutoff`; the candidate events.</input>
+      <action>For each candidate event record `cohort_signup_start`, `cohort_signup_end`, `performed` and `not_performed` with `users` and `d30_retention`, and `wording: correlation`.</action>
+      <output>`d30_lift[]`.</output>
+      <decision-gate>No cohort is 30 days old: omit `d30_lift` entirely and report rate, time-to-activation and funnel only (r-d30-lift-table-with-sizes).</decision-gate>
     </step>
 
+    <step n="6" name="fill-the-funnel-with-both-drops">
+      <input>The ordered funnel steps and their tracked events.</input>
+      <action>For each instrumented step record `event`, `entering`, `completing`, `absolute_drop` = `entering` - `completing`, `relative_drop` = `absolute_drop` / `entering` to three decimals. A step without an event is `uninstrumented` with an `instrumentation_task` and no numbers.</action>
+      <output>`funnel[]`.</output>
+      <decision-gate>Numbers exist for a step with no event: remove them (r-funnel-steps-absolute-and-relative).</decision-gate>
+    </step>
+
+    <step n="7" name="write-findings-and-validate">
+      <input>`metrics[]`, `previous_period`, the release log for the period.</input>
+      <action>For each finding set `metric` to a `metrics[].name`, write `text` containing that name and the comparison period, set `compared_to`, and `causal: false`. Name a product change with its `released_at` where relevant; set `causal: true` only with an `ab_test_result`. Run `scripts/validate-activation-metrics.py --file`.</action>
+      <output>Validated report.</output>
+      <decision-gate>The validator reports a narrowed denominator, an open cohort or a low-sample channel compared: fix the report, not the rule (r-findings-cite-metric-and-period).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Report validates via `scripts/validate-activation-metrics.py` with no violation.</item>
+      <item>`activation_rate.denominator` equals `signups_total`, and the period is closed at the cutoff.</item>
+      <item>Every finding names a metric and a period, and no finding claims causation without an A/B result.</item>
+    </list>
   </section>
 </text>

@@ -1,14 +1,41 @@
-# purpose: cohort-implementation config template
-# consumes: inputs named in AGENTS.md Prerequisites
-# produces: artefact conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml + content/06-decision-tree.xml
+# purpose: weekly retention cohort config skeleton — settings, sources, incremental model, dbt tests, chart spec (matches content/02-output-contract.xml)
+# consumes: stg_users and stg_events with a post-identification user_id and UTC timestamps; the retention event; the day offsets; the data cutoff date
+# produces: artefact conforming to content/02-output-contract.xml, deployed alongside cohort-retention-weekly.sql and schema.yml
+# depends-on: content/01-core-rules.xml + content/06-decision-tree.xml + templates/cohort-retention-weekly.sql + templates/schema.yml
 # token-budget-impact: ~500 tokens when loaded
-slug: cohort-implementation
-owner: ""
 settings:
-  warehouse_engine: ""        # bigquery | snowflake | postgres | redshift
-  retention_event: "login"    # must match event_type in cohort-retention-weekly.sql and schema.yml
+  warehouse_engine: ""          # bigquery | snowflake | postgres | redshift
+  retention_event: "login"      # declared here, in the SQL WHERE and in schema.yml; a change is a new version with backfill
   day_offsets: [1, 7, 14, 30, 60, 90]
   week_start: "monday"
   timezone: "UTC"
-deviation_log_reference: ""
+sources:
+  users_table: "stg_users"
+  events_table: "stg_events"
+  user_id_column: "user_id"     # post-identification id; never distinct_id / device_id / anonymous_id
+  identity_resolved_upstream: true
+  signup_ts_column: "signup_ts_utc"
+  event_ts_column: "event_ts_utc"
+model:
+  name: "cohort_retention_weekly"
+  materialized: "incremental"
+  unique_key: ["cohort_week", "day_offset", "user_id"]
+  partition_by: "cohort_week"
+  lookback_days: 90             # at least the largest day_offset
+  cohort_week_expr: "CAST(DATE_TRUNC(DATE(signup_ts_utc), WEEK(MONDAY)) AS DATE)"   # engine equivalent for Snowflake / Redshift / Postgres
+  join_condition: "event_ts_utc >= signup_ts_utc"
+  denominator_source: "users_table"
+  retention_event_declared_in: ["sql", "schema_yml", "settings"]
+tests:
+  not_null: ["cohort_week", "day_offset", "user_id"]
+  accepted_values:
+    column: "day_offset"
+    values: [1, 7, 14, 30, 60, 90]   # must equal settings.day_offsets
+chart:
+  data_cutoff: ""               # YYYY-MM-DD; a cell is reported only when cohort_week + 6 days + day_offset <= data_cutoff
+  x: "cohort_week"
+  series: "day_offset"
+  metric: "retained_users / cohort_users"
+  immature_value: null          # never 0
+  render_immature_as: "blank"
+cells: []                       # optional: {cohort_week, day_offset, cohort_users, retained_users, retention}, null below the maturity diagonal

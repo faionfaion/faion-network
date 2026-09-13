@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=report`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- An activation event and window are already defined (from activation-framework) and the event is tracked per user with timestamps.
+- A signup table gives every signup in the period, so the rate's denominator is all signups, not a later funnel step.
+- The reporting period can be closed: the last signup date plus the window is on or before the data cutoff.
+- A first-touch acquisition channel is stored per signup, or the report can state that segmentation is unavailable.
+- The report is produced on a cadence (weekly) with the same window and cohort definition as the previous period.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=report` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- No activation event is defined: run activation-framework first; there is nothing to measure.
+- Only a count of users at a later step exists and the signup total cannot be obtained: no rate can be reported.
+- The question is which event should be activation, not how the chosen one performs: that is the framework's D30 validation, not this report.
+- The period is a single day or an in-flight experiment read-out: use the experiment's own analysis, not the weekly cohort report.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+| Activation definition | event name (snake_case) + window in days | activation-framework spec |
+| Signup table | user_id, signup_timestamp, first-touch channel | product database or warehouse |
+| Event table | user_id, event name, timestamp for the activation event and every funnel step | product analytics warehouse (Amplitude, Mixpanel, BigQuery export) |
+| Data cutoff and previous period | YYYY-MM-DD cutoff; previous period start/end with the same window | the reporting calendar |
+| Sample floor | integer signups per channel | growth team convention |
+| Release log for the period | change name + release date, A/B result if any | product team changelog |
 
 ## Assumes Loaded
 
@@ -48,10 +52,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: signup denominator, fixed window and closed cohorts, channel segmentation, quantile time-to-activation, D30 lift table, funnel absolute and relative drops, metric units, findings cite metrics | 1800 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the report: event and window, closed period and cutoff, signups_total as denominator, metrics with units and per-channel rates with a low-sample floor, time-to-activation quantiles, D30 lift table with sizes, funnel with both drops, findings citing metric and period; valid and invalid reports; 8 forbidden patterns | ~4450 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
-| `content/05-examples.xml` | essential | Worked end-to-end example for produces=report | 700 |
+| `content/04-procedure.xml` | essential | 7 steps: fix event, window and closed period; aggregate rate against all signups; segment by channel with a floor; time-to-activation quantiles; D30 lift table; funnel with both drops; findings and validation | ~1400 |
+| `content/05-examples.xml` | recommended | Complete April report (0.223 against 5,335 signups, four channel rates with one low-sample flag, partial metric for the open week, median 1.4 hours, March D30 table, five-step funnel, three findings) with a note per value, plus the usual report and what the validator prints | ~2350 |
 | `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
@@ -67,8 +71,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/activation-metrics.report.md.j2` | Markdown report skeleton with 5-line header |
-| `templates/activation-metrics.report.md` | Markdown report skeleton with 5-line header Generated from `templates/activation-metrics.report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/activation-metrics.report.md.j2` | Markdown report skeleton: definition and closed period, metrics table with units and channel rates, time-to-activation quantiles, D30 lift, funnel with both drops, findings |
+| `templates/activation-metrics.report.md` | Markdown report skeleton: definition and closed period, metrics table with units and channel rates, time-to-activation quantiles, D30 lift, funnel with both drops, findings. Generated from `templates/activation-metrics.report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/activation-metrics.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 | `templates/activation-funnel-analysis.md.j2` | Weekly activation-funnel working analysis — definition, current performance, drop-off, this week's experiment. |

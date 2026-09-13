@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Agency Discovery Call Scorecard Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Agency Discovery Call Scorecard end-to-end from inputs to a validated `rubric` artefact + human signoff.</summary>
+<text id="04-procedure" title="Agency Discovery Call Scorecard Procedure" version="1.2.0" est_tokens="1450" depth="essential">
+  <summary>Seven steps: write the ICP criteria the fit anchors quote, set the four axes and weights, write observable anchors per axis, fix the formula and the single threshold, score each call within 24 hours with evidence and verified authority, validate, and run the weekly same-version retro that decides the next rubric version.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="write-the-icp-criteria">
+      <input>The agency's closed-won and closed-lost deals of the last two quarters; the service lines it sells.</input>
+      <action>Write three ICP criteria (industry, size, service line) that the fit anchors will count. Open `templates/agency-discovery-call-scorecard.rubric.md.j2` and set `rubric_version`, `version_date` and `version_reason`.</action>
+      <output>ICP criteria and the rubric header.</output>
+      <decision-gate>Fewer than two discovery calls a week: stop, qualify by judgement (06-decision-tree.xml). No written ICP: it cannot be scored; write it first (r-anchors-are-observable-facts).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="set-the-four-axes-and-weights">
+      <input>The closed-deal history.</input>
+      <action>Add `axes[]` `fit`, `budget`, `urgency`, `decision_maker` with two-decimal `weight` values that sum to 1.0 and none above 0.5 (template default 0.3 / 0.3 / 0.2 / 0.2). Add a fifth axis only for a closed deal the four did not explain.</action>
+      <output>`axes[].name` and `axes[].weight`.</output>
+      <decision-gate>Weights do not sum to 1.0 or an axis exceeds 0.5: renormalise before writing anchors (r-four-axes-fit-budget-urgency-decision-maker, r-weights-sum-to-one-no-dominant-axis).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `rubric` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="write-observable-anchors">
+      <input>The ICP criteria; the agency's minimum and typical annual contract value; its onboarding lead time.</input>
+      <action>For each axis write `anchors[]` from lowest to highest: `budget` as currency ranges per year, `urgency` as calendar windows, `decision_maker` as roles and confirmed sign-off with "authority not discussed" as the lowest, `fit` as the number of ICP criteria met.</action>
+      <output>`axes[].anchors`.</output>
+      <decision-gate>An anchor is an adjective, or two people cannot quote the call to place a lead on it: rewrite (r-anchors-are-observable-facts).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-agency-discovery-call-scorecard.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="fix-the-formula-and-threshold">
+      <input>`axes[]`.</input>
+      <action>Set `score_range` 0-100, write `formula` verbatim, pick one `decision_threshold` strictly inside the range (template default 60) and the `threshold_rule`. Set `retro` to weekly, same-version only, comparing `advance_rate` and `close_rate_of_advanced`.</action>
+      <output>`score_range`, `formula`, `decision_threshold`, `threshold_rule`, `retro`.</output>
+      <decision-gate>A "maybe" band or a second threshold is proposed: collapse it to one number (r-single-threshold-inside-range, r-score-formula-0-100).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="score-each-call-within-24-hours">
+      <input>The discovery call; the rubric.</input>
+      <action>Within 24 hours of the call, a person who was on it adds a `leads[]` entry: `call_date`, `scored_at`, `scorer_on_call: true`, `rubric_version`, and for every axis an `anchor_index` with an `evidence` note quoting the prospect. On `decision_maker` set `authority_confirmed` from what the prospect said about sign-off; if not discussed, `anchor_index: 0`. Compute `score` with the formula and set `decision` by the threshold.</action>
+      <output>One `leads[]` entry per call.</output>
+      <decision-gate>Any axis has an empty evidence note, or the scorer was not on the call: the score does not count for the advance decision (r-scored-within-24h-with-evidence, r-decision-maker-scored-on-verified-authority).</decision-gate>
     </step>
 
+    <step n="6" name="validate-the-rubric-and-leads">
+      <input>The filled rubric.</input>
+      <action>Run `scripts/validate-agency-discovery-call-scorecard.py --file`; it checks the weight sum, recomputes every lead's score from the anchor picks, the 24-hour window, the version match and the decision against the threshold.</action>
+      <output>Validated rubric.</output>
+      <decision-gate>A score does not recompute: the anchor pick or the arithmetic is wrong, never the formula (r-score-formula-0-100).</decision-gate>
+    </step>
+
+    <step n="7" name="run-the-weekly-same-version-retro">
+      <input>Leads scored under the current `rubric_version`; pipeline outcomes for advanced leads.</input>
+      <action>Compare advance rate and close rate of advanced leads with the previous period for the same version. If anchors or weights must change, bump `rubric_version` with `version_date` and `version_reason`; do not rescore old leads on the new version.</action>
+      <output>Retro note and, if needed, the next rubric version.</output>
+      <decision-gate>A change was made in place without a version bump: the week's comparison is discarded (r-versioned-weekly-calibration).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Rubric validates via `scripts/validate-agency-discovery-call-scorecard.py` with no violation.</item>
+      <item>Two people scoring the same recorded call land on the same anchors on every axis.</item>
+      <item>Every lead in the period has a score under one rubric version, with evidence per axis and a binary decision.</item>
+    </list>
   </section>
 </text>

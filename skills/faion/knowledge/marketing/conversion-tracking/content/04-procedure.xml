@@ -1,40 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Conversion Tracking Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Conversion Tracking end-to-end from inputs to a validated `config` artefact + human signoff.</summary>
+<text id="04-procedure" title="Conversion Tracking Procedure" version="1.2.0" est_tokens="1750" depth="essential">
+  <summary>Eight steps from the destination list to a QA-verified tracking config: register the event taxonomy in events.yml and wire the CI validator, name events inside the GA4 limits, give monetary events their transaction_id, push Consent Mode v2 defaults before the config call, put the server container on a first-party subdomain forwarding the browser identifiers, write the dual-send dedup, strip PII and hash matching identifiers, then run the fixtures in three browsers plus an ad-blocker profile and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="register-the-event-taxonomy">
+      <input>The business events the site must report; the destinations (GA4, Google Ads, Meta, Plausible).</input>
+      <action>Write `site_domain` and `destinations` in `templates/conversion-tracking.config.yaml`. Create `events.yml` with one entry per event: name, required parameters and the conversion role per destination. Add `templates/validate-events.py` to CI and set `registry.enforced_in_ci: true`.</action>
+      <output>`site_domain`, `destinations`, `registry`, one `events[]` entry per event with `conversion_role`.</output>
+      <decision-gate>No destination exists: stop, nothing to track into (06-decision-tree.xml). CI does not fail on an unregistered name: fix the pipeline before any tag code merges (r-event-registry-single-source).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="name-events-inside-the-ga4-limits">
+      <input>`events[]`; the GA4 recommended events reference.</input>
+      <action>Make every `name` snake_case, at most 40 characters, with no `google_`, `ga_`, `firebase_` or `_` prefix; use the exact recommended name (`purchase`, `sign_up`, `generate_lead`, `add_to_cart`) with `recommended: true`. List at most 25 `parameters` per event, names at most 40 characters, `max_string_length` at most 100.</action>
+      <output>`events[].name`, `events[].recommended`, `events[].parameters`.</output>
+      <decision-gate>A synonym such as `order_completed` or `signup` appears: rename to the recommended event (r-ga4-naming-and-parameter-limits).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `config` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="give-monetary-events-a-transaction-id">
+      <input>Events with revenue; the order system's order identifier.</input>
+      <action>Set `monetary: true` and add `value` (number), `currency` (ISO 4217) and `transaction_id` (the order id) to `parameters`; set `dedup.event_id_field: transaction_id` and `shared_across_destinations: true` so the same id is the Meta `event_id` and the Google Ads `transaction_id`.</action>
+      <output>`events[].monetary`, the three parameters, `events[].dedup`.</output>
+      <decision-gate>A revenue event has no order identifier: it is not sent until it does (r-monetary-conversion-carries-transaction-id).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-conversion-tracking.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="push-consent-defaults-before-config">
+      <input>The consent management platform; the markets served.</input>
+      <action>Set `consent.mode: v2`, `defaults_before_config: true`, the four `signals`, one `regional_defaults[]` entry per region (denied for consent jurisdictions, `region` parameter set), and `server_honours_consent: true`. Place `gtag('consent', 'default', ...)` before `gtag('config', ...)` in the snippet.</action>
+      <output>`consent`.</output>
+      <decision-gate>The default push arrives after the first hit, or the server container ignores consent: the implementation is non-compliant (r-consent-state-before-any-tag).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="serve-the-server-container-first-party">
+      <input>DNS control for the site domain; the GTM server container or Cloudflare Worker.</input>
+      <action>Set `server_side.enabled: true`, `endpoint` to a subdomain of `site_domain` (for example `gtm.example.com`), `cookies_http_only: true`, `forwards` with `_fbp`, `_fbc`, `client_id` and `session_id`, `client_id_source: _ga cookie`, `fresh_ids_generated: false`.</action>
+      <output>`server_side`.</output>
+      <decision-gate>The container runs on the vendor default domain: Safari still treats it as third-party; move it before enabling any server send (r-server-endpoint-first-party-domain, r-browser-server-dedup-and-identifiers).</decision-gate>
     </step>
 
+    <step n="6" name="write-the-dual-send-dedup">
+      <input>Events with `sent_from` browser and server.</input>
+      <action>For each such event set `dedup.event_id_field` (the `transaction_id` for monetary events, an `event_id` parameter otherwise) and `shared_across_destinations: true`; the server copy reuses the browser's id and event name.</action>
+      <output>`events[].dedup` for every dual-sent event.</output>
+      <decision-gate>The server mints its own id: every purchase counts twice in Ads Manager and every server hit becomes a new GA4 user (r-browser-server-dedup-and-identifiers).</decision-gate>
+    </step>
+
+    <step n="7" name="strip-pii-and-hash-matching-identifiers">
+      <input>`events[].parameters`; confirmation-page URLs; the ad platforms' matching parameters.</input>
+      <action>Mark every parameter `pii: false`; remove identifying query parameters before `page_view` fires; for matching identifiers (`em`, `ph`) normalise, SHA-256 hash and set `hashed: true`. Write a PII-free `example_payload` per fixture.</action>
+      <output>`events[].parameters[].pii`, `hashed`, `qa.fixtures[].example_payload`.</output>
+      <decision-gate>An example payload contains an `@` or a phone-shaped string: the validator rejects it (r-no-pii-in-parameters).</decision-gate>
+    </step>
+
+    <step n="8" name="run-the-fixtures-and-validate">
+      <input>The change under review; Chrome, Safari, Firefox and a Chrome profile with a mainstream ad blocker.</input>
+      <action>Set `qa.change_ref`, `browsers`, `adblock_profile: true`. For every event add a fixture with `expected_parameters` and one `results[]` row per browser (including `chrome_adblock`) per destination the event targets. Run `scripts/validate-conversion-tracking.py --file`.</action>
+      <output>`qa`; validated config.</output>
+      <decision-gate>An event has no fixture, or a browser or destination has no result row: the change does not merge (r-qa-fixtures-per-tracking-change).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Config validates via `scripts/validate-conversion-tracking.py` with no violation.</item>
+      <item>Every monetary event carries `transaction_id` shared across destinations, and every dual-sent event has a dedup block.</item>
+      <item>Every event has fixture results for three browsers plus the ad-blocker profile on every destination it targets.</item>
+    </list>
   </section>
 </text>

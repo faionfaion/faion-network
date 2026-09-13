@@ -15,25 +15,28 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=report`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- A scrape adapter (SE Ranking or equivalent) returns AI Overview panels with their citation URLs for the chosen country, language and device.
+- At least 20 queries can be mapped one-to-one to indexed pages on the tracked domain.
+- The team can scrape every query once a week on the same weekday for 8 weeks without changing country, language, device or logged-out state.
+- Search Console impressions per query are available for the window, to rank the retrofit list.
+- A weekly Search Console and analytics review already exists where the report is read.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=report` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- AI Overviews are not available in the target country and language, or the adapter returns no panels: there is nothing to track.
+- Fewer than 20 queries map to pages on the domain: extend the set first; a smaller set moves the rate by more than five points per query.
+- The question is how many clicks AI Overviews cost: Search Console does not separate AIO traffic, and this tracker reports presence and citation only.
+- The query list or scrape configuration must change every week: the trend is not comparable; freeze them or do not report a trend.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+| Query set | at least 20 rows: query, target URL on the tracked domain | Search Console queries mapped to pages |
+| Scrape adapter output | per query per week: panel present, cited URLs, snippet text, panel position | SE Ranking AIO tracker or equivalent, logged-out session |
+| Scrape configuration | country, language, device, logged-out flag, AIO availability confirmed | adapter settings + Google Search Central availability list |
+| Search Console impressions | impressions per query for the window | Search Console performance export |
+| Tracked domain and subdomains | registrable domain plus any subdomains that count as ours | tracker config |
 
 ## Assumes Loaded
 
@@ -48,10 +51,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: fixed 20-query set, typed per-query rows, fixed locale and device, weekly no-interpolation, exact host match for citation, presence and citation-rate denominators, no click attribution, 5-of-8 retrofit rule | 1800 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the report: versioned 20-query set with target URLs, fixed scrape config, per-query weekly rows (present / citations / cited / snippet / position, missing weeks as nulls), the three metrics with denominators per week and window, co-occurrence findings, retrofit list gated on 5-of-8 and 4 uncited weeks; valid and invalid reports; 8 forbidden patterns | ~8800 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
-| `content/05-examples.xml` | essential | Worked end-to-end example for produces=report | 700 |
+| `content/04-procedure.xml` | essential | 7 steps: freeze the versioned query set, pin the scrape configuration, scrape weekly and record failures as missing, set citation by host match, compute the three metrics, write co-occurrence findings, build the retrofit list and validate | ~1500 |
+| `content/05-examples.xml` | recommended | Complete 8-week report for a CRM vendor (rows for 4 of 20 queries, one missing week, presence 0.806, citation 0.32, two-entry retrofit list) with a note per value, plus the report as usually run and what the validator prints | ~6550 |
 | `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
@@ -67,8 +70,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-overview-presence-tracker.report.md.j2` | Markdown report skeleton with 5-line header |
-| `templates/ai-overview-presence-tracker.report.md` | Markdown report skeleton with 5-line header Generated from `templates/ai-overview-presence-tracker.report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ai-overview-presence-tracker.report.md.j2` | Markdown report skeleton: query set and window, scrape configuration, queries, weekly rows, metrics with denominators, findings, retrofit list |
+| `templates/ai-overview-presence-tracker.report.md` | Markdown report skeleton: query set and window, scrape configuration, queries, weekly rows, metrics with denominators, findings, retrofit list. Generated from `templates/ai-overview-presence-tracker.report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ai-overview-presence-tracker.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

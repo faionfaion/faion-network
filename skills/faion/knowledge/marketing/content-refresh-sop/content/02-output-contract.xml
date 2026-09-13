@@ -1,152 +1,358 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Content Refresh SOP Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `playbook-step` artefact this methodology produces. Validator at scripts/validate-content-refresh-sop.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Content Refresh SOP Output Contract" version="1.2.0" est_tokens="5900" depth="essential">
+  <summary>JSON Schema (draft-07) for the content refresh playbook step: the numeric thresholds for the three signals written before scoring, the trailing and prior windows with their data source, and one row per evergreen URL at least 12 months old carrying the GSC, GA4 and rank-tracker dataset for both windows, the computed signals, exactly one verdict from refresh / consolidate / kill / leave, and the verdict's own block: the nine-step checklist with exit criteria, unchanged URL, 28-day baseline and day-90 re-evaluation for a refresh; survivor, redirect map and link rewrite for a consolidate; 410 with sitemap and navigation removal and no redirect for a kill; reason and next review date for a leave. Validator at scripts/validate-content-refresh-sop.py enforces it, including the signal arithmetic and the 90-day date.</summary>
+
+  <output-contract>
+    <required>
+      <field name="thresholds" type="object" required="true">`impressions_trend_pct` (negative), `position_decay_positions` (positive), `intent_shift_query_mix_pct` (positive), fixed before any URL is scored (r-three-signals-with-thresholds)</field>
+      <field name="window" type="object" required="true">`trailing_days`, `prior_days` equal to it, `span_months`, `source` persisted_export or search_console_ui; spans over 16 months must read from a persisted export (r-one-dataset-gsc-ga4-rank)</field>
+      <field name="urls" type="list" required="true">one row per URL: `evergreen: true`, `url_age_months` at least 12, `dataset` with `gsc` (clicks, impressions, avg_position), `ga4` (sessions, key_events) and `rank` (target_query, position) for `trailing` and `prior`, `signals` computed from the dataset, one `verdict`, and the verdict's block (r-eligibility-evergreen-12-months, r-one-dataset-gsc-ga4-rank, r-four-verdicts-exhaustive)</field>
+      <field name="urls[].refresh" type="object" required="false">`url_unchanged: true`, `substantive_change: true`, `date_modified_updated`, `title_changed_for_intent`, `checklist[]` of the nine steps each with `exit_criterion` and `done` (a skipped step carries `skipped_reason`), `baseline` (published_at, 28-day clicks, impressions, avg_position, sessions, key_events), `reevaluation_at` = published_at + 90 days (r-refresh-keeps-url-honest-date, r-nine-step-checklist-complete, r-baseline-and-90-day-reevaluation)</field>
+      <field name="urls[].consolidate" type="object" required="false">`survivor_url`, `merged_urls[]`, `redirects[]` with `from`, `to` = survivor, `status` 301 or 308, `internal_links_rewritten: true`, plus `baseline` and `reevaluation_at` (r-consolidate-301-to-survivor, r-baseline-and-90-day-reevaluation)</field>
+      <field name="urls[].kill" type="object" required="false">`http_status` 410 or 404, `removed_from_sitemap`, `removed_from_navigation`, `internal_links_dropped` all true, `redirect_target: null` (r-kill-returns-410-never-homepage)</field>
+      <field name="urls[].leave" type="object" required="false">`reason` and `next_review_at` (r-four-verdicts-exhaustive)</field>
+      <field name="decision_branches" type="list" required="true">one branch per signal naming the threshold it applies and the verdict it routes to (r-three-signals-with-thresholds)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a refresh with `date_modified_updated: true` and `substantive_change: false`, or a checklist without steps 2, 4 and 6 done — date-bump-without-change</pattern>
+      <pattern id="f2">a row whose `dataset` lacks `gsc`, `ga4` or `rank` for either window, or `signals` that do not recompute from the dataset — single-source-verdict</pattern>
+      <pattern id="f3">a consolidate with a merged URL that has no redirect to the survivor, or `internal_links_rewritten: false` — consolidation-without-redirects</pattern>
+      <pattern id="f4">a kill with a `redirect_target`, or `http_status` other than 410 / 404 — kill-redirected-to-homepage</pattern>
+      <pattern id="f5">a refresh with `url_unchanged: false` — refresh-changes-url</pattern>
+      <pattern id="f6">a refresh or consolidate without `baseline` or with `reevaluation_at` not 90 days after `baseline.published_at` — no-post-refresh-baseline</pattern>
+      <pattern id="f7">a URL with `evergreen: false` or `url_age_months` under 12, or a verdict outside refresh / consolidate / kill / leave — r-eligibility-evergreen-12-months, r-four-verdicts-exhaustive</pattern>
+      <pattern id="f8">`window.span_months` above 16 with `source: search_console_ui`, or `prior_days` different from `trailing_days` — r-one-dataset-gsc-ga4-rank</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/content-refresh-sop.json",
   "title": "Content Refresh SOP playbook step",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "steps",
-    "decision_branches",
-    "deviation_log_reference"
-  ],
+  "required": ["thresholds", "window", "urls", "decision_branches"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "url": {"type": "string", "pattern": "^https://[^\\s/]+/"},
+    "count": {"type": "integer", "minimum": 0},
+    "gsc": {
+      "type": "object",
+      "required": ["clicks", "impressions", "avg_position"],
+      "additionalProperties": false,
+      "properties": {"clicks": {"$ref": "#/definitions/count"}, "impressions": {"$ref": "#/definitions/count"}, "avg_position": {"type": "number", "minimum": 1}}
+    },
+    "ga4": {
+      "type": "object",
+      "required": ["sessions", "key_events"],
+      "additionalProperties": false,
+      "properties": {"sessions": {"$ref": "#/definitions/count"}, "key_events": {"$ref": "#/definitions/count"}}
+    },
+    "rank": {
+      "type": "object",
+      "required": ["target_query", "position"],
+      "additionalProperties": false,
+      "properties": {"target_query": {"type": "string", "minLength": 3}, "position": {"type": "number", "minimum": 1}}
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["published_at", "days", "clicks", "impressions", "avg_position", "sessions", "key_events"],
+      "additionalProperties": false,
+      "properties": {
+        "published_at": {"$ref": "#/definitions/date"},
+        "days": {"const": 28},
+        "clicks": {"$ref": "#/definitions/count"},
+        "impressions": {"$ref": "#/definitions/count"},
+        "avg_position": {"type": "number", "minimum": 1},
+        "sessions": {"$ref": "#/definitions/count"},
+        "key_events": {"$ref": "#/definitions/count"}
+      }
+    }
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "content-refresh-sop"
+    "__faion_header__": {"type": ["object", "string"]},
+    "thresholds": {
+      "type": "object",
+      "required": ["impressions_trend_pct", "position_decay_positions", "intent_shift_query_mix_pct"],
+      "additionalProperties": false,
+      "properties": {
+        "impressions_trend_pct": {"type": "number", "maximum": 0},
+        "position_decay_positions": {"type": "number", "exclusiveMinimum": 0},
+        "intent_shift_query_mix_pct": {"type": "number", "exclusiveMinimum": 0}
+      }
     },
-    "owner": {
-      "type": "string",
-      "minLength": 1
+    "window": {
+      "type": "object",
+      "required": ["trailing_days", "prior_days", "span_months", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "trailing_days": {"type": "integer", "minimum": 28},
+        "prior_days": {"type": "integer", "minimum": 28},
+        "span_months": {"type": "integer", "minimum": 1},
+        "source": {"type": "string", "enum": ["persisted_export", "search_console_ui"]}
+      },
+      "if": {"properties": {"span_months": {"minimum": 17}}},
+      "then": {"properties": {"source": {"const": "persisted_export"}}}
     },
-    "steps": {
+    "urls": {
       "type": "array",
-      "minItems": 4,
+      "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "input",
-          "owner",
-          "exit_criterion",
-          "output_location"
-        ],
+        "required": ["url", "evergreen", "url_age_months", "dataset", "signals", "verdict"],
+        "additionalProperties": false,
         "properties": {
-          "id": {
-            "type": "string"
+          "url": {"$ref": "#/definitions/url"},
+          "evergreen": {"const": true},
+          "url_age_months": {"type": "integer", "minimum": 12},
+          "dataset": {
+            "type": "object",
+            "required": ["trailing", "prior"],
+            "additionalProperties": false,
+            "properties": {
+              "trailing": {"type": "object", "required": ["gsc", "ga4", "rank"], "additionalProperties": false, "properties": {"gsc": {"$ref": "#/definitions/gsc"}, "ga4": {"$ref": "#/definitions/ga4"}, "rank": {"$ref": "#/definitions/rank"}}},
+              "prior": {"type": "object", "required": ["gsc", "ga4", "rank"], "additionalProperties": false, "properties": {"gsc": {"$ref": "#/definitions/gsc"}, "ga4": {"$ref": "#/definitions/ga4"}, "rank": {"$ref": "#/definitions/rank"}}}
+            }
           },
-          "input": {
-            "type": "string"
+          "signals": {
+            "type": "object",
+            "required": ["impressions_trend_pct", "position_decay_positions", "intent_shift", "intent_shift_note"],
+            "additionalProperties": false,
+            "properties": {
+              "impressions_trend_pct": {"type": "number"},
+              "position_decay_positions": {"type": "number"},
+              "intent_shift": {"type": "boolean"},
+              "intent_shift_note": {"type": "string", "minLength": 10}
+            }
           },
-          "owner": {
-            "type": "string"
+          "verdict": {"type": "string", "enum": ["refresh", "consolidate", "kill", "leave"]},
+          "refresh": {
+            "type": "object",
+            "required": ["url_unchanged", "substantive_change", "date_modified_updated", "title_changed_for_intent", "checklist", "baseline", "reevaluation_at"],
+            "additionalProperties": false,
+            "properties": {
+              "url_unchanged": {"const": true},
+              "substantive_change": {"type": "boolean"},
+              "date_modified_updated": {"type": "boolean"},
+              "title_changed_for_intent": {"type": "boolean"},
+              "checklist": {
+                "type": "array",
+                "minItems": 9,
+                "maxItems": 9,
+                "items": {
+                  "type": "object",
+                  "required": ["step", "name", "exit_criterion", "done"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "step": {"type": "integer", "minimum": 1, "maximum": 9},
+                    "name": {"type": "string", "minLength": 5},
+                    "exit_criterion": {"type": "string", "minLength": 15},
+                    "done": {"type": "boolean"},
+                    "skipped_reason": {"type": "string", "minLength": 10}
+                  },
+                  "if": {"properties": {"done": {"const": false}}},
+                  "then": {"required": ["skipped_reason"]}
+                }
+              },
+              "baseline": {"$ref": "#/definitions/baseline"},
+              "reevaluation_at": {"$ref": "#/definitions/date"}
+            },
+            "if": {"properties": {"date_modified_updated": {"const": true}}},
+            "then": {"properties": {"substantive_change": {"const": true}}}
           },
-          "exit_criterion": {
-            "type": "string",
-            "minLength": 10
+          "consolidate": {
+            "type": "object",
+            "required": ["survivor_url", "merged_urls", "redirects", "internal_links_rewritten", "baseline", "reevaluation_at"],
+            "additionalProperties": false,
+            "properties": {
+              "survivor_url": {"$ref": "#/definitions/url"},
+              "merged_urls": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/url"}},
+              "redirects": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["from", "to", "status"],
+                  "additionalProperties": false,
+                  "properties": {"from": {"$ref": "#/definitions/url"}, "to": {"$ref": "#/definitions/url"}, "status": {"type": "integer", "enum": [301, 308]}}
+                }
+              },
+              "internal_links_rewritten": {"const": true},
+              "baseline": {"$ref": "#/definitions/baseline"},
+              "reevaluation_at": {"$ref": "#/definitions/date"}
+            }
           },
-          "output_location": {
-            "type": "string"
+          "kill": {
+            "type": "object",
+            "required": ["http_status", "removed_from_sitemap", "removed_from_navigation", "internal_links_dropped", "redirect_target"],
+            "additionalProperties": false,
+            "properties": {
+              "http_status": {"type": "integer", "enum": [410, 404]},
+              "removed_from_sitemap": {"const": true},
+              "removed_from_navigation": {"const": true},
+              "internal_links_dropped": {"const": true},
+              "redirect_target": {"type": "null"}
+            }
+          },
+          "leave": {
+            "type": "object",
+            "required": ["reason", "next_review_at"],
+            "additionalProperties": false,
+            "properties": {"reason": {"type": "string", "minLength": 15}, "next_review_at": {"$ref": "#/definitions/date"}}
           }
         },
-        "additionalProperties": false
+        "allOf": [
+          {"if": {"properties": {"verdict": {"const": "refresh"}}}, "then": {"required": ["refresh"]}},
+          {"if": {"properties": {"verdict": {"const": "consolidate"}}}, "then": {"required": ["consolidate"]}},
+          {"if": {"properties": {"verdict": {"const": "kill"}}}, "then": {"required": ["kill"]}},
+          {"if": {"properties": {"verdict": {"const": "leave"}}}, "then": {"required": ["leave"]}}
+        ]
       }
     },
     "decision_branches": {
       "type": "array",
+      "minItems": 3,
+      "allOf": [
+        {"contains": {"properties": {"signal": {"const": "impressions_trend"}}}},
+        {"contains": {"properties": {"signal": {"const": "top_position_decay"}}}},
+        {"contains": {"properties": {"signal": {"const": "intent_shift"}}}}
+      ],
       "items": {
         "type": "object",
-        "required": [
-          "when",
-          "then"
-        ],
+        "required": ["signal", "when", "then"],
+        "additionalProperties": false,
         "properties": {
-          "when": {
-            "type": "string"
-          },
-          "then": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
+          "signal": {"type": "string", "enum": ["impressions_trend", "top_position_decay", "intent_shift"]},
+          "when": {"type": "string", "minLength": 10, "pattern": "[0-9]"},
+          "then": {"type": "string", "enum": ["refresh", "consolidate", "kill", "leave"]}
+        }
       }
-    },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "content-refresh-sop",
-  "owner": "playbook owner",
-  "steps": [
+  "thresholds": {"impressions_trend_pct": -20, "position_decay_positions": 2, "intent_shift_query_mix_pct": 30},
+  "window": {"trailing_days": 90, "prior_days": 90, "span_months": 6, "source": "persisted_export"},
+  "urls": [
     {
-      "id": "s1",
-      "input": "brief",
-      "owner": "lead",
-      "exit_criterion": "brief reviewed + scope confirmed",
-      "output_location": "docs/briefs/"
+      "url": "https://example.com/blog/content-refresh-checklist",
+      "evergreen": true,
+      "url_age_months": 19,
+      "dataset": {
+        "trailing": {"gsc": {"clicks": 1240, "impressions": 38400, "avg_position": 7.8}, "ga4": {"sessions": 1180, "key_events": 41}, "rank": {"target_query": "content refresh checklist", "position": 8}},
+        "prior": {"gsc": {"clicks": 2010, "impressions": 56500, "avg_position": 4.7}, "ga4": {"sessions": 1950, "key_events": 77}, "rank": {"target_query": "content refresh checklist", "position": 5}}
+      },
+      "signals": {"impressions_trend_pct": -32.0, "position_decay_positions": 3.1, "intent_shift": false, "intent_shift_note": "top 10 still how-to guides; query mix change 9 percent, under the 30 percent threshold"},
+      "verdict": "refresh",
+      "refresh": {
+        "url_unchanged": true,
+        "substantive_change": true,
+        "date_modified_updated": true,
+        "title_changed_for_intent": false,
+        "checklist": [
+          {"step": 1, "name": "re-run query and intent research", "exit_criterion": "top 10 SERP captured for 'content refresh checklist' on 2026-04-28; intent still how-to", "done": true},
+          {"step": 2, "name": "update facts, statistics, prices, dates", "exit_criterion": "11 statistics replaced with 2025-2026 sources, each linked and dated", "done": true},
+          {"step": 3, "name": "rewrite title, meta description, intro", "exit_criterion": "intro rewritten to the current intent; meta description under 155 characters", "done": true},
+          {"step": 4, "name": "add sections top-ranking pages cover", "exit_criterion": "sections added for AI Overview impact and Core Web Vitals; gap list from step 1 closed", "done": true},
+          {"step": 5, "name": "refresh screenshots, media, examples", "exit_criterion": "6 screenshots retaken on the 2026 Search Console UI", "done": true},
+          {"step": 6, "name": "update internal links in and out", "exit_criterion": "4 newer posts now link to the page; 3 dead outbound links replaced", "done": true},
+          {"step": 7, "name": "fix technical issues on the URL", "exit_criterion": "2 broken links fixed, alt text on all images, structured data validates, LCP under 2.5 s", "done": true},
+          {"step": 8, "name": "update dateModified and append changelog", "exit_criterion": "dateModified 2026-05-06; changelog entry lists steps 2, 4, 5, 6", "done": true},
+          {"step": 9, "name": "request re-indexing and record baseline", "exit_criterion": "URL inspection re-index requested; 28-day baseline stored", "done": true}
+        ],
+        "baseline": {"published_at": "2026-05-06", "days": 28, "clicks": 380, "impressions": 11900, "avg_position": 7.9, "sessions": 360, "key_events": 12},
+        "reevaluation_at": "2026-08-04"
+      }
     },
     {
-      "id": "s2",
-      "input": "data",
-      "owner": "analyst",
-      "exit_criterion": "dataset >=30 records validated",
-      "output_location": "warehouse:tbl"
-    },
-    {
-      "id": "s3",
-      "input": "draft",
-      "owner": "writer",
-      "exit_criterion": "draft passes editorial check",
-      "output_location": "docs/drafts/"
-    },
-    {
-      "id": "s4",
-      "input": "draft",
-      "owner": "lead",
-      "exit_criterion": "signed off by named reviewer",
-      "output_location": "docs/published/"
+      "url": "https://example.com/blog/what-is-a-content-audit",
+      "evergreen": true,
+      "url_age_months": 31,
+      "dataset": {
+        "trailing": {"gsc": {"clicks": 860, "impressions": 21000, "avg_position": 3.2}, "ga4": {"sessions": 820, "key_events": 33}, "rank": {"target_query": "what is a content audit", "position": 3}},
+        "prior": {"gsc": {"clicks": 910, "impressions": 22600, "avg_position": 3.0}, "ga4": {"sessions": 870, "key_events": 35}, "rank": {"target_query": "what is a content audit", "position": 3}}
+      },
+      "signals": {"impressions_trend_pct": -7.1, "position_decay_positions": 0.2, "intent_shift": false, "intent_shift_note": "query mix change 4 percent; SERP features unchanged"},
+      "verdict": "leave",
+      "leave": {"reason": "all three signals inside thresholds: -7.1 percent impressions, 0.2 positions, no intent shift", "next_review_at": "2026-11-04"}
     }
   ],
   "decision_branches": [
-    {
-      "when": "data_records < 30",
-      "then": "loop back to s2"
-    }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L101"
-}
-]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
-{
-  "slug": "content-refresh-sop",
-  "steps": [
-    {
-      "id": "s1"
-    }
+    {"signal": "intent_shift", "when": "query mix changed by more than 30 percent or the SERP turned to a different result type", "then": "kill"},
+    {"signal": "impressions_trend", "when": "impressions down more than 20 percent period over period with no intent shift", "then": "refresh"},
+    {"signal": "top_position_decay", "when": "average position worse by more than 2 positions with no intent shift", "then": "refresh"},
+    {"signal": "impressions_trend", "when": "impressions within 20 percent and position within 2 positions", "then": "leave"}
   ]
 }
-]]></code>
-    <note>Step missing exit_criterion, output_location, owner, input; deviation_log_reference missing.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "thresholds": {"impressions_trend_pct": -20, "position_decay_positions": 2, "intent_shift_query_mix_pct": 30},
+  "window": {"trailing_days": 365, "prior_days": 120, "span_months": 24, "source": "search_console_ui"},
+  "urls": [
+    {
+      "url": "https://example.com/blog/content-refresh-checklist",
+      "evergreen": true,
+      "url_age_months": 8,
+      "dataset": {
+        "trailing": {"gsc": {"clicks": 1240, "impressions": 38400, "avg_position": 7.8}, "ga4": {"sessions": 1180, "key_events": 41}, "rank": {"target_query": "content refresh checklist", "position": 8}},
+        "prior": {"gsc": {"clicks": 2010, "impressions": 56500, "avg_position": 4.7}, "ga4": {"sessions": 1950, "key_events": 77}, "rank": {"target_query": "content refresh checklist", "position": 5}}
+      },
+      "signals": {"impressions_trend_pct": -12.0, "position_decay_positions": 1.0, "intent_shift": false, "intent_shift_note": "not checked this cycle"},
+      "verdict": "refresh",
+      "refresh": {
+        "url_unchanged": false,
+        "substantive_change": false,
+        "date_modified_updated": true,
+        "title_changed_for_intent": true,
+        "checklist": [
+          {"step": 3, "name": "rewrite title, meta description, intro", "exit_criterion": "new title and intro published under the new slug", "done": true},
+          {"step": 8, "name": "update dateModified and append changelog", "exit_criterion": "dateModified set to publication day", "done": true}
+        ],
+        "baseline": {"published_at": "2026-05-06", "days": 7, "clicks": 90, "impressions": 2900, "avg_position": 8.1, "sessions": 85, "key_events": 3},
+        "reevaluation_at": "2026-05-20"
+      }
+    },
+    {
+      "url": "https://example.com/blog/content-audit-tools-2021",
+      "evergreen": true,
+      "url_age_months": 40,
+      "dataset": {
+        "trailing": {"gsc": {"clicks": 40, "impressions": 3100, "avg_position": 18.2}, "ga4": {"sessions": 38, "key_events": 0}, "rank": {"target_query": "content audit tools", "position": 19}},
+        "prior": {"gsc": {"clicks": 210, "impressions": 9800, "avg_position": 9.4}, "ga4": {"sessions": 200, "key_events": 4}, "rank": {"target_query": "content audit tools", "position": 9}}
+      },
+      "signals": {"impressions_trend_pct": -68.4, "position_decay_positions": 8.8, "intent_shift": true, "intent_shift_note": "SERP now product listings and comparison tables"},
+      "verdict": "kill",
+      "kill": {"http_status": 301, "removed_from_sitemap": false, "removed_from_navigation": true, "internal_links_dropped": false, "redirect_target": "https://example.com/"}
+    }
+  ],
+  "decision_branches": [
+    {"signal": "impressions_trend", "when": "impressions look weak", "then": "refresh"}
+  ]
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every scored URL is `evergreen: true` with `url_age_months` at least 12 (r-eligibility-evergreen-12-months).</item>
+      <item>Every row carries GSC, GA4 and rank-tracker figures for both windows of equal length; a span over 16 months reads from a persisted export (r-one-dataset-gsc-ga4-rank).</item>
+      <item>`thresholds` and `decision_branches` name numbers for impressions trend, position decay and intent shift; `signals` recompute from the dataset (r-three-signals-with-thresholds).</item>
+      <item>Exactly one verdict per URL from the four; a leave has a reason and a next review date (r-four-verdicts-exhaustive).</item>
+      <item>A consolidate redirects every merged URL to the survivor with 301 or 308 and rewrites internal links (r-consolidate-301-to-survivor).</item>
+      <item>A kill returns 410 or 404, leaves the sitemap and navigation, drops internal links, and redirects nowhere (r-kill-returns-410-never-homepage).</item>
+      <item>A refresh keeps the URL and updates `dateModified` only with a substantive change (r-refresh-keeps-url-honest-date).</item>
+      <item>A refresh lists all nine checklist steps with exit criteria; a skipped step carries its reason (r-nine-step-checklist-complete).</item>
+      <item>Every refresh and consolidate records a 28-day baseline on publication and a `reevaluation_at` 90 days later (r-baseline-and-90-day-reevaluation).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-content-refresh-sop.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-content-refresh-sop.py">Validator implementing this schema and the signal and date arithmetic.</reference>
 </text>

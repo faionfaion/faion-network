@@ -1,42 +1,92 @@
 {
-  "__faion_header__": "purpose: content-refresh-sop example | consumes: AGENTS.md | produces: playbook-step | depends-on: 01-core-rules.xml | token-budget-impact: ~400",
-  "slug": "content-refresh-sop",
-  "owner": "playbook owner",
-  "steps": [
+  "__faion_header__": {
+    "purpose": "Template fixture for content-refresh-sop: _smoke-test.json, minimum playbook step that passes the validator",
+    "consumes": "evergreen inventory with ages, GSC export, GA4 landing-page report, rank tracker, thresholds",
+    "produces": "test fixture",
+    "depends-on": "content/01-core-rules.xml",
+    "token-budget-impact": "~1200"
+  },
+  "thresholds": {
+    "impressions_trend_pct": -20,
+    "position_decay_positions": 2,
+    "intent_shift_query_mix_pct": 30
+  },
+  "window": {
+    "trailing_days": 90,
+    "prior_days": 90,
+    "span_months": 6,
+    "source": "persisted_export"
+  },
+  "urls": [
     {
-      "id": "s1",
-      "input": "brief",
-      "owner": "lead",
-      "exit_criterion": "brief reviewed + scope confirmed",
-      "output_location": "docs/briefs/"
-    },
-    {
-      "id": "s2",
-      "input": "data",
-      "owner": "analyst",
-      "exit_criterion": "dataset >=30 records validated",
-      "output_location": "warehouse:tbl"
-    },
-    {
-      "id": "s3",
-      "input": "draft",
-      "owner": "writer",
-      "exit_criterion": "draft passes editorial check",
-      "output_location": "docs/drafts/"
-    },
-    {
-      "id": "s4",
-      "input": "draft",
-      "owner": "lead",
-      "exit_criterion": "signed off by named reviewer",
-      "output_location": "docs/published/"
+      "url": "https://example.com/blog/what-is-a-content-audit",
+      "evergreen": true,
+      "url_age_months": 31,
+      "dataset": {
+        "trailing": {
+          "gsc": {
+            "clicks": 860,
+            "impressions": 21000,
+            "avg_position": 3.2
+          },
+          "ga4": {
+            "sessions": 820,
+            "key_events": 33
+          },
+          "rank": {
+            "target_query": "what is a content audit",
+            "position": 3
+          }
+        },
+        "prior": {
+          "gsc": {
+            "clicks": 910,
+            "impressions": 22600,
+            "avg_position": 3.0
+          },
+          "ga4": {
+            "sessions": 870,
+            "key_events": 35
+          },
+          "rank": {
+            "target_query": "what is a content audit",
+            "position": 3
+          }
+        }
+      },
+      "signals": {
+        "impressions_trend_pct": -7.1,
+        "position_decay_positions": 0.2,
+        "intent_shift": false,
+        "intent_shift_note": "query mix change 4 percent; SERP features unchanged"
+      },
+      "verdict": "leave",
+      "leave": {
+        "reason": "all three signals inside thresholds: -7.1 percent impressions, 0.2 positions, no intent shift",
+        "next_review_at": "2026-11-04"
+      }
     }
   ],
   "decision_branches": [
     {
-      "when": "data_records < 30",
-      "then": "loop back to s2"
+      "signal": "intent_shift",
+      "when": "query mix changed by more than 30 percent or the SERP turned to a different result type",
+      "then": "kill"
+    },
+    {
+      "signal": "impressions_trend",
+      "when": "impressions down more than 20 percent period over period with no intent shift",
+      "then": "refresh"
+    },
+    {
+      "signal": "top_position_decay",
+      "when": "average position worse by more than 2 positions with no intent shift",
+      "then": "refresh"
+    },
+    {
+      "signal": "impressions_trend",
+      "when": "impressions within 20 percent and position within 2 positions",
+      "then": "leave"
     }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L101"
+  ]
 }

@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Activation Tactics — Playbook step</title>
+<title>Activation Tactics — Playbook step for {{ product_name }}</title>
 <style>:root{color-scheme:light dark}
 body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
 font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -25,13 +25,24 @@ code{background:#242424} pre{background:#1d1d1d}
 th{background:#1d1d1d} th,td{border-color:#333}
 blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
 <body>
-<h1>Activation Tactics — Playbook step</h1>
-<h2>Owner</h2>
-<p>{{ name }}</p>
-<h2>Steps</h2>
-<ol><li>id=s1 input=brief owner=lead exit_criterion=&quot;...&quot; output_location=docs/...</li><li>id=s2 input=data owner=analyst exit_criterion=&quot;...&quot; output_location=warehouse:tbl</li><li>id=s3 input=draft owner=writer exit_criterion=&quot;...&quot; output_location=docs/drafts/</li><li>id=s4 input=draft owner=lead exit_criterion=&quot;signoff&quot; output_location=docs/published/</li></ol>
+<h1>Activation Tactics — Playbook step for {{ product_name }}</h1>
+<h2>Activation</h2>
+<ul><li>activation_event: {{ activation_event_name }}</li><li>window_days: {{ window_days }}</li></ul>
+<h2>Measured drop-offs (from activation-metrics)</h2>
+<table><thead><tr><th>step</th><th>screen</th><th>current_conversion</th><th>live_tactic</th></tr></thead><tbody><tr><td>{{ target_step }}</td><td>&lt;path&gt;</td><td>{{ step_conversion_baseline }}</td><td>false</td></tr><tr><td>&lt;step&gt;</td><td>&lt;path&gt;</td><td>&lt;0.xxx&gt;</td><td>&lt;true when a tactic is already running on it this period&gt;</td></tr></tbody></table>
+<h2>Tactics (one per step; a second tactic on the same step only as an arm of one experiment_id)</h2>
+<h3>t1 — &lt;checklist | email_sequence | in_app_guide | segmented_onboarding&gt; on {{ target_step }}</h3>
+<ul><li>target_step: {{ target_step }}</li><li>step_conversion_baseline: {{ step_conversion_baseline }} (equals the step's current_conversion)</li><li>experiment_id: &lt;only when two tactics share the step&gt;</li></ul>
+<p>Checklist (3-5 items; exactly one activation_event: true, and it is required: true; every item has an action path or a tracked_event):</p>
+<table><thead><tr><th>id</th><th>label</th><th>required</th><th>activation_event</th><th>action</th><th>tracked_event</th></tr></thead><tbody><tr><td>&lt;snake_id&gt;</td><td>&lt;label&gt;</td><td>true</td><td>true</td><td>&lt;/path&gt;</td><td>&lt;event_name&gt;</td></tr><tr><td>&lt;snake_id&gt;</td><td>&lt;label&gt;</td><td>false</td><td>false</td><td>null</td><td>&lt;event_name&gt;</td></tr><tr><td>&lt;snake_id&gt;</td><td>&lt;label&gt;</td><td>false</td><td>false</td><td>&lt;/path&gt;</td><td>null</td></tr></tbody></table>
+<p>Email sequence (at most 4 sends inside window_days; Day 0 / 1 / 3 / 7; one CTA that lands on the action screen; not_activated evaluated at send time after Day 0):</p>
+<table><thead><tr><th>day</th><th>subject</th><th>cta_count</th><th>cta_url</th><th>expected_time_minutes</th><th>send_condition</th><th>condition_evaluated_at</th></tr></thead><tbody><tr><td>0</td><td>&lt;subject&gt;</td><td>1</td><td>&lt;https deep link to the action&gt;</td><td>&lt;n&gt;</td><td>always</td><td>send_time</td></tr><tr><td>1</td><td>&lt;subject&gt;</td><td>1</td><td>&lt;https deep link to the action&gt;</td><td>&lt;n&gt;</td><td>not_activated</td><td>send_time</td></tr></tbody></table>
+<p>In-app guide (only on the target step's screen):</p>
+<ul><li>screen: &lt;the step's screen&gt;</li><li>guides_on_screen: 1</li><li>dismissible_in_one_click: true</li><li>hidden_after_step_complete: true</li></ul>
+<p>Segmented onboarding (only when the key is captured at signup):</p>
+<ul><li>segment_key: &lt;snake_name&gt;, captured_at: signup</li><li>segments: &lt;name&gt; -&gt; first_action &lt;distinct per segment&gt;, same activation event</li></ul>
+<h2>Rollout steps (one per tactic)</h2>
+<table><thead><tr><th>id</th><th>tactic_id</th><th>action (audience, duration in closed signup weeks)</th><th>exit_criterion.metric</th><th>exit_criterion.baseline</th><th>exit_criterion.minimum_lift</th><th>output_location</th></tr></thead><tbody><tr><td>s1</td><td>t1</td><td>&lt;action&gt;</td><td>step_conversion or activation_rate</td><td>{{ step_conversion_baseline }}</td><td>&lt;minimum lift at which the tactic stays&gt;</td><td>&lt;path&gt;</td></tr></tbody></table>
 <h2>Decision branches</h2>
-<ul><li>when: signal_X &lt; threshold then: loop back to s2</li></ul>
-<h2>Deviation log reference</h2>
-<p>{{ path_link }}</p>
+<ul><li>defer_live_tactic — when: the target step already has a live tactic this period; then: defer until it has hit or missed its exit criterion</li><li>keep — when: metric at or above baseline + minimum_lift after the rollout; then: keep the tactic, move to the next drop-off</li><li>remove — when: metric below baseline + minimum_lift; then: remove the tactic, return to the drop-off ranking</li></ul>
 </body></html>

@@ -15,25 +15,28 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=rubric`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- The agency runs more than one discovery call a week, so leads need one comparable score.
+- A written ICP (industry, size, service line) exists for the fit anchors to count against.
+- The agency knows its annual contract value bands, so budget anchors can be currency ranges.
+- The person who was on each call can score it within 24 hours with a quote per axis.
+- A weekly pipeline retro exists where advance rate and close rate of advanced leads are looked at.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=rubric` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- One discovery call a week or fewer: qualify by judgement and revisit at higher volume.
+- No written ICP: write the criteria first; fit anchors cannot be observable without them.
+- The score is wanted for a "discuss" band rather than a binary advance / reject: this rubric has one threshold by design.
+- Calls are scored days later from CRM notes by someone who was not on them: the evidence rule cannot be met.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+| ICP criteria | three named criteria: industry, company size, service line | agency positioning doc |
+| Closed-deal history | closed-won / closed-lost with annual value and who signed, last two quarters | CRM export |
+| Annual contract value bands | floor and ceiling amounts with currency | finance / founders |
+| Discovery call notes or recording | transcript or notes with prospect quotes on budget, timing, sign-off | the call, within 24 hours |
+| Previous rubric version | rubric JSON with version, date, reason | this methodology's earlier output |
 
 ## Assumes Loaded
 
@@ -48,9 +51,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: four axes, weights sum to 1, observable anchors, 0-100 formula, single threshold, verified decision-maker, 24h scoring with evidence, versioned calibration | 1750 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the versioned rubric: four axes with two-decimal weights (sum 1.0, max 0.5), observable anchors per axis type, 0-100 formula, single threshold with the binary rule, weekly same-version retro, and scored leads with anchor index, evidence and authority per axis within 24 hours; valid and invalid rubrics; 8 forbidden patterns | ~3750 |
 | `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
+| `content/04-procedure.xml` | essential | 7 steps: write the ICP criteria, set the four axes and weights, write observable anchors, fix formula and threshold, score each call within 24 hours with evidence and verified authority, validate, run the weekly same-version retro | ~1450 |
+| `content/05-examples.xml` | recommended | Complete rubric v3 (0.3 / 0.3 / 0.2 / 0.2, EUR budget bands, threshold 60) with Nordwind Logistics scored at 75 and advanced, note per value, plus the rubric as usually written and what the validator prints | ~1900 |
 | `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
@@ -66,8 +70,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agency-discovery-call-scorecard.rubric.md.j2` | Markdown rubric scorecard skeleton |
-| `templates/agency-discovery-call-scorecard.rubric.md` | Markdown rubric scorecard skeleton Generated from `templates/agency-discovery-call-scorecard.rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/agency-discovery-call-scorecard.rubric.md.j2` | Markdown rubric skeleton: version block, four axes with observable anchors, formula and threshold, weekly retro, one scored-call block |
+| `templates/agency-discovery-call-scorecard.rubric.md` | Markdown rubric skeleton: version block, four axes with observable anchors, formula and threshold, weekly retro, one scored-call block. Generated from `templates/agency-discovery-call-scorecard.rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/agency-discovery-call-scorecard.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 

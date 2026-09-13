@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Google Analytics 4 Setup Worked Example" version="1.0.0" est_tokens="2500" depth="recommended">
+  <summary>One complete GA4 property config for a SaaS with a single-page web app: numeric property id and a G- stream, manual page_view with the history-change toggle off, four registered custom dimensions counted against the limits, three key events by exact name, a purchase event keyed on the order id, advanced Consent Mode v2 for EU, GB and CH, BigQuery linked before launch with 14-month retention, Measurement Protocol on the _ga client_id, and filters that exclude PayPal, Stripe and the auth subdomain as referrers, with a note on each non-obvious value; then the config as it is usually set up and what the validator prints.</summary>
+
+  <section title="Scenario">
+    <p>Acme launches a new marketing site plus a React app on example.com and shop.example.com, with checkout through Stripe and PayPal and login through auth.example.com. Traffic from the EU, UK and Switzerland needs consent; finance wants revenue reconciled against order ids; the analyst wants unsampled cohorts in BigQuery from day one.</p>
+  </section>
+
+  <section title="Resulting config">
+    <example type="good" title="property 123456789">
+      <code lang="json"><![CDATA[
+{
+  "property_id": "123456789",
+  "site_domain": "example.com",
+  "data_streams": [
+    {"name": "example.com web", "type": "web", "measurement_id": "G-AB12CD34EF", "spa": true, "manual_page_view": true, "send_page_view": false}
+  ],
+  "enhanced_measurement": {"page_views": true, "history_change_page_view": false, "scrolls": true, "outbound_clicks": true, "site_search": false, "video_engagement": false, "file_downloads": true, "form_interactions": false},
+  "custom_dimensions": {
+    "limits": {"event": 50, "user": 25, "item": 10, "metrics": 50},
+    "registered": [
+      {"name": "Plan tier", "parameter": "plan_tier", "scope": "user", "kind": "dimension", "registered_before_first_send": true},
+      {"name": "Funnel name", "parameter": "funnel_name", "scope": "event", "kind": "dimension", "registered_before_first_send": true},
+      {"name": "Step number", "parameter": "step_number", "scope": "event", "kind": "dimension", "registered_before_first_send": true},
+      {"name": "Seats", "parameter": "seats", "scope": "event", "kind": "metric", "registered_before_first_send": true}
+    ],
+    "used": {"event": 2, "user": 1, "item": 0, "metrics": 1}
+  },
+  "events": ["page_view", "sign_up", "generate_lead", "purchase", "funnel_step", "login"],
+  "key_events": [
+    {"event_name": "purchase", "counting": "once_per_event"},
+    {"event_name": "generate_lead", "counting": "once_per_session"},
+    {"event_name": "sign_up", "counting": "once_per_event"}
+  ],
+  "purchase": {"enabled": true, "required_parameters": ["transaction_id", "value", "currency", "items"], "transaction_id_source": "order_id", "stable_across_retries": true},
+  "consent": {"in_scope": true, "implementation": "advanced", "defaults_before_config": true, "signals": ["ad_storage", "analytics_storage", "ad_user_data", "ad_personalization"], "regions": ["EU", "GB", "CH"], "update_on_choice": true},
+  "bigquery_export": {"linked": true, "linked_before_launch": true, "linked_at": "2026-04-20", "project": "acme-analytics-prod", "dataset_location": "EU", "daily": true, "streaming": false, "sampling_threshold_events": 10000000, "decision_reports_source": "bigquery"},
+  "data_retention_months": 14,
+  "measurement_protocol": {"used": true, "client_id_source": "_ga cookie", "session_id_included": true, "engagement_time_msec_included": true, "api_secret_storage": "server_only", "fresh_client_id": false},
+  "traffic_filters": {
+    "internal": {"ip_rules": ["203.0.113.0/24", "198.51.100.17"], "state": "active"},
+    "checkout_and_auth_domains": ["paypal.com", "checkout.stripe.com", "auth.example.com"],
+    "unwanted_referrals": ["paypal.com", "checkout.stripe.com", "auth.example.com"],
+    "cross_domain": ["example.com", "shop.example.com"]
+  }
+}
+]]></code>
+      <note>`property_id` 123456789 is what `ga4_pull.py` and the BigQuery dataset name use; `G-AB12CD34EF` is what the snippet and `mp_track.py` use, and the config keeps them apart (r-property-id-and-measurement-id-distinct). The React app pushes `page_view` on route change, so the stream has `send_page_view: false` and `history_change_page_view` is off; the other toggles are declared so nobody asks where `file_download` came from (r-enhanced-measurement-declared-no-double-page-view). Four registrations, counted as 2 event-scoped dimensions, 1 user-scoped and 1 metric against the 50 / 25 / 50 limits, each registered before the first event carried the parameter (r-custom-dimensions-registered-within-limits). The three key events are copied from `events[]` character for character, with `generate_lead` counted once per session so a double form submit is one lead (r-key-events-declared-by-exact-name). `purchase` requires the four parameters and its `transaction_id` is the order id, so a reload of the confirmation page or a Measurement Protocol retry deduplicates (r-purchase-transaction-id-dedup). Consent defaults with the four v2 signals are pushed before the config call for EU, GB and CH, the CMP updates on choice, and the implementation is recorded as advanced (r-consent-mode-v2-defaults-before-config). BigQuery was linked on 2026-04-20, before the first production hit, in the EU location with daily export; retention is 14 months and any report past 10 million events is built from the export (r-bigquery-export-linked-before-launch). Server events reuse the `_ga` client_id with session_id and engagement time, and the api_secret lives only on the server (r-measurement-protocol-reuses-client-id). The internal filter is active on two IP rules, every checkout and auth domain is an unwanted referral, and the two site domains are in the cross-domain list (r-internal-traffic-referral-and-cross-domain).</note>
+    </example>
+  </section>
+
+  <section title="Rejected config">
+    <example type="bad" title="the same property as usually set up">
+      <code lang="json"><![CDATA[
+{
+  "property_id": "G-AB12CD34EF",
+  "site_domain": "example.com",
+  "data_streams": [
+    {"name": "example.com web", "type": "web", "measurement_id": "123456789", "spa": true, "manual_page_view": true, "send_page_view": true}
+  ],
+  "enhanced_measurement": {"page_views": true, "history_change_page_view": true, "scrolls": true, "outbound_clicks": true, "site_search": true, "video_engagement": true, "file_downloads": true, "form_interactions": true},
+  "custom_dimensions": {
+    "limits": {"event": 50, "user": 25, "item": 10, "metrics": 50},
+    "registered": [
+      {"name": "Plan tier", "parameter": "plan_tier", "scope": "event", "kind": "dimension", "registered_before_first_send": false}
+    ],
+    "used": {"event": 52, "user": 0, "item": 0, "metrics": 0}
+  },
+  "events": ["page_view", "sign_up", "purchase"],
+  "key_events": [
+    {"event_name": "Purchase", "counting": "once_per_event"},
+    {"event_name": "lead", "counting": "once_per_session"}
+  ],
+  "purchase": {"enabled": true, "required_parameters": ["value", "currency"], "transaction_id_source": "timestamp", "stable_across_retries": false},
+  "consent": {"in_scope": true, "implementation": "basic", "defaults_before_config": false, "signals": ["ad_storage", "analytics_storage"], "regions": ["EU"], "update_on_choice": true},
+  "bigquery_export": {"linked": false, "linked_before_launch": false, "linked_at": "2026-10-01", "project": "acme-analytics-prod", "dataset_location": "EU", "daily": true, "streaming": false, "sampling_threshold_events": 10000000, "decision_reports_source": "explorations"},
+  "data_retention_months": 2,
+  "measurement_protocol": {"used": true, "client_id_source": "uuid4", "session_id_included": false, "engagement_time_msec_included": false, "api_secret_storage": "browser_bundle", "fresh_client_id": true},
+  "traffic_filters": {
+    "internal": {"ip_rules": ["203.0.113.0/24"], "state": "testing"},
+    "checkout_and_auth_domains": ["paypal.com", "auth.example.com"],
+    "unwanted_referrals": [],
+    "cross_domain": []
+  }
+}
+]]></code>
+      <note>What the validator prints: `property_id` carries the `G-` prefix and the stream's `measurement_id` is numeric, the two swapped (r-property-id-and-measurement-id-distinct); the SPA stream has `manual_page_view: true` with `send_page_view: true` (r-enhanced-measurement-declared-no-double-page-view); `plan_tier` was registered after it was first sent (r-custom-dimensions-registered-within-limits); `Purchase` is not snake_case (r-key-events-declared-by-exact-name); `purchase.required_parameters` lacks `transaction_id` and `items`, the id source is a timestamp and it is not stable across retries (r-purchase-transaction-id-dedup); consent defaults come after config with two of four signals (r-consent-mode-v2-defaults-before-config); BigQuery is not linked, retention is 2 months and decision reports come from explorations (r-bigquery-export-linked-before-launch); Measurement Protocol mints a UUID, omits session_id and ships the api_secret in the browser bundle (r-measurement-protocol-reuses-client-id); the internal filter is in testing (r-internal-traffic-referral-and-cross-domain). Once those are fixed the cross-field checks add: the history-change page view is on while the app sends its own, so every screen counts twice; `used.event` says 52 while one event-scoped dimension is registered and the limit is 50; `Purchase` and `lead` are not names in `events[]`; and paypal.com and auth.example.com are checkout or auth domains missing from `unwanted_referrals`. What the reviewer sees: purchases attributed to `paypal.com / referral`, new users doubled by server hits, and a first six months that exist only inside the GA4 interface (payment-provider-self-referral, server-events-with-fresh-client-id, bigquery-linked-late).</note>
+    </example>
+  </section>
+</text>

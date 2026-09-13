@@ -1,18 +1,47 @@
-# purpose: conversion-tracking config template
-# consumes: inputs named in AGENTS.md Prerequisites
+# purpose: conversion-tracking config skeleton — destinations, events.yml registry in CI, Consent Mode v2 defaults, first-party server container, event taxonomy inside GA4 limits with transaction_id dedup, QA fixtures per event (matches content/02-output-contract.xml)
+# consumes: the business event list, the destinations, consent regions, DNS for the server subdomain, the QA run results per browser
 # produces: artefact conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml + content/06-decision-tree.xml
-# token-budget-impact: ~500 tokens when loaded
-slug: conversion-tracking
-owner: ""
-settings:
-  property_id: ""
-  stream: ""
-  consent_mode: "v2"
-  event_registry: "events.yml"          # r-event-registry-single-source; validate-events.py runs in CI
-  destinations: []                      # e.g. ga4, google_ads, meta_capi, plausible
-  transaction_id_field: "transaction_id" # r-monetary-conversion-carries-transaction-id; reused as Meta event_id
-  server_endpoint: ""                   # first-party subdomain, e.g. gtm.example.com (r-server-endpoint-first-party-domain)
-  qa_browsers: ["chrome", "safari", "firefox"]
-  qa_adblock_profile: true              # r-qa-fixtures-per-tracking-change
-deviation_log_reference: ""
+# depends-on: content/01-core-rules.xml + content/06-decision-tree.xml + templates/validate-events.py + templates/funnel-tracker.js
+# token-budget-impact: ~600 tokens when loaded
+site_domain: ""                       # registrable domain, e.g. example.com
+destinations: []                      # ga4 | google_ads | meta | plausible (at least one)
+registry:
+  file: "events.yml"                  # r-event-registry-single-source
+  ci_validator: "validate-events.py"
+  enforced_in_ci: true
+consent:                              # r-consent-state-before-any-tag
+  mode: "v2"
+  defaults_before_config: true        # gtag('consent','default') precedes gtag('config')
+  signals: [ad_storage, analytics_storage, ad_user_data, ad_personalization]
+  regional_defaults:
+    - {region: default, ad_storage: granted, analytics_storage: granted, ad_user_data: granted, ad_personalization: granted}
+    - {region: EU, ad_storage: denied, analytics_storage: denied, ad_user_data: denied, ad_personalization: denied}
+  server_honours_consent: true
+server_side:                          # r-server-endpoint-first-party-domain, r-browser-server-dedup-and-identifiers
+  enabled: false
+  endpoint: ""                        # first-party subdomain, e.g. gtm.example.com
+  cookies_http_only: true
+  forwards: [_fbp, _fbc, client_id, session_id]
+  client_id_source: "_ga cookie"
+  fresh_ids_generated: false
+events:                               # r-ga4-naming-and-parameter-limits, r-monetary-conversion-carries-transaction-id
+  - name: "purchase"                  # snake_case, max 40 chars, no google_/ga_/firebase_/_ prefix; recommended names verbatim
+    recommended: true
+    monetary: true
+    sent_from: [browser, server]
+    parameters:                       # max 25; string values max 100 chars; pii: false always; hashed: true for em / ph
+      - {name: transaction_id, type: string, max_string_length: 64, pii: false}
+      - {name: value, type: number, pii: false}
+      - {name: currency, type: currency, pii: false}
+      - {name: items, type: array, pii: false}
+    conversion_role: {ga4: key_event, google_ads: primary, meta: standard}
+    dedup: {event_id_field: transaction_id, shared_across_destinations: true}
+qa:                                   # r-qa-fixtures-per-tracking-change, r-no-pii-in-parameters
+  change_ref: ""
+  browsers: [chrome, safari, firefox]
+  adblock_profile: true
+  fixtures:
+    - event: "purchase"
+      expected_parameters: [transaction_id, value, currency, items]
+      example_payload: {transaction_id: "ORD-000001", value: 0.0, currency: "EUR", items: []}   # no @, no phone numbers
+      results: []                     # one {browser, destination, seen} per browser (incl. chrome_adblock) per destination

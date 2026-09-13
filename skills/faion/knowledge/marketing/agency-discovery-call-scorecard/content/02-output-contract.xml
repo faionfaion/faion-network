@@ -1,138 +1,223 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Discovery Call Scorecard Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `rubric` artefact this methodology produces. Validator at scripts/validate-agency-discovery-call-scorecard.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Agency Discovery Call Scorecard Output Contract" version="1.2.0" est_tokens="3750" depth="essential">
+  <summary>JSON Schema (draft-07) for the versioned rubric and the scored calls it governs: four axes (fit, budget, urgency, decision_maker) with two-decimal weights summing to 1.0 and none above 0.5, anchors ordered low to high and written as observable facts (currency ranges, calendar windows, roles or confirmed sign-off, ICP criteria met), the 0-100 formula, a single threshold strictly inside the range with the binary advance rule, the weekly same-version retro, and per lead an anchor pick with an evidence note per axis, scored within 24 hours by someone on the call, with `decision_maker` defaulting to the lowest anchor when authority was not confirmed. Validator at scripts/validate-agency-discovery-call-scorecard.py enforces it, including the weight sum and the score recomputation.</summary>
+
+  <output-contract>
+    <required>
+      <field name="rubric_version / version_date / version_reason" type="string" required="true">every change to weights or anchors is a new version with its date and reason (r-versioned-weekly-calibration)</field>
+      <field name="axes" type="list" required="true">exactly the four named axes plus any extra the agency can justify; each with `weight` (two decimals, at most 0.5, all summing to 1.0) and `anchors[]` ordered lowest to highest, every anchor an observable fact for its axis (r-four-axes-fit-budget-urgency-decision-maker, r-weights-sum-to-one-no-dominant-axis, r-anchors-are-observable-facts)</field>
+      <field name="score_range" type="object" required="true">`min: 0`, `max: 100` (r-score-formula-0-100)</field>
+      <field name="formula" type="string" required="true">the exact text `sum(weight * anchor_index / (anchor_count - 1)) * 100` (r-score-formula-0-100)</field>
+      <field name="decision_threshold / threshold_rule" type="number" required="true">one number strictly inside the range and the binary rule "score at or above advances; below is rejected or nurtured" (r-single-threshold-inside-range)</field>
+      <field name="retro" type="object" required="true">`cadence: weekly`, `same_version_only: true`, `compares` including `advance_rate` and `close_rate_of_advanced` (r-versioned-weekly-calibration)</field>
+      <field name="leads" type="list" required="false">scored calls: `lead`, `call_date`, `scored_at` within 24 hours, `scorer_on_call: true`, `rubric_version` equal to the rubric's, `axis_scores[]` with an `anchor_index` and an `evidence` note per axis (`authority_confirmed` on `decision_maker`), `score` recomputed by the formula, `decision` matching the threshold (r-scored-within-24h-with-evidence, r-decision-maker-scored-on-verified-authority)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">an anchor label that is an adjective ("poor", "good", "excellent", "strong", "weak") or, on `budget`, carries no amount, on `urgency` no calendar window, on `decision_maker` no role or authority — adjective-anchors</pattern>
+      <pattern id="f2">weights that do not sum to 1.0 within 0.001, or any weight above 0.5 — weights-do-not-sum</pattern>
+      <pattern id="f3">a `decision_maker` score above the lowest anchor with `authority_confirmed: false` — self-declared-decision-maker</pattern>
+      <pattern id="f4">a threshold at 0 or 100, a second threshold, or a band — grey-band-threshold</pattern>
+      <pattern id="f5">`scored_at` more than 24 hours after `call_date`, `scorer_on_call: false`, or an empty `evidence` on any axis — late-scoring-without-evidence</pattern>
+      <pattern id="f6">a lead scored under a `rubric_version` other than the rubric's, or a retro with `same_version_only: false` — live-rubric-edited-in-place</pattern>
+      <pattern id="f7">a `score` that the formula does not reproduce from the anchor picks, or an `anchor_index` outside the axis's anchors — r-score-formula-0-100</pattern>
+      <pattern id="f8">`axes[]` missing any of fit, budget, urgency, decision_maker — r-four-axes-fit-budget-urgency-decision-maker</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/agency-discovery-call-scorecard.json",
   "title": "Agency Discovery Call Scorecard rubric",
   "type": "object",
-  "required": [
-    "slug",
-    "axes",
-    "score_range",
-    "decision_threshold",
-    "owner"
-  ],
+  "required": ["rubric_version", "version_date", "version_reason", "axes", "score_range", "formula", "decision_threshold", "threshold_rule", "retro"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "datetime": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "snake": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "anchor": {"type": "string", "minLength": 8, "not": {"pattern": "^(?i:poor|fair|good|excellent|strong|weak|low|medium|high)$"}}
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "agency-discovery-call-scorecard"
-    },
+    "__faion_header__": {"type": ["object", "string"]},
+    "rubric_version": {"type": "string", "pattern": "^v[0-9]+$"},
+    "version_date": {"$ref": "#/definitions/date"},
+    "version_reason": {"type": "string", "minLength": 10},
     "axes": {
       "type": "array",
-      "minItems": 3,
+      "minItems": 4,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "fit"}}}},
+        {"contains": {"properties": {"name": {"const": "budget"}}}},
+        {"contains": {"properties": {"name": {"const": "urgency"}}}},
+        {"contains": {"properties": {"name": {"const": "decision_maker"}}}}
+      ],
       "items": {
         "type": "object",
-        "required": [
-          "name",
-          "weight",
-          "anchors"
-        ],
+        "required": ["name", "weight", "anchors"],
+        "additionalProperties": false,
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "weight": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          },
-          "anchors": {
-            "type": "array",
-            "minItems": 2,
-            "items": {
-              "type": "string"
-            }
-          }
+          "name": {"$ref": "#/definitions/snake"},
+          "weight": {"type": "number", "minimum": 0.01, "maximum": 0.5, "multipleOf": 0.01},
+          "anchors": {"type": "array", "minItems": 2, "items": {"$ref": "#/definitions/anchor"}}
         },
-        "additionalProperties": false
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "budget"}}}, "then": {"properties": {"anchors": {"items": {"pattern": "[0-9]"}}}}},
+          {"if": {"properties": {"name": {"const": "urgency"}}}, "then": {"properties": {"anchors": {"items": {"pattern": "(?i)(day|week|month|quarter|Q[1-4]|20[0-9]{2}|no date|no timeline)"}}}}},
+          {"if": {"properties": {"name": {"const": "decision_maker"}}}, "then": {"properties": {"anchors": {"items": {"pattern": "(?i)(owner|founder|partner|director|head|manager|vp|cfo|ceo|cmo|coo|procurement|sign-off|signs|approve|authority|contributor|not discussed)"}}}}},
+          {"if": {"properties": {"name": {"const": "fit"}}}, "then": {"properties": {"anchors": {"items": {"pattern": "(?i)(icp|criteria|criterion|industry|size|service line|headcount|revenue)"}}}}}
+        ]
       }
     },
     "score_range": {
-      "type": "array",
-      "minItems": 2,
-      "maxItems": 2,
-      "items": {
-        "type": "number"
+      "type": "object",
+      "required": ["min", "max"],
+      "additionalProperties": false,
+      "properties": {"min": {"const": 0}, "max": {"const": 100}}
+    },
+    "formula": {"const": "sum(weight * anchor_index / (anchor_count - 1)) * 100"},
+    "decision_threshold": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100},
+    "threshold_rule": {"const": "score at or above decision_threshold advances; below is rejected or nurtured"},
+    "retro": {
+      "type": "object",
+      "required": ["cadence", "same_version_only", "compares"],
+      "additionalProperties": false,
+      "properties": {
+        "cadence": {"const": "weekly"},
+        "same_version_only": {"const": true},
+        "compares": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "enum": ["advance_rate", "close_rate_of_advanced"]},
+          "allOf": [{"contains": {"const": "advance_rate"}}, {"contains": {"const": "close_rate_of_advanced"}}]
+        }
       }
     },
-    "decision_threshold": {
-      "type": "number"
-    },
-    "owner": {
-      "type": "string"
+    "leads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lead", "call_date", "scored_at", "scorer_on_call", "rubric_version", "axis_scores", "score", "decision"],
+        "additionalProperties": false,
+        "properties": {
+          "lead": {"type": "string", "minLength": 2},
+          "call_date": {"$ref": "#/definitions/datetime"},
+          "scored_at": {"$ref": "#/definitions/datetime"},
+          "scorer_on_call": {"const": true},
+          "rubric_version": {"type": "string", "pattern": "^v[0-9]+$"},
+          "axis_scores": {
+            "type": "array",
+            "minItems": 4,
+            "items": {
+              "type": "object",
+              "required": ["axis", "anchor_index", "evidence"],
+              "additionalProperties": false,
+              "properties": {
+                "axis": {"$ref": "#/definitions/snake"},
+                "anchor_index": {"type": "integer", "minimum": 0},
+                "evidence": {"type": "string", "minLength": 15},
+                "authority_confirmed": {"type": "boolean"}
+              },
+              "if": {"properties": {"axis": {"const": "decision_maker"}}},
+              "then": {"required": ["authority_confirmed"]}
+            }
+          },
+          "score": {"type": "number", "minimum": 0, "maximum": 100},
+          "decision": {"type": "string", "enum": ["advance", "reject", "nurture"]}
+        }
+      }
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "agency-discovery-call-scorecard",
+  "rubric_version": "v3",
+  "version_date": "2026-05-04",
+  "version_reason": "budget anchors moved from 10k/30k to 15k/40k EUR after Q1 close data showed no closed deal under 15k",
   "axes": [
-    {
-      "name": "fit",
-      "weight": 0.3,
-      "anchors": [
-        "poor",
-        "good",
-        "excellent"
-      ]
-    },
-    {
-      "name": "budget",
-      "weight": 0.3,
-      "anchors": [
-        "<5k",
-        "5-20k",
-        ">20k"
-      ]
-    },
-    {
-      "name": "urgency",
-      "weight": 0.2,
-      "anchors": [
-        "browsing",
-        "this quarter",
-        "this month"
-      ]
-    },
-    {
-      "name": "decision_maker",
-      "weight": 0.2,
-      "anchors": [
-        "IC",
-        "manager",
-        "owner"
-      ]
-    }
+    {"name": "fit", "weight": 0.3, "anchors": ["outside ICP: none of industry, size or service line match", "meets 1-2 of 3 ICP criteria", "meets all 3 ICP criteria and asks for our core service line"]},
+    {"name": "budget", "weight": 0.3, "anchors": ["no budget named or under 15k EUR per year", "15k-40k EUR per year stated on the call", "above 40k EUR per year stated on the call"]},
+    {"name": "urgency", "weight": 0.2, "anchors": ["no date; browsing", "start this quarter", "start this month or a named deadline within 30 days"]},
+    {"name": "decision_maker", "weight": 0.2, "anchors": ["authority not discussed, or an individual contributor", "manager who must get sign-off from a named person", "owner, partner or director who confirmed they approve the spend"]}
   ],
-  "score_range": [
-    0,
-    100
-  ],
+  "score_range": {"min": 0, "max": 100},
+  "formula": "sum(weight * anchor_index / (anchor_count - 1)) * 100",
   "decision_threshold": 60,
-  "owner": "sales lead"
+  "threshold_rule": "score at or above decision_threshold advances; below is rejected or nurtured",
+  "retro": {"cadence": "weekly", "same_version_only": true, "compares": ["advance_rate", "close_rate_of_advanced"]},
+  "leads": [
+    {
+      "lead": "Nordwind Logistics",
+      "call_date": "2026-05-06T10:00:00Z",
+      "scored_at": "2026-05-06T14:20:00Z",
+      "scorer_on_call": true,
+      "rubric_version": "v3",
+      "axis_scores": [
+        {"axis": "fit", "anchor_index": 2, "evidence": "logistics SME, 120 staff, asked for paid search management: all three ICP criteria"},
+        {"axis": "budget", "anchor_index": 1, "evidence": "'we have around 2,500 a month for this' = 30k EUR per year"},
+        {"axis": "urgency", "anchor_index": 2, "evidence": "'peak season starts in June, we need campaigns live by 1 June'"},
+        {"axis": "decision_maker", "anchor_index": 1, "evidence": "marketing manager; 'I need to run the number past our CFO, Eva' - authority not confirmed on the call", "authority_confirmed": false}
+      ],
+      "score": 75,
+      "decision": "advance"
+    }
+  ]
 }
-]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+]]></example>
+
+    <example valid="false"><![CDATA[
 {
-  "slug": "agency-discovery-call-scorecard",
-  "axes": []
+  "rubric_version": "v3",
+  "version_date": "2026-05-04",
+  "version_reason": "tweaked weights on Wednesday",
+  "axes": [
+    {"name": "fit", "weight": 0.4, "anchors": ["poor", "good", "excellent"]},
+    {"name": "budget", "weight": 0.4, "anchors": ["small budget", "decent budget", "large budget"]},
+    {"name": "urgency", "weight": 0.2, "anchors": ["not urgent", "somewhat urgent", "very urgent"]},
+    {"name": "decision_maker", "weight": 0.2, "anchors": ["individual contributor", "manager who must get sign-off from a named person", "owner or director who confirmed they approve the spend"]}
+  ],
+  "score_range": {"min": 0, "max": 100},
+  "formula": "sum(weight * anchor_index / (anchor_count - 1)) * 100",
+  "decision_threshold": 100,
+  "threshold_rule": "score at or above decision_threshold advances; below is rejected or nurtured",
+  "retro": {"cadence": "weekly", "same_version_only": false, "compares": ["advance_rate"]},
+  "leads": [
+    {
+      "lead": "Nordwind Logistics",
+      "call_date": "2026-05-06T10:00:00Z",
+      "scored_at": "2026-05-09T17:00:00Z",
+      "scorer_on_call": true,
+      "rubric_version": "v2",
+      "axis_scores": [
+        {"axis": "fit", "anchor_index": 2, "evidence": "seemed like a great fit overall"},
+        {"axis": "budget", "anchor_index": 2, "evidence": "they can probably afford us"},
+        {"axis": "urgency", "anchor_index": 1, "evidence": "sounded fairly keen to start"},
+        {"axis": "decision_maker", "anchor_index": 2, "evidence": "CRM title says Head of Marketing", "authority_confirmed": false}
+      ],
+      "score": 85,
+      "decision": "advance"
+    }
+  ]
 }
-]]></code>
-    <note>axes empty (need &gt;=3), missing score_range, decision_threshold, owner.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`axes[]` contains fit, budget, urgency and decision_maker (r-four-axes-fit-budget-urgency-decision-maker).</item>
+      <item>Weights have at most two decimals, none above 0.5, and sum to 1.0 within 0.001 (r-weights-sum-to-one-no-dominant-axis).</item>
+      <item>Every anchor is a fact the caller can quote: amounts on budget, calendar windows on urgency, roles or confirmed sign-off on decision_maker, ICP criteria on fit; anchors are ordered lowest to highest (r-anchors-are-observable-facts).</item>
+      <item>`score_range` is 0-100, `formula` is written in the rubric, and every lead's `score` equals `sum(weight * anchor_index / (anchor_count - 1)) * 100` (r-score-formula-0-100).</item>
+      <item>`decision_threshold` is one number strictly inside the range and each lead's `decision` follows the binary rule (r-single-threshold-inside-range).</item>
+      <item>`decision_maker` is at the lowest anchor whenever `authority_confirmed` is false (r-decision-maker-scored-on-verified-authority).</item>
+      <item>Every lead is scored within 24 hours of `call_date` by someone on the call, with an evidence note on every axis (r-scored-within-24h-with-evidence).</item>
+      <item>Every lead carries the rubric's `rubric_version`; the retro is weekly, same-version only, and compares advance rate and close rate of advanced leads (r-versioned-weekly-calibration).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-agency-discovery-call-scorecard.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-agency-discovery-call-scorecard.py">Validator implementing this schema and the weight and score arithmetic.</reference>
 </text>

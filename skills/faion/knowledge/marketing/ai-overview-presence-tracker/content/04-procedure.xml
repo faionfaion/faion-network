@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="AI Overview Presence Tracker Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply AI Overview Presence Tracker end-to-end from inputs to a validated `report` artefact + human signoff.</summary>
+<text id="04-procedure" title="AI Overview Presence Tracker Procedure" version="1.2.0" est_tokens="1500" depth="essential">
+  <summary>Seven steps from a query list to the 8-week report: freeze a versioned query set of 20 mapped queries, pin the scrape configuration after checking AIO availability, scrape weekly on the same day and record failures as missing, set citation by host match, compute the three metrics with their denominators per week and for the window, write co-occurrence-only findings, and build the retrofit list when the window closes.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="freeze-the-versioned-query-set">
+      <input>Candidate queries from Search Console with their target pages on the tracked domain.</input>
+      <action>Pick at least 20 queries, each mapped to one `target_url` on `tracked_domain`. Write `query_set_version`, `window_start`, and `window_end` = start + 55 days in `templates/ai-overview-presence-tracker.report.md.j2`. Any later add or remove starts a new version with its own window.</action>
+      <output>`query_set_version`, `tracked_domain`, `included_subdomains`, `queries[]`, window dates.</output>
+      <decision-gate>Fewer than 20 mapped queries: extend the set before the window starts (06-decision-tree.xml, r-fixed-versioned-query-set).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="pin-the-scrape-configuration">
+      <input>The scrape adapter (SE Ranking or equivalent); the market the pages serve.</input>
+      <action>Confirm AI Overviews are available for the chosen country and language, then record `scrape_config` with `adapter`, `country`, `language`, `device` (mobile or desktop), `logged_out: true`, `aio_available_checked: true`. Do not change any of these inside the window.</action>
+      <output>`scrape_config`.</output>
+      <decision-gate>The adapter returns no AIO panels for that market: stop, nothing to track. A setting changes mid-window: split the series at the change (r-fixed-locale-device-logged-out).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `report` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="scrape-weekly-and-record-failures-as-missing">
+      <input>The adapter output for every query, once per week on the scheduled weekday (within 48 hours).</input>
+      <action>Write one `rows[]` entry per query per week: `observed_at`, `status: observed`, `aio_present`, `citations[]` (every URL the panel cites), `selected_snippet`, `panel_position`. When the scrape failed or returned a panel without its citation list, write `status: missing` with nulls; never fill it from the adjacent week.</action>
+      <output>`rows[]` for the week; `weeks_observed` incremented.</output>
+      <decision-gate>A present panel with an empty citation list is a scrape failure, not zero citations: mark the row missing and rerun (r-per-query-row-fields, r-weekly-same-day-no-interpolation).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-ai-overview-presence-tracker.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="set-our-domain-cited-by-host-match">
+      <input>Each observed row's `citations[]`; `tracked_domain` and `included_subdomains`.</input>
+      <action>Set `our_domain_cited: true` only when a citation URL's registrable host equals `tracked_domain` or a listed subdomain; otherwise false. Ignore brand mentions in the snippet, syndicated copies and competitor pages quoting ours.</action>
+      <output>`rows[].our_domain_cited`.</output>
+      <decision-gate>A row is true with no matching host: correct it before computing rates (r-our-domain-cited-exact-host-match).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="compute-the-three-metrics">
+      <input>`rows[]` for every week so far.</input>
+      <action>For each week and for the window add `aio_presence_rate` = present / observed (`ratio`), `our_citation_rate` = cited / present (`ratio`) and `median_panel_position` over present panels (`count`), each with `numerator` and `denominator`. A week with missing rows uses the reduced denominator.</action>
+      <output>`metrics[]`.</output>
+      <decision-gate>A citation rate computed over all queries rather than over present panels is rejected (r-report-metrics-presence-citation-position).</decision-gate>
     </step>
 
+    <step n="6" name="write-co-occurrence-findings">
+      <input>`metrics[]`; Search Console clicks and impressions for the same queries.</input>
+      <action>For each finding name the `metric` and the period in `text`, set `co_occurrence_only: true` and `causal: false`. Search Console movements may be shown next to presence data and described as co-occurring; no sentence attributes clicks to the panel.</action>
+      <output>`findings[]`.</output>
+      <decision-gate>Text reads "cost us", "because of", "led to": rewrite as co-occurrence (r-no-click-attribution-to-aio).</decision-gate>
+    </step>
+
+    <step n="7" name="build-the-retrofit-list-and-validate">
+      <input>Eight weeks of `rows[]`; Search Console impressions per query for the window.</input>
+      <action>When `weeks_observed` is 8, list every query with `aio_present` true in at least 5 weeks and `our_domain_cited` false in each of the last 4, with `target_url`, `weeks_present`, `impressions` and the `cited_domains` seen in its panels; rank by impressions descending. Run `scripts/validate-ai-overview-presence-tracker.py --file`.</action>
+      <output>`retrofit_list[]`; validated report.</output>
+      <decision-gate>Fewer than 8 weeks observed: publish metrics only, `retrofit_list` stays empty (r-retrofit-priority-rule).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Report validates via `scripts/validate-ai-overview-presence-tracker.py` with no violation.</item>
+      <item>Every metric recomputes from the rows with the stated denominators, and every missing week is visible as a reduced denominator.</item>
+      <item>The retrofit list contains only queries that passed the 5-of-8 and 4-week-uncited gate, ranked by impressions.</item>
+    </list>
   </section>
 </text>

@@ -1,69 +1,361 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Conversion Tracking Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `config` artefact this methodology produces. Validator at scripts/validate-conversion-tracking.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Conversion Tracking Output Contract" version="1.2.0" est_tokens="5400" depth="essential">
+  <summary>JSON Schema (draft-07) for the conversion-tracking config: the site domain and destinations, the `events.yml` registry enforced by `validate-events.py` in CI, Consent Mode v2 defaults pushed before the config call with regional defaults and mirrored server-side, the first-party server endpoint that forwards the browser identifiers and never mints its own, an event taxonomy inside the GA4 limits where every monetary event carries value, currency and a per-order transaction_id shared as the event id across destinations, and a QA record with one fixture per event run in Chrome, Safari, Firefox and an ad-blocker profile, whose example payloads carry no PII. Validator at scripts/validate-conversion-tracking.py enforces it, including the endpoint host, the dual-send dedup and the fixture coverage.</summary>
+
+  <output-contract>
+    <required>
+      <field name="site_domain / destinations" type="string" required="true">the registrable site domain and at least one of ga4, google_ads, meta, plausible</field>
+      <field name="registry" type="object" required="true">`file: events.yml`, `ci_validator: validate-events.py`, `enforced_in_ci: true` (r-event-registry-single-source)</field>
+      <field name="consent" type="object" required="true">`mode: v2`, `defaults_before_config: true`, the four `signals`, `regional_defaults[]` with `region`, `server_honours_consent: true` (r-consent-state-before-any-tag)</field>
+      <field name="server_side" type="object" required="true">`enabled`; when enabled, `endpoint` on a first-party subdomain of `site_domain`, `cookies_http_only: true`, `forwards` including `_fbp`, `_fbc`, `client_id`, `session_id`, `client_id_source: _ga cookie`, `fresh_ids_generated: false` (r-server-endpoint-first-party-domain, r-browser-server-dedup-and-identifiers)</field>
+      <field name="events" type="list" required="true">each with snake_case `name` (at most 40 characters, no reserved prefix), `recommended`, at most 25 `parameters` (names at most 40, string values at most 100, `pii: false`, `hashed` for matching identifiers), `conversion_role` per destination, `monetary`, `sent_from`, and `dedup` (`event_id_field`, `shared_across_destinations: true`) whenever monetary or sent from both browser and server (r-ga4-naming-and-parameter-limits, r-monetary-conversion-carries-transaction-id, r-browser-server-dedup-and-identifiers, r-event-registry-single-source)</field>
+      <field name="qa" type="object" required="true">`change_ref`, `browsers` Chrome / Safari / Firefox, `adblock_profile: true`, `fixtures[]` one per event with `expected_parameters`, a PII-free `example_payload` and `results[]` per browser and destination (r-qa-fixtures-per-tracking-change, r-no-pii-in-parameters)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a monetary event without `value`, `currency` and `transaction_id` parameters, or whose `dedup.event_id_field` is not `transaction_id` — double-counted-conversions</pattern>
+      <pattern id="f2">an event name not in snake_case, over 40 characters, with a reserved prefix, or a synonym of a recommended event (`order_completed`, `signup`, `lead`) — event-name-drift, r-ga4-naming-and-parameter-limits</pattern>
+      <pattern id="f3">`consent.defaults_before_config: false`, a missing v2 signal, or `server_honours_consent: false` — tags-fire-before-consent</pattern>
+      <pattern id="f4">`server_side.fresh_ids_generated: true`, or `client_id_source` other than the `_ga` cookie, or `_fbp` / `_fbc` not forwarded with Meta as a destination — fresh-client-id-server-side</pattern>
+      <pattern id="f5">a parameter with `pii: true`, an unhashed matching identifier, or an example payload containing an `@` or a phone-shaped string — pii-in-event-payload</pattern>
+      <pattern id="f6">fixtures run in fewer than three browsers or without the ad-blocker profile, or an event with no fixture — qa-only-in-chrome</pattern>
+      <pattern id="f7">`server_side.endpoint` not a subdomain of `site_domain`, or `cookies_http_only: false` — r-server-endpoint-first-party-domain</pattern>
+      <pattern id="f8">an event sent from both browser and server without `dedup`, or `registry.enforced_in_ci: false` — r-browser-server-dedup-and-identifiers, r-event-registry-single-source</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/conversion-tracking.json",
   "title": "Conversion Tracking config",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "settings",
-    "deviation_log_reference"
-  ],
+  "required": ["site_domain", "destinations", "registry", "consent", "server_side", "events", "qa"],
+  "additionalProperties": false,
+  "definitions": {
+    "host": {"type": "string", "pattern": "^[a-z0-9.-]+\\.[a-z]{2,}$"},
+    "destination": {"type": "string", "enum": ["ga4", "google_ads", "meta", "plausible"]},
+    "snake40": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,39}$", "not": {"pattern": "^(google_|ga_|firebase_|_)"}},
+    "consent_value": {"type": "string", "enum": ["denied", "granted"]}
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "conversion-tracking"
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 1
-    },
-    "settings": {
+    "__faion_header__": {"type": ["object", "string"]},
+    "site_domain": {"$ref": "#/definitions/host"},
+    "destinations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/definitions/destination"}},
+    "registry": {
       "type": "object",
-      "minProperties": 3,
-      "additionalProperties": true
+      "required": ["file", "ci_validator", "enforced_in_ci"],
+      "additionalProperties": false,
+      "properties": {"file": {"const": "events.yml"}, "ci_validator": {"const": "validate-events.py"}, "enforced_in_ci": {"const": true}}
     },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
+    "consent": {
+      "type": "object",
+      "required": ["mode", "defaults_before_config", "signals", "regional_defaults", "server_honours_consent"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"const": "v2"},
+        "defaults_before_config": {"const": true},
+        "signals": {
+          "type": "array",
+          "minItems": 4,
+          "items": {"type": "string", "enum": ["ad_storage", "analytics_storage", "ad_user_data", "ad_personalization"]},
+          "allOf": [{"contains": {"const": "ad_storage"}}, {"contains": {"const": "analytics_storage"}}, {"contains": {"const": "ad_user_data"}}, {"contains": {"const": "ad_personalization"}}]
+        },
+        "regional_defaults": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["region", "ad_storage", "analytics_storage", "ad_user_data", "ad_personalization"],
+            "additionalProperties": false,
+            "properties": {
+              "region": {"type": "string", "pattern": "^[A-Z]{2}(-[A-Z0-9]{1,3})?$|^default$"},
+              "ad_storage": {"$ref": "#/definitions/consent_value"},
+              "analytics_storage": {"$ref": "#/definitions/consent_value"},
+              "ad_user_data": {"$ref": "#/definitions/consent_value"},
+              "ad_personalization": {"$ref": "#/definitions/consent_value"}
+            }
+          }
+        },
+        "server_honours_consent": {"const": true}
+      }
+    },
+    "server_side": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {"enabled": {"type": "boolean"}},
+      "if": {"properties": {"enabled": {"const": true}}},
+      "then": {
+        "required": ["endpoint", "cookies_http_only", "forwards", "client_id_source", "fresh_ids_generated"],
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {"const": true},
+          "endpoint": {"$ref": "#/definitions/host"},
+          "cookies_http_only": {"const": true},
+          "forwards": {"type": "array", "minItems": 2, "items": {"type": "string", "enum": ["_fbp", "_fbc", "client_id", "session_id"]}, "allOf": [{"contains": {"const": "client_id"}}, {"contains": {"const": "session_id"}}]},
+          "client_id_source": {"const": "_ga cookie"},
+          "fresh_ids_generated": {"const": false}
+        }
+      },
+      "else": {"additionalProperties": false, "properties": {"enabled": {"const": false}}}
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "recommended", "parameters", "conversion_role", "monetary", "sent_from"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"$ref": "#/definitions/snake40"},
+          "recommended": {"type": "boolean"},
+          "parameters": {
+            "type": "array",
+            "maxItems": 25,
+            "items": {
+              "type": "object",
+              "required": ["name", "type", "pii"],
+              "additionalProperties": false,
+              "properties": {
+                "name": {"$ref": "#/definitions/snake40"},
+                "type": {"type": "string", "enum": ["string", "number", "currency", "boolean", "array"]},
+                "max_string_length": {"type": "integer", "minimum": 1, "maximum": 100},
+                "pii": {"const": false},
+                "hashed": {"type": "boolean"}
+              }
+            }
+          },
+          "conversion_role": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ga4": {"type": ["string", "null"], "enum": ["key_event", "event", null]},
+              "google_ads": {"type": ["string", "null"], "enum": ["primary", "secondary", null]},
+              "meta": {"type": ["string", "null"], "enum": ["standard", "custom", null]},
+              "plausible": {"type": ["string", "null"], "enum": ["goal", "event", null]}
+            }
+          },
+          "monetary": {"type": "boolean"},
+          "sent_from": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "enum": ["browser", "server"]}},
+          "dedup": {
+            "type": "object",
+            "required": ["event_id_field", "shared_across_destinations"],
+            "additionalProperties": false,
+            "properties": {"event_id_field": {"$ref": "#/definitions/snake40"}, "shared_across_destinations": {"const": true}}
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"monetary": {"const": true}}}, "then": {"required": ["dedup"], "properties": {"dedup": {"properties": {"event_id_field": {"const": "transaction_id"}}}}}},
+          {"if": {"properties": {"sent_from": {"minItems": 2}}}, "then": {"required": ["dedup"]}}
+        ]
+      }
+    },
+    "qa": {
+      "type": "object",
+      "required": ["change_ref", "browsers", "adblock_profile", "fixtures"],
+      "additionalProperties": false,
+      "properties": {
+        "change_ref": {"type": "string", "minLength": 3},
+        "browsers": {"type": "array", "minItems": 3, "items": {"type": "string", "enum": ["chrome", "safari", "firefox"]}, "allOf": [{"contains": {"const": "chrome"}}, {"contains": {"const": "safari"}}, {"contains": {"const": "firefox"}}]},
+        "adblock_profile": {"const": true},
+        "fixtures": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["event", "expected_parameters", "example_payload", "results"],
+            "additionalProperties": false,
+            "properties": {
+              "event": {"$ref": "#/definitions/snake40"},
+              "expected_parameters": {"type": "array", "items": {"$ref": "#/definitions/snake40"}},
+              "example_payload": {"type": "object"},
+              "results": {
+                "type": "array",
+                "minItems": 4,
+                "items": {
+                  "type": "object",
+                  "required": ["browser", "destination", "seen"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "browser": {"type": "string", "enum": ["chrome", "safari", "firefox", "chrome_adblock"]},
+                    "destination": {"$ref": "#/definitions/destination"},
+                    "seen": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "conversion-tracking",
-  "owner": "growth ops",
-  "settings": {
-    "property_id": "G-XXXXXXX",
-    "stream": "web",
-    "consent_mode": "v2"
+  "site_domain": "example.com",
+  "destinations": ["ga4", "google_ads", "meta"],
+  "registry": {"file": "events.yml", "ci_validator": "validate-events.py", "enforced_in_ci": true},
+  "consent": {
+    "mode": "v2",
+    "defaults_before_config": true,
+    "signals": ["ad_storage", "analytics_storage", "ad_user_data", "ad_personalization"],
+    "regional_defaults": [
+      {"region": "default", "ad_storage": "granted", "analytics_storage": "granted", "ad_user_data": "granted", "ad_personalization": "granted"},
+      {"region": "EU", "ad_storage": "denied", "analytics_storage": "denied", "ad_user_data": "denied", "ad_personalization": "denied"},
+      {"region": "GB", "ad_storage": "denied", "analytics_storage": "denied", "ad_user_data": "denied", "ad_personalization": "denied"}
+    ],
+    "server_honours_consent": true
   },
-  "deviation_log_reference": "ops/deviation-log.md#L120"
+  "server_side": {
+    "enabled": true,
+    "endpoint": "gtm.example.com",
+    "cookies_http_only": true,
+    "forwards": ["_fbp", "_fbc", "client_id", "session_id"],
+    "client_id_source": "_ga cookie",
+    "fresh_ids_generated": false
+  },
+  "events": [
+    {
+      "name": "purchase", "recommended": true, "monetary": true, "sent_from": ["browser", "server"],
+      "parameters": [
+        {"name": "transaction_id", "type": "string", "max_string_length": 64, "pii": false},
+        {"name": "value", "type": "number", "pii": false},
+        {"name": "currency", "type": "currency", "pii": false},
+        {"name": "items", "type": "array", "pii": false},
+        {"name": "coupon", "type": "string", "max_string_length": 40, "pii": false}
+      ],
+      "conversion_role": {"ga4": "key_event", "google_ads": "primary", "meta": "standard"},
+      "dedup": {"event_id_field": "transaction_id", "shared_across_destinations": true}
+    },
+    {
+      "name": "sign_up", "recommended": true, "monetary": false, "sent_from": ["browser", "server"],
+      "parameters": [
+        {"name": "method", "type": "string", "max_string_length": 20, "pii": false},
+        {"name": "event_id", "type": "string", "max_string_length": 36, "pii": false},
+        {"name": "em", "type": "string", "max_string_length": 64, "pii": false, "hashed": true}
+      ],
+      "conversion_role": {"ga4": "key_event", "google_ads": "secondary", "meta": "standard"},
+      "dedup": {"event_id_field": "event_id", "shared_across_destinations": true}
+    },
+    {
+      "name": "funnel_step", "recommended": false, "monetary": false, "sent_from": ["browser"],
+      "parameters": [
+        {"name": "funnel_name", "type": "string", "max_string_length": 40, "pii": false},
+        {"name": "step_number", "type": "number", "pii": false},
+        {"name": "step_name", "type": "string", "max_string_length": 40, "pii": false}
+      ],
+      "conversion_role": {"ga4": "event", "google_ads": null, "meta": null}
+    }
+  ],
+  "qa": {
+    "change_ref": "PR-2214 checkout tracking v3",
+    "browsers": ["chrome", "safari", "firefox"],
+    "adblock_profile": true,
+    "fixtures": [
+      {
+        "event": "purchase",
+        "expected_parameters": ["transaction_id", "value", "currency", "items"],
+        "example_payload": {"transaction_id": "ORD-104233", "value": 129.0, "currency": "EUR", "items": [{"item_id": "SKU-88", "quantity": 1}]},
+        "results": [
+          {"browser": "chrome", "destination": "ga4", "seen": true}, {"browser": "chrome", "destination": "google_ads", "seen": true}, {"browser": "chrome", "destination": "meta", "seen": true},
+          {"browser": "safari", "destination": "ga4", "seen": true}, {"browser": "safari", "destination": "google_ads", "seen": true}, {"browser": "safari", "destination": "meta", "seen": true},
+          {"browser": "firefox", "destination": "ga4", "seen": true}, {"browser": "firefox", "destination": "google_ads", "seen": true}, {"browser": "firefox", "destination": "meta", "seen": true},
+          {"browser": "chrome_adblock", "destination": "ga4", "seen": true}, {"browser": "chrome_adblock", "destination": "google_ads", "seen": true}, {"browser": "chrome_adblock", "destination": "meta", "seen": true}
+        ]
+      },
+      {
+        "event": "sign_up",
+        "expected_parameters": ["method", "event_id"],
+        "example_payload": {"method": "google", "event_id": "5f2a1c9e-3b7d-4e1a-9c6b-2d8e7f1a0b3c", "em": "b4c9a289323b21a01c3e940f150eb9b8c542587f1abfd8f0e1cc1ffc5e475514"},
+        "results": [
+          {"browser": "chrome", "destination": "ga4", "seen": true}, {"browser": "chrome", "destination": "google_ads", "seen": true}, {"browser": "chrome", "destination": "meta", "seen": true},
+          {"browser": "safari", "destination": "ga4", "seen": true}, {"browser": "safari", "destination": "google_ads", "seen": true}, {"browser": "safari", "destination": "meta", "seen": true},
+          {"browser": "firefox", "destination": "ga4", "seen": true}, {"browser": "firefox", "destination": "google_ads", "seen": true}, {"browser": "firefox", "destination": "meta", "seen": true},
+          {"browser": "chrome_adblock", "destination": "ga4", "seen": true}, {"browser": "chrome_adblock", "destination": "google_ads", "seen": true}, {"browser": "chrome_adblock", "destination": "meta", "seen": true}
+        ]
+      },
+      {
+        "event": "funnel_step",
+        "expected_parameters": ["funnel_name", "step_number", "step_name"],
+        "example_payload": {"funnel_name": "checkout", "step_number": 2, "step_name": "shipping_info"},
+        "results": [
+          {"browser": "chrome", "destination": "ga4", "seen": true}, {"browser": "safari", "destination": "ga4", "seen": true}, {"browser": "firefox", "destination": "ga4", "seen": true}, {"browser": "chrome_adblock", "destination": "ga4", "seen": false}
+        ]
+      }
+    ]
+  }
 }
-]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+]]></example>
+
+    <example valid="false"><![CDATA[
 {
-  "slug": "conversion-tracking",
-  "settings": {}
+  "site_domain": "example.com",
+  "destinations": ["ga4", "google_ads", "meta"],
+  "registry": {"file": "events.yml", "ci_validator": "validate-events.py", "enforced_in_ci": false},
+  "consent": {
+    "mode": "v2",
+    "defaults_before_config": false,
+    "signals": ["ad_storage", "analytics_storage"],
+    "regional_defaults": [
+      {"region": "default", "ad_storage": "granted", "analytics_storage": "granted", "ad_user_data": "granted", "ad_personalization": "granted"}
+    ],
+    "server_honours_consent": false
+  },
+  "server_side": {
+    "enabled": true,
+    "endpoint": "gtm-server.vendor.app",
+    "cookies_http_only": false,
+    "forwards": ["client_id"],
+    "client_id_source": "uuid4 per hit",
+    "fresh_ids_generated": true
+  },
+  "events": [
+    {
+      "name": "Order_Completed", "recommended": false, "monetary": true, "sent_from": ["browser", "server"],
+      "parameters": [
+        {"name": "value", "type": "number", "pii": false},
+        {"name": "email", "type": "string", "max_string_length": 100, "pii": true}
+      ],
+      "conversion_role": {"ga4": "key_event", "google_ads": "primary", "meta": "custom"}
+    },
+    {
+      "name": "checkout_step_completed_with_shipping_option_selected", "recommended": false, "monetary": false, "sent_from": ["browser"],
+      "parameters": [],
+      "conversion_role": {"ga4": "event"}
+    }
+  ],
+  "qa": {
+    "change_ref": "hotfix",
+    "browsers": ["chrome"],
+    "adblock_profile": false,
+    "fixtures": [
+      {
+        "event": "Order_Completed",
+        "expected_parameters": ["value"],
+        "example_payload": {"value": 129.0, "email": "jane.doe@example.com", "phone": "+44 7700 900123"},
+        "results": [{"browser": "chrome", "destination": "ga4", "seen": true}]
+      }
+    ]
+  }
 }
-]]></code>
-    <note>settings empty (need &gt;=3 properties), owner and deviation_log_reference missing.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every event name is in `events.yml` with its conversion role per destination, and `validate-events.py` runs in CI (r-event-registry-single-source).</item>
+      <item>Names are snake_case, at most 40 characters, with no reserved prefix; at most 25 parameters, strings at most 100 characters; recommended events use the exact recommended name (r-ga4-naming-and-parameter-limits).</item>
+      <item>Every monetary event carries `value`, `currency` and `transaction_id`, and `transaction_id` is the shared event id across destinations (r-monetary-conversion-carries-transaction-id).</item>
+      <item>Every event sent from browser and server has a `dedup` block, and the server forwards `_fbp`, `_fbc`, the `_ga` client_id and session_id without minting ids (r-browser-server-dedup-and-identifiers).</item>
+      <item>Consent Mode v2 defaults with all four signals precede the config call, regional defaults are set, and the server honours the same signals (r-consent-state-before-any-tag).</item>
+      <item>No parameter is PII, matching identifiers are hashed, and no example payload contains an `@` or a phone-shaped string (r-no-pii-in-parameters).</item>
+      <item>The server endpoint is a subdomain of `site_domain` with HttpOnly cookies (r-server-endpoint-first-party-domain).</item>
+      <item>Every event has a fixture with results for Chrome, Safari, Firefox and the ad-blocker profile across every destination it targets (r-qa-fixtures-per-tracking-change).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-conversion-tracking.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-conversion-tracking.py">Validator implementing this schema and the endpoint, dedup, PII and fixture-coverage checks.</reference>
 </text>

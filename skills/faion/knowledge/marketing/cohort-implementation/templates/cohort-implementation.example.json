@@ -1,7 +1,11 @@
 {
-  "__faion_header__": "purpose: cohort-implementation example | consumes: AGENTS.md | produces: config | depends-on: 01-core-rules.xml | token-budget-impact: ~400",
-  "slug": "cohort-implementation",
-  "owner": "growth ops",
+  "__faion_header__": {
+    "purpose": "Example weekly-cohort config conforming to content/02-output-contract.xml",
+    "consumes": "stg_users and stg_events with user_id and UTC timestamps, retention event, day offsets, data cutoff",
+    "produces": "config",
+    "depends-on": "content/01-core-rules.xml, templates/cohort-retention-weekly.sql, templates/schema.yml",
+    "token-budget-impact": "~700"
+  },
   "settings": {
     "warehouse_engine": "bigquery",
     "retention_event": "login",
@@ -16,5 +20,94 @@
     "week_start": "monday",
     "timezone": "UTC"
   },
-  "deviation_log_reference": "ops/deviation-log.md#L120"
+  "sources": {
+    "users_table": "stg_users",
+    "events_table": "stg_events",
+    "user_id_column": "user_id",
+    "identity_resolved_upstream": true,
+    "signup_ts_column": "signup_ts_utc",
+    "event_ts_column": "event_ts_utc"
+  },
+  "model": {
+    "name": "cohort_retention_weekly",
+    "materialized": "incremental",
+    "unique_key": [
+      "cohort_week",
+      "day_offset",
+      "user_id"
+    ],
+    "partition_by": "cohort_week",
+    "lookback_days": 90,
+    "cohort_week_expr": "CAST(DATE_TRUNC(DATE(signup_ts_utc), WEEK(MONDAY)) AS DATE)",
+    "join_condition": "event_ts_utc >= signup_ts_utc",
+    "denominator_source": "users_table",
+    "retention_event_declared_in": [
+      "sql",
+      "schema_yml",
+      "settings"
+    ]
+  },
+  "tests": {
+    "not_null": [
+      "cohort_week",
+      "day_offset",
+      "user_id"
+    ],
+    "accepted_values": {
+      "column": "day_offset",
+      "values": [
+        1,
+        7,
+        14,
+        30,
+        60,
+        90
+      ]
+    }
+  },
+  "chart": {
+    "data_cutoff": "2026-05-04",
+    "x": "cohort_week",
+    "series": "day_offset",
+    "metric": "retained_users / cohort_users",
+    "immature_value": null,
+    "render_immature_as": "blank"
+  },
+  "cells": [
+    {
+      "cohort_week": "2026-01-05",
+      "day_offset": 90,
+      "cohort_users": 1502,
+      "retained_users": 240,
+      "retention": 0.16
+    },
+    {
+      "cohort_week": "2026-03-30",
+      "day_offset": 1,
+      "cohort_users": 1810,
+      "retained_users": 1050,
+      "retention": 0.58
+    },
+    {
+      "cohort_week": "2026-03-30",
+      "day_offset": 7,
+      "cohort_users": 1810,
+      "retained_users": 706,
+      "retention": 0.39
+    },
+    {
+      "cohort_week": "2026-03-30",
+      "day_offset": 14,
+      "cohort_users": 1810,
+      "retained_users": 543,
+      "retention": 0.3
+    },
+    {
+      "cohort_week": "2026-03-30",
+      "day_offset": 30,
+      "cohort_users": 1810,
+      "retained_users": null,
+      "retention": null
+    }
+  ]
 }

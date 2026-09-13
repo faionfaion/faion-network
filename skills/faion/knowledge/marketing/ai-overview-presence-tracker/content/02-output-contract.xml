@@ -1,116 +1,331 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Overview Presence Tracker Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `report` artefact this methodology produces. Validator at scripts/validate-ai-overview-presence-tracker.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="AI Overview Presence Tracker Output Contract" version="1.2.0" est_tokens="8800" depth="essential">
+  <summary>JSON Schema (draft-07) for the 8-week AI Overview presence report: a versioned query set of at least 20 queries mapped to target URLs on the tracked domain, one fixed scrape configuration (country, language, device, logged out), per-query weekly rows typed as `aio_present` / `citations` / `our_domain_cited` / `selected_snippet` / `panel_position` with failed scrapes recorded as missing, `metrics[]` with the stated denominators (presence over observed queries, citation over present panels, median position over present panels) per week and for the window, findings that state co-occurrence only, and a retrofit list gated on 5-of-8 presence and 4 uncited weeks ranked by impressions. Validator at scripts/validate-ai-overview-presence-tracker.py enforces it, including the host match, the denominators and the retrofit gate.</summary>
+
+  <output-contract>
+    <required>
+      <field name="query_set_version / window_start / window_end / weeks_observed" type="string" required="true">one query-set version per 8-week window; adding or removing queries starts a new version (r-fixed-versioned-query-set)</field>
+      <field name="tracked_domain / included_subdomains" type="string" required="true">the registrable domain a citation must match, plus subdomains explicitly listed (r-our-domain-cited-exact-host-match)</field>
+      <field name="scrape_config" type="object" required="true">`adapter`, `country`, `language`, `device` (mobile or desktop), `logged_out: true`, `aio_available_checked: true`, fixed for the window (r-fixed-locale-device-logged-out)</field>
+      <field name="queries" type="list" required="true">at least 20, each `query` with one `target_url` on the tracked domain (r-fixed-versioned-query-set)</field>
+      <field name="rows" type="list" required="true">one per query per week: `query`, `week` 1-8, `observed_at`, `status` observed or missing, `aio_present`, `citations[]`, `our_domain_cited`, `selected_snippet`, `panel_position`; a present panel has at least one citation and a position; an absent panel has none; a missing week has nulls (r-per-query-row-fields, r-weekly-same-day-no-interpolation)</field>
+      <field name="metrics" type="list" required="true">`aio_presence_rate`, `our_citation_rate`, `median_panel_position` for each week and for the window, each with `numerator`, `denominator` and `unit` (r-report-metrics-presence-citation-position)</field>
+      <field name="findings" type="list" required="true">each names a `metric`, has `co_occurrence_only: true` and `causal: false`; no click or impression change is attributed to the panel (r-no-click-attribution-to-aio)</field>
+      <field name="retrofit_list" type="list" required="true">entries only for queries present in at least 5 of 8 weeks and uncited in each of the last 4, ranked by `impressions` descending, each with `target_url` and `cited_domains` (r-retrofit-priority-rule)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">fewer than 20 queries, or rows from two `query_set_version` values in one report — query-set-drifts-mid-window</pattern>
+      <pattern id="f2">a row with `status: observed`, `aio_present: true` and empty `citations`, or a failed scrape written as `aio_present: false` — scrape-failure-logged-as-absence</pattern>
+      <pattern id="f3">`scrape_config.device` outside mobile / desktop, `logged_out: false`, or a config that changed inside the window — locale-or-device-switch</pattern>
+      <pattern id="f4">`our_domain_cited: true` with no citation URL whose host is the tracked domain or a listed subdomain — brand-mention-counted-as-citation</pattern>
+      <pattern id="f5">a finding with `causal: true`, or text attributing clicks or impressions to the panel ("cost us", "because of", "led to") — clicks-attributed-to-aio</pattern>
+      <pattern id="f6">a retrofit entry with `weeks_present` below 5, or whose last 4 rows include `our_domain_cited: true` — retrofit-on-unstable-panel</pattern>
+      <pattern id="f7">`our_citation_rate` with the observed-query count as denominator, or a rate outside 0..1 — r-report-metrics-presence-citation-position</pattern>
+      <pattern id="f8">an `observed_at` more than 2 days from the week's scheduled day, or a missing week filled with values — r-weekly-same-day-no-interpolation</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/ai-overview-presence-tracker.json",
-  "title": "AI Overview Presence Tracker report",
+  "title": "AI Overview presence report",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "period_start",
-    "period_end",
-    "metrics",
-    "findings",
-    "deviation_log_reference"
-  ],
+  "required": ["query_set_version", "tracked_domain", "included_subdomains", "window_start", "window_end", "weeks_observed", "scrape_config", "queries", "rows", "metrics", "findings", "retrofit_list"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "url": {"type": "string", "pattern": "^https://[^\\s/]+/"},
+    "host": {"type": "string", "pattern": "^[a-z0-9.-]+\\.[a-z]{2,}$"},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1}
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "ai-overview-presence-tracker"
+    "__faion_header__": {"type": ["object", "string"]},
+    "query_set_version": {"type": "string", "pattern": "^v[0-9]+$"},
+    "tracked_domain": {"$ref": "#/definitions/host"},
+    "included_subdomains": {"type": "array", "items": {"$ref": "#/definitions/host"}},
+    "window_start": {"$ref": "#/definitions/date"},
+    "window_end": {"$ref": "#/definitions/date"},
+    "weeks_observed": {"type": "integer", "minimum": 1, "maximum": 8},
+    "scrape_config": {
+      "type": "object",
+      "required": ["adapter", "country", "language", "device", "logged_out", "aio_available_checked"],
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {"type": "string", "minLength": 3},
+        "country": {"type": "string", "pattern": "^[A-Z]{2}$"},
+        "language": {"type": "string", "pattern": "^[a-z]{2}$"},
+        "device": {"type": "string", "enum": ["mobile", "desktop"]},
+        "logged_out": {"const": true},
+        "aio_available_checked": {"const": true}
+      }
     },
-    "owner": {
-      "type": "string",
-      "minLength": 1
+    "queries": {
+      "type": "array",
+      "minItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["query", "target_url"],
+        "additionalProperties": false,
+        "properties": {"query": {"type": "string", "minLength": 3}, "target_url": {"$ref": "#/definitions/url"}}
+      }
     },
-    "period_start": {
-      "type": "string",
-      "format": "date"
-    },
-    "period_end": {
-      "type": "string",
-      "format": "date"
-    },
-    "metrics": {
+    "rows": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "name",
-          "value"
-        ],
+        "required": ["query", "week", "observed_at", "status", "aio_present", "citations", "our_domain_cited", "selected_snippet", "panel_position"],
+        "additionalProperties": false,
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "value": {
-            "type": [
-              "number",
-              "string"
-            ]
-          },
-          "unit": {
-            "type": "string"
-          }
+          "query": {"type": "string", "minLength": 3},
+          "week": {"type": "integer", "minimum": 1, "maximum": 8},
+          "observed_at": {"anyOf": [{"$ref": "#/definitions/date"}, {"type": "null"}]},
+          "status": {"type": "string", "enum": ["observed", "missing"]},
+          "aio_present": {"type": ["boolean", "null"]},
+          "citations": {"type": "array", "items": {"$ref": "#/definitions/url"}},
+          "our_domain_cited": {"type": ["boolean", "null"]},
+          "selected_snippet": {"type": ["string", "null"]},
+          "panel_position": {"type": ["integer", "null"], "minimum": 1}
         },
-        "additionalProperties": false
+        "allOf": [
+          {"if": {"properties": {"status": {"const": "missing"}}},
+           "then": {"properties": {"observed_at": {"type": "null"}, "aio_present": {"type": "null"}, "citations": {"maxItems": 0}, "our_domain_cited": {"type": "null"}, "selected_snippet": {"type": "null"}, "panel_position": {"type": "null"}}},
+           "else": {"properties": {"observed_at": {"type": "string"}, "aio_present": {"type": "boolean"}, "our_domain_cited": {"type": "boolean"}}}},
+          {"if": {"properties": {"status": {"const": "observed"}, "aio_present": {"const": true}}},
+           "then": {"properties": {"citations": {"minItems": 1}, "panel_position": {"type": "integer"}, "selected_snippet": {"type": "string"}}}},
+          {"if": {"properties": {"status": {"const": "observed"}, "aio_present": {"const": false}}},
+           "then": {"properties": {"citations": {"maxItems": 0}, "our_domain_cited": {"const": false}, "panel_position": {"type": "null"}, "selected_snippet": {"type": "null"}}}}
+        ]
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 3,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "aio_presence_rate"}, "scope": {"const": "window"}}}},
+        {"contains": {"properties": {"name": {"const": "our_citation_rate"}, "scope": {"const": "window"}}}},
+        {"contains": {"properties": {"name": {"const": "median_panel_position"}, "scope": {"const": "window"}}}}
+      ],
+      "items": {
+        "type": "object",
+        "required": ["name", "scope", "week", "value", "unit", "numerator", "denominator"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "enum": ["aio_presence_rate", "our_citation_rate", "median_panel_position"]},
+          "scope": {"type": "string", "enum": ["week", "window"]},
+          "week": {"type": ["integer", "null"], "minimum": 1, "maximum": 8},
+          "value": {"type": "number", "minimum": 0},
+          "unit": {"type": "string", "enum": ["ratio", "count"]},
+          "numerator": {"type": ["number", "null"], "minimum": 0},
+          "denominator": {"type": "integer", "minimum": 0}
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "median_panel_position"}}}, "then": {"properties": {"unit": {"const": "count"}}}, "else": {"properties": {"unit": {"const": "ratio"}, "value": {"$ref": "#/definitions/rate"}}}},
+          {"if": {"properties": {"scope": {"const": "window"}}}, "then": {"properties": {"week": {"type": "null"}}}, "else": {"properties": {"week": {"type": "integer"}}}}
+        ]
       }
     },
     "findings": {
       "type": "array",
       "minItems": 1,
       "items": {
-        "type": "string",
-        "minLength": 10
+        "type": "object",
+        "required": ["metric", "text", "co_occurrence_only", "causal"],
+        "additionalProperties": false,
+        "properties": {
+          "metric": {"type": "string", "enum": ["aio_presence_rate", "our_citation_rate", "median_panel_position"]},
+          "text": {"type": "string", "minLength": 20, "not": {"pattern": "(?i)(cost us|because of|due to|led to|caused|thanks to|resulted in)"}},
+          "co_occurrence_only": {"const": true},
+          "causal": {"const": false}
+        }
       }
     },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
+    "retrofit_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query", "target_url", "weeks_present", "uncited_last_4_weeks", "impressions", "cited_domains"],
+        "additionalProperties": false,
+        "properties": {
+          "query": {"type": "string", "minLength": 3},
+          "target_url": {"$ref": "#/definitions/url"},
+          "weeks_present": {"type": "integer", "minimum": 5, "maximum": 8},
+          "uncited_last_4_weeks": {"const": true},
+          "impressions": {"type": "integer", "minimum": 0},
+          "cited_domains": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/host"}}
+        }
+      }
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "ai-overview-presence-tracker",
-  "owner": "analytics owner",
-  "period_start": "2026-05-01",
-  "period_end": "2026-05-22",
+  "query_set_version": "v1",
+  "tracked_domain": "example-crm.com",
+  "included_subdomains": [],
+  "window_start": "2026-03-02",
+  "window_end": "2026-04-26",
+  "weeks_observed": 8,
+  "scrape_config": {"adapter": "SE Ranking AIO tracker", "country": "US", "language": "en", "device": "mobile", "logged_out": true, "aio_available_checked": true},
+  "queries": [
+    {"query": "best crm for small business", "target_url": "https://example-crm.com/guides/best-crm-for-small-business"},
+    {"query": "crm for real estate agents", "target_url": "https://example-crm.com/guides/crm-for-real-estate-agents"},
+    {"query": "how to migrate from spreadsheets to crm", "target_url": "https://example-crm.com/guides/how-to-migrate-from-spreadsheets-to-crm"},
+    {"query": "crm with email sequences", "target_url": "https://example-crm.com/guides/crm-with-email-sequences"},
+    {"query": "pipeline management software", "target_url": "https://example-crm.com/guides/pipeline-management-software"},
+    {"query": "free crm vs paid crm", "target_url": "https://example-crm.com/guides/free-crm-vs-paid-crm"},
+    {"query": "crm for consultants", "target_url": "https://example-crm.com/guides/crm-for-consultants"},
+    {"query": "crm integration with gmail", "target_url": "https://example-crm.com/guides/crm-integration-with-gmail"},
+    {"query": "lead scoring software", "target_url": "https://example-crm.com/guides/lead-scoring-software"},
+    {"query": "sales pipeline stages explained", "target_url": "https://example-crm.com/guides/sales-pipeline-stages-explained"},
+    {"query": "crm for nonprofits", "target_url": "https://example-crm.com/guides/crm-for-nonprofits"},
+    {"query": "how to track sales follow ups", "target_url": "https://example-crm.com/guides/how-to-track-sales-follow-ups"},
+    {"query": "crm for freelancers", "target_url": "https://example-crm.com/guides/crm-for-freelancers"},
+    {"query": "contact management software", "target_url": "https://example-crm.com/guides/contact-management-software"},
+    {"query": "deal tracking spreadsheet alternative", "target_url": "https://example-crm.com/guides/deal-tracking-spreadsheet-alternative"},
+    {"query": "crm onboarding checklist", "target_url": "https://example-crm.com/guides/crm-onboarding-checklist"},
+    {"query": "crm data cleanup", "target_url": "https://example-crm.com/guides/crm-data-cleanup"},
+    {"query": "sales forecasting for small teams", "target_url": "https://example-crm.com/guides/sales-forecasting-for-small-teams"},
+    {"query": "crm for agencies", "target_url": "https://example-crm.com/guides/crm-for-agencies"},
+    {"query": "crm reporting dashboard", "target_url": "https://example-crm.com/guides/crm-reporting-dashboard"}
+  ],
+  "rows": [
+    {"query": "best crm for small business", "week": 1, "observed_at": "2026-03-02", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 2, "observed_at": "2026-03-09", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 3, "observed_at": "2026-03-16", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 4, "observed_at": "2026-03-23", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 5, "observed_at": "2026-03-31", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 6, "observed_at": "2026-04-06", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 7, "observed_at": "2026-04-13", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 8, "observed_at": "2026-04-20", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "crm for real estate agents", "week": 1, "observed_at": "2026-03-02", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "crm for real estate agents", "week": 2, "observed_at": "2026-03-09", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "crm for real estate agents", "week": 3, "observed_at": "2026-03-16", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "crm for real estate agents", "week": 4, "observed_at": "2026-03-23", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "crm for real estate agents", "week": 5, "observed_at": "2026-03-31", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "crm for real estate agents", "week": 6, "observed_at": "2026-04-06", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "crm for real estate agents", "week": 7, "observed_at": "2026-04-13", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "crm for real estate agents", "week": 8, "observed_at": "2026-04-20", "status": "observed", "aio_present": true, "citations": ["https://example-crm.com/guides/crm-for-real-estate-agents", "https://zoho.com/crm/guide"], "our_domain_cited": true, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 2},
+    {"query": "how to migrate from spreadsheets to crm", "week": 1, "observed_at": "2026-03-02", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null},
+    {"query": "how to migrate from spreadsheets to crm", "week": 2, "observed_at": "2026-03-09", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null},
+    {"query": "how to migrate from spreadsheets to crm", "week": 3, "observed_at": "2026-03-16", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null},
+    {"query": "how to migrate from spreadsheets to crm", "week": 4, "observed_at": "2026-03-23", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "how to migrate from spreadsheets to crm", "week": 5, "observed_at": "2026-03-31", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "how to migrate from spreadsheets to crm", "week": 6, "observed_at": "2026-04-06", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null},
+    {"query": "how to migrate from spreadsheets to crm", "week": 7, "observed_at": "2026-04-13", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null},
+    {"query": "how to migrate from spreadsheets to crm", "week": 8, "observed_at": "2026-04-20", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null},
+    {"query": "crm with email sequences", "week": 1, "observed_at": "2026-03-02", "status": "observed", "aio_present": true, "citations": ["https://pipedrive.com/blog/crm", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "crm with email sequences", "week": 2, "observed_at": "2026-03-09", "status": "observed", "aio_present": true, "citations": ["https://pipedrive.com/blog/crm", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "crm with email sequences", "week": 3, "observed_at": "2026-03-16", "status": "observed", "aio_present": true, "citations": ["https://pipedrive.com/blog/crm", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "crm with email sequences", "week": 4, "observed_at": null, "status": "missing", "aio_present": null, "citations": [], "our_domain_cited": null, "selected_snippet": null, "panel_position": null},
+    {"query": "crm with email sequences", "week": 5, "observed_at": "2026-03-31", "status": "observed", "aio_present": true, "citations": ["https://pipedrive.com/blog/crm", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "crm with email sequences", "week": 6, "observed_at": "2026-04-06", "status": "observed", "aio_present": true, "citations": ["https://pipedrive.com/blog/crm", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "crm with email sequences", "week": 7, "observed_at": "2026-04-13", "status": "observed", "aio_present": true, "citations": ["https://pipedrive.com/blog/crm", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1},
+    {"query": "crm with email sequences", "week": 8, "observed_at": "2026-04-20", "status": "observed", "aio_present": true, "citations": ["https://pipedrive.com/blog/crm", "https://g2.com/categories/crm"], "our_domain_cited": false, "selected_snippet": "Pick a CRM with pipeline stages and email sync...", "panel_position": 1}
+  ],
   "metrics": [
-    {
-      "name": "activation_rate",
-      "value": 0.31,
-      "unit": "ratio"
-    }
+    {"name": "aio_presence_rate", "scope": "week", "week": 1, "value": 0.75, "unit": "ratio", "numerator": 3, "denominator": 4},
+    {"name": "our_citation_rate", "scope": "week", "week": 1, "value": 0.333, "unit": "ratio", "numerator": 1, "denominator": 3},
+    {"name": "median_panel_position", "scope": "week", "week": 1, "value": 1, "unit": "count", "numerator": 1, "denominator": 3},
+    {"name": "aio_presence_rate", "scope": "week", "week": 2, "value": 0.75, "unit": "ratio", "numerator": 3, "denominator": 4},
+    {"name": "our_citation_rate", "scope": "week", "week": 2, "value": 0.333, "unit": "ratio", "numerator": 1, "denominator": 3},
+    {"name": "median_panel_position", "scope": "week", "week": 2, "value": 1, "unit": "count", "numerator": 1, "denominator": 3},
+    {"name": "aio_presence_rate", "scope": "week", "week": 3, "value": 0.75, "unit": "ratio", "numerator": 3, "denominator": 4},
+    {"name": "our_citation_rate", "scope": "week", "week": 3, "value": 0.333, "unit": "ratio", "numerator": 1, "denominator": 3},
+    {"name": "median_panel_position", "scope": "week", "week": 3, "value": 1, "unit": "count", "numerator": 1, "denominator": 3},
+    {"name": "aio_presence_rate", "scope": "week", "week": 4, "value": 1.0, "unit": "ratio", "numerator": 3, "denominator": 3},
+    {"name": "our_citation_rate", "scope": "week", "week": 4, "value": 0.333, "unit": "ratio", "numerator": 1, "denominator": 3},
+    {"name": "median_panel_position", "scope": "week", "week": 4, "value": 1, "unit": "count", "numerator": 1, "denominator": 3},
+    {"name": "aio_presence_rate", "scope": "week", "week": 5, "value": 1.0, "unit": "ratio", "numerator": 4, "denominator": 4},
+    {"name": "our_citation_rate", "scope": "week", "week": 5, "value": 0.25, "unit": "ratio", "numerator": 1, "denominator": 4},
+    {"name": "median_panel_position", "scope": "week", "week": 5, "value": 1.0, "unit": "count", "numerator": 1.0, "denominator": 4},
+    {"name": "aio_presence_rate", "scope": "week", "week": 6, "value": 0.75, "unit": "ratio", "numerator": 3, "denominator": 4},
+    {"name": "our_citation_rate", "scope": "week", "week": 6, "value": 0.333, "unit": "ratio", "numerator": 1, "denominator": 3},
+    {"name": "median_panel_position", "scope": "week", "week": 6, "value": 1, "unit": "count", "numerator": 1, "denominator": 3},
+    {"name": "aio_presence_rate", "scope": "week", "week": 7, "value": 0.75, "unit": "ratio", "numerator": 3, "denominator": 4},
+    {"name": "our_citation_rate", "scope": "week", "week": 7, "value": 0.333, "unit": "ratio", "numerator": 1, "denominator": 3},
+    {"name": "median_panel_position", "scope": "week", "week": 7, "value": 1, "unit": "count", "numerator": 1, "denominator": 3},
+    {"name": "aio_presence_rate", "scope": "week", "week": 8, "value": 0.75, "unit": "ratio", "numerator": 3, "denominator": 4},
+    {"name": "our_citation_rate", "scope": "week", "week": 8, "value": 0.333, "unit": "ratio", "numerator": 1, "denominator": 3},
+    {"name": "median_panel_position", "scope": "week", "week": 8, "value": 1, "unit": "count", "numerator": 1, "denominator": 3},
+    {"name": "aio_presence_rate", "scope": "window", "week": null, "value": 0.806, "unit": "ratio", "numerator": 25, "denominator": 31},
+    {"name": "our_citation_rate", "scope": "window", "week": null, "value": 0.32, "unit": "ratio", "numerator": 8, "denominator": 25},
+    {"name": "median_panel_position", "scope": "window", "week": null, "value": 1, "unit": "count", "numerator": 1, "denominator": 25}
   ],
   "findings": [
-    "activation rate up 4pp WoW; biggest lift from onboarding checklist v2"
+    {"metric": "our_citation_rate", "text": "our_citation_rate for the window 2026-03-02 to 2026-04-26 is 0.32: 'crm for real estate agents' is cited every week; 'best crm for small business' shows a panel in all 8 weeks and never cites us.", "co_occurrence_only": true, "causal": false},
+    {"metric": "aio_presence_rate", "text": "aio_presence_rate for 'how to migrate from spreadsheets to crm' is 0.25 over 2026-03-02 to 2026-04-26; its Search Console impressions fell in the same window, which co-occurs with the panel and is not attributed to it.", "co_occurrence_only": true, "causal": false}
   ],
-  "deviation_log_reference": "ops/deviation-log.md#L88"
+  "retrofit_list": [
+    {"query": "best crm for small business", "target_url": "https://example-crm.com/guides/best-crm-for-small-business", "weeks_present": 8, "uncited_last_4_weeks": true, "impressions": 48200, "cited_domains": ["hubspot.com", "g2.com"]},
+    {"query": "crm with email sequences", "target_url": "https://example-crm.com/guides/crm-with-email-sequences", "weeks_present": 7, "uncited_last_4_weeks": true, "impressions": 9100, "cited_domains": ["pipedrive.com", "g2.com"]}
+  ]
 }
-]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+]]></example>
+
+    <example valid="false"><![CDATA[
 {
-  "slug": "ai-overview-presence-tracker",
-  "period_start": "2026-05-01"
+  "query_set_version": "v1",
+  "tracked_domain": "example-crm.com",
+  "included_subdomains": [],
+  "window_start": "2026-03-02",
+  "window_end": "2026-03-22",
+  "weeks_observed": 3,
+  "scrape_config": {"adapter": "SE Ranking AIO tracker", "country": "US", "language": "en", "device": "tablet", "logged_out": false, "aio_available_checked": true},
+  "queries": [
+    {"query": "best crm for small business", "target_url": "https://example-crm.com/guides/best-crm-for-small-business"},
+    {"query": "crm for real estate agents", "target_url": "https://example-crm.com/guides/crm-for-real-estate-agents"},
+    {"query": "how to migrate from spreadsheets to crm", "target_url": "https://example-crm.com/guides/how-to-migrate-from-spreadsheets-to-crm"},
+    {"query": "crm with email sequences", "target_url": "https://example-crm.com/guides/crm-with-email-sequences"},
+    {"query": "pipeline management software", "target_url": "https://example-crm.com/guides/pipeline-management-software"},
+    {"query": "free crm vs paid crm", "target_url": "https://example-crm.com/guides/free-crm-vs-paid-crm"},
+    {"query": "crm for consultants", "target_url": "https://example-crm.com/guides/crm-for-consultants"},
+    {"query": "crm integration with gmail", "target_url": "https://example-crm.com/guides/crm-integration-with-gmail"},
+    {"query": "lead scoring software", "target_url": "https://example-crm.com/guides/lead-scoring-software"},
+    {"query": "sales pipeline stages explained", "target_url": "https://example-crm.com/guides/sales-pipeline-stages-explained"},
+    {"query": "crm for nonprofits", "target_url": "https://example-crm.com/guides/crm-for-nonprofits"},
+    {"query": "how to track sales follow ups", "target_url": "https://example-crm.com/guides/how-to-track-sales-follow-ups"}
+  ],
+  "rows": [
+    {"query": "best crm for small business", "week": 1, "observed_at": "2026-03-02", "status": "observed", "aio_present": true, "citations": [], "our_domain_cited": false, "selected_snippet": "Pick a CRM...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 2, "observed_at": "2026-03-09", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison"], "our_domain_cited": true, "selected_snippet": "Example CRM is a popular choice...", "panel_position": 1},
+    {"query": "best crm for small business", "week": 3, "observed_at": "2026-03-20", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison"], "our_domain_cited": false, "selected_snippet": "Pick a CRM...", "panel_position": 1},
+    {"query": "how to migrate from spreadsheets to crm", "week": 1, "observed_at": "2026-03-02", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null},
+    {"query": "how to migrate from spreadsheets to crm", "week": 2, "observed_at": "2026-03-09", "status": "observed", "aio_present": true, "citations": ["https://hubspot.com/crm-comparison"], "our_domain_cited": false, "selected_snippet": "Migrating...", "panel_position": 2},
+    {"query": "how to migrate from spreadsheets to crm", "week": 3, "observed_at": "2026-03-16", "status": "observed", "aio_present": false, "citations": [], "our_domain_cited": false, "selected_snippet": null, "panel_position": null}
+  ],
+  "metrics": [
+    {"name": "aio_presence_rate", "scope": "window", "week": null, "value": 0.667, "unit": "ratio", "numerator": 4, "denominator": 6},
+    {"name": "our_citation_rate", "scope": "window", "week": null, "value": 0.167, "unit": "ratio", "numerator": 1, "denominator": 6},
+    {"name": "median_panel_position", "scope": "window", "week": null, "value": 1, "unit": "count", "numerator": 1, "denominator": 4}
+  ],
+  "findings": [
+    {"metric": "our_citation_rate", "text": "Losing the citation on 'best crm for small business' cost us 12 percent of clicks in week 3.", "co_occurrence_only": false, "causal": true}
+  ],
+  "retrofit_list": [
+    {"query": "how to migrate from spreadsheets to crm", "target_url": "https://example-crm.com/guides/how-to-migrate-from-spreadsheets-to-crm", "weeks_present": 1, "uncited_last_4_weeks": true, "impressions": 3100, "cited_domains": ["hubspot.com"]}
+  ]
 }
-]]></code>
-    <note>Missing required: owner, period_end, metrics, findings, deviation_log_reference.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>At least 20 queries, each with a `target_url` on `tracked_domain`, under one `query_set_version` for the whole window (r-fixed-versioned-query-set).</item>
+      <item>Every row is typed; a present panel carries citations and a position, an absent one carries none, a failed scrape is `status: missing` with nulls (r-per-query-row-fields).</item>
+      <item>`scrape_config` is one country, language, device and a logged-out session for every row, and AIO availability was checked first (r-fixed-locale-device-logged-out).</item>
+      <item>Each row's `observed_at` is within 2 days of `window_start` + 7 x (week - 1); missing weeks reduce the denominator instead of being filled (r-weekly-same-day-no-interpolation).</item>
+      <item>`our_domain_cited` is true only when a citation URL's host is `tracked_domain` or a listed subdomain (r-our-domain-cited-exact-host-match).</item>
+      <item>`aio_presence_rate` = present / observed, `our_citation_rate` = cited / present, `median_panel_position` over present panels, per week and for the window, all recomputable from the rows (r-report-metrics-presence-citation-position).</item>
+      <item>Every finding names a metric, states co-occurrence only, and makes no causal click claim (r-no-click-attribution-to-aio).</item>
+      <item>Every retrofit entry has 5-of-8 presence and 4 uncited trailing weeks in the rows, names the target URL and the domains cited, and the list is ranked by impressions (r-retrofit-priority-rule).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-ai-overview-presence-tracker.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-ai-overview-presence-tracker.py">Validator implementing this schema and the host, denominator and retrofit arithmetic.</reference>
 </text>

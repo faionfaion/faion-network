@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Regression Test First Bugfix Workflow — Worked Example" version="1.0.0" est_tokens="1650" depth="recommended">
+  <summary>One complete workflow record for a Sentry checkout bug (zero amount with a Turkish locale): inputs lifted from the payload, red test committed alone with its failing CI run, an 18-line fix, the green run, and the 90-day review against Sentry, with a note on each non-obvious value; then the same bug fixed the usual way and what the validator and the reviewer see.</summary>
+
+  <section title="Scenario">
+    <p>Sentry issue ACME-SHOP-12345: `ValidationError: amount must be positive` on `POST /checkout` for a cart with `amount=0.0`, `locale=tr_TR`, `currency=TRY`. The breadcrumbs show an `Order` row written before the serializer rejected the request. swe:alice owns the fix; SLA is 24 hours, so there is time for the red run before shipping.</p>
+  </section>
+
+  <section title="Resulting record">
+    <example type="good" title="ACME-SHOP-12345 zero-amount checkout">
+      <code lang="json"><![CDATA[
+{
+  "alert": {
+    "kind": "sentry",
+    "url": "https://sentry.io/organizations/acme/issues/12345/",
+    "alert_id": "ACME-SHOP-12345",
+    "observed_outcome": {"kind": "exception", "value": "ValidationError: amount must be positive (checkout/serializers.py)"},
+    "side_effect": "an Order row is created before the serializer rejects the request",
+    "reproducing_inputs": {"amount": 0.0, "locale": "tr_TR", "currency": "TRY", "cart_id": "c_8f3a"},
+    "pii_substitutions": [{"field": "email", "shape": "same-domain synthetic address"}],
+    "deterministic": true
+  },
+  "red_test": {
+    "status": "committed",
+    "path": "tests/regression/test_checkout_zero_amount.py",
+    "commit": "a1b2c3d4e5f",
+    "commit_message_has_alert_url": true,
+    "asserts": ["response.status_code == 422", "'amount must be positive' in response.json()['detail']"],
+    "side_effect_asserts": ["Order.objects.filter(cart_id='c_8f3a').count() == 0"],
+    "red_ci_run_url": "https://github.com/acme/shop/actions/runs/76",
+    "failure_matches_alert": true,
+    "stable_runs": 3
+  },
+  "fix": {
+    "pr_url": "https://github.com/acme/shop/pull/9981",
+    "first_fix_commit": "b2c3d4e5f6a",
+    "diff_lines": 18,
+    "touches_red_test_assertions": false,
+    "hotfix": false
+  },
+  "verification": {
+    "ci_run_url": "https://github.com/acme/shop/actions/runs/77",
+    "passed": true,
+    "skipped_or_xfail": false
+  },
+  "owner": "swe:alice",
+  "review": {
+    "merged_at": "2026-05-24",
+    "next_review_at": "2026-08-22",
+    "alert_resolved": true,
+    "outcome": {"reviewed_at": "2026-08-22", "regression_events_in_window": 0, "same_signature_new_issue": false}
+  }
+}
+]]></code>
+      <note>`reproducing_inputs` carries `locale=tr_TR` and `amount=0.0` because those are the payload fields; a test with `en_US` and `9.99` would not have fired (r-inputs-lifted-from-alert-payload). The customer's email was replaced by a synthetic address of the same shape and the substitution is listed (same rule). `asserts[]` names the 422 and the message fragment from the alert, and `side_effect_asserts[]` checks that no `Order` row exists, because the breadcrumbs showed one being written (r-test-fails-for-the-alerts-reason). `commit` a1b2c3d is the test-only commit; CI run 76 is its failing run and `stable_runs: 3` records that it failed the same way three times (r-red-test-committed-before-fix, r-test-is-deterministic-and-located). `first_fix_commit` b2c3d4e is a different commit on top of it and the fix is 18 lines with the test file untouched (r-fix-is-minimal-and-assertions-untouched). Run 77 is the complete PR's green run, read from CI (r-ci-shows-red-then-green). `next_review_at` is 2026-05-24 plus 90 days, and on that day Sentry showed zero regression events and no new issue with the same signature, so `alert_resolved: true` stands (r-alert-closed-after-recurrence-window).</note>
+    </example>
+  </section>
+
+  <section title="Rejected record">
+    <example type="bad" title="the same bug fixed the usual way">
+      <code lang="json"><![CDATA[
+{
+  "alert": {
+    "kind": "sentry",
+    "url": "https://sentry.io/organizations/acme/issues/12345/",
+    "alert_id": "ACME-SHOP-12345",
+    "observed_outcome": {"kind": "exception", "value": "ValidationError: amount must be positive (checkout/serializers.py)"},
+    "side_effect": "an Order row is created before the serializer rejects the request",
+    "reproducing_inputs": {"amount": 9.99, "locale": "en_US"},
+    "deterministic": true
+  },
+  "red_test": {
+    "status": "committed",
+    "path": "tests/unit/test_serializers.py",
+    "commit": "b2c3d4e5f6a",
+    "commit_message_has_alert_url": false,
+    "asserts": ["pytest.raises(Exception)"],
+    "red_ci_run_url": "https://github.com/acme/shop/actions/runs/77",
+    "failure_matches_alert": true,
+    "stable_runs": 1
+  },
+  "fix": {
+    "pr_url": "https://github.com/acme/shop/pull/9981",
+    "first_fix_commit": "b2c3d4e5f6a",
+    "diff_lines": 412,
+    "touches_red_test_assertions": true,
+    "hotfix": false
+  },
+  "verification": {
+    "ci_run_url": "https://github.com/acme/shop/actions/runs/77",
+    "passed": true,
+    "skipped_or_xfail": false
+  },
+  "owner": "swe:alice",
+  "review": {
+    "merged_at": "2026-05-24",
+    "next_review_at": "2026-06-24",
+    "alert_resolved": true
+  }
+}
+]]></code>
+      <note>What the validator prints: `red_test.path` is not under `tests/regression/` and `stable_runs` is below 3 (r-test-is-deterministic-and-located); `commit_message_has_alert_url` is false (r-red-test-committed-before-fix); `asserts[0]` is `pytest.raises(Exception)` and `side_effect_asserts` is missing although `alert.side_effect` is set (r-test-fails-for-the-alerts-reason); `fix.touches_red_test_assertions` is true (r-fix-is-minimal-and-assertions-untouched); `next_review_at` is 31 days after `merged_at`, not 90 (r-alert-closed-after-recurrence-window); and, once those are fixed, the cross-field check finds `red_test.commit` equal to `fix.first_fix_commit`, so test and fix landed in one commit and nobody has seen the test fail (fm-test-written-after-fix). What the reviewer sees: the inputs are the developer's defaults, not the payload, so the test reproduces a hypothesis and the alert with `locale=tr_TR` keeps firing (fm-invented-repro-inputs); and a 412-line diff that also edits the test's assertions cannot be reverted alone (fm-assertion-edited-to-pass).</note>
+    </example>
+  </section>
+</text>

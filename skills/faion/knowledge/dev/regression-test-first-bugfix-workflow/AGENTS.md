@@ -10,27 +10,28 @@
 
 ## Applies If (ALL must hold)
 
-- A production alert (Sentry / Datadog / customer report) has fired with a reproducible signal.
-- The codebase has a working test runner (pytest / jest / vitest / go test).
-- The bug touches code under regression-friendly control (deterministic given fixed input).
-- A named developer owns the fix (assigned in the ticket).
-- The team's PR template accepts a "regression test first" checkbox.
+- A production alert in Sentry, Datadog, a log aggregator or a customer ticket carries a payload (exception type and message or wrong output, request body, locale, timezone, feature flags, record ids) and an issue id.
+- Running those payload inputs against the unfixed code reproduces the same failure on three consecutive runs.
+- The repo has a test runner with a `tests/regression/` directory (or equivalent) and CI that runs on every pushed commit, so a test-only commit gets its own failing run.
+- One developer owns the fix and can be recorded as `role:handle`.
+- The alerting tool can keep the issue open until the test merges and reports regression events for the issue over the next 90 days.
 
 ## Skip If (ANY kills it)
 
-- Non-deterministic root cause (flaky infra, race conditions in third-party SaaS) where no stable input reproduces it.
-- Hotfix where the SLA explicitly allows ship-first, test-after (record the test as follow-up ticket).
-- Bug is purely a configuration drift (no code change → no code regression test needed; write a config validator instead).
-- Cannot reproduce locally AND no staging environment available — escalate to obs/QA before applying this workflow.
+- No fixed input reproduces the failure (race with a third-party service, infrastructure flake): add structured logging and a synthetic monitor instead; a regression test would flake.
+- The bug is configuration drift with no code change: write a config validator, not a code regression test.
+- CI does not run per commit, so a test-only commit cannot be shown failing; fix CI first.
+- The alert cannot be reproduced locally and no staging environment exists: escalate to observability or QA before this workflow.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Alert URL | URL | Sentry / Datadog / log aggregator |
-| Stack trace + reproducing inputs | text | alert payload |
-| Test runner config | TOML/JSON | repo `pyproject.toml` / `package.json` |
-| Branch naming convention | string | repo CONTRIBUTING |
+| Alert issue with payload | URL + issue id + event JSON (exception or wrong output, request body, locale, timezone, flags, ids) | Sentry / Datadog / log aggregator / ticket |
+| Test runner and regression directory | `pyproject.toml` / `package.json` / `go.mod` with `tests/regression/` | the repo |
+| CI per commit | CI run URLs for a single commit | GitHub Actions / GitLab CI / equivalent |
+| Developer handle | `role:handle` | the ticket assignee |
+| SLA for the fix | hours until the fix must ship | the incident or on-call policy |
 
 ## Assumes Loaded
 
@@ -46,9 +47,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: red test committed before fix, fails for the alert reason, inputs from alert payload, deterministic + located, minimal fix with assertions untouched, CI red-then-green, hotfix carries follow-up, alert closed after 90-day window | ~2000 |
-| `content/02-output-contract.xml` | essential | Schema for the workflow record (alert, red-test, fix, verification) + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the workflow record: alert with observed outcome and payload-derived reproducing inputs, red test committed under tests/regression/ with its failing CI run (or pending with a follow-up due within 14 days), fix with first commit and diff size, green CI run, owner, review at merge plus 90 days; valid and invalid records; 8 forbidden patterns | ~3450 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns: test after fix, wrong-reason failure, invented inputs, flaky test, assertion edited, hotfix follow-up forgotten | ~1250 |
-| `content/04-procedure.xml` | medium | 6-step procedure: capture → reproduce → red test → fix → verify → ship + review | ~600 |
+| `content/04-procedure.xml` | medium | 8 steps: lift inputs from the alert payload, write the red test, commit it alone, confirm the red run in CI, minimal fix in its own commit, green run in CI, merge and date the review at plus 90 days, hotfix variant or close the loop against the alerting tool | ~1850 |
+| `content/05-examples.xml` | recommended | Complete record for a Sentry zero-amount checkout bug (tr_TR inputs, red test with failing run 76, 18-line fix, green run 77, 90-day review) with a note per value, plus the same bug fixed the usual way and what the validator prints | ~1650 |
 | `content/06-decision-tree.xml` | essential | Decision: full red-test flow vs hotfix-then-test based on SLA + reproducibility | ~600 |
 
 ## Task Routing

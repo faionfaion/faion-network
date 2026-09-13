@@ -1,128 +1,275 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Activation Framework Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `spec` artefact this methodology produces. Validator at scripts/validate-activation-framework.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Activation Framework Output Contract" version="1.2.0" est_tokens="4000" depth="essential">
+  <summary>JSON Schema (draft-07) for the activation spec: one activation event with a window in days, its D30 retention comparison on a closed cohort, a baseline over at least four closed signup-week cohorts, a funnel whose every step maps to a tracked event or is marked uninstrumented, drop-offs ranked by absolute users lost, an ICE-scored experiment backlog (integers 1-10, mean to two decimals, sorted descending) where every experiment names its step, metric, baseline and ship threshold, and a weekly closed-cohort dashboard on the same window. Validator at scripts/validate-activation-framework.py enforces it, including the cohort-closure and ICE arithmetic.</summary>
+
+  <output-contract>
+    <required>
+      <field name="activation_event" type="object" required="true">`name` (a tracked event name, snake_case) and `window_days` from signup (r-single-activation-event-with-window)</field>
+      <field name="d30_validation" type="object" required="true">`cohort` label, `performed` and `not_performed` each with `users` and `d30_retention`, `correlational_note: true`; the performed group's retention must be higher (r-event-validated-against-d30-retention)</field>
+      <field name="baseline" type="object" required="true">`data_cutoff` and `cohorts[]` (at least 4) each with `signup_week_start`, `signups`, `activated`, `activation_rate`; every cohort closed, i.e. week end plus `window_days` before `data_cutoff` (r-baseline-before-experiments)</field>
+      <field name="funnel" type="list" required="true">ordered steps from signup to the activation event; `status: instrumented` with `event`, `entered`, `completed`, or `status: uninstrumented` with `instrumentation_task` and no figures (r-funnel-steps-map-to-events)</field>
+      <field name="dropoff_priorities" type="list" required="true">one entry per instrumented step: `step`, `users_lost` = entered minus completed, `relative_drop`; sorted by `users_lost` descending (r-dropoffs-ranked-by-absolute-loss)</field>
+      <field name="experiments" type="list" required="true">each with `name`, `funnel_step`, `hypothesis`, `primary_metric`, `baseline_value`, `ship_threshold_lift`, `impact`, `confidence`, `ease` (integers 1-10) and `ice` = mean to two decimals; sorted by `ice` descending (r-ice-integer-scale-and-formula, r-experiment-names-step-metric-threshold)</field>
+      <field name="dashboard" type="object" required="true">`cadence: weekly`, `closed_cohorts_only: true`, `window_days` equal to the activation event's, `segment_by` including `acquisition_channel`, `series_id` (r-dashboard-reports-closed-cohorts-weekly)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`activation_event.name` that is a phrase ("user sees value") or several events joined by "or" — vague-activation-event</pattern>
+      <pattern id="f2">`d30_validation.performed.d30_retention` not above `not_performed.d30_retention`, or `correlational_note` absent — convenient-event-not-predictive</pattern>
+      <pattern id="f3">a baseline cohort whose `signup_week_start` + 6 days + `window_days` is not before `data_cutoff` — open-cohort-in-baseline</pattern>
+      <pattern id="f4">a funnel step with `status: uninstrumented` carrying `entered` or `completed`, or an instrumented step with no `event` — funnel-drawn-from-ui</pattern>
+      <pattern id="f5">`dropoff_priorities` ordered by `relative_drop`, or `users_lost` not equal to entered minus completed — percentage-only-ranking</pattern>
+      <pattern id="f6">`impact`, `confidence` or `ease` outside 1-10 or non-integer, `ice` not equal to the rounded mean, or a backlog not sorted by `ice` — ice-scores-unreproducible</pattern>
+      <pattern id="f7">an experiment with no `funnel_step`, `baseline_value` or `ship_threshold_lift` — r-experiment-names-step-metric-threshold</pattern>
+      <pattern id="f8">`dashboard.window_days` different from `activation_event.window_days`, or `closed_cohorts_only: false` — r-dashboard-reports-closed-cohorts-weekly</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/activation-framework.json",
-  "title": "Activation Framework output",
+  "title": "Activation Framework spec",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "review_deadline",
-    "summary",
-    "sections",
-    "deviation_log_reference"
-  ],
-  "properties": {
-    "slug": {
-      "type": "string",
-      "const": "activation-framework"
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 1
-    },
-    "review_deadline": {
-      "type": "string",
-      "format": "date"
-    },
-    "summary": {
-      "type": "string",
-      "minLength": 20,
-      "maxLength": 400
-    },
-    "sections": {
-      "type": "array",
-      "minItems": 3,
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "content"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
-    },
-    "signoff": {
+  "required": ["activation_event", "d30_validation", "baseline", "funnel", "dropoff_priorities", "experiments", "dashboard"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "event_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "score": {"type": "integer", "minimum": 1, "maximum": 10},
+    "group": {
       "type": "object",
-      "required": [
-        "reviewer",
-        "date"
-      ],
-      "properties": {
-        "reviewer": {
-          "type": "string"
-        },
-        "date": {
-          "type": "string",
-          "format": "date"
-        }
-      },
-      "additionalProperties": false
+      "required": ["users", "d30_retention"],
+      "additionalProperties": false,
+      "properties": {"users": {"type": "integer", "minimum": 1}, "d30_retention": {"$ref": "#/definitions/rate"}}
     }
   },
-  "additionalProperties": false
-}
-]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
-{
-  "slug": "activation-framework",
-  "owner": "growth lead",
-  "review_deadline": "2026-06-15",
-  "summary": "Spec for Activation Framework covering preconditions, procedure, output, and review gate.",
-  "sections": [
-    {
-      "name": "preconditions",
-      "content": "All Applies If items confirmed in writing."
+  "properties": {
+    "__faion_header__": {"type": ["object", "string"]},
+    "activation_event": {
+      "type": "object",
+      "required": ["name", "window_days"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/definitions/event_name"},
+        "window_days": {"type": "integer", "minimum": 1}
+      }
     },
-    {
-      "name": "procedure",
-      "content": "Steps 1..n executed per content/04-procedure.xml."
+    "d30_validation": {
+      "type": "object",
+      "required": ["cohort", "performed", "not_performed", "correlational_note"],
+      "additionalProperties": false,
+      "properties": {
+        "cohort": {"type": "string", "minLength": 4},
+        "performed": {"$ref": "#/definitions/group"},
+        "not_performed": {"$ref": "#/definitions/group"},
+        "correlational_note": {"const": true}
+      }
     },
-    {
-      "name": "review",
-      "content": "Human reviewer signed off on date."
+    "baseline": {
+      "type": "object",
+      "required": ["data_cutoff", "cohorts"],
+      "additionalProperties": false,
+      "properties": {
+        "data_cutoff": {"$ref": "#/definitions/date"},
+        "cohorts": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "object",
+            "required": ["signup_week_start", "signups", "activated", "activation_rate"],
+            "additionalProperties": false,
+            "properties": {
+              "signup_week_start": {"$ref": "#/definitions/date"},
+              "signups": {"type": "integer", "minimum": 1},
+              "activated": {"type": "integer", "minimum": 0},
+              "activation_rate": {"$ref": "#/definitions/rate"}
+            }
+          }
+        }
+      }
+    },
+    "funnel": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "status": {"type": "string", "enum": ["instrumented", "uninstrumented"]}
+        },
+        "if": {"properties": {"status": {"const": "instrumented"}}},
+        "then": {
+          "required": ["event", "entered", "completed"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"type": "string"},
+            "status": {"const": "instrumented"},
+            "event": {"$ref": "#/definitions/event_name"},
+            "entered": {"type": "integer", "minimum": 0},
+            "completed": {"type": "integer", "minimum": 0}
+          }
+        },
+        "else": {
+          "required": ["instrumentation_task"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"type": "string"},
+            "status": {"const": "uninstrumented"},
+            "instrumentation_task": {"type": "string", "minLength": 8}
+          }
+        }
+      }
+    },
+    "dropoff_priorities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step", "users_lost", "relative_drop"],
+        "additionalProperties": false,
+        "properties": {
+          "step": {"type": "string", "minLength": 2},
+          "users_lost": {"type": "integer", "minimum": 0},
+          "relative_drop": {"$ref": "#/definitions/rate"}
+        }
+      }
+    },
+    "experiments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "funnel_step", "hypothesis", "primary_metric", "baseline_value", "ship_threshold_lift", "impact", "confidence", "ease", "ice"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 3},
+          "funnel_step": {"type": "string", "minLength": 2},
+          "hypothesis": {"type": "string", "minLength": 20},
+          "primary_metric": {"type": "string", "enum": ["activation_rate", "step_conversion"]},
+          "baseline_value": {"$ref": "#/definitions/rate"},
+          "ship_threshold_lift": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+          "impact": {"$ref": "#/definitions/score"},
+          "confidence": {"$ref": "#/definitions/score"},
+          "ease": {"$ref": "#/definitions/score"},
+          "ice": {"type": "number", "minimum": 1, "maximum": 10}
+        }
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "required": ["cadence", "closed_cohorts_only", "window_days", "segment_by", "series_id"],
+      "additionalProperties": false,
+      "properties": {
+        "cadence": {"const": "weekly"},
+        "closed_cohorts_only": {"const": true},
+        "window_days": {"type": "integer", "minimum": 1},
+        "segment_by": {"type": "array", "minItems": 1, "items": {"type": "string"}, "contains": {"const": "acquisition_channel"}},
+        "series_id": {"type": "string", "minLength": 3}
+      }
     }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L42",
-  "signoff": {
-    "reviewer": "growth lead",
-    "date": "2026-06-10"
   }
 }
 ]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "activation-framework",
-  "summary": "missing required fields"
+  "activation_event": {"name": "project_created", "window_days": 7},
+  "d30_validation": {
+    "cohort": "signup week 2026-03-02",
+    "performed": {"users": 412, "d30_retention": 0.46},
+    "not_performed": {"users": 1388, "d30_retention": 0.11},
+    "correlational_note": true
+  },
+  "baseline": {
+    "data_cutoff": "2026-05-04",
+    "cohorts": [
+      {"signup_week_start": "2026-03-30", "signups": 1810, "activated": 407, "activation_rate": 0.225},
+      {"signup_week_start": "2026-04-06", "signups": 1742, "activated": 383, "activation_rate": 0.22},
+      {"signup_week_start": "2026-04-13", "signups": 1905, "activated": 438, "activation_rate": 0.23},
+      {"signup_week_start": "2026-04-20", "signups": 1688, "activated": 371, "activation_rate": 0.22}
+    ]
+  },
+  "funnel": [
+    {"name": "signup", "status": "instrumented", "event": "signup_completed", "entered": 7145, "completed": 7145},
+    {"name": "email verified", "status": "instrumented", "event": "email_verified", "entered": 7145, "completed": 5216},
+    {"name": "workspace named", "status": "instrumented", "event": "workspace_named", "entered": 5216, "completed": 4903},
+    {"name": "template picked", "status": "uninstrumented", "instrumentation_task": "GROW-118: emit template_picked from the onboarding modal"},
+    {"name": "project created", "status": "instrumented", "event": "project_created", "entered": 4903, "completed": 1599}
+  ],
+  "dropoff_priorities": [
+    {"step": "project created", "users_lost": 3304, "relative_drop": 0.674},
+    {"step": "email verified", "users_lost": 1929, "relative_drop": 0.27},
+    {"step": "workspace named", "users_lost": 313, "relative_drop": 0.06}
+  ],
+  "experiments": [
+    {"name": "Sample project on first login", "funnel_step": "project created", "hypothesis": "Users who land in a pre-filled sample project create their own within the window because the empty state is the blocker.", "primary_metric": "activation_rate", "baseline_value": 0.224, "ship_threshold_lift": 0.03, "impact": 8, "confidence": 7, "ease": 8, "ice": 7.67},
+    {"name": "Magic-link instead of verification code", "funnel_step": "email verified", "hypothesis": "A one-click magic link removes the code-entry step where 27 percent of signups stop.", "primary_metric": "step_conversion", "baseline_value": 0.73, "ship_threshold_lift": 0.05, "impact": 7, "confidence": 8, "ease": 6, "ice": 7.0}
+  ],
+  "dashboard": {
+    "cadence": "weekly",
+    "closed_cohorts_only": true,
+    "window_days": 7,
+    "segment_by": ["acquisition_channel"],
+    "series_id": "activation-project_created-7d-v1"
+  }
 }
-]]></code>
-    <note>Missing required: owner, review_deadline, sections, deviation_log_reference.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "activation_event": {"name": "user sees value or invites a teammate", "window_days": 7},
+  "d30_validation": {
+    "cohort": "signup week 2026-03-02",
+    "performed": {"users": 412, "d30_retention": 0.11},
+    "not_performed": {"users": 1388, "d30_retention": 0.11},
+    "correlational_note": true
+  },
+  "baseline": {
+    "data_cutoff": "2026-05-04",
+    "cohorts": [
+      {"signup_week_start": "2026-04-20", "signups": 1688, "activated": 371, "activation_rate": 0.22},
+      {"signup_week_start": "2026-04-27", "signups": 1701, "activated": 290, "activation_rate": 0.17}
+    ]
+  },
+  "funnel": [
+    {"name": "signup", "status": "instrumented", "event": "signup_completed", "entered": 3389, "completed": 3389},
+    {"name": "template picked", "status": "uninstrumented", "instrumentation_task": "GROW-118: emit template_picked", "entered": 2400, "completed": 1800},
+    {"name": "project created", "status": "instrumented", "event": "project_created", "entered": 1800, "completed": 661}
+  ],
+  "dropoff_priorities": [
+    {"step": "template picked", "users_lost": 600, "relative_drop": 0.25},
+    {"step": "project created", "users_lost": 1139, "relative_drop": 0.633}
+  ],
+  "experiments": [
+    {"name": "Better onboarding", "funnel_step": "project created", "hypothesis": "Improving onboarding will raise activation.", "primary_metric": "activation_rate", "baseline_value": 0.2, "ship_threshold_lift": 0.02, "impact": 7.5, "confidence": 12, "ease": 4, "ice": 9.1}
+  ],
+  "dashboard": {
+    "cadence": "weekly",
+    "closed_cohorts_only": false,
+    "window_days": 14,
+    "segment_by": ["plan"],
+    "series_id": "activation-v1"
+  }
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`activation_event.name` is one tracked event in snake_case and `window_days` is set (r-single-activation-event-with-window).</item>
+      <item>`d30_validation` shows both groups with sizes, the performed group's D30 retention is higher, and `correlational_note` is true (r-event-validated-against-d30-retention).</item>
+      <item>`baseline.cohorts` has at least 4 entries, each with `signup_week_start` + 6 days + `window_days` before `data_cutoff`, and `activation_rate` = `activated` / `signups` to three decimals (r-baseline-before-experiments).</item>
+      <item>Every funnel step is instrumented with an event and figures, or uninstrumented with a task and no figures (r-funnel-steps-map-to-events).</item>
+      <item>`dropoff_priorities` covers the instrumented steps, `users_lost` = `entered` - `completed`, sorted by `users_lost` descending (r-dropoffs-ranked-by-absolute-loss).</item>
+      <item>Every experiment's `ice` equals `round((impact + confidence + ease) / 3, 2)` as `templates/ice.py` computes it, and the backlog is sorted by `ice` descending (r-ice-integer-scale-and-formula).</item>
+      <item>Every experiment names an existing funnel step, a metric, a baseline value and a ship threshold (r-experiment-names-step-metric-threshold).</item>
+      <item>`dashboard.window_days` equals `activation_event.window_days`, closed cohorts only, weekly, segmented by acquisition channel, with a `series_id` that changes when the event or window changes (r-dashboard-reports-closed-cohorts-weekly).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-activation-framework.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-activation-framework.py">Validator implementing this schema and the cross-field arithmetic.</reference>
 </text>

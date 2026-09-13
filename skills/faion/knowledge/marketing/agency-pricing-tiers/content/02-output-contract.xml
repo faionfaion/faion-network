@@ -1,152 +1,279 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Pricing Tiers Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `playbook-step` artefact this methodology produces. Validator at scripts/validate-agency-pricing-tiers.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Agency Pricing Tiers Output Contract" version="1.2.0" est_tokens="4050" depth="essential">
+  <summary>JSON Schema (draft-07) for the good / better / best rate sheet and its playbook step: exactly three priced tiers in order, each with price, delivery cost (hours, loaded hourly cost, pass-through) and gross margin, deliverables with quantity and turnaround forming strict supersets, prices on the 3 / 5 / 8 shape within 15 percent or a named scope justification, the fence the good tier omits, better as the default recommendation, best-first presentation with visible prices, the documented scope-up procedure, concessions by scope only, and the rollout steps. Validator at scripts/validate-agency-pricing-tiers.py enforces it, including the margin, ratio and superset arithmetic.</summary>
+
+  <output-contract>
+    <required>
+      <field name="currency" type="string" required="true">ISO 4217 code all prices and costs are in</field>
+      <field name="tiers" type="list" required="true">exactly three, named good, better, best in that order; each with `price`, `delivery_cost` (`hours`, `loaded_hourly_cost`, `pass_through`), `gross_margin_abs` = price minus cost, `gross_margin_pct`, and `deliverables[]` with `quantity` and `turnaround_days` (r-exactly-three-priced-tiers, r-best-tier-highest-margin, r-tiers-are-strict-supersets)</field>
+      <field name="fence" type="object" required="true">`omitted_deliverable` the good tier lacks and better has, `needed_for` the ICP outcome, `named_on_rate_sheet: true` (r-good-tier-fenced-middle-tier-complete)</field>
+      <field name="default_recommendation" type="string" required="true">`better` (r-good-tier-fenced-middle-tier-complete)</field>
+      <field name="presentation" type="object" required="true">`order: [best, better, good]`, `prices_visible: true` (r-present-best-first)</field>
+      <field name="scope_up" type="object" required="true">`trigger`, `price_rule` (tier price difference pro-rated to the remaining term), `approver`, `written_confirmation_required: true`, `free_goodwill_allowed: false` (r-scope-up-procedure-documented)</field>
+      <field name="concessions" type="object" required="true">`method: remove_named_deliverable_or_quantity`, `published_prices_vary_by_client: false` (r-discount-by-scope-not-price)</field>
+      <field name="steps" type="list" required="true">rollout steps with `id`, `name`, `exit_criterion`, `output_location`; a price gap outside the 3 / 5 / 8 band is justified there by the `gap_justification.scope_difference` text (r-price-gaps-follow-3-5-8)</field>
+      <field name="gap_justification" type="object" required="false">`scope_difference` naming the deliverable difference that explains a gap outside the band (r-price-gaps-follow-3-5-8)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a best tier whose `gross_margin_abs` or `gross_margin_pct` is not the highest of the three — best-tier-lowest-margin</pattern>
+      <pattern id="f2">better / good outside 1.42-1.92 or best / better outside 1.36-1.84 with no `gap_justification` echoed in a step's `exit_criterion` — equal-price-steps</pattern>
+      <pattern id="f3">a deliverable in good missing from better, or in better missing from best, or carried with a lower quantity or slower turnaround — tiers-swap-instead-of-nest</pattern>
+      <pattern id="f4">`scope_up.free_goodwill_allowed: true`, or a scope-up with no approver or no written confirmation — silent-scope-creep</pattern>
+      <pattern id="f5">`concessions.published_prices_vary_by_client: true`, or a concession method other than removing scope — per-client-price-discounts</pattern>
+      <pattern id="f6">`presentation.order` not best, better, good, or `prices_visible: false` — lead-with-cheapest</pattern>
+      <pattern id="f7">a fourth priced tier, or tiers out of good / better / best order — r-exactly-three-priced-tiers</pattern>
+      <pattern id="f8">`fence.omitted_deliverable` present in good or absent from better, or `default_recommendation` other than better — r-good-tier-fenced-middle-tier-complete</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/agency-pricing-tiers.json",
   "title": "Agency Pricing Tiers playbook step",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "steps",
-    "decision_branches",
-    "deviation_log_reference"
-  ],
+  "required": ["currency", "tiers", "fence", "default_recommendation", "presentation", "scope_up", "concessions", "steps"],
+  "additionalProperties": false,
+  "definitions": {
+    "money": {"type": "number", "minimum": 0},
+    "deliverable": {
+      "type": "object",
+      "required": ["name", "quantity", "turnaround_days"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 3},
+        "quantity": {"type": "integer", "minimum": 1},
+        "turnaround_days": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "agency-pricing-tiers"
+    "__faion_header__": {"type": ["object", "string"]},
+    "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+    "tiers": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": [
+        {"properties": {"name": {"const": "good"}}},
+        {"properties": {"name": {"const": "better"}}},
+        {"properties": {"name": {"const": "best"}}}
+      ],
+      "allOf": [{
+        "items": {
+          "type": "object",
+          "required": ["name", "price", "delivery_cost", "gross_margin_abs", "gross_margin_pct", "deliverables"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"type": "string", "enum": ["good", "better", "best"]},
+            "price": {"type": "number", "exclusiveMinimum": 0},
+            "delivery_cost": {
+              "type": "object",
+              "required": ["hours", "loaded_hourly_cost", "pass_through"],
+              "additionalProperties": false,
+              "properties": {
+                "hours": {"type": "number", "exclusiveMinimum": 0},
+                "loaded_hourly_cost": {"type": "number", "exclusiveMinimum": 0},
+                "pass_through": {"$ref": "#/definitions/money"}
+              }
+            },
+            "gross_margin_abs": {"type": "number"},
+            "gross_margin_pct": {"type": "number", "maximum": 1},
+            "deliverables": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/deliverable"}}
+          }
+        }
+      }]
     },
-    "owner": {
-      "type": "string",
-      "minLength": 1
+    "gap_justification": {
+      "type": "object",
+      "required": ["scope_difference"],
+      "additionalProperties": false,
+      "properties": {"scope_difference": {"type": "string", "minLength": 10}}
+    },
+    "fence": {
+      "type": "object",
+      "required": ["omitted_deliverable", "needed_for", "named_on_rate_sheet"],
+      "additionalProperties": false,
+      "properties": {
+        "omitted_deliverable": {"type": "string", "minLength": 3},
+        "needed_for": {"type": "string", "minLength": 10},
+        "named_on_rate_sheet": {"const": true}
+      }
+    },
+    "default_recommendation": {"const": "better"},
+    "presentation": {
+      "type": "object",
+      "required": ["order", "prices_visible"],
+      "additionalProperties": false,
+      "properties": {
+        "order": {"type": "array", "minItems": 3, "maxItems": 3, "items": [{"const": "best"}, {"const": "better"}, {"const": "good"}]},
+        "prices_visible": {"const": true}
+      }
+    },
+    "scope_up": {
+      "type": "object",
+      "required": ["trigger", "price_rule", "approver", "written_confirmation_required", "free_goodwill_allowed"],
+      "additionalProperties": false,
+      "properties": {
+        "trigger": {"type": "string", "minLength": 10},
+        "price_rule": {"const": "difference between the two tier prices pro-rated to the remaining term"},
+        "approver": {"type": "string", "minLength": 3},
+        "written_confirmation_required": {"const": true},
+        "free_goodwill_allowed": {"const": false}
+      }
+    },
+    "concessions": {
+      "type": "object",
+      "required": ["method", "published_prices_vary_by_client"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"const": "remove_named_deliverable_or_quantity"},
+        "published_prices_vary_by_client": {"const": false}
+      }
     },
     "steps": {
       "type": "array",
-      "minItems": 4,
+      "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "id",
-          "input",
-          "owner",
-          "exit_criterion",
-          "output_location"
-        ],
+        "required": ["id", "name", "exit_criterion", "output_location"],
+        "additionalProperties": false,
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "input": {
-            "type": "string"
-          },
-          "owner": {
-            "type": "string"
-          },
-          "exit_criterion": {
-            "type": "string",
-            "minLength": 10
-          },
-          "output_location": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
+          "id": {"type": "string", "pattern": "^s[0-9]+$"},
+          "name": {"type": "string", "minLength": 3},
+          "exit_criterion": {"type": "string", "minLength": 10, "not": {"pattern": "^(?i:shipped|reviewed|signoff|done)$"}},
+          "output_location": {"type": "string", "minLength": 3}
+        }
       }
-    },
-    "decision_branches": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "when",
-          "then"
-        ],
-        "properties": {
-          "when": {
-            "type": "string"
-          },
-          "then": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "currency": "EUR",
+  "tiers": [
+    {
+      "name": "good", "price": 3000,
+      "delivery_cost": {"hours": 20, "loaded_hourly_cost": 90, "pass_through": 200},
+      "gross_margin_abs": 1000, "gross_margin_pct": 0.333,
+      "deliverables": [
+        {"name": "paid search campaigns managed", "quantity": 2, "turnaround_days": 5},
+        {"name": "monthly performance report", "quantity": 1, "turnaround_days": 3}
+      ]
+    },
+    {
+      "name": "better", "price": 5000,
+      "delivery_cost": {"hours": 28, "loaded_hourly_cost": 90, "pass_through": 300},
+      "gross_margin_abs": 2180, "gross_margin_pct": 0.436,
+      "deliverables": [
+        {"name": "paid search campaigns managed", "quantity": 4, "turnaround_days": 3},
+        {"name": "monthly performance report", "quantity": 1, "turnaround_days": 2},
+        {"name": "conversion tracking setup", "quantity": 1, "turnaround_days": 10},
+        {"name": "weekly optimisation call", "quantity": 4, "turnaround_days": 7}
+      ]
+    },
+    {
+      "name": "best", "price": 8000,
+      "delivery_cost": {"hours": 36, "loaded_hourly_cost": 90, "pass_through": 400},
+      "gross_margin_abs": 4360, "gross_margin_pct": 0.545,
+      "deliverables": [
+        {"name": "paid search campaigns managed", "quantity": 8, "turnaround_days": 2},
+        {"name": "monthly performance report", "quantity": 1, "turnaround_days": 1},
+        {"name": "conversion tracking setup", "quantity": 1, "turnaround_days": 5},
+        {"name": "weekly optimisation call", "quantity": 4, "turnaround_days": 7},
+        {"name": "landing page A/B test", "quantity": 2, "turnaround_days": 14}
+      ]
+    }
+  ],
+  "fence": {"omitted_deliverable": "conversion tracking setup", "needed_for": "an e-commerce ICP cannot report ROAS without conversion tracking", "named_on_rate_sheet": true},
+  "default_recommendation": "better",
+  "presentation": {"order": ["best", "better", "good"], "prices_visible": true},
+  "scope_up": {
+    "trigger": "client requests a deliverable or quantity outside the current tier's list",
+    "price_rule": "difference between the two tier prices pro-rated to the remaining term",
+    "approver": "account director",
+    "written_confirmation_required": true,
+    "free_goodwill_allowed": false
   },
-  "additionalProperties": false
-}
-]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
-{
-  "slug": "agency-pricing-tiers",
-  "owner": "playbook owner",
+  "concessions": {"method": "remove_named_deliverable_or_quantity", "published_prices_vary_by_client": false},
   "steps": [
-    {
-      "id": "s1",
-      "input": "brief",
-      "owner": "lead",
-      "exit_criterion": "brief reviewed + scope confirmed",
-      "output_location": "docs/briefs/"
-    },
-    {
-      "id": "s2",
-      "input": "data",
-      "owner": "analyst",
-      "exit_criterion": "dataset >=30 records validated",
-      "output_location": "warehouse:tbl"
-    },
-    {
-      "id": "s3",
-      "input": "draft",
-      "owner": "writer",
-      "exit_criterion": "draft passes editorial check",
-      "output_location": "docs/drafts/"
-    },
-    {
-      "id": "s4",
-      "input": "draft",
-      "owner": "lead",
-      "exit_criterion": "signed off by named reviewer",
-      "output_location": "docs/published/"
-    }
-  ],
-  "decision_branches": [
-    {
-      "when": "data_records < 30",
-      "then": "loop back to s2"
-    }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L101"
-}
-]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
-{
-  "slug": "agency-pricing-tiers",
-  "steps": [
-    {
-      "id": "s1"
-    }
+    {"id": "s1", "name": "cost every tier", "exit_criterion": "best gross margin is the highest in EUR and percent: 4360 / 54.5 percent against 2180 / 43.6 and 1000 / 33.3", "output_location": "pricing/2026-05-rate-sheet.md"},
+    {"id": "s2", "name": "publish best-first rate sheet", "exit_criterion": "rate sheet lists best, better, good with prices visible and the fence named under good", "output_location": "pricing/2026-05-rate-sheet.md"},
+    {"id": "s3", "name": "brief account managers on scope-up", "exit_criterion": "every account manager can state trigger, price rule and approver; first scope-up logged with written confirmation", "output_location": "pricing/scope-up-log.md"}
   ]
 }
-]]></code>
-    <note>Step missing exit_criterion, output_location, owner, input; deviation_log_reference missing.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "currency": "EUR",
+  "tiers": [
+    {
+      "name": "good", "price": 5000,
+      "delivery_cost": {"hours": 30, "loaded_hourly_cost": 90, "pass_through": 200},
+      "gross_margin_abs": 2100, "gross_margin_pct": 0.42,
+      "deliverables": [
+        {"name": "paid search campaigns managed", "quantity": 2, "turnaround_days": 5},
+        {"name": "conversion tracking setup", "quantity": 1, "turnaround_days": 10},
+        {"name": "monthly performance report", "quantity": 1, "turnaround_days": 3}
+      ]
+    },
+    {
+      "name": "better", "price": 10000,
+      "delivery_cost": {"hours": 70, "loaded_hourly_cost": 90, "pass_through": 300},
+      "gross_margin_abs": 3400, "gross_margin_pct": 0.34,
+      "deliverables": [
+        {"name": "paid search campaigns managed", "quantity": 4, "turnaround_days": 3},
+        {"name": "social campaigns managed", "quantity": 2, "turnaround_days": 3},
+        {"name": "monthly performance report", "quantity": 1, "turnaround_days": 2}
+      ]
+    },
+    {
+      "name": "best", "price": 15000,
+      "delivery_cost": {"hours": 140, "loaded_hourly_cost": 90, "pass_through": 400},
+      "gross_margin_abs": 2000, "gross_margin_pct": 0.133,
+      "deliverables": [
+        {"name": "paid search campaigns managed", "quantity": 8, "turnaround_days": 2},
+        {"name": "monthly performance report", "quantity": 1, "turnaround_days": 1},
+        {"name": "landing page A/B test", "quantity": 4, "turnaround_days": 14},
+        {"name": "creative production", "quantity": 6, "turnaround_days": 10}
+      ]
+    }
+  ],
+  "fence": {"omitted_deliverable": "conversion tracking setup", "needed_for": "an e-commerce ICP cannot report ROAS without conversion tracking", "named_on_rate_sheet": true},
+  "default_recommendation": "better",
+  "presentation": {"order": ["good", "better", "best"], "prices_visible": false},
+  "scope_up": {
+    "trigger": "client asks for something extra",
+    "price_rule": "difference between the two tier prices pro-rated to the remaining term",
+    "approver": "account manager",
+    "written_confirmation_required": true,
+    "free_goodwill_allowed": true
+  },
+  "concessions": {"method": "remove_named_deliverable_or_quantity", "published_prices_vary_by_client": true},
+  "steps": [
+    {"id": "s1", "name": "publish rate sheet", "exit_criterion": "shipped", "output_location": "pricing/rate-sheet.md"}
+  ]
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Exactly three tiers, in the order good, better, best, each with a visible price (r-exactly-three-priced-tiers).</item>
+      <item>Every tier's `gross_margin_abs` = `price` - (`hours` x `loaded_hourly_cost` + `pass_through`), `gross_margin_pct` = abs / price, and best leads on both (r-best-tier-highest-margin).</item>
+      <item>better / good is within 1.42-1.92 and best / better within 1.36-1.84, or `gap_justification.scope_difference` names the deliverable difference and a step's `exit_criterion` repeats it (r-price-gaps-follow-3-5-8).</item>
+      <item>Every deliverable in good is in better and every one in better is in best, with quantity equal or higher and turnaround equal or faster (r-tiers-are-strict-supersets).</item>
+      <item>`fence.omitted_deliverable` is absent from good, present in better, named on the rate sheet; `default_recommendation` is better (r-good-tier-fenced-middle-tier-complete).</item>
+      <item>`scope_up` states trigger, the pro-rated price rule, an approver and written confirmation; free goodwill is not allowed (r-scope-up-procedure-documented).</item>
+      <item>Concessions remove named scope; published prices do not vary by client (r-discount-by-scope-not-price).</item>
+      <item>`presentation.order` is best, better, good with prices visible (r-present-best-first).</item>
+    </list>
   </section>
-  <reference path="scripts/validate-agency-pricing-tiers.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-agency-pricing-tiers.py">Validator implementing this schema and the margin, ratio and superset arithmetic.</reference>
 </text>

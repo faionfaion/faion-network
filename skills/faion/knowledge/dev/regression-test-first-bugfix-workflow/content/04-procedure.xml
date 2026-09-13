@@ -1,51 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Regression Test First Bugfix Workflow — Procedure" version="1.1.0" est_tokens="600" depth="medium">
-  <summary>Six-step procedure from alert to merged fix with red-test-first discipline.</summary>
+<text id="04-procedure" title="Regression Test First Bugfix Workflow — Procedure" version="1.2.0" est_tokens="1850" depth="medium">
+  <summary>Eight steps from the alert to the reviewed record: lift the reproducing inputs from the payload, write the red test under tests/regression/ and commit it alone, wait for the failing CI run and check it fails for the alert's reason, write the minimal fix in a separate commit, verify the green run in CI, merge and set the review date at plus 90 days, then close the loop against the alerting tool. The hotfix variant swaps steps 2-4 for a follow-up ticket due within 14 days.</summary>
 
   <section title="Steps">
-    <section title="Step 1 — Capture the alert">
-      <list>
-        <item>Input: Sentry/Datadog/ticket URL.</item>
-        <item>Action: copy stack trace, identify reproducing inputs (request body, env, locale, time).</item>
-        <item>Output: `trigger.url` + reproducible-input dictionary recorded in the workflow record.</item>
-        <item>Decision gate: if inputs not deterministic, route to "non-deterministic" branch and skip this methodology.</item>
-      </list>
-    </section>
-    <section title="Step 2 — Reproduce locally">
-      <list>
-        <item>Input: reproducing inputs from Step 1.</item>
-        <item>Action: minimal repro in the dev environment. Confirm the same exception / wrong output.</item>
-        <item>Output: local repro script or REPL transcript.</item>
-      </list>
-    </section>
-    <section title="Step 3 — Author the red test FIRST">
-      <list>
-        <item>Input: local repro.</item>
-        <item>Action: write a failing test that encodes "this must never happen again" — at minimum status code, side-effect absence, and any observable state. Commit it on the fix branch BEFORE writing any production code. The commit message contains the alert URL.</item>
-        <item>Output: failing test at `tests/regression/test_&lt;short-slug&gt;.py`, committed with hash recorded in `red_test.commit`.</item>
-      </list>
-    </section>
-    <section title="Step 4 — Author the fix">
-      <list>
-        <item>Input: red test + root-cause analysis.</item>
-        <item>Action: smallest possible change that flips the red test to green. Refactor only if directly tied to the root cause; otherwise file a follow-up.</item>
-        <item>Output: production-code diff; red test now passes locally.</item>
-      </list>
-    </section>
-    <section title="Step 5 — Verify in CI">
-      <list>
-        <item>Input: PR with red test + fix.</item>
-        <item>Action: push, run CI, capture run URL.</item>
-        <item>Output: `verification.ci_run_url` and `passed: true`.</item>
-        <item>Decision gate: if CI is flaky on unrelated tests, isolate the relevant job; do not merge with `passed: false`.</item>
-      </list>
-    </section>
-    <section title="Step 6 — Ship + schedule review">
-      <list>
-        <item>Input: green PR.</item>
-        <item>Action: merge with squash. Set `review.next_review_at` (default = today + 90 days). On the next review, confirm the alert has not resurfaced.</item>
-        <item>Output: closed loop; deprecate the workflow record only after one full review window with zero recurrence.</item>
-      </list>
-    </section>
+    <step n="1" name="lift-inputs-from-the-alert">
+      <input>The Sentry / Datadog / ticket URL with its event payload: exception type and message or wrong output, request body, query parameters, locale, timezone, feature-flag state, record ids.</input>
+      <action>Open `templates/skeleton.md.j2`; fill `alert.kind`, `alert.url`, `alert.alert_id`, `alert.observed_outcome` (the exact exception type and message fragment, or the wrong value) and `alert.side_effect` if the bug wrote a row, sent an email or made a charge. Copy the payload fields into `alert.reproducing_inputs`, replacing personal data field-by-field with values of the same shape and listing each in `pii_substitutions[]`. Run the inputs against the unfixed code three times.</action>
+      <output>`alert` block with `deterministic: true`.</output>
+      <decision-gate>The same inputs do not reproduce the failure on every run: stop, this is not a regression-test case; route to observability or QA per 06-decision-tree.xml (r-inputs-lifted-from-alert-payload, r-test-is-deterministic-and-located). SLA does not allow a red run before shipping: go to step 8.</decision-gate>
+    </step>
+
+    <step n="2" name="write-the-red-test">
+      <input>`alert.reproducing_inputs`, `alert.observed_outcome`, `alert.side_effect`; the runner config.</input>
+      <action>Create `tests/regression/test_&lt;alert-slug&gt;.py` (or the runner's equivalent) with `alert.alert_id` in the docstring. Assert the alert's exception type and message fragment or the wrong value, and, when `side_effect` is set, assert the side effect is absent. Freeze time, stub every external call, seed randomness.</action>
+      <output>`red_test.path`, `red_test.asserts[]`, `red_test.side_effect_asserts[]`.</output>
+      <decision-gate>An assertion of the shape `raises(Exception)` or "something failed" is rewritten before commit (r-test-fails-for-the-alerts-reason).</decision-gate>
+    </step>
+
+    <step n="3" name="commit-the-test-alone">
+      <input>The red test file; the alert URL.</input>
+      <action>Commit the test file with no production code in the commit and the alert URL in the commit message. Push and record the commit hash.</action>
+      <output>`red_test.commit`, `red_test.commit_message_has_alert_url: true`.</output>
+      <decision-gate>Production code already touched on the branch: reset it, commit the test first, re-apply the fix later as its own commit (r-red-test-committed-before-fix).</decision-gate>
+    </step>
+
+    <step n="4" name="confirm-the-red-run-in-ci">
+      <input>The CI run for the test-only commit.</input>
+      <action>Wait for CI. Read the failure: it must show the exception type or wrong value from `alert.observed_outcome`, not an import error or fixture typo. Re-run the job twice more on the same commit.</action>
+      <output>`red_test.red_ci_run_url`, `red_test.failure_matches_alert: true`, `red_test.stable_runs` (3 or more), `red_test.status: committed`.</output>
+      <decision-gate>The failure reason differs from the alert: fix the test, recommit, wait again. The test passes on any of the runs: it is flaky or does not reproduce the bug; back to step 2 (r-test-fails-for-the-alerts-reason, r-test-is-deterministic-and-located).</decision-gate>
+    </step>
+
+    <step n="5" name="write-the-minimal-fix">
+      <input>The red test; the root cause.</input>
+      <action>Change only what turns the test green, in a separate commit on top of the test commit. Leave the test's assertions untouched; if an assertion was wrong, change it in its own commit with a written reason and show the test failing again on the fix's parent. Move any refactor to a separate PR and record its URL.</action>
+      <output>`fix.pr_url`, `fix.first_fix_commit`, `fix.diff_lines`, `fix.touches_red_test_assertions: false`, `fix.hotfix: false`, optional `fix.refactor_pr_url`.</output>
+      <decision-gate>The fix diff includes lines inside the red test's assertions: split it before review (r-fix-is-minimal-and-assertions-untouched).</decision-gate>
+    </step>
+
+    <step n="6" name="verify-green-in-ci">
+      <input>The CI run of the complete PR.</input>
+      <action>Take `passed` from the CI result, never from a local run. Confirm the regression test ran: no `skip`, `xfail` or `retry` marker, and the test is inside the job that ran.</action>
+      <output>`verification.ci_run_url`, `verification.passed: true`, `verification.skipped_or_xfail: false`.</output>
+      <decision-gate>The regression test was skipped, marked xfail or excluded from the job: the PR does not merge (r-ci-shows-red-then-green).</decision-gate>
+    </step>
+
+    <step n="7" name="merge-and-date-the-review">
+      <input>The green PR; the developer's handle; today's date.</input>
+      <action>Merge. Set `owner`, `review.merged_at` and `review.next_review_at` = `merged_at` + 90 days. Mark the alert resolved in the alerting tool and set `review.alert_resolved: true`. Run `scripts/validate-regression-test-first-bugfix-workflow.py --file` on the record.</action>
+      <output>Record validating with no violation; the 90-day review in the calendar.</output>
+      <decision-gate>The validator rejects the record: fix the record, not the rule (r-alert-closed-after-recurrence-window).</decision-gate>
+    </step>
+
+    <step n="8" name="hotfix-variant-or-close-the-loop">
+      <input>Either the SLA decision from step 1, or the alerting tool's issue page at `review.next_review_at`.</input>
+      <action>Hotfix: ship the smallest fix with `fix.hotfix: true`, set `red_test.status: pending`, `red_test.follow_up_ticket_url` and `red_test.due_at` no later than `merged_at` + 14 days, keep the alert open (`alert_resolved: false`) until the test merges, then run steps 2-6 from the ticket. Review: at `next_review_at` fill `review.outcome` with the regression events for the issue in the window and whether a new issue with the same stack signature exists.</action>
+      <output>Either a pending record with its follow-up ticket, or a reviewed record with `outcome`.</output>
+      <decision-gate>A regression event inside the window reopens the record: a new red test for the new inputs is written before any second fix (r-hotfix-variant-carries-follow-up, r-alert-closed-after-recurrence-window).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Record validates via `scripts/validate-regression-test-first-bugfix-workflow.py` with no violation.</item>
+      <item>Two CI runs are cited: the test-only commit failing for the alert's reason, and the complete PR passing.</item>
+      <item>`next_review_at` is `merged_at` + 90 days, and a pending red test has a follow-up due within 14 days with the alert still open.</item>
+    </list>
   </section>
 </text>

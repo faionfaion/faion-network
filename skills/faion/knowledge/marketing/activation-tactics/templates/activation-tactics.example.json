@@ -1,42 +1,143 @@
 {
-  "__faion_header__": "purpose: activation-tactics example | consumes: AGENTS.md | produces: playbook-step | depends-on: 01-core-rules.xml | token-budget-impact: ~400",
-  "slug": "activation-tactics",
-  "owner": "playbook owner",
+  "__faion_header__": {
+    "purpose": "Example activation tactics playbook step conforming to content/02-output-contract.xml",
+    "consumes": "drop-off ranking with conversion per step, activation event and window, live tactics",
+    "produces": "playbook-step",
+    "depends-on": "content/01-core-rules.xml, templates/activation-checklist.yaml, templates/email-sequence.md.j2",
+    "token-budget-impact": "~900"
+  },
+  "activation_event": "project_created",
+  "window_days": 7,
+  "dropoffs": [
+    {
+      "step": "project created",
+      "screen": "/projects/new",
+      "current_conversion": 0.326,
+      "live_tactic": false
+    },
+    {
+      "step": "email verified",
+      "screen": "/verify",
+      "current_conversion": 0.73,
+      "live_tactic": false
+    },
+    {
+      "step": "workspace named",
+      "screen": "/workspace/setup",
+      "current_conversion": 0.94,
+      "live_tactic": true
+    }
+  ],
+  "tactics": [
+    {
+      "id": "t1",
+      "type": "checklist",
+      "target_step": "project created",
+      "step_conversion_baseline": 0.326,
+      "checklist": {
+        "items": [
+          {
+            "id": "workspace_named",
+            "label": "Name your workspace",
+            "required": false,
+            "activation_event": false,
+            "action": null,
+            "tracked_event": "workspace_named"
+          },
+          {
+            "id": "first_project",
+            "label": "Create your first project",
+            "required": true,
+            "activation_event": true,
+            "action": "/projects/new",
+            "tracked_event": "project_created"
+          },
+          {
+            "id": "invite",
+            "label": "Invite a team member",
+            "required": false,
+            "activation_event": false,
+            "action": "/team/invite",
+            "tracked_event": "invite_sent"
+          }
+        ]
+      }
+    },
+    {
+      "id": "t2",
+      "type": "email_sequence",
+      "target_step": "email verified",
+      "step_conversion_baseline": 0.73,
+      "emails": [
+        {
+          "day": 0,
+          "subject": "Verify your email to open your workspace",
+          "cta_count": 1,
+          "cta_url": "https://app.acme.com/verify?token={{token}}",
+          "expected_time_minutes": 1,
+          "send_condition": "always",
+          "condition_evaluated_at": "send_time"
+        },
+        {
+          "day": 1,
+          "subject": "One click and your first project is 2 minutes away",
+          "cta_count": 1,
+          "cta_url": "https://app.acme.com/verify?token={{token}}",
+          "expected_time_minutes": 1,
+          "send_condition": "not_activated",
+          "condition_evaluated_at": "send_time"
+        },
+        {
+          "day": 3,
+          "subject": "Need a hand getting in?",
+          "cta_count": 1,
+          "cta_url": "https://app.acme.com/verify?token={{token}}",
+          "expected_time_minutes": 1,
+          "send_condition": "not_activated",
+          "condition_evaluated_at": "send_time"
+        }
+      ]
+    }
+  ],
   "steps": [
     {
       "id": "s1",
-      "input": "brief",
-      "owner": "lead",
-      "exit_criterion": "brief reviewed + scope confirmed",
-      "output_location": "docs/briefs/"
+      "tactic_id": "t1",
+      "action": "Ship the 3-item checklist on /projects/new to 100 percent of new signups for two closed signup weeks",
+      "exit_criterion": {
+        "metric": "step_conversion",
+        "baseline": 0.326,
+        "minimum_lift": 0.03
+      },
+      "output_location": "growth/activation/2026-05-checklist.md"
     },
     {
       "id": "s2",
-      "input": "data",
-      "owner": "analyst",
-      "exit_criterion": "dataset >=30 records validated",
-      "output_location": "warehouse:tbl"
-    },
-    {
-      "id": "s3",
-      "input": "draft",
-      "owner": "writer",
-      "exit_criterion": "draft passes editorial check",
-      "output_location": "docs/drafts/"
-    },
-    {
-      "id": "s4",
-      "input": "draft",
-      "owner": "lead",
-      "exit_criterion": "signed off by named reviewer",
-      "output_location": "docs/published/"
+      "tactic_id": "t2",
+      "action": "Enable the 3-send verification sequence with send-time suppression for two closed signup weeks",
+      "exit_criterion": {
+        "metric": "step_conversion",
+        "baseline": 0.73,
+        "minimum_lift": 0.05
+      },
+      "output_location": "growth/activation/2026-05-verify-emails.md"
     }
   ],
   "decision_branches": [
     {
-      "when": "data_records < 30",
-      "then": "loop back to s2"
+      "kind": "defer_live_tactic",
+      "when": "the target step already has a live tactic in this period (workspace named)",
+      "then": "defer the new tactic until the live one has hit or missed its exit criterion"
+    },
+    {
+      "kind": "remove",
+      "when": "step conversion after two closed weeks is below baseline plus minimum_lift",
+      "then": "remove the tactic and return to the drop-off ranking"
+    },
+    {
+      "kind": "keep",
+      "when": "step conversion after two closed weeks is at or above baseline plus minimum_lift",
+      "then": "keep the tactic and move to the next drop-off step"
     }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L101"
+  ]
 }

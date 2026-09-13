@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Activation Tactics Worked Example" version="1.0.0" est_tokens="2600" depth="recommended">
+  <summary>One complete playbook step for a B2B SaaS with three measured drop-offs: a 3-item checklist on the project-creation screen and a 3-send verification email sequence, each with a rollout step and a numeric exit criterion, a deferral branch for the step that already has a live tactic, with a note on each non-obvious value; then the playbook step as it is usually written and what the validator prints.</summary>
+
+  <section title="Scenario">
+    <p>Activation is `project_created` within 7 days. The activation-metrics report ranks "project created" (32.6 percent step conversion from `/projects/new`) and "email verified" (73 percent) as the top drop-offs; "workspace named" converts at 94 percent and already carries a live tooltip experiment. Users who stall on project creation are inside the product; users who never verify have left. No use-case key is captured at signup.</p>
+  </section>
+
+  <section title="Resulting playbook step">
+    <example type="good" title="checklist on /projects/new plus verification sequence">
+      <code lang="json"><![CDATA[
+{
+  "activation_event": "project_created",
+  "window_days": 7,
+  "dropoffs": [
+    {"step": "project created", "screen": "/projects/new", "current_conversion": 0.326, "live_tactic": false},
+    {"step": "email verified", "screen": "/verify", "current_conversion": 0.73, "live_tactic": false},
+    {"step": "workspace named", "screen": "/workspace/setup", "current_conversion": 0.94, "live_tactic": true}
+  ],
+  "tactics": [
+    {
+      "id": "t1", "type": "checklist", "target_step": "project created", "step_conversion_baseline": 0.326,
+      "checklist": {"items": [
+        {"id": "workspace_named", "label": "Name your workspace", "required": false, "activation_event": false, "action": null, "tracked_event": "workspace_named"},
+        {"id": "first_project", "label": "Create your first project", "required": true, "activation_event": true, "action": "/projects/new", "tracked_event": "project_created"},
+        {"id": "invite", "label": "Invite a team member", "required": false, "activation_event": false, "action": "/team/invite", "tracked_event": "invite_sent"}
+      ]}
+    },
+    {
+      "id": "t2", "type": "email_sequence", "target_step": "email verified", "step_conversion_baseline": 0.73,
+      "emails": [
+        {"day": 0, "subject": "Verify your email to open your workspace", "cta_count": 1, "cta_url": "https://app.acme.com/verify?token={{token}}", "expected_time_minutes": 1, "send_condition": "always", "condition_evaluated_at": "send_time"},
+        {"day": 1, "subject": "One click and your first project is 2 minutes away", "cta_count": 1, "cta_url": "https://app.acme.com/verify?token={{token}}", "expected_time_minutes": 1, "send_condition": "not_activated", "condition_evaluated_at": "send_time"},
+        {"day": 3, "subject": "Need a hand getting in?", "cta_count": 1, "cta_url": "https://app.acme.com/verify?token={{token}}", "expected_time_minutes": 1, "send_condition": "not_activated", "condition_evaluated_at": "send_time"}
+      ]
+    }
+  ],
+  "steps": [
+    {"id": "s1", "tactic_id": "t1", "action": "Ship the 3-item checklist on /projects/new to 100 percent of new signups for two closed signup weeks", "exit_criterion": {"metric": "step_conversion", "baseline": 0.326, "minimum_lift": 0.03}, "output_location": "growth/activation/2026-05-checklist.md"},
+    {"id": "s2", "tactic_id": "t2", "action": "Enable the 3-send verification sequence with send-time suppression for two closed signup weeks", "exit_criterion": {"metric": "step_conversion", "baseline": 0.73, "minimum_lift": 0.05}, "output_location": "growth/activation/2026-05-verify-emails.md"}
+  ],
+  "decision_branches": [
+    {"kind": "defer_live_tactic", "when": "the target step already has a live tactic in this period (workspace named)", "then": "defer the new tactic until the live one has hit or missed its exit criterion"},
+    {"kind": "remove", "when": "step conversion after two closed weeks is below baseline plus minimum_lift", "then": "remove the tactic and return to the drop-off ranking"},
+    {"kind": "keep", "when": "step conversion after two closed weeks is at or above baseline plus minimum_lift", "then": "keep the tactic and move to the next drop-off step"}
+  ]
+}
+]]></code>
+      <note>Both tactics name a step from `dropoffs[]` and carry that step's conversion as `step_conversion_baseline`, which is the number the exit criterion is later measured against (r-tactic-targets-named-dropoff-step). The checklist has three items: `workspace_named` is checked by its tracked event with no navigation, `first_project` is the single `activation_event: true` item and is required, and `invite` is optional; nothing on the list can be ticked by hand (r-checklist-single-activation-item). The email sequence targets "email verified" because a user who never verified has left the product, and every CTA is the authenticated verification link, not the home page; `expected_time_minutes: 1` is stated in each body (r-email-one-cta-direct-link). Days 1 and 3 carry `not_activated` evaluated at send time, Day 0 is the only unconditional send, three sends stay inside the 7-day window, and the Day 7 email from the template was dropped because verification either happens in the first days or not at all (r-email-sequence-suppressed-on-activation). No guide was placed on `/workspace/setup` because that step converts at 94 percent and already has a live tactic (r-in-app-guide-at-dropoff-only). No segmentation because no use-case key exists at signup (r-segmented-onboarding-keyed-at-signup). Each rollout step states metric, baseline and the lift that keeps the tactic: 0.326 + 0.03 for the checklist, 0.73 + 0.05 for the emails (r-exit-criterion-states-metric-and-threshold). The `defer_live_tactic` branch is what kept "workspace named" out of this period's tactics (r-one-tactic-per-step-at-a-time).</note>
+    </example>
+  </section>
+
+  <section title="Rejected playbook step">
+    <example type="bad" title="the same product's tactics as usually written">
+      <code lang="json"><![CDATA[
+{
+  "activation_event": "project_created",
+  "window_days": 7,
+  "dropoffs": [
+    {"step": "project created", "screen": "/projects/new", "current_conversion": 0.326, "live_tactic": false}
+  ],
+  "tactics": [
+    {
+      "id": "t1", "type": "checklist", "target_step": "onboarding", "step_conversion_baseline": 0.5,
+      "checklist": {"items": [
+        {"id": "profile", "label": "Complete your profile", "required": false, "activation_event": false, "action": "/settings/profile", "tracked_event": null},
+        {"id": "read_docs", "label": "Read the getting-started guide", "required": false, "activation_event": false, "action": null, "tracked_event": null},
+        {"id": "first_project", "label": "Create your first project", "required": false, "activation_event": true, "action": "/projects/new", "tracked_event": "project_created"},
+        {"id": "invite", "label": "Invite a team member", "required": false, "activation_event": true, "action": "/team/invite", "tracked_event": "invite_sent"},
+        {"id": "watch_video", "label": "Watch the intro video", "required": false, "activation_event": false, "action": null, "tracked_event": null},
+        {"id": "connect", "label": "Connect an integration", "required": false, "activation_event": false, "action": "/integrations", "tracked_event": null}
+      ]}
+    },
+    {
+      "id": "t2", "type": "email_sequence", "target_step": "project created", "step_conversion_baseline": 0.326,
+      "emails": [
+        {"day": 0, "subject": "Welcome to Acme", "cta_count": 2, "cta_url": "https://app.acme.com/", "expected_time_minutes": 2, "send_condition": "always", "condition_evaluated_at": "send_time"},
+        {"day": 3, "subject": "Quick win: do this in 5 minutes", "cta_count": 1, "cta_url": "https://app.acme.com/login", "expected_time_minutes": 5, "send_condition": "always", "condition_evaluated_at": "send_time"},
+        {"day": 10, "subject": "Your account is waiting", "cta_count": 1, "cta_url": "https://app.acme.com/projects/new", "expected_time_minutes": 2, "send_condition": "not_activated", "condition_evaluated_at": "send_time"}
+      ]
+    },
+    {
+      "id": "t3", "type": "in_app_guide", "target_step": "project created", "step_conversion_baseline": 0.326,
+      "guide": {"screen": "/dashboard", "guides_on_screen": 3, "dismissible_in_one_click": true, "hidden_after_step_complete": false}
+    }
+  ],
+  "steps": [
+    {"id": "s1", "tactic_id": "t1", "action": "Ship the checklist to everyone", "exit_criterion": {"metric": "step_conversion", "baseline": 0.5, "minimum_lift": 0.02}, "output_location": "docs/published/"}
+  ],
+  "decision_branches": [
+    {"kind": "loop_back", "when": "activation does not improve", "then": "try another tactic from the list"}
+  ]
+}
+]]></code>
+      <note>What the validator prints: the checklist has 6 items, above the maximum of 5, and `read_docs` and `watch_video` have neither an `action` nor a `tracked_event` (r-checklist-single-activation-item); the Day 0 email has `cta_count` 2 and a `cta_url` that is the site root, the Day 3 email links to `/login` and is `send_condition: always` after Day 0 (r-email-one-cta-direct-link, r-email-sequence-suppressed-on-activation); the guide has `guides_on_screen` 3 and `hidden_after_step_complete` false (r-in-app-guide-at-dropoff-only); and no `defer_live_tactic` branch exists (r-one-tactic-per-step-at-a-time). Once those are fixed the cross-field checks add: `t1` targets "onboarding", which is not a measured drop-off, with a made-up 0.5 baseline (tactic-without-target-step); two items claim `activation_event: true` and the real one is not `required`; the Day 10 email is past the 7-day window; `t2` and `t3` both target "project created" with no shared `experiment_id` (two-tactics-same-step); the guide sits on `/dashboard`, not on the step's `/projects/new` (tooltip-stack); and `t2` and `t3` have no rollout step, so nothing states when they would be removed (r-exit-criterion-states-metric-and-threshold). What the reviewer sees: a feature tour disguised as a checklist and three tactics whose effect on one step cannot be told apart.</note>
+    </example>
+  </section>
+</text>

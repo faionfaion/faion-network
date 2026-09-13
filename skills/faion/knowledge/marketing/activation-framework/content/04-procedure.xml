@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Activation Framework Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Activation Framework end-to-end from inputs to a validated `spec` artefact + human signoff.</summary>
+<text id="04-procedure" title="Activation Framework Procedure" version="1.2.0" est_tokens="1500" depth="essential">
+  <summary>Seven steps from the event table to the activation spec: pick one candidate event and window, validate it against D30 retention on a closed cohort, compute the baseline over four closed signup-week cohorts, map the funnel to tracked events, rank drop-offs by absolute users lost, score the experiment backlog with ice.py, and specify the weekly closed-cohort dashboard.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="name-the-candidate-event-and-window">
+      <input>The product's event table (event names and timestamps per user), the signup event, and the team's current phrasing of "activated".</input>
+      <action>Write `activation_event.name` as one tracked event name exactly as it appears in the event table and `activation_event.window_days` counted from signup. Reject phrases ("sees value") and lists of events.</action>
+      <output>`activation_event` block of `templates/activation-framework.spec.md.j2`.</output>
+      <decision-gate>No event table exists: stop and route to instrumentation work per 06-decision-tree.xml. The candidate cannot be pasted into a query: rewrite it (r-single-activation-event-with-window).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="validate-against-d30-retention">
+      <input>One closed signup cohort (signup date + 30 days before the data cutoff) and the event table.</input>
+      <action>Split the cohort into users who performed the candidate event inside the window and users who did not. Record both group sizes and both D30 retention rates in `d30_validation`, and set `correlational_note: true`.</action>
+      <output>`d30_validation` block.</output>
+      <decision-gate>The performed group's D30 retention is not materially above the other group's: drop the candidate, return to step 1 with the next one (r-event-validated-against-d30-retention).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `spec` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="compute-the-closed-cohort-baseline">
+      <input>Signup-week cohorts, the data cutoff date, and `window_days`.</input>
+      <action>For each signup week whose last signup day plus `window_days` is before `data_cutoff`, record `signups`, `activated` and `activation_rate` = `activated` / `signups` to three decimals. Take at least four consecutive closed weeks.</action>
+      <output>`baseline.data_cutoff` and `baseline.cohorts[]`.</output>
+      <decision-gate>Fewer than four closed weeks: extend the history or wait; no experiment is listed until the baseline exists (r-baseline-before-experiments).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-activation-framework.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="map-the-funnel-to-events">
+      <input>The steps a user passes from signup to the activation event; the event table.</input>
+      <action>List the steps in order in `funnel[]`. For each, name the tracked `event` and record `entered` and `completed` over the baseline cohorts. A step with no event gets `status: uninstrumented`, an `instrumentation_task` with a ticket id, and no figures.</action>
+      <output>`funnel[]`.</output>
+      <decision-gate>A figure is reported for a step that has no event: remove the figure and mark the step uninstrumented (r-funnel-steps-map-to-events).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="rank-dropoffs-by-absolute-loss">
+      <input>`funnel[]` figures.</input>
+      <action>For each instrumented step that loses users, compute `users_lost` = `entered` - `completed` and `relative_drop` = `users_lost` / `entered`. Sort `dropoff_priorities[]` by `users_lost` descending.</action>
+      <output>`dropoff_priorities[]`.</output>
+      <decision-gate>The list is ordered by `relative_drop`: re-sort; percentage ranking is not permitted (r-dropoffs-ranked-by-absolute-loss).</decision-gate>
     </step>
 
+    <step n="6" name="score-the-experiment-backlog">
+      <input>`dropoff_priorities[]`, the baseline, and the team's experiment ideas.</input>
+      <action>For each experiment record `funnel_step` (a name from `funnel[]`), a one-sentence `hypothesis`, `primary_metric` (`activation_rate` or `step_conversion`), `baseline_value` from step 3 or 4, `ship_threshold_lift`, and `impact`, `confidence`, `ease` as integers 1-10. Compute `ice` with `templates/ice.py` (`round((i + c + e) / 3, 2)`) and sort `experiments[]` by `ice` descending.</action>
+      <output>`experiments[]`.</output>
+      <decision-gate>An experiment missing its step, metric, baseline or threshold does not enter the backlog; a score outside 1-10 or an `ice` that ice.py does not reproduce is corrected before the list is sorted (r-experiment-names-step-metric-threshold, r-ice-integer-scale-and-formula).</decision-gate>
+    </step>
+
+    <step n="7" name="specify-the-weekly-dashboard-and-validate">
+      <input>`activation_event`, the acquisition channel dimension in the event table.</input>
+      <action>Write `dashboard` with `cadence: weekly`, `closed_cohorts_only: true`, `window_days` equal to `activation_event.window_days`, `segment_by` including `acquisition_channel`, and a `series_id` that encodes event and window so a change starts a new series. Run `scripts/validate-activation-framework.py --file` on the spec.</action>
+      <output>Validated spec.</output>
+      <decision-gate>The validator reports an open cohort, an ICE mismatch or a window mismatch: fix the spec, not the rule (r-dashboard-reports-closed-cohorts-weekly).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates via `scripts/validate-activation-framework.py` with no violation.</item>
+      <item>The activation event is one queryable event name with a window, validated against D30 retention with both group sizes.</item>
+      <item>Baseline, drop-offs and backlog are all computed on the same four or more closed cohorts, and the dashboard reports the same window.</item>
+    </list>
   </section>
 </text>
