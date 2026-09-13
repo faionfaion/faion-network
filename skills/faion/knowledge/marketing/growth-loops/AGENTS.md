@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=spec`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- Existing user behaviour produces an output (invitation, shared document, public content, listing) and an event is already tracked where that output becomes a new input in the same unit.
+- Stage transitions from input to action to output to fuel-back can each be measured from instrumented events with a date and a sample size, or the team is willing to flag the missing ones as assumptions.
+- At least 90 days of history, or the willingness to model that long, so the projection covers three full cycles at the measured cycle time.
+- Blended CAC and payback are known for the current mix, and loop-sourced users can be separated through the fuel-back event rather than a channel label.
+- Activation and 30-day retention (or index and traffic share for content) are reported per cohort, so a quality guardrail on loop output can be set numerically.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- No user output ever becomes a new input: the design is a funnel, and a funnel methodology or CAC-payback work answers the question.
+- The fuel-back event is not instrumented and cannot be within the engagement: instrument it first; a spec built on an assumed closure rate compounds an invented number.
+- The team wants a viral coefficient headline for a fundraising deck rather than a payback answer: k without cycle time, decay and a guardrail is exactly what this methodology refuses to produce.
+- Three loop types are to be summed into one efficiency figure: pick the primary loop and run this once per loop, never blended.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
-|----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+|---|---|---|
+| Event table for the four stages | per-user events with timestamps: input, action, output and fuel-back event names as they land in analytics | product analytics warehouse (BigQuery, Amplitude, Mixpanel) |
+| Stage conversion query results | numerator, denominator, value, measurement date and sample size per transition | warehouse query over the event table |
+| Cycle-time distribution | median days from input event to fuel-back event per cohort | warehouse query |
+| CAC and payback baseline | blended CAC and payback months for the last 90 days, with and without users attributed by the fuel-back event | finance or growth analytics |
+| Cohort activation and D30 retention | loop-sourced cohort versus baseline cohort, same window | retention query |
+| `templates/growth-loop-design.md.j2` | working canvas for the flow, metrics table and bottleneck before the spec is written | this methodology |
 
 ## Assumes Loaded
 
@@ -48,11 +52,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: loop closes output into input, one primary loop type, measured stage rates, k and cycle time, 90-day cohort projection with decay, bottleneck-first friction map, CAC payback with and without loop, quality guardrail | 2200 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
-| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
-| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the loop spec: four stages closed by a fuel-back event in the input unit, one primary loop type, three measured-or-flagged stage metrics, k as their product with cycle time and the amplifier reading, a 90-day three-cycle cohort projection with decay, bottleneck-first friction map, CAC payback with and without loop, numeric quality guardrail; valid and invalid specs; 8 forbidden patterns | 4950 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 1150 |
+| `content/04-procedure.xml` | essential | 8 steps: name the stages and the fuel-back event, declare the loop type, measure the stage transitions, compute k and cycle time, project cohorts with decay over 90 days, map the bottleneck and rank experiments, compute CAC payback with and without loop, set the quality guardrail and validate | 1700 |
+| `content/05-examples.xml` | recommended | Complete spec for a document-sharing viral loop (k 0.13 from 0.45 x 2.4 x 0.12, 9-day cycle, 1.15 multiplier, 120-day projection with 5 percent saturation, view-page bottleneck, payback 14.2 to 12.4 months, D30 guardrail within) with a note per value, plus the same loop as usually drawn and what the validator prints | 2350 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 900 |
 
 ## Task Routing
 

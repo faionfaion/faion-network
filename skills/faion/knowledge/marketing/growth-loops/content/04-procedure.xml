@@ -1,40 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Growth Loops Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Growth Loops end-to-end from inputs to a validated `spec` artefact + human signoff.</summary>
+<text id="04-procedure" title="Growth Loops Procedure" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>Eight steps from the event table to the loop spec: name the four stages and the fuel-back event, declare one loop type, measure each stage transition or flag it, compute k and cycle time, project cohorts with decay over at least 90 days and three cycles, map the bottleneck and rank experiments on it, compute CAC payback with and without loop-sourced users, set the quality guardrail and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="name-the-stages-and-the-fuel-back-event">
+      <input>The event table; the team's loop diagram; `templates/growth-loop-design.md.j2` as the working canvas.</input>
+      <action>Fill `stages.input`, `action`, `output`, `fuel_back` in `templates/growth-loops.spec.md.j2`, each with a tracked `event` and a `unit`. The fuel-back event is where one cycle's output becomes the next cycle's input; its unit must be the input unit.</action>
+      <output>`stages` block.</output>
+      <decision-gate>No event exists where an output becomes an input, or the units differ: the design is a funnel; label it so and stop, no projection is written (r-loop-closes-output-into-input).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="declare-one-primary-loop-type">
+      <input>What the loop consumes: user actions, content, capital or supply.</input>
+      <action>Set `loop_type` to exactly one of viral, ugc_search, paid, network_effect, supply_side and `input_source` accordingly. List other loops in `secondary_loops[]` with a note that they are tracked separately.</action>
+      <output>`loop_name`, `loop_type`, `input_source`, `secondary_loops[]`.</output>
+      <decision-gate>Two types are needed to describe the mechanism: split into two specs; nothing from a secondary loop enters this projection (r-one-primary-loop-type).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `spec` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="measure-each-stage-transition">
+      <input>Warehouse queries for the three transitions (input-action, action-output, output-fuel_back).</input>
+      <action>For each transition record `event`, `numerator`, `denominator`, `value`, `basis` measured with `measured_on` and `sample_size`. A transition with no event or no data is `basis: assumption` with `measured_on` and `sample_size` null.</action>
+      <output>`stage_metrics[]` with exactly three rows.</output>
+      <decision-gate>A benchmark or "typical" rate written as measured: reclassify it as an assumption; the projection headline will have to say so (r-stage-conversion-measured-not-estimated).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-growth-loops.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="compute-k-and-cycle-time">
+      <input>`stage_metrics[]`; the median days from input event to fuel-back event.</input>
+      <action>Set `efficiency.k` to the product of the three values (two decimals) and `cycle_time_days` to the median. If k is below 1, `reading` is amplifier and `multiplier` = 1 / (1 - k); if k is 1 or more, `reading` is self_sustaining and `growth_rate_per_cycle` = k - 1.</action>
+      <output>`efficiency` block.</output>
+      <decision-gate>Any text in the spec calling a k-below-1 loop self-sustaining or viral: rewrite it as an amplifier of external inputs (r-loop-efficiency-and-cycle-time).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="project-cohorts-with-decay">
+      <input>`efficiency`, the expected external inputs per cycle, and the decay mechanism for the loop type (contributor churn, content decay, audience saturation, rising CPMs).</input>
+      <action>Set `projection.horizon_days` (at least 90 and at least three cycle times), `cycles`, `decay.kind` and `rate_per_cycle`. Build `cohorts[]` cycle by cycle: `loop_inputs` = previous total x k x (1 - decay)^(cycle - 1), `total_inputs` = external + loop. Set `rests_on_assumption` when any stage is an assumption and say so in `headline`.</action>
+      <output>`projection` block.</output>
+      <decision-gate>The first cycle extrapolated linearly, no decay term, or fewer than three cycles: rebuild; the projection is invalid as written (r-steady-state-projection-90-days).</decision-gate>
     </step>
 
+    <step n="6" name="map-the-bottleneck-and-rank-experiments">
+      <input>`stage_metrics[]`, `efficiency.k`, the experiment ideas per stage.</input>
+      <action>Set `friction_map.bottleneck_stage` to the transition with the lowest value, `bottleneck_value`, and `k_if_doubled` = 2 x k. Rank `experiments[]` with the bottleneck experiment at rank 1; any experiment on another stage carries a `justification` for preceding a bottleneck experiment.</action>
+      <output>`friction_map` block.</output>
+      <decision-gate>The rank-1 experiment targets the stage the team owns rather than the bottleneck: re-rank or justify in writing (r-friction-map-names-the-bottleneck).</decision-gate>
+    </step>
+
+    <step n="7" name="compute-cac-payback-with-and-without-loop">
+      <input>Spend and new-user counts for `period_days`; users carrying the fuel-back event.</input>
+      <action>Set `cac_payback.attributed_by` to `stages.fuel_back.event`. Compute `without_loop` (blended CAC and payback excluding loop-attributed users) and `with_loop` (including them). Organic and direct traffic stay external inputs.</action>
+      <output>`cac_payback` block.</output>
+      <decision-gate>Loop-sourced users counted by channel label instead of the event: recompute; the payback claim is not evidenced (r-cac-payback-with-and-without-loop).</decision-gate>
+    </step>
+
+    <step n="8" name="set-the-quality-guardrail-and-validate">
+      <input>Activation and D30 retention of the loop-sourced cohort and the baseline cohort (or index and traffic share for content loops).</input>
+      <action>Set `quality_guardrail.metric`, a numeric `threshold` (baseline minus the agreed margin), `loop_cohort_value`, `baseline_value` and `status`. Run `scripts/validate-growth-loops.py --file` on the spec.</action>
+      <output>Validated spec.</output>
+      <decision-gate>`status` breached: the loop optimisation that caused it is reverted even if k improved; the validator's k, bottleneck or cohort findings are fixed in the spec, not argued (r-loop-quality-guardrail).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates via `scripts/validate-growth-loops.py` with no violation.</item>
+      <item>The fuel-back event is tracked and in the input unit; every stage rate is measured with a date and sample, or flagged and surfaced in the headline.</item>
+      <item>k, cycle time, the 90-day three-cycle projection with decay, the bottleneck-first experiment ranking, payback with and without loop, and the numeric guardrail are all present and mutually consistent.</item>
+    </list>
   </section>
 </text>

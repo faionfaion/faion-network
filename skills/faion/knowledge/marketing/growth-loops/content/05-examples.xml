@@ -1,24 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Growth Loops Worked Example" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>End-to-end worked example walking from inputs to a signed-off `spec` artefact, including a forced skip scenario.</summary>
+<text id="05-examples" title="Growth Loops Worked Example" version="1.2.0" est_tokens="2350" depth="recommended">
+  <summary>One complete loop spec for a B2B document-sharing viral loop (k 0.13 from three measured stages, 9-day cycle, amplifier multiplier 1.15, 120-day cohort projection with 5 percent saturation per cycle, view-page bottleneck, CAC payback 14.2 to 12.4 months, D30 guardrail within) with a note on each value, plus the same loop as usually drawn and what the validator prints.</summary>
 
-  <section title="Happy path">
-    <example trace="happy-path">
-      <p>A small B2B SaaS commissions a growth-loops spec; growth lead is named owner; review deadline 2026-06-15. The agent gathers inputs (brief + last quarter's metrics), confirms all `Applies If` items hold, applies rules, synthesises a 3-section spec, validates it (exit 0), surfaces ready_for_review, growth lead signs off.</p>
-      <p>Trace through the five-step procedure:</p>
-      <list>
-        <item>Step 1 gather-inputs: preconditions report = all true</item>
-        <item>Step 2 apply-rules: decision-tree leaf -> conclusion ref="output-contract-binding"</item>
-        <item>Step 3 synthesise-output: artefact draft produced</item>
-        <item>Step 4 validate-output: scripts/validate-growth-loops.py --file draft.json -> exit 0</item>
-        <item>Step 5 human-checkpoint: reviewer signs off, artefact lands at output location</item>
-      </list>
+  <section title="Scenario">
+    <p>A B2B document workspace pays about 310 dollars per new workspace and its payback has slipped past 14 months. Users share documents with people outside their company; some recipients sign up. The event table holds `signup_completed`, `share_sent`, `share_viewed` and `signup_via_share`. The growth team wants to know whether the share loop moves payback and where to work on it.</p>
+  </section>
+
+  <section title="Resulting spec">
+    <example type="good" title="external document share loop">
+      <code lang="json"><![CDATA[
+{
+  "loop_name": "external document share loop",
+  "loop_type": "viral",
+  "input_source": "user_action",
+  "secondary_loops": [
+    {"type": "ugc_search", "note": "public templates indexed by search; tracked separately, not in this projection"}
+  ],
+  "stages": {
+    "input": {"name": "new workspace signup", "event": "signup_completed", "unit": "new signups"},
+    "action": {"name": "user shares a document with an external recipient", "event": "share_sent", "unit": "shares sent"},
+    "output": {"name": "external recipient opens the shared document", "event": "share_viewed", "unit": "recipient views"},
+    "fuel_back": {"name": "recipient signs up from the shared document", "event": "signup_via_share", "unit": "new signups"}
+  },
+  "stage_metrics": [
+    {"transition": "input-action", "event": "share_sent", "numerator": "signups that sent at least one external share within 14 days", "denominator": "signups in the cohort", "value": 0.45, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 8400},
+    {"transition": "action-output", "event": "share_viewed", "numerator": "distinct external recipients who viewed", "denominator": "sharers", "value": 2.4, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 3780},
+    {"transition": "output-fuel_back", "event": "signup_via_share", "numerator": "viewers who signed up within 14 days", "denominator": "distinct viewers", "value": 0.12, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 9072}
+  ],
+  "efficiency": {
+    "k": 0.13,
+    "cycle_time_days": 9,
+    "reading": "amplifier",
+    "multiplier": 1.15,
+    "growth_rate_per_cycle": null
+  },
+  "projection": {
+    "horizon_days": 120,
+    "cycles": 13,
+    "decay": {"kind": "audience_saturation", "rate_per_cycle": 0.05},
+    "rests_on_assumption": false,
+    "headline": "The loop adds about 13 percent on top of external signups and saturates toward 1,120 signups per 9-day cycle at 1,000 external inputs.",
+    "cohorts": [
+      {"cycle": 1, "external_inputs": 1000, "loop_inputs": 0, "total_inputs": 1000},
+      {"cycle": 2, "external_inputs": 1000, "loop_inputs": 124, "total_inputs": 1124},
+      {"cycle": 3, "external_inputs": 1000, "loop_inputs": 132, "total_inputs": 1132},
+      {"cycle": 4, "external_inputs": 1000, "loop_inputs": 126, "total_inputs": 1126}
+    ]
+  },
+  "friction_map": {
+    "bottleneck_stage": "output-fuel_back",
+    "bottleneck_value": 0.12,
+    "k_if_doubled": 0.26,
+    "experiments": [
+      {"rank": 1, "name": "signup call to action on the shared-document view page", "stage": "output-fuel_back", "justification": null},
+      {"rank": 2, "name": "prompt to share at first document completion", "stage": "input-action", "justification": "the view page redesign is blocked on the design system release for two weeks; this experiment is already built"}
+    ]
+  },
+  "cac_payback": {
+    "period_days": 90,
+    "attributed_by": "signup_via_share",
+    "without_loop": {"blended_cac": 310, "payback_months": 14.2},
+    "with_loop": {"blended_cac": 271, "payback_months": 12.4}
+  },
+  "quality_guardrail": {
+    "metric": "d30_retention",
+    "threshold": 0.3,
+    "loop_cohort_value": 0.33,
+    "baseline_value": 0.34,
+    "status": "within"
+  }
+}
+]]></code>
+      <note>k = 0.45 x 2.4 x 0.12 = 0.13: 45 percent of signups share externally within 14 days, each sharer reaches 2.4 distinct viewers, and 12 percent of viewers sign up; every row carries the query date and sample, so nothing is an assumption (r-stage-conversion-measured-not-estimated, r-loop-efficiency-and-cycle-time). k below 1 makes the loop an amplifier with multiplier 1 / (1 - 0.13) = 1.15, so the projection saturates near 1,000 x 1.15 = 1,150 signups per cycle rather than growing; the cohorts show it approaching that ceiling with 5 percent audience saturation per cycle (r-steady-state-projection-90-days). `signup_via_share` is the fuel-back event: its unit is new signups, the same as the input, and it is the only attribution used for CAC payback (r-loop-closes-output-into-input, r-cac-payback-with-and-without-loop). The view-page conversion at 0.12 is the lowest transition, so it is the bottleneck: doubling it takes k to 0.26 and the multiplier to 1.35, which is why the rank-1 experiment is on the view page and the share prompt at rank 2 needs a written justification (r-friction-map-names-the-bottleneck). The guardrail threshold 0.30 is baseline D30 retention 0.34 minus a 4-point margin; loop-sourced users retain at 0.33, so the loop is not trading quality for volume (r-loop-quality-guardrail). Payback moves from 14.2 to 12.4 months, which answers the question the methodology was invoked for.</note>
     </example>
   </section>
 
-  <section title="Forced skip">
-    <example trace="skip-path">
-      <p>Same team but the input brief omits the named owner field. Step 1 preconditions report flags `named-owner` rule as false. Agent returns an action=skip envelope per rule `skip-this-methodology` and yields control to the parent workflow.</p>
+  <section title="Rejected spec">
+    <example type="bad" title="the same loop as usually drawn">
+      <code lang="json"><![CDATA[
+{
+  "loop_name": "growth flywheel",
+  "loop_type": "viral and content",
+  "input_source": "user_action",
+  "secondary_loops": [],
+  "stages": {
+    "input": {"name": "new workspace signup", "event": "signup_completed", "unit": "new signups"},
+    "action": {"name": "user shares a document", "event": "share_sent", "unit": "shares sent"},
+    "output": {"name": "recipient opens the document", "event": "share_viewed", "unit": "recipient views"},
+    "fuel_back": {"name": "retained user comes back", "event": "session_started", "unit": "sessions"}
+  },
+  "stage_metrics": [
+    {"transition": "input-action", "event": "share_sent", "numerator": "signups that shared", "denominator": "signups in the cohort", "value": 0.3, "basis": "benchmark", "measured_on": null, "sample_size": null},
+    {"transition": "action-output", "event": "share_viewed", "numerator": "recipients who viewed", "denominator": "sharers", "value": 2.4, "basis": "measured", "measured_on": null, "sample_size": null},
+    {"transition": "output-fuel_back", "event": "session_started", "numerator": "viewers who signed up", "denominator": "distinct viewers", "value": 0.12, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 9072}
+  ],
+  "efficiency": {
+    "k": 0.6,
+    "cycle_time_days": 9,
+    "reading": "self_sustaining",
+    "multiplier": null,
+    "growth_rate_per_cycle": null
+  },
+  "projection": {
+    "horizon_days": 30,
+    "cycles": 1,
+    "decay": {"kind": "none", "rate_per_cycle": 0},
+    "rests_on_assumption": false,
+    "headline": "Viral growth: signups double every month.",
+    "cohorts": [
+      {"cycle": 1, "external_inputs": 1000, "loop_inputs": 300, "total_inputs": 1300}
+    ]
+  },
+  "friction_map": {
+    "bottleneck_stage": "input-action",
+    "bottleneck_value": 0.3,
+    "k_if_doubled": 1.2,
+    "experiments": []
+  },
+  "cac_payback": {
+    "period_days": 90,
+    "attributed_by": "organic",
+    "without_loop": {"blended_cac": 310, "payback_months": 14.2},
+    "with_loop": {"blended_cac": 180, "payback_months": 8}
+  },
+  "quality_guardrail": {
+    "metric": "d30_retention",
+    "threshold": 0.3,
+    "loop_cohort_value": 0.19,
+    "baseline_value": 0.34,
+    "status": "within"
+  }
+}
+]]></code>
+      <note>What the validator prints: `loop_type` "viral and content" is not one type (r-one-primary-loop-type); `stage_metrics[0].basis` "benchmark" is neither measured nor assumption and `stage_metrics[1]` is measured with no date or sample (r-stage-conversion-measured-not-estimated); `efficiency.reading` self_sustaining with k 0.6 below 1 and no multiplier (r-loop-efficiency-and-cycle-time); `projection.horizon_days` 30 is below 90, `cycles` 1 below 3, `decay.kind` "none" with rate 0 (r-steady-state-projection-90-days); `friction_map.experiments` is empty (r-friction-map-names-the-bottleneck). Once the schema violations are fixed the cross-field checks add: `stages.fuel_back.unit` "sessions" differs from the input unit "new signups", so the design is a funnel (r-loop-closes-output-into-input); k 0.6 is not the product 0.3 x 2.4 x 0.12 = 0.09; the first cohort already has 300 loop inputs; `cac_payback.attributed_by` "organic" is not the fuel-back event; and the guardrail says within while loop-sourced D30 retention 0.19 is below the 0.30 threshold (r-loop-quality-guardrail).</note>
     </example>
   </section>
 </text>

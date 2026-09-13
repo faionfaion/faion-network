@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 layer 2, batch 5: five slugs that survived a limit kill.** Two
+  agents died on the session limit mid-batch; the tree was triaged per slug —
+  every check green, contract free of stamp keys, contract + procedure +
+  examples + envelope + validator all changed together — and five passed:
+  `growth-experiment-design`, `growth-loops`, `growth-viral-loops`,
+  `pm/portfolio-evm-rollup-method`, `pm/program-dependency-aging-chart-recipe`.
+  Two were mid-rewrite (`growth-referral-programs` still carried five stamp
+  keys in its contract; `internal-link-audit` had only its contract touched)
+  and were reverted, not patched. Forty-six of 61 whole; fifteen queued.
+
 - **CR-011 layer 2, batch 4: `dev/regression-test-first-bugfix-workflow` and
   ten `marketing` documents.** `google-analytics` — the CR's own headline —
   now has a 13-field contract (measurement id, key events, custom dimensions

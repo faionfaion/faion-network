@@ -1,43 +1,277 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Program Dependency Aging Chart Recipe — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A recipe artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Program Dependency Aging Chart Recipe — Output Contract" version="2.0.0" est_tokens="4850" depth="essential">
+  <summary>JSON Schema (draft-07) for the weekly dependency aging chart artefact: the program PM as owner, the chart date on the checkpoint weekday with the tracker query and extraction timestamp, the age bands fixed at adoption, one edge per typed dependency with producer, consumer, type, `opened_at`, `needed_by`, tracker link id, blocked-task count, age in days from `opened_at`, band, slack, `superseded_from` for re-ticketed edges and an owned, dated action from the second band or non-positive slack onward (a re-baseline decision in the top band), the action table sorted red-first then band then blocked count, the resolved log, and the 85th-percentile SLE. Validator in scripts/validate-program-dependency-aging-chart-recipe.py enforces it, including the age, slack, sort and SLE arithmetic.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
-  </section>
+  <output-contract>
+    <required>
+      <field name="program" type="string" required="true">program name</field>
+      <field name="owner" type="string" required="true">the named program PM who takes re-baseline decisions, `role:handle` (03 human checkpoint)</field>
+      <field name="chart_date" type="date" required="true">the date the chart is drawn for; ages and slack are computed against it (r-age-from-dependency-open-not-task, r-milestone-slack-column)</field>
+      <field name="checkpoint_weekday" type="string" required="true">the weekday of the weekly checkpoint; `chart_date` falls on it (r-weekly-refresh-by-script)</field>
+      <field name="tracker_query" type="string" required="true">the tracker query the script ran to extract the edges (r-weekly-refresh-by-script)</field>
+      <field name="extracted_at" type="timestamp" required="true">when the script ran; within the checkpoint week, not after `chart_date` (r-weekly-refresh-by-script)</field>
+      <field name="age_bands" type="list" required="true">ordered, contiguous calendar-day bands starting at 0 with an open top band, fixed at `bands_adopted_on`; default 0-7, 8-14, 15-28, over 28 (r-age-bands-fixed)</field>
+      <field name="bands_adopted_on" type="date" required="true">the date the bands were set; they do not change afterwards (r-age-bands-fixed)</field>
+      <field name="edges" type="list" required="true">one entry per open dependency edge from the graph: `link_id`, `producer_team`, `consumer_team`, `dependency_type`, `opened_at`, `needed_by` (null = `no-deadline`), `blocked_task_count`, `age_days`, `band`, `slack_days`, optional `superseded_from`, `action` from the second band or non-positive slack, `rebaseline` in the top band (r-typed-edges-from-graph, r-count-blocked-tasks-per-edge, r-milestone-slack-column, r-action-per-escalation-band, r-no-aging-reset)</field>
+      <field name="action_table" type="list" required="true">`link_id`s in display order: non-positive slack first, then band descending, then `blocked_task_count` descending (r-count-blocked-tasks-per-edge, r-milestone-slack-column)</field>
+      <field name="resolved_log" type="list" required="true">delivered or not-needed edges with `opened_at`, `resolved_on`, `age_days`, `outcome`; `not-needed` only for edges that had a `needed_by` (r-closed-edges-feed-sle, r-typed-edges-from-graph)</field>
+      <field name="sle" type="object" required="true">`resolved_count_12w` over the trailing 12 weeks; `status` = `line` with `p85_days` when at least 10 resolved, else `insufficient-data` (r-closed-edges-feed-sle)</field>
+      <field name="chart_image" type="string" required="false">path or URL of the script-generated image embedded in the checkpoint slide (r-weekly-refresh-by-script)</field>
+    </required>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
-  </section>
+    <forbidden>
+      <pattern id="f1">`age_days` smaller than `chart_date` minus `opened_at` — the clock ran from a comment, a status change or the task, not the edge — fm-01</pattern>
+      <pattern id="f2">an edge without `producer_team`, `consumer_team`, `dependency_type`, `opened_at` or `link_id`, or a `not-needed` outcome on an edge that never had `needed_by` — fm-02</pattern>
+      <pattern id="f3">`age_bands` that do not start at 0, are not contiguous, or have a closed top band — fm-03</pattern>
+      <pattern id="f4">a `superseded_from` edge whose `opened_at` is later than the original's, or a resolved entry reopened within 14 days still in `resolved_log` — fm-04</pattern>
+      <pattern id="f5">an edge in the second band or older, or with non-positive slack, whose `action` is missing, has no owner or `due_date`, or reads "waiting on" — fm-05</pattern>
+      <pattern id="f6">an edge with `slack_days` at or below 0 not at the top of `action_table` — fm-06</pattern>
+      <pattern id="f7">`extracted_at` more than 7 days before `chart_date`, after it, or missing `tracker_query` — fm-07</pattern>
+      <pattern id="f8">`sle.status: line` with fewer than 10 resolved edges, or a `p85_days` that is not the 85th percentile of the trailing-12-week resolved ages — r-closed-edges-feed-sle</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/program-dependency-aging-chart-recipe.json",
+  "title": "Program dependency aging chart",
+  "type": "object",
+  "required": ["program", "owner", "chart_date", "checkpoint_weekday", "tracker_query", "extracted_at", "age_bands", "bands_adopted_on", "edges", "action_table", "resolved_log", "sle"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "link_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"}
+  },
+  "properties": {
+    "__faion_header__": {"type": "object"},
+    "program": {"type": "string", "minLength": 2},
+    "owner": {"$ref": "#/definitions/handle"},
+    "chart_date": {"$ref": "#/definitions/date"},
+    "checkpoint_weekday": {"type": "string", "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]},
+    "tracker_query": {"type": "string", "minLength": 10},
+    "extracted_at": {"$ref": "#/definitions/timestamp"},
+    "chart_image": {"type": "string", "minLength": 3},
+    "age_bands": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["label", "min_days", "max_days"],
+        "additionalProperties": false,
+        "properties": {
+          "label": {"type": "string", "minLength": 1},
+          "min_days": {"type": "integer", "minimum": 0},
+          "max_days": {"type": ["integer", "null"], "minimum": 1}
+        }
+      }
+    },
+    "bands_adopted_on": {"$ref": "#/definitions/date"},
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["link_id", "producer_team", "consumer_team", "dependency_type", "opened_at", "needed_by", "blocked_task_count", "age_days", "band", "slack_days"],
+        "additionalProperties": false,
+        "properties": {
+          "link_id": {"$ref": "#/definitions/link_id"},
+          "producer_team": {"type": "string", "minLength": 2},
+          "consumer_team": {"type": "string", "minLength": 2},
+          "dependency_type": {"type": "string", "enum": ["api-contract", "shared-component", "data-feed", "infrastructure", "review-approval", "environment", "other"]},
+          "opened_at": {"$ref": "#/definitions/date"},
+          "needed_by": {"anyOf": [{"$ref": "#/definitions/date"}, {"type": "null"}]},
+          "blocked_task_count": {"type": "integer", "minimum": 0},
+          "age_days": {"type": "integer", "minimum": 0},
+          "band": {"type": "string", "minLength": 1},
+          "slack_days": {"type": ["integer", "null"]},
+          "superseded_from": {"$ref": "#/definitions/link_id"},
+          "action": {
+            "type": "object",
+            "required": ["owner", "due_date", "text"],
+            "additionalProperties": false,
+            "properties": {
+              "owner": {"$ref": "#/definitions/handle"},
+              "due_date": {"$ref": "#/definitions/date"},
+              "text": {"type": "string", "minLength": 12, "pattern": "^(?![Ww]aiting (on|for))"}
+            }
+          },
+          "rebaseline": {
+            "type": "object",
+            "required": ["decision", "decided_by", "decided_on"],
+            "additionalProperties": false,
+            "properties": {
+              "decision": {"type": "string", "enum": ["move-milestone", "cut-scope", "swap-producer"]},
+              "decided_by": {"$ref": "#/definitions/handle"},
+              "decided_on": {"$ref": "#/definitions/date"},
+              "note": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "action_table": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/link_id"},
+      "uniqueItems": true
+    },
+    "resolved_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["link_id", "opened_at", "resolved_on", "age_days", "outcome", "needed_by"],
+        "additionalProperties": false,
+        "properties": {
+          "link_id": {"$ref": "#/definitions/link_id"},
+          "opened_at": {"$ref": "#/definitions/date"},
+          "resolved_on": {"$ref": "#/definitions/date"},
+          "age_days": {"type": "integer", "minimum": 0},
+          "outcome": {"type": "string", "enum": ["delivered", "not-needed"]},
+          "needed_by": {"anyOf": [{"$ref": "#/definitions/date"}, {"type": "null"}]}
+        },
+        "if": {"properties": {"outcome": {"const": "not-needed"}}},
+        "then": {"properties": {"needed_by": {"$ref": "#/definitions/date"}}}
+      }
+    },
+    "sle": {
+      "type": "object",
+      "required": ["resolved_count_12w", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "resolved_count_12w": {"type": "integer", "minimum": 0},
+        "status": {"type": "string", "enum": ["line", "insufficient-data"]},
+        "p85_days": {"type": "integer", "minimum": 0}
+      },
+      "if": {"properties": {"status": {"const": "line"}}},
+      "then": {"required": ["resolved_count_12w", "status", "p85_days"], "properties": {"resolved_count_12w": {"minimum": 10}}},
+      "else": {"properties": {"resolved_count_12w": {"maximum": 9}}, "not": {"required": ["p85_days"]}}
+    }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "program": "checkout-replatform",
+  "owner": "program-pm:olena",
+  "chart_date": "2026-09-07",
+  "checkpoint_weekday": "Monday",
+  "tracker_query": "project in (PAY, PLAT, WEB, DATA, SEC) AND issueLinkType = \"is blocked by\" AND resolution = Unresolved",
+  "extracted_at": "2026-09-07T07:30:00Z",
+  "chart_image": "charts/checkout-replatform-2026-09-07.png",
+  "age_bands": [
+    {"label": "0-7", "min_days": 0, "max_days": 7},
+    {"label": "8-14", "min_days": 8, "max_days": 14},
+    {"label": "15-28", "min_days": 15, "max_days": 28},
+    {"label": "over 28", "min_days": 29, "max_days": null}
+  ],
+  "bands_adopted_on": "2026-05-04",
+  "edges": [
+    {
+      "link_id": "PLAT-118", "producer_team": "platform", "consumer_team": "payments", "dependency_type": "api-contract",
+      "opened_at": "2026-07-21", "needed_by": "2026-09-30", "blocked_task_count": 6,
+      "age_days": 48, "band": "over 28", "slack_days": 23,
+      "action": {"owner": "platform-lead:marko", "due_date": "2026-09-11", "text": "Publish the tokenisation API contract v2 as OpenAPI and freeze it; payments builds against the stub from 2026-09-12."},
+      "rebaseline": {"decision": "cut-scope", "decided_by": "program-pm:olena", "decided_on": "2026-09-07", "note": "Drop 3-D Secure fallback from milestone M6; it moves to M7."}
+    },
+    {
+      "link_id": "WEB-402", "producer_team": "web", "consumer_team": "payments", "dependency_type": "shared-component",
+      "opened_at": "2026-08-20", "needed_by": "2026-09-04", "blocked_task_count": 2,
+      "age_days": 18, "band": "15-28", "slack_days": -3,
+      "action": {"owner": "web-lead:ira", "due_date": "2026-09-09", "text": "Ship the address form component behind a flag to the payments sandbox; M5 acceptance re-run on 2026-09-10."}
+    },
+    {
+      "link_id": "SEC-9", "producer_team": "security", "consumer_team": "payments", "dependency_type": "review-approval",
+      "opened_at": "2026-08-12", "needed_by": "2026-09-25", "blocked_task_count": 1,
+      "age_days": 26, "band": "15-28", "slack_days": 18, "superseded_from": "SEC-7",
+      "action": {"owner": "security-lead:taras", "due_date": "2026-09-14", "text": "Complete the PCI scope review of the card vault design; findings back to payments in writing."}
+    },
+    {
+      "link_id": "DATA-77", "producer_team": "data", "consumer_team": "web", "dependency_type": "data-feed",
+      "opened_at": "2026-08-26", "needed_by": "2026-10-15", "blocked_task_count": 1,
+      "age_days": 12, "band": "8-14", "slack_days": 38,
+      "action": {"owner": "data-lead:sofia", "due_date": "2026-09-18", "text": "Expose the order-events topic to the web team's staging consumer with the agreed schema v3."}
+    },
+    {
+      "link_id": "PLAT-131", "producer_team": "platform", "consumer_team": "web", "dependency_type": "environment",
+      "opened_at": "2026-09-03", "needed_by": null, "blocked_task_count": 3,
+      "age_days": 4, "band": "0-7", "slack_days": null
+    }
+  ],
+  "action_table": ["WEB-402", "PLAT-118", "SEC-9", "DATA-77", "PLAT-131"],
+  "resolved_log": [
+    {"link_id": "PLAT-101", "opened_at": "2026-06-08", "resolved_on": "2026-06-17", "age_days": 9, "outcome": "delivered", "needed_by": "2026-06-20"},
+    {"link_id": "WEB-377", "opened_at": "2026-06-10", "resolved_on": "2026-06-22", "age_days": 12, "outcome": "delivered", "needed_by": "2026-06-30"},
+    {"link_id": "DATA-60", "opened_at": "2026-06-12", "resolved_on": "2026-06-26", "age_days": 14, "outcome": "not-needed", "needed_by": "2026-07-10"},
+    {"link_id": "PLAT-104", "opened_at": "2026-06-15", "resolved_on": "2026-07-02", "age_days": 17, "outcome": "delivered", "needed_by": "2026-07-03"},
+    {"link_id": "SEC-4", "opened_at": "2026-06-20", "resolved_on": "2026-07-09", "age_days": 19, "outcome": "delivered", "needed_by": "2026-07-15"},
+    {"link_id": "WEB-381", "opened_at": "2026-06-25", "resolved_on": "2026-07-16", "age_days": 21, "outcome": "delivered", "needed_by": null},
+    {"link_id": "PLAT-109", "opened_at": "2026-07-01", "resolved_on": "2026-07-23", "age_days": 22, "outcome": "delivered", "needed_by": "2026-07-24"},
+    {"link_id": "DATA-66", "opened_at": "2026-07-06", "resolved_on": "2026-07-31", "age_days": 25, "outcome": "delivered", "needed_by": "2026-08-01"},
+    {"link_id": "WEB-390", "opened_at": "2026-07-10", "resolved_on": "2026-08-06", "age_days": 27, "outcome": "delivered", "needed_by": "2026-08-07"},
+    {"link_id": "PLAT-112", "opened_at": "2026-07-14", "resolved_on": "2026-08-13", "age_days": 30, "outcome": "delivered", "needed_by": "2026-08-10"},
+    {"link_id": "SEC-6", "opened_at": "2026-07-20", "resolved_on": "2026-08-22", "age_days": 33, "outcome": "delivered", "needed_by": "2026-08-14"},
+    {"link_id": "DATA-71", "opened_at": "2026-07-22", "resolved_on": "2026-09-01", "age_days": 41, "outcome": "delivered", "needed_by": "2026-08-21"}
+  ],
+  "sle": {"resolved_count_12w": 12, "status": "line", "p85_days": 33}
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "program": "checkout-replatform",
+  "owner": "program-pm:olena",
+  "chart_date": "2026-09-07",
+  "checkpoint_weekday": "Monday",
+  "tracker_query": "project in (PAY, PLAT, WEB, DATA, SEC) AND issueLinkType = \"is blocked by\" AND resolution = Unresolved",
+  "extracted_at": "2026-08-24T07:30:00Z",
+  "age_bands": [
+    {"label": "0-7", "min_days": 0, "max_days": 7},
+    {"label": "8-14", "min_days": 8, "max_days": 14},
+    {"label": "15-45", "min_days": 15, "max_days": 45},
+    {"label": "over 45", "min_days": 46, "max_days": null}
+  ],
+  "bands_adopted_on": "2026-05-04",
+  "edges": [
+    {
+      "link_id": "PLAT-118", "producer_team": "platform", "consumer_team": "payments", "dependency_type": "api-contract",
+      "opened_at": "2026-07-21", "needed_by": "2026-09-30", "blocked_task_count": 6,
+      "age_days": 3, "band": "0-7", "slack_days": 23,
+      "action": {"owner": "platform-lead:marko", "due_date": "2026-09-11", "text": "Waiting on platform to confirm the contract."}
+    },
+    {
+      "link_id": "WEB-402", "producer_team": "web", "consumer_team": "payments", "dependency_type": "shared-component",
+      "opened_at": "2026-08-20", "needed_by": "2026-09-04", "blocked_task_count": 2,
+      "age_days": 18, "band": "15-45", "slack_days": -3
+    },
+    {
+      "link_id": "SEC-9", "producer_team": "security", "consumer_team": "payments", "dependency_type": "review-approval",
+      "opened_at": "2026-09-02", "needed_by": "2026-09-25", "blocked_task_count": 1,
+      "age_days": 5, "band": "0-7", "slack_days": 18
+    }
+  ],
+  "action_table": ["PLAT-118", "SEC-9", "WEB-402"],
+  "resolved_log": [
+    {"link_id": "SEC-7", "opened_at": "2026-08-12", "resolved_on": "2026-09-01", "age_days": 20, "outcome": "delivered", "needed_by": "2026-09-25"},
+    {"link_id": "PLAT-112", "opened_at": "2026-07-14", "resolved_on": "2026-08-13", "age_days": 30, "outcome": "delivered", "needed_by": "2026-08-10"}
+  ],
+  "sle": {"resolved_count_12w": 2, "status": "line"}
+}
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
+      <item>Every `age_days` equals `chart_date` minus `opened_at` in calendar days, and `band` is the band that range falls in (r-age-from-dependency-open-not-task, r-age-bands-fixed).</item>
+      <item>Every edge carries producer, consumer, type, `opened_at`, `needed_by` (or null) and a tracker `link_id`; nothing from a standup is plotted without one (r-typed-edges-from-graph).</item>
+      <item>`age_bands` start at 0, are contiguous, end in an open band, and equal the bands recorded at `bands_adopted_on` (r-age-bands-fixed).</item>
+      <item>`slack_days` equals `needed_by` minus `chart_date`; edges at or below 0 head `action_table`, then band descending, then `blocked_task_count` descending (r-milestone-slack-column, r-count-blocked-tasks-per-edge).</item>
+      <item>`extracted_at` is within 7 days before `chart_date`, `chart_date` is on `checkpoint_weekday`, and `tracker_query` is recorded (r-weekly-refresh-by-script).</item>
+      <item>Every edge in the second band or older, or with non-positive slack, has an `action` with owner, due date and a verb, not "waiting on"; every top-band edge has a `rebaseline` decided by `owner` (r-action-per-escalation-band).</item>
+      <item>A `superseded_from` edge keeps the original `opened_at`; a resolved entry reopened within 14 days is not in `resolved_log` (r-no-aging-reset).</item>
+      <item>`sle.resolved_count_12w` counts `resolved_log` entries within 12 weeks of `chart_date`; `p85_days` is their 85th percentile when at least 10, otherwise `insufficient-data` (r-closed-edges-feed-sle).</item>
     </list>
   </section>
 </text>

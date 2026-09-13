@@ -1,36 +1,69 @@
-<!-- purpose: growth-loops spec template -->
-<!-- consumes: inputs named in AGENTS.md Prerequisites -->
+<!-- purpose: growth-loop spec — four stages closed by a fuel-back event, one loop type, measured stage metrics, k and cycle time, 90-day cohort projection with decay, bottleneck-first friction map, CAC payback with and without loop, quality guardrail -->
+<!-- consumes: event table for the four stages, stage conversion queries, cycle-time distribution, CAC and payback baseline, cohort retention -->
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml + content/06-decision-tree.xml -->
-<!-- token-budget-impact: ~600 tokens when loaded -->
-# Growth Loops — Spec
+<!-- token-budget-impact: ~700 tokens when loaded -->
+# Growth Loop Spec — <loop_name> (<product_name>)
 
-## Owner
-<name>
+## Loop type
+- loop_type: <viral | ugc_search | paid | network_effect | supply_side> (exactly one)
+- input_source: <user_action | content | capital | supply>
+- secondary_loops: <type and note each; tracked separately, never summed into this projection>
 
-## Review deadline
-YYYY-MM-DD (within 90 days)
+## Stages (each with a tracked event and a unit; fuel_back.unit equals input.unit)
 
-## Summary
-One paragraph describing what the produced spec covers.
+| stage | name | event | unit |
+|---|---|---|---|
+| input | <what starts the cycle> | <event> | <unit> |
+| action | <what the user does> | <event> | <unit> |
+| output | <what that produces> | <event> | <unit> |
+| fuel_back | <how the output becomes the next input> | <event> | <same as input> |
 
-## Sections
+## Stage metrics (measured, or flagged as an assumption)
 
-### preconditions
-Items confirmed (Applies If):
-- item 1
-- item 2
-- item 3
+| transition | event | numerator | denominator | value | basis | measured_on | sample_size |
+|---|---|---|---|---|---|---|---|
+| input-action | <event> | <numerator> | <denominator> | <n> | measured | <YYYY-MM-DD> | <n> |
+| action-output | <event> | <numerator> | <denominator> | <n> | measured | <YYYY-MM-DD> | <n> |
+| output-fuel_back | <fuel-back event> | <numerator> | <denominator> | <n> | <measured or assumption> | <date or null> | <n or null> |
 
-### procedure
-Step-by-step as enacted from content/04-procedure.xml.
+## Efficiency
+- k: <product of the three values, two decimals>
+- cycle_time_days: <median days from input to fuel-back>
+- reading: <amplifier when k below 1, multiplier 1 / (1 - k); self_sustaining when k at or above 1, growth_rate_per_cycle k - 1>
 
-### review
-Named reviewer + signoff date.
+## Projection (at least 90 days and three cycles, cohort by cohort, with decay)
+- horizon_days: <at least 90 and at least 3 x cycle_time_days>
+- cycles: <at least 3>
+- decay: <contributor_churn | content_decay | audience_saturation | rising_cpm> at <rate per cycle>
+- rests_on_assumption: <true when any stage is an assumption; then the headline says so>
+- headline: <one sentence with the steady state, as measured from <start_date>>
 
-## Deviation log reference
-[path / link to deviation log entry]
+| cycle | external_inputs | loop_inputs (previous total x k x (1 - decay)^(cycle - 1)) | total_inputs |
+|---|---|---|---|
+| 1 | <n> | 0 | <n> |
+| 2 | <n> | <n> | <n> |
+| 3 | <n> | <n> | <n> |
 
-## Signoff
-- reviewer: <reviewer_name>
-- date: YYYY-MM-DD
+## Friction map
+- bottleneck_stage: <the transition with the lowest value>
+- bottleneck_value: <its value>
+- k_if_doubled: <2 x k>
+
+| rank | experiment | stage | justification (required when not on the bottleneck) |
+|---|---|---|---|
+| 1 | <experiment> | <bottleneck stage> | |
+| 2 | <experiment> | <stage> | <why it precedes a bottleneck experiment> |
+
+## CAC payback (attributed by the fuel-back event only)
+- period_days: <n>
+- attributed_by: <fuel-back event>
+- without_loop: blended_cac <n>, payback_months <n>
+- with_loop: blended_cac <n>, payback_months <n>
+
+## Quality guardrail
+- metric: <activation_rate | d30_retention | indexed_and_trafficked_share>
+- threshold: <baseline minus the agreed margin>
+- loop_cohort_value: <n>
+- baseline_value: <n>
+- status: <within | breached; a breach reverts the optimisation even if k improved>

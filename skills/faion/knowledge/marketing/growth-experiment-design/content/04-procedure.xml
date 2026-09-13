@@ -1,40 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Growth Experiment Design Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Growth Experiment Design end-to-end from inputs to a validated `spec` artefact + human signoff.</summary>
+<text id="04-procedure" title="Growth Experiment Design Procedure" version="1.2.0" est_tokens="1950" depth="essential">
+  <summary>Eight steps from an idea in the backlog to a written-up experiment: write the falsifiable hypothesis, name the guardrails, score ICE with cited confidence, compute sample size and whole-week duration, configure flag assignment with a control, run the instrumentation playback, fix the stop date and gate on the SRM check, write it up within a week.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="write-the-falsifiable-hypothesis">
+      <input>The idea as the team phrased it; the analytics event catalogue; last quarter's metric definitions.</input>
+      <action>Fill `hypothesis` in `templates/growth-experiment-design.spec.md.j2`: one `change`, one `segment`, one `primary_metric` that is a measured rate (not "engagement"), `minimum_effect_pct` above zero, and the `mechanism` clause that says which belief the test can prove wrong.</action>
+      <output>`hypothesis` block, readable as "If we [change] for [segment], then [metric] will change by at least [X percent] because [mechanism]".</output>
+      <decision-gate>No number, or a metric that is a theme: rewrite before anything else (r-hypothesis-falsifiable-with-effect-size).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="name-the-guardrails">
+      <input>The metric tree downstream of the change: revenue or conversion, retention, performance and error rates.</input>
+      <action>List at least three `guardrails[]`, one per category (`revenue_or_conversion`, `retention`, `performance_or_error`), each with a `stop_threshold` a reviewer can read off the dashboard. Record that the ship decision is made on the primary metric and that any breach vetoes it.</action>
+      <output>`guardrails[]`.</output>
+      <decision-gate>A category with no metric available: instrument it or record why it cannot apply; the spec does not launch with two guardrails (r-one-primary-metric-plus-guardrails).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `spec` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="score-ice-before-build">
+      <input>The team's written ICE criteria (`ice.criteria_ref`), prior experiment log, user research, analytics.</input>
+      <action>Score `impact`, `confidence`, `ease` as integers 1-10 against the written criteria. Cite the evidence for confidence in `confidence_evidence`; without a citation, cap confidence at 3. Record `backlog_rank` and work the backlog in ICE order or log the deviation.</action>
+      <output>`ice` block; the experiment's position in the backlog.</output>
+      <decision-gate>Confidence above 3 with no evidence cited: lower it to 3 or add the citation (r-ice-scored-before-build). No build ticket is opened before this block exists.</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-growth-experiment-design.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="compute-sample-size-and-duration">
+      <input>Baseline rate of the primary metric over the last four closed weeks; eligible daily traffic for the segment; the minimum effect from step 1.</input>
+      <action>Fill `sample_size`: `baseline_rate`, `minimum_detectable_effect_pct` equal to `hypothesis.minimum_effect_pct`, `alpha` 0.05, `power` 0.8, `required_per_variant` from a power calculator, `eligible_daily_traffic`, and `duration_weeks` = ceil(required_per_variant / (eligible_daily_traffic x smallest allocation) / 7), at least 1.</action>
+      <output>`sample_size` block.</output>
+      <decision-gate>`duration_weeks` above 8: redesign (larger effect, broader segment, proxy metric) and return to step 1; the experiment does not launch as is (r-sample-size-computed-before-launch).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="configure-flag-assignment-with-a-control">
+      <input>The feature-flag platform (LaunchDarkly, Statsig, Unleash, GrowthBook, Optimizely or an internal one) and its hashing options.</input>
+      <action>Fill `assignment`: `platform`, `design` randomised_controlled, `hash_key` user_id or account_id (never session or device), `control_variant` receiving the unchanged experience, and `allocation[]` percentages summing to 100. Configure the flag exactly as recorded.</action>
+      <output>`assignment` block and the matching flag configuration.</output>
+      <decision-gate>The proposed design is before-and-after, an unrandomised geo split, or "all new users get the variant": it is an observation, not an experiment, and is not written up as one (r-control-group-randomised-by-flag).</decision-gate>
     </step>
 
+    <step n="6" name="run-the-instrumentation-playback">
+      <input>Staging or a one-percent cohort; the analytics destination; the exposure and metric event names.</input>
+      <action>Fill `instrumentation`: `exposure_event` fired when the user sees the variant (`exposure_logged_at` variant_seen), `analytics_destination`, `metric_events[]` for the primary and every guardrail. Trigger each event in each variant and confirm it lands with `experiment_id` and variant id; list them in `playback.events_verified[]`, set `playback.status` passed and `performed_on`. Move `status` to playback_passed.</action>
+      <output>`instrumentation` block; `status` playback_passed.</output>
+      <decision-gate>Any event missing its experiment or variant id, or exposure logged at assignment: fix and replay; no ramp above the smoke-test allocation until the playback passes (r-instrumentation-playback-before-ramp).</decision-gate>
+    </step>
+
+    <step n="7" name="fix-the-stop-date-and-gate-on-srm">
+      <input>`sample_size.duration_weeks`; the launch date; the platform's assignment counts at the stop date.</input>
+      <action>Fill `schedule`: `launch_date`, `stop_date` at least `duration_weeks` whole weeks later, `sequential_method` null unless a sequential test is declared now. Set `status` running at launch and do not read results before `stop_date`. At the stop date record `srm_check` (chi-square p of observed versus planned allocation; below 0.001 fails the run) and set `status` stopped.</action>
+      <output>`schedule` and `srm_check` blocks; `status` stopped.</output>
+      <decision-gate>SRM check failed: the run is invalid, no metric is read, the experiment returns to step 6 (r-fixed-stop-date-no-peeking-srm-check).</decision-gate>
+    </step>
+
+    <step n="8" name="write-it-up-and-validate">
+      <input>The stopped experiment's primary metric with its confidence interval, guardrail readings, SRM p.</input>
+      <action>Within seven days of `stop_date` fill `write_up`: `date`, `log_entry` in the shared experiment log, `decision` (ship, iterate, kill; never ship on a breached guardrail), `primary_effect` with `observed_pct`, `ci_low_pct`, `ci_high_pct`, `guardrail_results[]` for every guardrail, `srm_p`, and one sentence in `belief_changed`. Set `status` written_up and `counts_toward_velocity` true. Run `scripts/validate-growth-experiment-design.py --file` on the spec.</action>
+      <output>Validated spec; the experiment counts toward the quarterly velocity target.</output>
+      <decision-gate>No write-up within the week, including for losers and inconclusive runs: `counts_toward_velocity` stays false (r-write-up-every-experiment).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates via `scripts/validate-growth-experiment-design.py` with no violation.</item>
+      <item>One primary metric with a numeric minimum effect, three guardrail categories with stop thresholds, ICE with cited confidence.</item>
+      <item>Duration in whole weeks between one and eight, derived from the recorded sample size and traffic; stop date fixed before launch; SRM check recorded before any result is read.</item>
+      <item>Write-up in the shared log within seven days of the stop date, whatever the decision.</item>
+    </list>
   </section>
 </text>

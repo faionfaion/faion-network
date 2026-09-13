@@ -1,128 +1,350 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Growth Loops Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `spec` artefact this methodology produces. Validator at scripts/validate-growth-loops.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Growth Loops Output Contract" version="1.2.0" est_tokens="4950" depth="essential">
+  <summary>JSON Schema (draft-07) for the growth-loop spec: four named stages closed by a tracked fuel-back event in the same unit as the input, exactly one primary loop type with its input source, a stage-metrics table where every transition is measured (event, numerator, denominator, date, sample) or flagged as an assumption, loop efficiency k as the product of the stages with cycle time and the amplifier reading below 1, a cohort projection over at least 90 days and three cycles with a decay term, a friction map naming the lowest stage as the bottleneck with experiments ranked on it, CAC payback with and without loop-sourced users attributed by the fuel-back event, and a numeric quality guardrail. Validator at scripts/validate-growth-loops.py enforces it, including the k product, the bottleneck choice and the cohort arithmetic.</summary>
+
+  <output-contract>
+    <required>
+      <field name="loop_name" type="string" required="true">short name of the loop being specified</field>
+      <field name="loop_type" type="string" required="true">exactly one of viral, ugc_search, paid, network_effect, supply_side (r-one-primary-loop-type)</field>
+      <field name="input_source" type="string" required="true">what the loop type consumes: user_action, content, capital or supply (r-one-primary-loop-type)</field>
+      <field name="secondary_loops" type="list" required="true">other loops present, each `type` and `note`; may be empty; never summed into the projection (r-one-primary-loop-type)</field>
+      <field name="stages" type="object" required="true">`input`, `action`, `output`, `fuel_back`, each with `name`, `event` and `unit`; `fuel_back.unit` equals `input.unit` (r-loop-closes-output-into-input)</field>
+      <field name="stage_metrics" type="list" required="true">three transitions (input-action, action-output, output-fuel_back) each with `event`, `numerator`, `denominator`, `value`, `basis` measured or assumption; measured rows carry `measured_on` and `sample_size` (r-stage-conversion-measured-not-estimated)</field>
+      <field name="efficiency" type="object" required="true">`k` = product of the stage values, `cycle_time_days` median input to fuel-back, `reading` amplifier (k below 1, with `multiplier` 1 / (1 - k)) or self_sustaining (k at or above 1, with `growth_rate_per_cycle` = k - 1) (r-loop-efficiency-and-cycle-time)</field>
+      <field name="projection" type="object" required="true">`horizon_days` at least 90 and at least three cycle times, `cycles` at least 3, `decay` with `kind` and `rate_per_cycle`, `rests_on_assumption`, `headline`, and `cohorts[]` built cycle by cycle with `external_inputs`, `loop_inputs`, `total_inputs` (r-steady-state-projection-90-days)</field>
+      <field name="friction_map" type="object" required="true">`bottleneck_stage` = the transition with the lowest value, `bottleneck_value`, `k_if_doubled`, and `experiments[]` ranked with the bottleneck first; a non-bottleneck experiment carries `justification` (r-friction-map-names-the-bottleneck)</field>
+      <field name="cac_payback" type="object" required="true">`period_days`, `attributed_by` (the fuel-back event), `without_loop` and `with_loop` each with `blended_cac` and `payback_months` (r-cac-payback-with-and-without-loop)</field>
+      <field name="quality_guardrail" type="object" required="true">`metric` (activation_rate, d30_retention or indexed_and_trafficked_share), `threshold`, `loop_cohort_value`, `baseline_value`, `status` within or breached (r-loop-quality-guardrail)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`stages.fuel_back.event` absent, or `fuel_back.unit` different from `input.unit` — funnel-relabelled-as-loop</pattern>
+      <pattern id="f2">`loop_type` naming two types ("viral and content"), or a secondary loop's inputs added to `projection.cohorts[]` — r-one-primary-loop-type</pattern>
+      <pattern id="f3">a stage metric with `basis` other than measured or assumption, or a measured row without `measured_on` and `sample_size`, or `rests_on_assumption` false while a stage is an assumption — assumed-stage-rate-as-measured</pattern>
+      <pattern id="f4">`efficiency.k` not equal to the product of the stage values, or `reading` self_sustaining with k below 1, or `multiplier` not 1 / (1 - k) — k-below-one-called-viral</pattern>
+      <pattern id="f5">`projection.horizon_days` below 90, `cycles` below 3, no `decay`, or a cohort whose `loop_inputs` exceed the previous cohort's total times k — first-cycle-linear-extrapolation</pattern>
+      <pattern id="f6">`friction_map.bottleneck_stage` not the lowest-value transition, or the rank-1 experiment on another stage, or a non-bottleneck experiment with no `justification` — optimising-the-owned-stage</pattern>
+      <pattern id="f7">`cac_payback.attributed_by` other than the fuel-back event (organic, direct, "loop" as a channel label) — r-cac-payback-with-and-without-loop</pattern>
+      <pattern id="f8">`quality_guardrail.status` within while `loop_cohort_value` is below `threshold`, or a guardrail with no numeric threshold — loop-optimised-into-spam</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/growth-loops.json",
-  "title": "Growth Loops output",
+  "title": "Growth Loops spec",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "review_deadline",
-    "summary",
-    "sections",
-    "deviation_log_reference"
-  ],
-  "properties": {
-    "slug": {
-      "type": "string",
-      "const": "growth-loops"
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 1
-    },
-    "review_deadline": {
-      "type": "string",
-      "format": "date"
-    },
-    "summary": {
-      "type": "string",
-      "minLength": 20,
-      "maxLength": 400
-    },
-    "sections": {
-      "type": "array",
-      "minItems": 3,
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "content"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "additionalProperties": false
+  "required": ["loop_name", "loop_type", "input_source", "secondary_loops", "stages", "stage_metrics", "efficiency", "projection", "friction_map", "cac_payback", "quality_guardrail"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "event_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "loop_type": {"type": "string", "enum": ["viral", "ugc_search", "paid", "network_effect", "supply_side"]},
+    "transition": {"type": "string", "enum": ["input-action", "action-output", "output-fuel_back"]},
+    "stage": {
+      "type": "object",
+      "required": ["name", "event", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 3},
+        "event": {"$ref": "#/definitions/event_name"},
+        "unit": {"type": "string", "minLength": 3}
       }
     },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
-    },
-    "signoff": {
+    "payback": {
       "type": "object",
-      "required": [
-        "reviewer",
-        "date"
-      ],
+      "required": ["blended_cac", "payback_months"],
+      "additionalProperties": false,
       "properties": {
-        "reviewer": {
-          "type": "string"
-        },
-        "date": {
-          "type": "string",
-          "format": "date"
-        }
-      },
-      "additionalProperties": false
+        "blended_cac": {"type": "number", "minimum": 0},
+        "payback_months": {"type": "number", "minimum": 0}
+      }
     }
   },
-  "additionalProperties": false
-}
-]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
-{
-  "slug": "growth-loops",
-  "owner": "growth lead",
-  "review_deadline": "2026-06-15",
-  "summary": "Spec for Growth Loops covering preconditions, procedure, output, and review gate.",
-  "sections": [
-    {
-      "name": "preconditions",
-      "content": "All Applies If items confirmed in writing."
+  "properties": {
+    "__faion_header__": {"type": ["object", "string"]},
+    "loop_name": {"type": "string", "minLength": 3},
+    "loop_type": {"$ref": "#/definitions/loop_type"},
+    "input_source": {"type": "string", "enum": ["user_action", "content", "capital", "supply"]},
+    "secondary_loops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "note"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {"$ref": "#/definitions/loop_type"},
+          "note": {"type": "string", "minLength": 10}
+        }
+      }
     },
-    {
-      "name": "procedure",
-      "content": "Steps 1..n executed per content/04-procedure.xml."
+    "stages": {
+      "type": "object",
+      "required": ["input", "action", "output", "fuel_back"],
+      "additionalProperties": false,
+      "properties": {
+        "input": {"$ref": "#/definitions/stage"},
+        "action": {"$ref": "#/definitions/stage"},
+        "output": {"$ref": "#/definitions/stage"},
+        "fuel_back": {"$ref": "#/definitions/stage"}
+      }
     },
-    {
-      "name": "review",
-      "content": "Human reviewer signed off on date."
+    "stage_metrics": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["transition", "event", "numerator", "denominator", "value", "basis", "measured_on", "sample_size"],
+        "additionalProperties": false,
+        "properties": {
+          "transition": {"$ref": "#/definitions/transition"},
+          "event": {"$ref": "#/definitions/event_name"},
+          "numerator": {"type": "string", "minLength": 5},
+          "denominator": {"type": "string", "minLength": 5},
+          "value": {"type": "number", "minimum": 0},
+          "basis": {"type": "string", "enum": ["measured", "assumption"]},
+          "measured_on": {"anyOf": [{"$ref": "#/definitions/date"}, {"type": "null"}]},
+          "sample_size": {"type": ["integer", "null"], "minimum": 1}
+        },
+        "if": {"properties": {"basis": {"const": "measured"}}},
+        "then": {"properties": {"measured_on": {"type": "string"}, "sample_size": {"type": "integer"}}}
+      }
+    },
+    "efficiency": {
+      "type": "object",
+      "required": ["k", "cycle_time_days", "reading", "multiplier", "growth_rate_per_cycle"],
+      "additionalProperties": false,
+      "properties": {
+        "k": {"type": "number", "minimum": 0},
+        "cycle_time_days": {"type": "number", "exclusiveMinimum": 0},
+        "reading": {"type": "string", "enum": ["amplifier", "self_sustaining"]},
+        "multiplier": {"type": ["number", "null"], "minimum": 1},
+        "growth_rate_per_cycle": {"type": ["number", "null"], "minimum": 0}
+      },
+      "if": {"properties": {"k": {"exclusiveMaximum": 1}}},
+      "then": {"properties": {"reading": {"const": "amplifier"}, "multiplier": {"type": "number"}, "growth_rate_per_cycle": {"type": "null"}}},
+      "else": {"properties": {"reading": {"const": "self_sustaining"}, "multiplier": {"type": "null"}, "growth_rate_per_cycle": {"type": "number"}}}
+    },
+    "projection": {
+      "type": "object",
+      "required": ["horizon_days", "cycles", "decay", "rests_on_assumption", "headline", "cohorts"],
+      "additionalProperties": false,
+      "properties": {
+        "horizon_days": {"type": "integer", "minimum": 90},
+        "cycles": {"type": "integer", "minimum": 3},
+        "decay": {
+          "type": "object",
+          "required": ["kind", "rate_per_cycle"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {"type": "string", "enum": ["contributor_churn", "content_decay", "audience_saturation", "rising_cpm"]},
+            "rate_per_cycle": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+          }
+        },
+        "rests_on_assumption": {"type": "boolean"},
+        "headline": {"type": "string", "minLength": 20},
+        "cohorts": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["cycle", "external_inputs", "loop_inputs", "total_inputs"],
+            "additionalProperties": false,
+            "properties": {
+              "cycle": {"type": "integer", "minimum": 1},
+              "external_inputs": {"type": "integer", "minimum": 0},
+              "loop_inputs": {"type": "integer", "minimum": 0},
+              "total_inputs": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    },
+    "friction_map": {
+      "type": "object",
+      "required": ["bottleneck_stage", "bottleneck_value", "k_if_doubled", "experiments"],
+      "additionalProperties": false,
+      "properties": {
+        "bottleneck_stage": {"$ref": "#/definitions/transition"},
+        "bottleneck_value": {"type": "number", "minimum": 0},
+        "k_if_doubled": {"type": "number", "minimum": 0},
+        "experiments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["rank", "name", "stage", "justification"],
+            "additionalProperties": false,
+            "properties": {
+              "rank": {"type": "integer", "minimum": 1},
+              "name": {"type": "string", "minLength": 5},
+              "stage": {"$ref": "#/definitions/transition"},
+              "justification": {"type": ["string", "null"], "minLength": 15}
+            }
+          }
+        }
+      }
+    },
+    "cac_payback": {
+      "type": "object",
+      "required": ["period_days", "attributed_by", "without_loop", "with_loop"],
+      "additionalProperties": false,
+      "properties": {
+        "period_days": {"type": "integer", "minimum": 30},
+        "attributed_by": {"$ref": "#/definitions/event_name"},
+        "without_loop": {"$ref": "#/definitions/payback"},
+        "with_loop": {"$ref": "#/definitions/payback"}
+      }
+    },
+    "quality_guardrail": {
+      "type": "object",
+      "required": ["metric", "threshold", "loop_cohort_value", "baseline_value", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {"type": "string", "enum": ["activation_rate", "d30_retention", "indexed_and_trafficked_share"]},
+        "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "loop_cohort_value": {"type": "number", "minimum": 0, "maximum": 1},
+        "baseline_value": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "status": {"type": "string", "enum": ["within", "breached"]}
+      }
     }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L42",
-  "signoff": {
-    "reviewer": "growth lead",
-    "date": "2026-06-10"
   }
 }
 ]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "growth-loops",
-  "summary": "missing required fields"
+  "loop_name": "external document share loop",
+  "loop_type": "viral",
+  "input_source": "user_action",
+  "secondary_loops": [
+    {"type": "ugc_search", "note": "public templates indexed by search; tracked separately, not in this projection"}
+  ],
+  "stages": {
+    "input": {"name": "new workspace signup", "event": "signup_completed", "unit": "new signups"},
+    "action": {"name": "user shares a document with an external recipient", "event": "share_sent", "unit": "shares sent"},
+    "output": {"name": "external recipient opens the shared document", "event": "share_viewed", "unit": "recipient views"},
+    "fuel_back": {"name": "recipient signs up from the shared document", "event": "signup_via_share", "unit": "new signups"}
+  },
+  "stage_metrics": [
+    {"transition": "input-action", "event": "share_sent", "numerator": "signups that sent at least one external share within 14 days", "denominator": "signups in the cohort", "value": 0.45, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 8400},
+    {"transition": "action-output", "event": "share_viewed", "numerator": "distinct external recipients who viewed", "denominator": "sharers", "value": 2.4, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 3780},
+    {"transition": "output-fuel_back", "event": "signup_via_share", "numerator": "viewers who signed up within 14 days", "denominator": "distinct viewers", "value": 0.12, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 9072}
+  ],
+  "efficiency": {
+    "k": 0.13,
+    "cycle_time_days": 9,
+    "reading": "amplifier",
+    "multiplier": 1.15,
+    "growth_rate_per_cycle": null
+  },
+  "projection": {
+    "horizon_days": 120,
+    "cycles": 13,
+    "decay": {"kind": "audience_saturation", "rate_per_cycle": 0.05},
+    "rests_on_assumption": false,
+    "headline": "The loop adds about 13 percent on top of external signups and saturates toward 1,120 signups per 9-day cycle at 1,000 external inputs.",
+    "cohorts": [
+      {"cycle": 1, "external_inputs": 1000, "loop_inputs": 0, "total_inputs": 1000},
+      {"cycle": 2, "external_inputs": 1000, "loop_inputs": 124, "total_inputs": 1124},
+      {"cycle": 3, "external_inputs": 1000, "loop_inputs": 132, "total_inputs": 1132},
+      {"cycle": 4, "external_inputs": 1000, "loop_inputs": 126, "total_inputs": 1126}
+    ]
+  },
+  "friction_map": {
+    "bottleneck_stage": "output-fuel_back",
+    "bottleneck_value": 0.12,
+    "k_if_doubled": 0.26,
+    "experiments": [
+      {"rank": 1, "name": "signup call to action on the shared-document view page", "stage": "output-fuel_back", "justification": null},
+      {"rank": 2, "name": "prompt to share at first document completion", "stage": "input-action", "justification": "the view page redesign is blocked on the design system release for two weeks; this experiment is already built"}
+    ]
+  },
+  "cac_payback": {
+    "period_days": 90,
+    "attributed_by": "signup_via_share",
+    "without_loop": {"blended_cac": 310, "payback_months": 14.2},
+    "with_loop": {"blended_cac": 271, "payback_months": 12.4}
+  },
+  "quality_guardrail": {
+    "metric": "d30_retention",
+    "threshold": 0.3,
+    "loop_cohort_value": 0.33,
+    "baseline_value": 0.34,
+    "status": "within"
+  }
 }
-]]></code>
-    <note>Missing required: owner, review_deadline, sections, deviation_log_reference.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "loop_name": "growth flywheel",
+  "loop_type": "viral and content",
+  "input_source": "user_action",
+  "secondary_loops": [],
+  "stages": {
+    "input": {"name": "new workspace signup", "event": "signup_completed", "unit": "new signups"},
+    "action": {"name": "user shares a document", "event": "share_sent", "unit": "shares sent"},
+    "output": {"name": "recipient opens the document", "event": "share_viewed", "unit": "recipient views"},
+    "fuel_back": {"name": "retained user comes back", "event": "session_started", "unit": "sessions"}
+  },
+  "stage_metrics": [
+    {"transition": "input-action", "event": "share_sent", "numerator": "signups that shared", "denominator": "signups in the cohort", "value": 0.3, "basis": "benchmark", "measured_on": null, "sample_size": null},
+    {"transition": "action-output", "event": "share_viewed", "numerator": "recipients who viewed", "denominator": "sharers", "value": 2.4, "basis": "measured", "measured_on": null, "sample_size": null},
+    {"transition": "output-fuel_back", "event": "session_started", "numerator": "viewers who signed up", "denominator": "distinct viewers", "value": 0.12, "basis": "measured", "measured_on": "2026-05-04", "sample_size": 9072}
+  ],
+  "efficiency": {
+    "k": 0.6,
+    "cycle_time_days": 9,
+    "reading": "self_sustaining",
+    "multiplier": null,
+    "growth_rate_per_cycle": null
+  },
+  "projection": {
+    "horizon_days": 30,
+    "cycles": 1,
+    "decay": {"kind": "none", "rate_per_cycle": 0},
+    "rests_on_assumption": false,
+    "headline": "Viral growth: signups double every month.",
+    "cohorts": [
+      {"cycle": 1, "external_inputs": 1000, "loop_inputs": 300, "total_inputs": 1300}
+    ]
+  },
+  "friction_map": {
+    "bottleneck_stage": "input-action",
+    "bottleneck_value": 0.3,
+    "k_if_doubled": 1.2,
+    "experiments": []
+  },
+  "cac_payback": {
+    "period_days": 90,
+    "attributed_by": "organic",
+    "without_loop": {"blended_cac": 310, "payback_months": 14.2},
+    "with_loop": {"blended_cac": 180, "payback_months": 8}
+  },
+  "quality_guardrail": {
+    "metric": "d30_retention",
+    "threshold": 0.3,
+    "loop_cohort_value": 0.19,
+    "baseline_value": 0.34,
+    "status": "within"
+  }
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`stages.fuel_back.event` is a tracked event and its unit is the input unit; if it is not, the design is a funnel and the projection stops.</item>
+      <item>`efficiency.k` equals the product of the three stage values to two decimals; below 1 the reading is amplifier with multiplier 1 / (1 - k).</item>
+      <item>`projection.horizon_days` covers at least 90 days and three cycle times; every cohort's `loop_inputs` is at most the previous total times k, and `total_inputs` = `external_inputs` + `loop_inputs`.</item>
+      <item>`friction_map.bottleneck_stage` is the transition with the lowest value and the rank-1 experiment targets it.</item>
+      <item>`cac_payback.attributed_by` is `stages.fuel_back.event`; `quality_guardrail.status` agrees with `loop_cohort_value` against `threshold`.</item>
+    </list>
   </section>
-  <reference path="scripts/validate-growth-loops.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-growth-loops.py">Validator implementing this schema and the cross-field rules (unit closure, k product and multiplier, projection span and cohort arithmetic, bottleneck choice, attribution event, guardrail status).</reference>
 </text>

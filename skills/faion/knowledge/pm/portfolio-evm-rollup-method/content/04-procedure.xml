@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Portfolio EVM Rollup Method — Procedure" version="1.0.0" est_tokens="1700" depth="recommended">
+  <summary>Eight steps from per-project ledger exports to a signed rollup: fix one data date and stale-flag late ledgers, record contract type and EV method per project, compute the full per-project table with a named EAC formula, sum currency (discrete apart from LOE) into portfolio SPI / CPI, print any weighting beside the unweighted figures, pull the three-period trend, apply the stated thresholds and write narratives only beyond them, then the money block and the owner's signature before the executive review.</summary>
+
+  <section title="Steps">
+    <step n="1" name="fix-data-date-and-collect-ledgers">
+      <input>The executive review date; one week-grain PV / EV / AC ledger export per project (CSV or JSON) with its export timestamp; the reporting period (week, fortnight, month).</input>
+      <action>Set `data_date` to the last period end before the review and `reporting_period`. Record `ledger_file` and `ledger_exported_at` per project. Any project whose latest ledger entry is older than `data_date` by more than one period goes to `stale_projects[]` with its `bac`, `last_data_date` and export timestamp.</action>
+      <output>`data_date`, `reporting_period`, `stale_projects[]`, one ledger per remaining project.</output>
+      <decision-gate>Fewer than 3 projects left with a current ledger: stop and report per 06; do not copy last period's values forward (r-single-data-date, fm-02).</decision-gate>
+    </step>
+
+    <step n="2" name="record-contract-type-and-ev-method">
+      <input>Each project's contract (fixed-bid, time-and-materials, internal) and the EV technique its ledger uses.</input>
+      <action>Set `contract_type` and `ev_method` per row. A fixed-bid row earns EV on accepted milestones or deliverables at contract value (`milestone-weight`, `0/100`, `50/50`) and carries `contract_value`. Mark `level-of-effort` rows; they stay out of the discrete aggregate.</action>
+      <output>`contract_type`, `ev_method`, `contract_value` per row.</output>
+      <decision-gate>A fixed-bid ledger reporting self-assessed percent complete is restated on milestones before it enters the table (r-normalise-contract-types, fm-03).</decision-gate>
+    </step>
+
+    <step n="3" name="compute-per-project-table">
+      <input>PV, EV, AC and BAC per project as of `data_date`, converted to the one reporting `currency`.</input>
+      <action>Fill every row: SV = EV - PV, CV = EV - AC, SPI = EV / PV, CPI = EV / AC, EAC by the named `eac_formula` (`BAC/CPI`, `AC+(BAC-EV)/(CPI*SPI)`, or `bottom-up` flagged as such), VAC = BAC - EAC, and for fixed-bid rows `implied_margin` = contract_value - EAC. Use `templates/skeleton.json` as the row shape.</action>
+      <output>`projects[]` rows with all 19 fields.</output>
+      <decision-gate>A row missing any field, or an EAC that does not agree with its named formula, is rejected by `scripts/validate-portfolio-evm-rollup-method.py` (r-per-project-table-fields).</decision-gate>
+    </step>
+
+    <step n="4" name="sum-currency-into-portfolio-indices">
+      <input>The completed rows.</input>
+      <action>Sum BAC, PV, EV, AC of the non-LOE rows into `aggregate.discrete`; portfolio SPI = sum(EV) / sum(PV), CPI = sum(EV) / sum(AC), EAC = sum of row EACs, VAC = BAC - EAC. Sum the LOE rows separately into `aggregate.loe`.</action>
+      <output>`aggregate.discrete`, `aggregate.loe`.</output>
+      <decision-gate>Any SPI or CPI produced by averaging row indices, simple or weighted, is discarded (r-rollup-sums-currency-not-indices, fm-01).</decision-gate>
+    </step>
+
+    <step n="5" name="print-weighting-beside-unweighted">
+      <input>The portfolio weighting policy document, if the owner applies one.</input>
+      <action>Set `weighting.policy`. For anything but `currency-sum`, cite `weighting.policy_document`, put `weight` on every row, and compute `aggregate.weighted` (SPI, CPI, EAC from weighted sums) next to the unweighted `aggregate.discrete`.</action>
+      <output>`weighting`, row `weight`, `aggregate.weighted`.</output>
+      <decision-gate>No policy document: report `currency-sum` only (r-weighting-policy-declared, fm-04).</decision-gate>
+    </step>
+
+    <step n="6" name="pull-three-period-trend">
+      <input>The two previous rollups, or the ledgers re-read at the two previous data dates.</input>
+      <action>Fill `trend[]` per row and for the aggregate with at least the last three data dates; the last point equals the current SPI / CPI.</action>
+      <output>`projects[].trend`, `aggregate.trend`.</output>
+      <decision-gate>A project with fewer than three data dates is shown with its available history and named as new in the narrative; a snapshot-only rollup is rejected (r-trend-three-periods, fm-06).</decision-gate>
+    </step>
+
+    <step n="7" name="apply-thresholds-and-write-narratives">
+      <input>The owner's variance policy (`spi_min`, `cpi_min`, `cv_pct_of_bac_max`).</input>
+      <action>Record `variance_thresholds` with `policy_source`. For every row beyond a threshold write `variance_narrative` with one line of cause and one of corrective action; delete narrative from rows inside. List the rows beyond in `executive_summary.escalated_projects`.</action>
+      <output>`variance_thresholds`, `variance_narrative` on escalated rows, `escalated_projects[]`.</output>
+      <decision-gate>Thresholds not stated, or prose on a row inside them, blocks the artefact (r-variance-thresholds-named, fm-05).</decision-gate>
+    </step>
+
+    <step n="8" name="money-block-and-owner-sign-off">
+      <input>The aggregate, the fixed-bid rows, the portfolio owner.</input>
+      <action>Fill `executive_summary`: `bac` and `eac` = discrete + LOE, `vac`, `fixed_bid_margin_total` = sum of fixed-bid `implied_margin`. Run `scripts/validate-portfolio-evm-rollup-method.py --file`. The portfolio owner reviews and sets `owner_sign_off` before `executive_review_date`.</action>
+      <output>Signed rollup.</output>
+      <decision-gate>Indices without the money block, or an unsigned rollup, does not go to the executive review (r-eac-and-margin-in-money, fm-07, 03 human checkpoint).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Rollup validates via `scripts/validate-portfolio-evm-rollup-method.py` with no violation.</item>
+      <item>Every row shares `data_date`; stale projects are listed apart with their BAC.</item>
+      <item>Portfolio SPI / CPI recompute from the currency sums of the table.</item>
+      <item>`owner_sign_off.signed_at` is on or before `executive_review_date`.</item>
+    </list>
+  </section>
+</text>

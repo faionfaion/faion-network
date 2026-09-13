@@ -1,24 +1,167 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Growth Experiment Design Worked Example" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>End-to-end worked example walking from inputs to a signed-off `spec` artefact, including a forced skip scenario.</summary>
+<text id="05-examples" title="Growth Experiment Design Worked Example" version="1.2.0" est_tokens="2100" depth="recommended">
+  <summary>One complete experiment spec for an e-commerce checkout change (trust badges under the card form: 4.2 percent baseline, 5 percent minimum effect, 143,000 per variant over three weeks, Statsig assignment on user_id, playback on a one-percent cohort, SRM p 0.41, shipped with a written-up 6.8 percent lift) with a note on each value, plus the same idea written the way growth teams usually write it and what the validator prints.</summary>
 
-  <section title="Happy path">
-    <example trace="happy-path">
-      <p>A small B2B SaaS commissions a growth-experiment-design spec; growth lead is named owner; review deadline 2026-06-15. The agent gathers inputs (brief + last quarter's metrics), confirms all `Applies If` items hold, applies rules, synthesises a 3-section spec, validates it (exit 0), surfaces ready_for_review, growth lead signs off.</p>
-      <p>Trace through the five-step procedure:</p>
-      <list>
-        <item>Step 1 gather-inputs: preconditions report = all true</item>
-        <item>Step 2 apply-rules: decision-tree leaf -> conclusion ref="output-contract-binding"</item>
-        <item>Step 3 synthesise-output: artefact draft produced</item>
-        <item>Step 4 validate-output: scripts/validate-growth-experiment-design.py --file draft.json -> exit 0</item>
-        <item>Step 5 human-checkpoint: reviewer signs off, artefact lands at output location</item>
-      </list>
+  <section title="Scenario">
+    <p>A web shop with about 15,000 first-time checkout visitors a day converts 4.2 percent of them from the card form to a paid order. Exit surveys mention payment security. The growth team wants to show payment-provider trust badges under the card form. Statsig is the flag platform; events land in BigQuery.</p>
+  </section>
+
+  <section title="Resulting spec">
+    <example type="good" title="exp-checkout-trust-badges">
+      <code lang="json"><![CDATA[
+{
+  "experiment_id": "exp-checkout-trust-badges",
+  "hypothesis": {
+    "change": "show payment-provider trust badges under the card form",
+    "segment": "first-time buyers on web checkout",
+    "primary_metric": "checkout_to_paid conversion rate",
+    "minimum_effect_pct": 5,
+    "mechanism": "first-time buyers abandon at the card form because they doubt the payment is secure"
+  },
+  "guardrails": [
+    {"name": "average order value", "category": "revenue_or_conversion", "stop_threshold": "drop of 3 percent or more versus control"},
+    {"name": "30-day repeat purchase rate", "category": "retention", "stop_threshold": "drop of 2 points or more versus control"},
+    {"name": "checkout page p95 load time", "category": "performance_or_error", "stop_threshold": "above 2.5 s or error rate above 0.5 percent"}
+  ],
+  "ice": {
+    "impact": 7,
+    "confidence": 6,
+    "ease": 8,
+    "criteria_ref": "growth/ice-criteria.md",
+    "confidence_evidence": "exp-checkout-copy-2025q4 moved the same step by 3 percent; 14 of 20 exit-survey answers cite payment security",
+    "backlog_rank": 2
+  },
+  "sample_size": {
+    "baseline_rate": 0.042,
+    "minimum_detectable_effect_pct": 5,
+    "alpha": 0.05,
+    "power": 0.8,
+    "required_per_variant": 143000,
+    "eligible_daily_traffic": 15000,
+    "duration_weeks": 3
+  },
+  "assignment": {
+    "platform": "statsig",
+    "design": "randomised_controlled",
+    "hash_key": "user_id",
+    "control_variant": "control",
+    "allocation": [
+      {"variant": "control", "percent": 50},
+      {"variant": "trust_badges", "percent": 50}
+    ]
+  },
+  "instrumentation": {
+    "exposure_event": "checkout_card_form_viewed",
+    "exposure_logged_at": "variant_seen",
+    "analytics_destination": "BigQuery dataset analytics.events",
+    "metric_events": ["order_paid", "order_paid_value", "repeat_order_paid", "checkout_page_timing", "checkout_error"],
+    "playback": {
+      "cohort": "one_percent",
+      "status": "passed",
+      "performed_on": "2026-03-02",
+      "events_verified": ["checkout_card_form_viewed", "order_paid", "order_paid_value", "repeat_order_paid", "checkout_page_timing", "checkout_error"]
+    }
+  },
+  "schedule": {
+    "launch_date": "2026-03-04",
+    "stop_date": "2026-03-25",
+    "sequential_method": null
+  },
+  "srm_check": {
+    "status": "passed",
+    "chi_square_p": 0.41,
+    "invalidates_below": 0.001
+  },
+  "status": "written_up",
+  "write_up": {
+    "date": "2026-03-30",
+    "log_entry": "growth/experiment-log.md#exp-checkout-trust-badges",
+    "decision": "ship",
+    "primary_effect": {"observed_pct": 6.8, "ci_low_pct": 1.9, "ci_high_pct": 11.7},
+    "guardrail_results": [
+      {"name": "average order value", "observed": "+0.4 percent", "breached": false},
+      {"name": "30-day repeat purchase rate", "observed": "-0.3 points", "breached": false},
+      {"name": "checkout page p95 load time", "observed": "1.9 s, error rate 0.2 percent", "breached": false}
+    ],
+    "srm_p": 0.41,
+    "belief_changed": "Payment-security doubt, not price, is the main reason first-time buyers leave the card form."
+  },
+  "counts_toward_velocity": true
+}
+]]></code>
+      <note>`minimum_effect_pct` 5 is a relative lift on a 4.2 percent rate, so the absolute change to detect is 0.21 points; at alpha 0.05 and power 0.8 that needs about 143,000 users per variant (r-sample-size-computed-before-launch). With 15,000 eligible users a day split 50/50, each arm collects 7,500 a day, so 143,000 takes 19.1 days, rounded up to 3 whole weeks; `stop_date` is exactly 21 days after `launch_date` (r-fixed-stop-date-no-peeking-srm-check). Confidence 6 is allowed because it cites a prior test and survey counts; without them it would be capped at 3 (r-ice-scored-before-build). The exposure event is the card form view, not the Statsig assignment, so users who never reach checkout do not dilute the lift (r-instrumentation-playback-before-ramp). `average order value` guards against badges nudging cheaper baskets, `repeat purchase` against a one-off effect, and page timing against the badge assets slowing checkout (r-one-primary-metric-plus-guardrails). SRM p 0.41 means the 50/50 split held; the write-up on 2026-03-30 is five days after the stop date, the 6.8 percent lift clears the 5 percent minimum with the whole confidence interval above zero, and no guardrail is breached, so `ship` is a legitimate decision (r-write-up-every-experiment).</note>
     </example>
   </section>
 
-  <section title="Forced skip">
-    <example trace="skip-path">
-      <p>Same team but the input brief omits the named owner field. Step 1 preconditions report flags `named-owner` rule as false. Agent returns an action=skip envelope per rule `skip-this-methodology` and yields control to the parent workflow.</p>
+  <section title="Rejected spec">
+    <example type="bad" title="the same idea as usually written">
+      <code lang="json"><![CDATA[
+{
+  "experiment_id": "exp-new-onboarding",
+  "hypothesis": {
+    "change": "launch the redesigned onboarding flow",
+    "segment": "all new users",
+    "primary_metric": "engagement",
+    "minimum_effect_pct": 0,
+    "mechanism": "a better onboarding will make users more engaged"
+  },
+  "guardrails": [
+    {"name": "support tickets", "category": "performance_or_error", "stop_threshold": "noticeable increase"}
+  ],
+  "ice": {
+    "impact": 9,
+    "confidence": 8,
+    "ease": 5,
+    "criteria_ref": "growth/ice-criteria.md",
+    "confidence_evidence": null,
+    "backlog_rank": 1
+  },
+  "sample_size": {
+    "baseline_rate": 0.31,
+    "minimum_detectable_effect_pct": 3,
+    "alpha": 0.1,
+    "power": 0.8,
+    "required_per_variant": 4000,
+    "eligible_daily_traffic": 600,
+    "duration_weeks": 10
+  },
+  "assignment": {
+    "platform": "internal",
+    "design": "pre_post",
+    "hash_key": "session_id",
+    "control_variant": "last_week",
+    "allocation": [
+      {"variant": "new_onboarding", "percent": 100}
+    ]
+  },
+  "instrumentation": {
+    "exposure_event": "onboarding_assigned",
+    "exposure_logged_at": "assignment",
+    "analytics_destination": "Amplitude",
+    "metric_events": ["session_started"],
+    "playback": {
+      "cohort": "staging",
+      "status": "pending",
+      "performed_on": null,
+      "events_verified": []
+    }
+  },
+  "schedule": {
+    "launch_date": "2026-03-04",
+    "stop_date": "2026-03-08",
+    "sequential_method": null
+  },
+  "srm_check": {
+    "status": "pending",
+    "chi_square_p": null,
+    "invalidates_below": 0.001
+  },
+  "status": "running",
+  "write_up": null,
+  "counts_toward_velocity": true
+}
+]]></code>
+      <note>What the validator prints: `hypothesis.primary_metric` "engagement" is a theme and `minimum_effect_pct` 0 is not above zero (r-hypothesis-falsifiable-with-effect-size); one guardrail where three categories are required (r-one-primary-metric-plus-guardrails); `ice.confidence` 8 with no evidence cited (r-ice-scored-before-build); `alpha` 0.1 is not 0.05 and `duration_weeks` 10 is above 8 (r-sample-size-computed-before-launch); `design` pre_post, `hash_key` session_id and a single 100 percent allocation with no control (r-control-group-randomised-by-flag); `exposure_logged_at` assignment (r-instrumentation-playback-before-ramp); `counts_toward_velocity` true with no write-up (r-write-up-every-experiment). Once the schema violations are fixed the cross-field checks add: `status` running with a pending playback, and `stop_date` four days after launch where the duration demands whole weeks.</note>
     </example>
   </section>
 </text>

@@ -1,40 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Growth Viral Loops Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Growth Viral Loops end-to-end from inputs to a validated `spec` artefact + human signoff.</summary>
+<text id="04-procedure" title="Growth Viral Loops Procedure" version="1.2.0" est_tokens="1650" depth="essential">
+  <summary>Eight steps from the product's sharing moment to the loop spec: name the inherent share event, instrument the five joinable loop events, decompose K into invites per user and accept rate over two cycles, measure cycle time from timestamps and run the projection, anchor the K target to baseline and benchmark, map the invitee path and its friction experiments, design any incentive on activation, clear consent and disclosure and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="name-the-inherent-share-event">
+      <input>The product's collaborative or outbound actions; `templates/loop-anatomy.md.j2`.</input>
+      <action>Fill the anatomy worksheet, pick the action with the highest frequency where sharing creates value for the inviter, and record it as `primary_loop.share_event` with `kind: inherent` and `value_to_inviter` in `templates/growth-viral-loops.spec.md.j2`. Any invite modal or referral page goes into `secondary_loop` with its own K.</action>
+      <output>`loop_name`, `primary_loop`.</output>
+      <decision-gate>No product action involves another person: skip per 06-decision-tree.xml; a bolt-on referral page is not a primary loop (r-share-moment-is-inherent).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="instrument-the-five-joinable-events">
+      <input>The analytics event schema.</input>
+      <action>Define `events[]`: invite_shown, invite_sent, invite_opened, invite_accepted, invitee_activated, each keyed on invite_id and inviter_user_id. Verify one invite can be followed across all five rows. Record `retention.invitee_d30` next to `organic_d30` once a cohort is 30 days old.</action>
+      <output>`events[]`, `retention`.</output>
+      <decision-gate>Events cannot be joined per invite: the spec's first experiment is instrumentation and no K target is set (r-loop-events-instrumented).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `spec` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="decompose-k-over-two-cycles">
+      <input>Joined event rows over at least two full cycles.</input>
+      <action>Compute `invites_per_active_user` (invite_sent per active user, with window and sample) and `accept_rate_per_invite` (invite_accepted / invite_sent, with window and sample); set `k_factor.k` to their product to three decimals and `cycles_measured`.</action>
+      <output>`k_factor`.</output>
+      <decision-gate>Only an asserted K exists: reject it; the spec carries no K without i and c behind it (r-k-factor-decomposed).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-growth-viral-loops.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="measure-cycle-time-and-run-the-projection">
+      <input>Timestamps of the inviter's invite_sent and the invitee's first invite_sent; `templates/loop-projection.py`.</input>
+      <action>Record `cycle_time.days` as the median send-to-first-send interval with `sample_size`. Run `project(starting_users, K, cycle_days, days)` and record `projection` with `ignores_churn: true`.</action>
+      <output>`cycle_time`, `projection`.</output>
+      <decision-gate>Cycle time estimated rather than measured, or a projection without the churn caveat: not accepted (r-cycle-time-measured-and-projected).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="anchor-the-k-target">
+      <input>`k_factor.k`; a category benchmark with a named source.</input>
+      <action>Set `k_target.current_k` = `k_factor.k`, `benchmark` with `range_low`, `range_high`, `source`, and `target_k` with `kind`: self_sustaining only when the target is 1.0 or more and current K is at least 0.4, otherwise increment.</action>
+      <output>`k_target`.</output>
+      <decision-gate>Target above 1.0 from a baseline below 0.4: rewrite as an increment target (r-k-target-anchored-to-baseline).</decision-gate>
     </step>
 
+    <step n="6" name="map-the-invitee-path-and-friction-experiments">
+      <input>Funnel conversions from first exposure to the artifact to an activated account.</input>
+      <action>List `invitee_path[]` (at most three steps, each with measured `conversion`). For each experiment record `target_step`, `current_conversion` (the step's) and `expected_conversion`. Add at least one experiment that shortens cycle time if the median is long.</action>
+      <output>`invitee_path[]`, `friction_experiments[]`.</output>
+      <decision-gate>More than three steps: the first experiment removes steps; an experiment that names no step is not graded (r-friction-steps-capped).</decision-gate>
+    </step>
+
+    <step n="7" name="design-any-incentive-on-activation">
+      <input>`templates/referral-program.md.j2`; reward budget; the activation milestone.</input>
+      <action>If the loop pays anything, fill `incentive`: `referrer_reward`, `invitee_reward`, `trigger_milestone` (the activation event), `window_days`, `max_rewards_per_referrer_per_12_months`, `self_referral_block` (device_fingerprint, ip, payment_instrument), `excludes_existing_and_past_users: true`. Otherwise set `incentive` to null.</action>
+      <output>`incentive`.</output>
+      <decision-gate>Reward on signup, no cap, or no self-referral block: the incentive does not launch (r-reward-on-activation-not-signup).</decision-gate>
+    </step>
+
+    <step n="8" name="clear-consent-and-disclosure-and-validate">
+      <input>The compliance checklist in `templates/referral-program.md.j2`; the invite message and landing page copy.</input>
+      <action>Set `consent_and_disclosure.recipient_source` (addresses entered by the inviter, or a consented import), `casl_express_consent: true`, `gdpr_lawful_basis`, and `compensation_disclosure` (message, landing_page or both whenever `incentive` is not null). Run `scripts/validate-growth-viral-loops.py --file` on the spec.</action>
+      <output>Validated spec.</output>
+      <decision-gate>Contact import without consent or an undisclosed paid referral: the spec is not shippable (r-referral-consent-and-disclosure).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates via `scripts/validate-growth-viral-loops.py` with no violation.</item>
+      <item>K is shown as i x c on joined events over two cycles, cycle time comes from timestamps, and the projection is reproducible with loop-projection.py.</item>
+      <item>The invitee path has at most three steps with an experiment per bottleneck; any incentive pays on activation and is disclosed.</item>
+    </list>
   </section>
 </text>

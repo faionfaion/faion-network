@@ -1,43 +1,392 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Portfolio EVM Rollup Method — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Portfolio EVM Rollup Method — Output Contract" version="2.0.0" est_tokens="5500" depth="essential">
+  <summary>JSON Schema (draft-07) for the monthly portfolio EVM rollup: one data date and one currency, a per-project table with BAC / PV / EV / AC / SV / CV / SPI / CPI / EAC / VAC, the EV method and the EAC formula per row, stale projects listed apart with their BAC, a currency-sum aggregate that keeps LOE apart from discrete work, the weighting policy with unweighted figures beside weighted ones, a three-period SPI / CPI trend, named variance thresholds with a narrative only beyond them, and the money block (EAC vs BAC, VAC, fixed-bid margin). Validator in scripts/validate-portfolio-evm-rollup-method.py enforces it, including the sum-not-average arithmetic.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
-  </section>
+  <output-contract>
+    <required>
+      <field name="portfolio" type="string" required="true">portfolio name</field>
+      <field name="owner" type="string" required="true">the portfolio owner who signs the rollup before the executive review, `role:handle` (03 human checkpoint)</field>
+      <field name="data_date" type="date" required="true">the single data date every row is reported as of (r-single-data-date)</field>
+      <field name="currency" type="string" required="true">ISO 4217 code of the one reporting currency (r-rollup-sums-currency-not-indices)</field>
+      <field name="reporting_period" type="string" required="true">`week`, `fortnight` or `month`; a ledger older than the data date by more than one period is stale (r-single-data-date)</field>
+      <field name="executive_review_date" type="date" required="true">the scheduled review the rollup is for; `owner_sign_off.signed_at` is on or before it</field>
+      <field name="variance_thresholds" type="object" required="true">`spi_min`, `cpi_min`, `cv_pct_of_bac_max` and `policy_source`; a project beyond any of them carries a narrative, the rest carry none (r-variance-thresholds-named)</field>
+      <field name="weighting" type="object" required="true">`policy` = `currency-sum` or a named weighting; any other policy names `policy_document` and every project carries `weight` (r-weighting-policy-declared)</field>
+      <field name="projects" type="list" required="true">at least 3 rows, each with `name`, `contract_type`, `ev_method`, `ledger_file`, `ledger_exported_at`, `data_date`, `currency`, `bac`, `pv`, `ev`, `ac`, `sv`, `cv`, `spi`, `cpi`, `eac`, `vac`, `eac_formula`, `trend[]` (3 data dates); fixed-bid rows add `contract_value` and `implied_margin`; rows beyond a threshold add `variance_narrative` (r-per-project-table-fields, r-normalise-contract-types, r-trend-three-periods)</field>
+      <field name="stale_projects" type="list" required="true">projects excluded from the aggregate: `name`, `bac`, `last_data_date`, `ledger_exported_at`; empty when none are stale (r-single-data-date)</field>
+      <field name="aggregate" type="object" required="true">`discrete` (BAC, PV, EV, AC, SPI = sum EV / sum PV, CPI = sum EV / sum AC, EAC = sum of row EACs, VAC), `loe` (BAC, PV, EV, AC of level-of-effort rows), `trend[]` of 3 data dates, `weighted` when a weighting is applied (r-rollup-sums-currency-not-indices, r-normalise-contract-types, r-trend-three-periods, r-weighting-policy-declared)</field>
+      <field name="executive_summary" type="object" required="true">`bac`, `eac`, `vac` in currency, `fixed_bid_margin_total`, `escalated_projects[]` = the rows beyond a threshold (r-eac-and-margin-in-money, r-variance-thresholds-named)</field>
+      <field name="owner_sign_off" type="object" required="true">`signed_by` = `owner`, `signed_at` on or before `executive_review_date` (03 human checkpoint)</field>
+    </required>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
-  </section>
+    <forbidden>
+      <pattern id="f1">`aggregate.discrete.spi` or `.cpi` equal to the mean of row indices instead of sum(EV) / sum(PV), sum(EV) / sum(AC) — fm-01</pattern>
+      <pattern id="f2">a row whose `data_date` differs from the artefact `data_date`, or a project in `projects[]` whose ledger is older than one reporting period — fm-02</pattern>
+      <pattern id="f3">`contract_type: fixed-bid` with `ev_method: physical-percent-complete`, `apportioned-effort` or `level-of-effort` — fm-03</pattern>
+      <pattern id="f4">`weighting.policy` other than `currency-sum` with no `policy_document`, no per-row `weight`, or no `aggregate.weighted` beside the unweighted figures — fm-04</pattern>
+      <pattern id="f5">`variance_narrative` on a row inside every threshold, or missing on a row beyond one — fm-05</pattern>
+      <pattern id="f6">fewer than 3 data dates in any `trend[]`, or a last trend point that disagrees with the current SPI / CPI — fm-06</pattern>
+      <pattern id="f7">`executive_summary` without `eac`, `vac` and `fixed_bid_margin_total` in currency, or `bac` / `eac` that do not equal discrete + LOE — fm-07</pattern>
+      <pattern id="f8">a level-of-effort row counted in `aggregate.discrete` — r-normalise-contract-types</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/portfolio-evm-rollup-method.json",
+  "title": "Portfolio EVM rollup",
+  "type": "object",
+  "required": ["portfolio", "owner", "data_date", "currency", "reporting_period", "executive_review_date", "variance_thresholds", "weighting", "projects", "stale_projects", "aggregate", "executive_summary", "owner_sign_off"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "money": {"type": "number"},
+    "index": {"type": "number", "minimum": 0},
+    "trend": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["data_date", "spi", "cpi"],
+        "additionalProperties": false,
+        "properties": {
+          "data_date": {"$ref": "#/definitions/date"},
+          "spi": {"$ref": "#/definitions/index"},
+          "cpi": {"$ref": "#/definitions/index"}
+        }
+      }
+    },
+    "sums": {
+      "type": "object",
+      "required": ["bac", "pv", "ev", "ac"],
+      "properties": {
+        "bac": {"$ref": "#/definitions/money"},
+        "pv": {"$ref": "#/definitions/money"},
+        "ev": {"$ref": "#/definitions/money"},
+        "ac": {"$ref": "#/definitions/money"}
+      }
+    }
+  },
+  "properties": {
+    "__faion_header__": {"type": "object"},
+    "portfolio": {"type": "string", "minLength": 2},
+    "owner": {"$ref": "#/definitions/handle"},
+    "data_date": {"$ref": "#/definitions/date"},
+    "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+    "reporting_period": {"type": "string", "enum": ["week", "fortnight", "month"]},
+    "executive_review_date": {"$ref": "#/definitions/date"},
+    "variance_thresholds": {
+      "type": "object",
+      "required": ["spi_min", "cpi_min", "cv_pct_of_bac_max", "policy_source"],
+      "additionalProperties": false,
+      "properties": {
+        "spi_min": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "cpi_min": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "cv_pct_of_bac_max": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
+        "policy_source": {"type": "string", "minLength": 3}
+      }
+    },
+    "weighting": {
+      "type": "object",
+      "required": ["policy"],
+      "additionalProperties": false,
+      "properties": {
+        "policy": {"type": "string", "enum": ["currency-sum", "strategic", "margin", "client-tier"]},
+        "policy_document": {"type": "string", "minLength": 3}
+      },
+      "if": {"properties": {"policy": {"enum": ["strategic", "margin", "client-tier"]}}},
+      "then": {"required": ["policy", "policy_document"]}
+    },
+    "projects": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "contract_type", "ev_method", "ledger_file", "ledger_exported_at", "data_date", "currency", "bac", "pv", "ev", "ac", "sv", "cv", "spi", "cpi", "eac", "vac", "eac_formula", "trend"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "contract_type": {"type": "string", "enum": ["fixed-bid", "time-and-materials", "internal"]},
+          "ev_method": {"type": "string", "enum": ["milestone-weight", "0/100", "50/50", "physical-percent-complete", "apportioned-effort", "level-of-effort"]},
+          "ledger_file": {"type": "string", "minLength": 3},
+          "ledger_exported_at": {"$ref": "#/definitions/timestamp"},
+          "data_date": {"$ref": "#/definitions/date"},
+          "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+          "bac": {"type": "number", "exclusiveMinimum": 0},
+          "pv": {"$ref": "#/definitions/money"},
+          "ev": {"$ref": "#/definitions/money"},
+          "ac": {"$ref": "#/definitions/money"},
+          "sv": {"$ref": "#/definitions/money"},
+          "cv": {"$ref": "#/definitions/money"},
+          "spi": {"$ref": "#/definitions/index"},
+          "cpi": {"$ref": "#/definitions/index"},
+          "eac": {"$ref": "#/definitions/money"},
+          "vac": {"$ref": "#/definitions/money"},
+          "eac_formula": {"type": "string", "enum": ["BAC/CPI", "AC+(BAC-EV)/(CPI*SPI)", "bottom-up"]},
+          "weight": {"type": "number", "exclusiveMinimum": 0},
+          "contract_value": {"type": "number", "exclusiveMinimum": 0},
+          "implied_margin": {"$ref": "#/definitions/money"},
+          "trend": {"$ref": "#/definitions/trend"},
+          "variance_narrative": {
+            "type": "object",
+            "required": ["cause", "corrective_action"],
+            "additionalProperties": false,
+            "properties": {
+              "cause": {"type": "string", "minLength": 12},
+              "corrective_action": {"type": "string", "minLength": 12}
+            }
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"contract_type": {"const": "fixed-bid"}}},
+           "then": {
+             "required": ["contract_value", "implied_margin"],
+             "properties": {"ev_method": {"enum": ["milestone-weight", "0/100", "50/50"]}}}}
+        ]
+      }
+    },
+    "stale_projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "bac", "last_data_date", "ledger_exported_at"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "bac": {"type": "number", "exclusiveMinimum": 0},
+          "last_data_date": {"$ref": "#/definitions/date"},
+          "ledger_exported_at": {"$ref": "#/definitions/timestamp"}
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "required": ["discrete", "loe", "trend"],
+      "additionalProperties": false,
+      "properties": {
+        "discrete": {
+          "allOf": [{"$ref": "#/definitions/sums"}],
+          "required": ["bac", "pv", "ev", "ac", "spi", "cpi", "eac", "vac"],
+          "properties": {
+            "spi": {"$ref": "#/definitions/index"},
+            "cpi": {"$ref": "#/definitions/index"},
+            "eac": {"$ref": "#/definitions/money"},
+            "vac": {"$ref": "#/definitions/money"}
+          }
+        },
+        "loe": {"$ref": "#/definitions/sums"},
+        "weighted": {
+          "type": "object",
+          "required": ["spi", "cpi", "eac"],
+          "additionalProperties": false,
+          "properties": {
+            "spi": {"$ref": "#/definitions/index"},
+            "cpi": {"$ref": "#/definitions/index"},
+            "eac": {"$ref": "#/definitions/money"}
+          }
+        },
+        "trend": {"$ref": "#/definitions/trend"}
+      }
+    },
+    "executive_summary": {
+      "type": "object",
+      "required": ["bac", "eac", "vac", "fixed_bid_margin_total", "escalated_projects"],
+      "additionalProperties": false,
+      "properties": {
+        "bac": {"$ref": "#/definitions/money"},
+        "eac": {"$ref": "#/definitions/money"},
+        "vac": {"$ref": "#/definitions/money"},
+        "fixed_bid_margin_total": {"$ref": "#/definitions/money"},
+        "escalated_projects": {"type": "array", "items": {"type": "string", "minLength": 2}, "uniqueItems": true}
+      }
+    },
+    "owner_sign_off": {
+      "type": "object",
+      "required": ["signed_by", "signed_at"],
+      "additionalProperties": false,
+      "properties": {
+        "signed_by": {"$ref": "#/definitions/handle"},
+        "signed_at": {"$ref": "#/definitions/date"}
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "portfolio": "delivery-2026",
+  "owner": "portfolio:dana",
+  "data_date": "2026-08-31",
+  "currency": "USD",
+  "reporting_period": "month",
+  "executive_review_date": "2026-09-08",
+  "variance_thresholds": {"spi_min": 0.90, "cpi_min": 0.90, "cv_pct_of_bac_max": 10, "policy_source": "portfolio-runbook.md#variance-thresholds"},
+  "weighting": {"policy": "strategic", "policy_document": "portfolio-weighting-policy-2026.md"},
+  "projects": [
+    {
+      "name": "atlas-crm", "contract_type": "fixed-bid", "ev_method": "milestone-weight",
+      "ledger_file": "ledgers/atlas-crm-2026-08.csv", "ledger_exported_at": "2026-09-01T08:10:00Z",
+      "data_date": "2026-08-31", "currency": "USD",
+      "bac": 1200000, "pv": 600000, "ev": 540000, "ac": 600000,
+      "sv": -60000, "cv": -60000, "spi": 0.90, "cpi": 0.90,
+      "eac": 1333333, "vac": -133333, "eac_formula": "BAC/CPI",
+      "weight": 1.0, "contract_value": 1400000, "implied_margin": 66667,
+      "trend": [
+        {"data_date": "2026-06-30", "spi": 0.96, "cpi": 0.94},
+        {"data_date": "2026-07-31", "spi": 0.92, "cpi": 0.91},
+        {"data_date": "2026-08-31", "spi": 0.90, "cpi": 0.90}
+      ]
+    },
+    {
+      "name": "hermes-billing", "contract_type": "fixed-bid", "ev_method": "0/100",
+      "ledger_file": "ledgers/hermes-billing-2026-08.csv", "ledger_exported_at": "2026-09-01T09:02:00Z",
+      "data_date": "2026-08-31", "currency": "USD",
+      "bac": 800000, "pv": 500000, "ev": 400000, "ac": 500000,
+      "sv": -100000, "cv": -100000, "spi": 0.80, "cpi": 0.80,
+      "eac": 1000000, "vac": -200000, "eac_formula": "BAC/CPI",
+      "weight": 1.5, "contract_value": 900000, "implied_margin": -100000,
+      "trend": [
+        {"data_date": "2026-06-30", "spi": 0.95, "cpi": 0.93},
+        {"data_date": "2026-07-31", "spi": 0.88, "cpi": 0.86},
+        {"data_date": "2026-08-31", "spi": 0.80, "cpi": 0.80}
+      ],
+      "variance_narrative": {
+        "cause": "Invoicing milestone M4 slipped six weeks: the client's ERP sandbox was delivered late and 0/100 earns nothing until acceptance.",
+        "corrective_action": "Descope the reconciliation report to a change request (+120k contract value) and re-baseline M4 to 2026-10-15; portfolio owner to confirm with the account lead by 2026-09-12."
+      }
+    },
+    {
+      "name": "orion-platform", "contract_type": "time-and-materials", "ev_method": "physical-percent-complete",
+      "ledger_file": "ledgers/orion-platform-2026-08.csv", "ledger_exported_at": "2026-09-01T07:45:00Z",
+      "data_date": "2026-08-31", "currency": "USD",
+      "bac": 2000000, "pv": 1000000, "ev": 1050000, "ac": 1000000,
+      "sv": 50000, "cv": 50000, "spi": 1.05, "cpi": 1.05,
+      "eac": 1904762, "vac": 95238, "eac_formula": "BAC/CPI",
+      "weight": 1.0,
+      "trend": [
+        {"data_date": "2026-06-30", "spi": 1.02, "cpi": 1.03},
+        {"data_date": "2026-07-31", "spi": 1.04, "cpi": 1.04},
+        {"data_date": "2026-08-31", "spi": 1.05, "cpi": 1.05}
+      ]
+    },
+    {
+      "name": "ops-support", "contract_type": "internal", "ev_method": "level-of-effort",
+      "ledger_file": "ledgers/ops-support-2026-08.csv", "ledger_exported_at": "2026-09-01T08:30:00Z",
+      "data_date": "2026-08-31", "currency": "USD",
+      "bac": 300000, "pv": 150000, "ev": 150000, "ac": 160000,
+      "sv": 0, "cv": -10000, "spi": 1.00, "cpi": 0.94,
+      "eac": 320000, "vac": -20000, "eac_formula": "BAC/CPI",
+      "weight": 1.0,
+      "trend": [
+        {"data_date": "2026-06-30", "spi": 1.00, "cpi": 0.97},
+        {"data_date": "2026-07-31", "spi": 1.00, "cpi": 0.95},
+        {"data_date": "2026-08-31", "spi": 1.00, "cpi": 0.94}
+      ]
+    }
+  ],
+  "stale_projects": [
+    {"name": "zeus-mobile", "bac": 500000, "last_data_date": "2026-06-30", "ledger_exported_at": "2026-07-02T10:00:00Z"}
+  ],
+  "aggregate": {
+    "discrete": {"bac": 4000000, "pv": 2100000, "ev": 1990000, "ac": 2100000, "spi": 0.95, "cpi": 0.95, "eac": 4238095, "vac": -238095},
+    "loe": {"bac": 300000, "pv": 150000, "ev": 150000, "ac": 160000},
+    "weighted": {"spi": 0.93, "cpi": 0.93, "eac": 4738095},
+    "trend": [
+      {"data_date": "2026-06-30", "spi": 0.99, "cpi": 0.98},
+      {"data_date": "2026-07-31", "spi": 0.97, "cpi": 0.96},
+      {"data_date": "2026-08-31", "spi": 0.95, "cpi": 0.95}
+    ]
+  },
+  "executive_summary": {
+    "bac": 4300000, "eac": 4558095, "vac": -258095,
+    "fixed_bid_margin_total": -33333,
+    "escalated_projects": ["hermes-billing"]
+  },
+  "owner_sign_off": {"signed_by": "portfolio:dana", "signed_at": "2026-09-04"}
+}
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "portfolio": "delivery-2026",
+  "owner": "portfolio:dana",
+  "data_date": "2026-08-31",
+  "currency": "USD",
+  "reporting_period": "month",
+  "executive_review_date": "2026-09-08",
+  "variance_thresholds": {"spi_min": 0.90, "cpi_min": 0.90, "cv_pct_of_bac_max": 10, "policy_source": "portfolio-runbook.md#variance-thresholds"},
+  "weighting": {"policy": "strategic"},
+  "projects": [
+    {
+      "name": "atlas-crm", "contract_type": "fixed-bid", "ev_method": "physical-percent-complete",
+      "ledger_file": "ledgers/atlas-crm-2026-08.csv", "ledger_exported_at": "2026-09-01T08:10:00Z",
+      "data_date": "2026-08-31", "currency": "USD",
+      "bac": 1200000, "pv": 600000, "ev": 1080000, "ac": 600000,
+      "sv": 480000, "cv": 480000, "spi": 1.80, "cpi": 1.80,
+      "eac": 666667, "vac": 533333, "eac_formula": "BAC/CPI",
+      "contract_value": 1400000, "implied_margin": 733333,
+      "trend": [
+        {"data_date": "2026-08-31", "spi": 1.80, "cpi": 1.80}
+      ]
+    },
+    {
+      "name": "hermes-billing", "contract_type": "fixed-bid", "ev_method": "0/100",
+      "ledger_file": "ledgers/hermes-billing-2026-08.csv", "ledger_exported_at": "2026-09-01T09:02:00Z",
+      "data_date": "2026-08-31", "currency": "USD",
+      "bac": 800000, "pv": 500000, "ev": 400000, "ac": 500000,
+      "sv": -100000, "cv": -100000, "spi": 0.80, "cpi": 0.80,
+      "eac": 1000000, "vac": -200000, "eac_formula": "BAC/CPI",
+      "contract_value": 900000, "implied_margin": -100000,
+      "trend": [
+        {"data_date": "2026-08-31", "spi": 0.80, "cpi": 0.80}
+      ]
+    },
+    {
+      "name": "zeus-mobile", "contract_type": "time-and-materials", "ev_method": "physical-percent-complete",
+      "ledger_file": "ledgers/zeus-mobile-2026-06.csv", "ledger_exported_at": "2026-07-02T10:00:00Z",
+      "data_date": "2026-06-30", "currency": "USD",
+      "bac": 500000, "pv": 200000, "ev": 200000, "ac": 200000,
+      "sv": 0, "cv": 0, "spi": 1.00, "cpi": 1.00,
+      "eac": 500000, "vac": 0, "eac_formula": "BAC/CPI",
+      "trend": [
+        {"data_date": "2026-06-30", "spi": 1.00, "cpi": 1.00}
+      ]
+    }
+  ],
+  "stale_projects": [],
+  "aggregate": {
+    "discrete": {"bac": 2500000, "pv": 1300000, "ev": 1680000, "ac": 1300000, "spi": 1.20, "cpi": 1.20, "eac": 2166667, "vac": 333333},
+    "loe": {"bac": 0, "pv": 0, "ev": 0, "ac": 0},
+    "trend": [
+      {"data_date": "2026-08-31", "spi": 1.20, "cpi": 1.20}
+    ]
+  },
+  "executive_summary": {
+    "bac": 2500000, "eac": 2166667, "vac": 333333,
+    "fixed_bid_margin_total": 633333,
+    "escalated_projects": []
+  },
+  "owner_sign_off": {"signed_by": "portfolio:dana", "signed_at": "2026-09-04"}
+}
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
+      <item>Every row's `data_date` equals the artefact `data_date`; any project whose ledger is older than one `reporting_period` is in `stale_projects` with its BAC, not in `projects` (r-single-data-date).</item>
+      <item>`aggregate.discrete.spi` = sum(EV) / sum(PV) and `.cpi` = sum(EV) / sum(AC) over the non-LOE rows, in the one `currency`; no row index is averaged (r-rollup-sums-currency-not-indices).</item>
+      <item>Every row names its `ev_method`; fixed-bid rows use milestone-weight, 0/100 or 50/50; level-of-effort rows are summed in `aggregate.loe` only (r-normalise-contract-types).</item>
+      <item>Every row carries BAC, PV, EV, AC, SV, CV, SPI, CPI, EAC, VAC, `eac_formula`, `data_date` and `currency`, and EAC agrees with the named formula (r-per-project-table-fields).</item>
+      <item>`variance_thresholds` are numeric and sourced; rows beyond a threshold carry `variance_narrative` with cause and corrective action, rows inside carry none, and `executive_summary.escalated_projects` lists exactly the rows beyond (r-variance-thresholds-named).</item>
+      <item>Every row and the aggregate show a `trend[]` of at least 3 data dates whose last point is the current SPI / CPI (r-trend-three-periods).</item>
+      <item>A weighting other than `currency-sum` names its `policy_document`, prints `weight` per row and `aggregate.weighted` next to the unweighted figures (r-weighting-policy-declared).</item>
+      <item>`executive_summary` states `bac`, `eac`, `vac` in currency (discrete + LOE) and `fixed_bid_margin_total` = sum of fixed-bid `implied_margin` (r-eac-and-margin-in-money).</item>
+      <item>`owner_sign_off.signed_by` is the `owner` and `signed_at` is on or before `executive_review_date` (03 human checkpoint).</item>
     </list>
   </section>
 </text>

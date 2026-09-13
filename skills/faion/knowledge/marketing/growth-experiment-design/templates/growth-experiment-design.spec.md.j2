@@ -1,36 +1,70 @@
-<!-- purpose: growth-experiment-design spec template -->
-<!-- consumes: inputs named in AGENTS.md Prerequisites -->
+<!-- purpose: one-page growth experiment spec — falsifiable hypothesis, guardrails, ICE, sample size, flag assignment, instrumentation playback, stop date and SRM gate, write-up -->
+<!-- consumes: baseline rate and eligible daily traffic, event catalogue, ICE criteria, flag platform configuration -->
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml + content/06-decision-tree.xml -->
-<!-- token-budget-impact: ~600 tokens when loaded -->
-# Growth Experiment Design — Spec
+<!-- token-budget-impact: ~700 tokens when loaded -->
+# Growth Experiment {{ experiment_id }} — {{ product_name }}
 
-## Owner
-{{ name }}
+## Hypothesis
+If we <change> for <segment>, then {{ metric_name }} will change by at least <minimum_effect_pct> percent because <mechanism>.
 
-## Review deadline
-YYYY-MM-DD (within 90 days)
+- change: <one change>
+- segment: <one segment>
+- primary_metric: {{ metric_name }} (a measured rate, never "engagement")
+- minimum_effect_pct: <number above 0>
+- mechanism: <the belief this test can prove wrong>
 
-## Summary
-One paragraph describing what the produced spec covers.
+## Guardrails (at least three, one per category; a breach vetoes a ship)
 
-## Sections
+| name | category | stop_threshold |
+|---|---|---|
+| <metric> | revenue_or_conversion | <threshold versus control> |
+| <metric> | retention | <threshold versus control> |
+| <metric> | performance_or_error | <threshold> |
 
-### preconditions
-Items confirmed (Applies If):
-- item 1
-- item 2
-- item 3
+## ICE (integers 1-10, scored before build against the written criteria)
+- impact: <1-10>
+- confidence: <1-10; at most 3 unless confidence_evidence cites a prior test, research or analytics>
+- ease: <1-10>
+- criteria_ref: <path to the team's ICE criteria>
+- confidence_evidence: <citation, or null>
+- backlog_rank: <position; deviations from ICE order are logged>
 
-### procedure
-Step-by-step as enacted from content/04-procedure.xml.
+## Sample size (alpha 0.05, power 0.8)
+- baseline_rate: <rate over the last four closed weeks>
+- minimum_detectable_effect_pct: <same as the hypothesis>
+- required_per_variant: <from the power calculation>
+- eligible_daily_traffic: <users/day in the segment>
+- duration_weeks: <ceil(required_per_variant / (eligible_daily_traffic x smallest allocation) / 7), 1 to 8; above 8 redesign>
 
-### review
-Named reviewer + signoff date.
+## Assignment (randomised_controlled, by the flag platform)
+- platform: <launchdarkly | statsig | unleash | growthbook | optimizely | internal>
+- hash_key: <user_id | account_id>
+- control_variant: <variant receiving the unchanged experience>
 
-## Deviation log reference
-[path / link to deviation log entry]
+| variant | percent |
+|---|---|
+| control | <n> |
+| <variant> | <n> (percentages sum to 100) |
 
-## Signoff
-- reviewer: {{ reviewer_name }}
-- date: YYYY-MM-DD
+## Instrumentation
+- exposure_event: <event fired when the user sees the variant> (exposure_logged_at: variant_seen)
+- analytics_destination: <where events land>
+- metric_events: <primary and guardrail events>
+- playback: cohort <staging | one_percent>, performed_on <YYYY-MM-DD>, events_verified <exposure and every metric event, each with experiment id and variant id>; no ramp above the smoke-test allocation until passed
+
+## Schedule and SRM gate
+- launch_date: {{ start_date }}
+- stop_date: {{ end_date }} (at least duration_weeks whole weeks after launch; results are read only then)
+- sequential_method: <null, or the method declared up front>
+- srm_check: chi_square_p <observed versus planned allocation>; below 0.001 invalidates the run
+
+## Write-up (within seven days of stop_date, whatever the outcome)
+- date: <YYYY-MM-DD>
+- log_entry: <shared experiment log reference>
+- decision: <ship | iterate | kill; never ship on a breached guardrail or a failed SRM check>
+- primary_effect: observed <x> percent, CI <low> to <high>
+- guardrail_results: <one line per guardrail with observed value and breached yes/no>
+- srm_p: <same as srm_check>
+- belief_changed: <one sentence on what the team now believes differently>
+- counts_toward_velocity: <true only once this write-up exists>

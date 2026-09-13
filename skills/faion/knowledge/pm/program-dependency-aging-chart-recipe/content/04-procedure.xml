@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Program Dependency Aging Chart Recipe — Procedure" version="1.0.0" est_tokens="1700" depth="recommended">
+  <summary>Eight steps run by script before every weekly checkpoint: extract the typed edges with their tracker timestamps, age each from `opened_at` into the adopted bands with re-ticketed edges inheriting the original, count blocked tasks from the graph and compute slack, sort the action table red-first, attach owned and dated actions from the second band and a re-baseline decision in the top band, append delivered edges to the resolved log and draw the SLE line, then publish the generated chart and close the checkpoint.</summary>
+
+  <section title="Steps">
+    <step n="1" name="extract-edges-by-script">
+      <input>The typed dependency graph; tracker API access (Jira, Linear, GitHub Projects) for `blocks / is blocked by` link timestamps; the checkpoint weekday.</input>
+      <action>On the checkpoint weekday run the saved `tracker_query`; record `chart_date`, `extracted_at` and the query in the artefact header. Fill one `edges[]` entry per open link with `link_id`, `producer_team`, `consumer_team`, `dependency_type`, `opened_at` (the link's creation timestamp) and `needed_by` from the consuming milestone; `needed_by: null` marks a no-deadline edge.</action>
+      <output>Header and `edges[]` with the six graph fields.</output>
+      <decision-gate>A dependency named in checkpoint notes with no matching link is created in the tracker with `opened_at` set to its first mention before the chart is drawn (r-typed-edges-from-graph, r-weekly-refresh-by-script, fm-02).</decision-gate>
+    </step>
+
+    <step n="2" name="age-edges-in-adopted-bands">
+      <input>`edges[]`; `age_bands` and `bands_adopted_on` from the previous artefact (default 0-7, 8-14, 15-28, over 28).</input>
+      <action>Set `age_days` = `chart_date` minus `opened_at` in calendar days and `band` from the adopted bands. Copy `age_bands` and `bands_adopted_on` unchanged.</action>
+      <output>`age_days`, `band` per edge; bands in the header.</output>
+      <decision-gate>Any clock other than the link's `opened_at`, or a band boundary that differs from the adopted set, is rejected by `scripts/validate-program-dependency-aging-chart-recipe.py` (r-age-from-dependency-open-not-task, r-age-bands-fixed, fm-01, fm-03).</decision-gate>
+    </step>
+
+    <step n="3" name="inherit-age-on-reticketed-edges">
+      <input>Edges opened in the last 14 days; the resolved log of the previous artefact.</input>
+      <action>For a new edge between the same producer and consumer on the same deliverable as an edge closed within 14 days, set `superseded_from` to the original `link_id`, copy the original `opened_at`, and drop the original from `resolved_log`.</action>
+      <output>`superseded_from` and inherited `opened_at` on re-ticketed edges.</output>
+      <decision-gate>An edge that resets its age by re-ticketing is a metric-gaming finding for the checkpoint (r-no-aging-reset, fm-04).</decision-gate>
+    </step>
+
+    <step n="4" name="count-blocked-tasks-and-slack">
+      <input>The dependency graph's downstream edges; `needed_by` per edge.</input>
+      <action>Set `blocked_task_count` from the graph (tasks transitively blocked by the edge), and `slack_days` = `needed_by` minus `chart_date` (null when `needed_by` is null).</action>
+      <output>`blocked_task_count`, `slack_days` per edge.</output>
+      <decision-gate>An estimated count instead of a graph count is not plotted (r-count-blocked-tasks-per-edge, r-milestone-slack-column).</decision-gate>
+    </step>
+
+    <step n="5" name="sort-action-table">
+      <input>Completed edges.</input>
+      <action>Build `action_table`: edges with `slack_days` at or below 0 first (rendered red), then by band descending, then by `blocked_task_count` descending.</action>
+      <output>`action_table[]` of link ids.</output>
+      <decision-gate>A young edge with negative slack anywhere but the top of the table is fm-06 (r-milestone-slack-column, r-count-blocked-tasks-per-edge).</decision-gate>
+    </step>
+
+    <step n="6" name="assign-actions-and-rebaseline">
+      <input>`action_table`; the team leads; the program PM.</input>
+      <action>For every edge in the second band or older, or with non-positive slack, record `action.owner` (a person), `action.due_date` and `action.text` as a verb phrase. For every edge in the top band the program PM records `rebaseline` (`move-milestone`, `cut-scope` or `swap-producer`) with `decided_by` and `decided_on`.</action>
+      <output>`action` and `rebaseline` on escalated edges.</output>
+      <decision-gate>"Waiting on team X" is rejected as an action; a top-band edge without a decision keeps the checkpoint open (r-action-per-escalation-band, fm-05, 03 human checkpoint).</decision-gate>
+    </step>
+
+    <step n="7" name="append-resolved-log-and-sle">
+      <input>Edges delivered or closed as not needed since the last chart; the previous `resolved_log`.</input>
+      <action>Append each closed edge with `opened_at`, `resolved_on`, `age_days`, `outcome`, `needed_by` (`not-needed` only when a `needed_by` existed). Count entries resolved in the trailing 12 weeks into `sle.resolved_count_12w`; with 10 or more set `sle.status: line` and `p85_days` to their 85th percentile, otherwise `insufficient-data`.</action>
+      <output>`resolved_log[]`, `sle`.</output>
+      <decision-gate>An SLE line drawn from fewer than 10 resolved edges is rejected (r-closed-edges-feed-sle, r-typed-edges-from-graph).</decision-gate>
+    </step>
+
+    <step n="8" name="publish-and-close-checkpoint">
+      <input>The validated artefact; the chart renderer.</input>
+      <action>Render the chart (blocked tasks vs age, band boundaries, SLE line, red edges) to `chart_image`; run `scripts/validate-program-dependency-aging-chart-recipe.py --file`; fill `templates/skeleton.md.j2` for the checkpoint page; embed the generated image, never a redrawn one.</action>
+      <output>Published chart and action table for the checkpoint.</output>
+      <decision-gate>A chart older than the checkpoint week or without its query is not shown (r-weekly-refresh-by-script, fm-07).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Artefact validates via `scripts/validate-program-dependency-aging-chart-recipe.py` with no violation.</item>
+      <item>Every escalated edge has an owner and a due date; every top-band edge has a re-baseline decision by the program PM.</item>
+      <item>The chart on the checkpoint page is the script's image for this week's `chart_date`.</item>
+    </list>
+  </section>
+</text>

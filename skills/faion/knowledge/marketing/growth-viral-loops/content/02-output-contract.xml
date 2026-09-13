@@ -1,128 +1,341 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Growth Viral Loops Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `spec` artefact this methodology produces. Validator at scripts/validate-growth-viral-loops.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Growth Viral Loops Output Contract" version="1.2.0" est_tokens="4800" depth="essential">
+  <summary>JSON Schema (draft-07) for the viral-loop spec: an inherent share event as the primary loop (an invite modal or referral page only as a secondary loop with its own K), K decomposed into invites per active user and accept rate per invite with window and sample, cycle time measured from send to first-send timestamps, a churn-free projection reproduced by templates/loop-projection.py, a K target anchored to the measured baseline and a named benchmark, an invitee path of at most three steps with measured conversions and friction experiments that name their step, five joinable loop events keyed on invite_id and inviter user_id, invitee D30 next to organic D30, an incentive (if any) triggered on activation with caps and a self-referral block, and consent and disclosure. Validator at scripts/validate-growth-viral-loops.py enforces it, including the K product, the projection arithmetic and the target ceiling.</summary>
+
+  <output-contract>
+    <required>
+      <field name="loop_name" type="string" required="true">name of the loop</field>
+      <field name="primary_loop" type="object" required="true">`share_event` (a product event where sharing creates value for the inviter), `kind` inherent, `value_to_inviter`; `secondary_loop` null or an invite_modal / referral_page surface with its own `k` (r-share-moment-is-inherent)</field>
+      <field name="k_factor" type="object" required="true">`invites_per_active_user` and `accept_rate_per_invite` each with `value`, `window_days`, `sample_size`; `k` = their product to three decimals; `cycles_measured` at least 2 (r-k-factor-decomposed, r-k-target-anchored-to-baseline)</field>
+      <field name="cycle_time" type="object" required="true">`days` from the inviter's send event to the invitee's first send, `method` send_to_first_send_timestamps, `sample_size` (r-cycle-time-measured-and-projected)</field>
+      <field name="projection" type="object" required="true">`starting_users`, `days`, `projected_users` as templates/loop-projection.py computes from k and cycle days, `ignores_churn` true (r-cycle-time-measured-and-projected)</field>
+      <field name="k_target" type="object" required="true">`current_k` equal to `k_factor.k`, `target_k`, `kind` self_sustaining or increment, `benchmark` with `range_low`, `range_high`, `source`; a target above 1.0 only when current K is at least 0.4 (r-k-target-anchored-to-baseline)</field>
+      <field name="invitee_path" type="list" required="true">1 to 3 steps from first exposure to an activated account, each `name` and measured `conversion` (r-friction-steps-capped)</field>
+      <field name="friction_experiments" type="list" required="true">each names `target_step` (a path step), `current_conversion` (that step's) and `expected_conversion` above it (r-friction-steps-capped)</field>
+      <field name="events" type="list" required="true">invite_shown, invite_sent, invite_opened, invite_accepted, invitee_activated, each with `keys` including invite_id and inviter_user_id (r-loop-events-instrumented)</field>
+      <field name="retention" type="object" required="true">`invitee_d30` and `organic_d30` reported separately (r-loop-events-instrumented)</field>
+      <field name="incentive" type="object" required="true">null for an unincentivised loop; otherwise `referrer_reward`, `invitee_reward`, `trigger_milestone` (never signup), `window_days`, `max_rewards_per_referrer_per_12_months`, `self_referral_block` covering device_fingerprint, ip and payment_instrument, `excludes_existing_and_past_users` true (r-reward-on-activation-not-signup)</field>
+      <field name="consent_and_disclosure" type="object" required="true">`recipient_source` entered_by_inviter or consented_contact_import, `casl_express_consent` true, `gdpr_lawful_basis`, `compensation_disclosure` message, landing_page, both, or not_applicable only when `incentive` is null (r-referral-consent-and-disclosure)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`primary_loop.kind` other than inherent, or a `share_event` that is a post-signup invite modal or a /refer page — bolt-on-referral-page</pattern>
+      <pattern id="f2">`k_factor.k` with no `invites_per_active_user` and `accept_rate_per_invite` values behind it, or `k` not equal to their product — asserted-k-without-components</pattern>
+      <pattern id="f3">`cycle_time.method` other than send_to_first_send_timestamps, `projection.ignores_churn` false, or `projected_users` that loop-projection.py does not reproduce — cycle-time-ignored</pattern>
+      <pattern id="f4">`k_target.target_k` above 1.0 with `current_k` below 0.4, `kind` self_sustaining with a target below 1.0, or a benchmark with no `source` — r-k-target-anchored-to-baseline</pattern>
+      <pattern id="f5">more than 3 steps in `invitee_path`, or a friction experiment whose `target_step` is not a path step or whose `expected_conversion` is not above `current_conversion` — r-friction-steps-capped</pattern>
+      <pattern id="f6">fewer than the five loop events, or an event without invite_id and inviter_user_id keys — unjoinable-loop-events</pattern>
+      <pattern id="f7">an incentive with `trigger_milestone` signup or account creation, no `max_rewards_per_referrer_per_12_months`, or a `self_referral_block` missing a signal — reward-on-signup-fraud</pattern>
+      <pattern id="f8">`recipient_source` contact import without consent, `casl_express_consent` false, or an incentive with `compensation_disclosure` not_applicable — contact-import-without-consent</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/growth-viral-loops.json",
-  "title": "Growth Viral Loops output",
+  "title": "Growth Viral Loops spec",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "review_deadline",
-    "summary",
-    "sections",
-    "deviation_log_reference"
-  ],
-  "properties": {
-    "slug": {
-      "type": "string",
-      "const": "growth-viral-loops"
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 1
-    },
-    "review_deadline": {
-      "type": "string",
-      "format": "date"
-    },
-    "summary": {
-      "type": "string",
-      "minLength": 20,
-      "maxLength": 400
-    },
-    "sections": {
-      "type": "array",
-      "minItems": 3,
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "content"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
-    },
-    "signoff": {
+  "required": ["loop_name", "primary_loop", "k_factor", "cycle_time", "projection", "k_target", "invitee_path", "friction_experiments", "events", "retention", "incentive", "consent_and_disclosure"],
+  "additionalProperties": false,
+  "definitions": {
+    "event_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "measured": {
       "type": "object",
-      "required": [
-        "reviewer",
-        "date"
-      ],
+      "required": ["value", "window_days", "sample_size"],
+      "additionalProperties": false,
       "properties": {
-        "reviewer": {
-          "type": "string"
-        },
-        "date": {
-          "type": "string",
-          "format": "date"
-        }
-      },
-      "additionalProperties": false
+        "value": {"type": "number", "minimum": 0},
+        "window_days": {"type": "integer", "minimum": 1},
+        "sample_size": {"type": "integer", "minimum": 1}
+      }
     }
   },
-  "additionalProperties": false
-}
-]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
-{
-  "slug": "growth-viral-loops",
-  "owner": "growth lead",
-  "review_deadline": "2026-06-15",
-  "summary": "Spec for Growth Viral Loops covering preconditions, procedure, output, and review gate.",
-  "sections": [
-    {
-      "name": "preconditions",
-      "content": "All Applies If items confirmed in writing."
+  "properties": {
+    "__faion_header__": {"type": ["object", "string"]},
+    "loop_name": {"type": "string", "minLength": 3},
+    "primary_loop": {
+      "type": "object",
+      "required": ["share_event", "kind", "value_to_inviter", "secondary_loop"],
+      "additionalProperties": false,
+      "properties": {
+        "share_event": {"allOf": [{"$ref": "#/definitions/event_name"}, {"not": {"enum": ["invite_modal_shown", "refer_page_viewed", "referral_page_viewed", "invite_friends_modal"]}}]},
+        "kind": {"const": "inherent"},
+        "value_to_inviter": {"type": "string", "minLength": 20},
+        "secondary_loop": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["surface", "k"],
+              "additionalProperties": false,
+              "properties": {
+                "surface": {"type": "string", "enum": ["invite_modal", "referral_page"]},
+                "k": {"type": "number", "minimum": 0}
+              }
+            }
+          ]
+        }
+      }
     },
-    {
-      "name": "procedure",
-      "content": "Steps 1..n executed per content/04-procedure.xml."
+    "k_factor": {
+      "type": "object",
+      "required": ["invites_per_active_user", "accept_rate_per_invite", "k", "cycles_measured"],
+      "additionalProperties": false,
+      "properties": {
+        "invites_per_active_user": {"$ref": "#/definitions/measured"},
+        "accept_rate_per_invite": {"allOf": [{"$ref": "#/definitions/measured"}, {"properties": {"value": {"maximum": 1}}}]},
+        "k": {"type": "number", "minimum": 0},
+        "cycles_measured": {"type": "integer", "minimum": 2}
+      }
     },
-    {
-      "name": "review",
-      "content": "Human reviewer signed off on date."
+    "cycle_time": {
+      "type": "object",
+      "required": ["days", "method", "sample_size"],
+      "additionalProperties": false,
+      "properties": {
+        "days": {"type": "number", "exclusiveMinimum": 0},
+        "method": {"const": "send_to_first_send_timestamps"},
+        "sample_size": {"type": "integer", "minimum": 1}
+      }
+    },
+    "projection": {
+      "type": "object",
+      "required": ["starting_users", "days", "projected_users", "ignores_churn"],
+      "additionalProperties": false,
+      "properties": {
+        "starting_users": {"type": "integer", "minimum": 1},
+        "days": {"type": "integer", "minimum": 30},
+        "projected_users": {"type": "integer", "minimum": 1},
+        "ignores_churn": {"const": true}
+      }
+    },
+    "k_target": {
+      "type": "object",
+      "required": ["current_k", "target_k", "kind", "benchmark"],
+      "additionalProperties": false,
+      "properties": {
+        "current_k": {"type": "number", "minimum": 0},
+        "target_k": {"type": "number", "exclusiveMinimum": 0},
+        "kind": {"type": "string", "enum": ["self_sustaining", "increment"]},
+        "benchmark": {
+          "type": "object",
+          "required": ["range_low", "range_high", "source"],
+          "additionalProperties": false,
+          "properties": {
+            "range_low": {"type": "number", "minimum": 0},
+            "range_high": {"type": "number", "minimum": 0},
+            "source": {"type": "string", "minLength": 10}
+          }
+        }
+      },
+      "if": {"properties": {"current_k": {"exclusiveMaximum": 0.4}}},
+      "then": {"properties": {"target_k": {"maximum": 1}, "kind": {"const": "increment"}}}
+    },
+    "invitee_path": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "conversion"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 3},
+          "conversion": {"$ref": "#/definitions/rate"}
+        }
+      }
+    },
+    "friction_experiments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "target_step", "current_conversion", "expected_conversion"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 10},
+          "target_step": {"type": "string", "minLength": 3},
+          "current_conversion": {"$ref": "#/definitions/rate"},
+          "expected_conversion": {"$ref": "#/definitions/rate"}
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "keys"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "enum": ["invite_shown", "invite_sent", "invite_opened", "invite_accepted", "invitee_activated"]},
+          "keys": {"type": "array", "items": {"type": "string"}, "allOf": [{"contains": {"const": "invite_id"}}, {"contains": {"const": "inviter_user_id"}}]}
+        }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "required": ["invitee_d30", "organic_d30"],
+      "additionalProperties": false,
+      "properties": {
+        "invitee_d30": {"$ref": "#/definitions/rate"},
+        "organic_d30": {"$ref": "#/definitions/rate"}
+      }
+    },
+    "incentive": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["referrer_reward", "invitee_reward", "trigger_milestone", "window_days", "max_rewards_per_referrer_per_12_months", "self_referral_block", "excludes_existing_and_past_users"],
+          "additionalProperties": false,
+          "properties": {
+            "referrer_reward": {"type": "string", "minLength": 3},
+            "invitee_reward": {"type": "string", "minLength": 3},
+            "trigger_milestone": {"allOf": [{"$ref": "#/definitions/event_name"}, {"not": {"enum": ["signup", "signup_completed", "account_created", "invite_accepted"]}}]},
+            "window_days": {"type": "integer", "minimum": 1},
+            "max_rewards_per_referrer_per_12_months": {"type": "integer", "minimum": 1},
+            "self_referral_block": {"type": "array", "items": {"type": "string", "enum": ["device_fingerprint", "ip", "payment_instrument", "normalised_email"]}, "allOf": [{"contains": {"const": "device_fingerprint"}}, {"contains": {"const": "ip"}}, {"contains": {"const": "payment_instrument"}}]},
+            "excludes_existing_and_past_users": {"const": true}
+          }
+        }
+      ]
+    },
+    "consent_and_disclosure": {
+      "type": "object",
+      "required": ["recipient_source", "casl_express_consent", "gdpr_lawful_basis", "compensation_disclosure"],
+      "additionalProperties": false,
+      "properties": {
+        "recipient_source": {"type": "string", "enum": ["entered_by_inviter", "consented_contact_import"]},
+        "casl_express_consent": {"const": true},
+        "gdpr_lawful_basis": {"type": "string", "enum": ["consent", "contract", "legitimate_interest"]},
+        "compensation_disclosure": {"type": "string", "enum": ["not_applicable", "message", "landing_page", "both"]}
+      }
     }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L42",
-  "signoff": {
-    "reviewer": "growth lead",
-    "date": "2026-06-10"
   }
 }
 ]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true"><![CDATA[
 {
-  "slug": "growth-viral-loops",
-  "summary": "missing required fields"
+  "loop_name": "board collaboration loop",
+  "primary_loop": {
+    "share_event": "board_shared",
+    "kind": "inherent",
+    "value_to_inviter": "the inviter needs the collaborator on the board to finish the work; sharing is the product action, not a favour",
+    "secondary_loop": null
+  },
+  "k_factor": {
+    "invites_per_active_user": {"value": 1.8, "window_days": 30, "sample_size": 12400},
+    "accept_rate_per_invite": {"value": 0.36, "window_days": 30, "sample_size": 22300},
+    "k": 0.648,
+    "cycles_measured": 3
+  },
+  "cycle_time": {"days": 6, "method": "send_to_first_send_timestamps", "sample_size": 4100},
+  "projection": {"starting_users": 1000, "days": 90, "projected_users": 2838, "ignores_churn": true},
+  "k_target": {
+    "current_k": 0.648,
+    "target_k": 0.8,
+    "kind": "increment",
+    "benchmark": {"range_low": 0.05, "range_high": 0.2, "source": "widely cited practitioner benchmarks for B2B SaaS, as listed in templates/loop-projection.py"}
+  },
+  "invitee_path": [
+    {"name": "open invite link", "conversion": 0.62},
+    {"name": "create account", "conversion": 0.58},
+    {"name": "first board edit", "conversion": 0.78}
+  ],
+  "friction_experiments": [
+    {"name": "remove the email verification gate before the first board edit", "target_step": "create account", "current_conversion": 0.58, "expected_conversion": 0.75},
+    {"name": "open the shared board read-only before account creation", "target_step": "open invite link", "current_conversion": 0.62, "expected_conversion": 0.7}
+  ],
+  "events": [
+    {"name": "invite_shown", "keys": ["invite_id", "inviter_user_id", "board_id"]},
+    {"name": "invite_sent", "keys": ["invite_id", "inviter_user_id", "board_id"]},
+    {"name": "invite_opened", "keys": ["invite_id", "inviter_user_id"]},
+    {"name": "invite_accepted", "keys": ["invite_id", "inviter_user_id", "invitee_user_id"]},
+    {"name": "invitee_activated", "keys": ["invite_id", "inviter_user_id", "invitee_user_id"]}
+  ],
+  "retention": {"invitee_d30": 0.41, "organic_d30": 0.38},
+  "incentive": null,
+  "consent_and_disclosure": {
+    "recipient_source": "entered_by_inviter",
+    "casl_express_consent": true,
+    "gdpr_lawful_basis": "legitimate_interest",
+    "compensation_disclosure": "not_applicable"
+  }
 }
-]]></code>
-    <note>Missing required: owner, review_deadline, sections, deviation_log_reference.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+]]></example>
+
+    <example valid="false"><![CDATA[
+{
+  "loop_name": "refer a friend",
+  "primary_loop": {
+    "share_event": "invite_modal_shown",
+    "kind": "incentivised",
+    "value_to_inviter": "the inviter gets a 10 USD credit",
+    "secondary_loop": null
+  },
+  "k_factor": {
+    "invites_per_active_user": {"value": 0, "window_days": 30, "sample_size": 1},
+    "accept_rate_per_invite": {"value": 0, "window_days": 30, "sample_size": 1},
+    "k": 0.7,
+    "cycles_measured": 1
+  },
+  "cycle_time": {"days": 7, "method": "estimated", "sample_size": 1},
+  "projection": {"starting_users": 1000, "days": 90, "projected_users": 12000, "ignores_churn": false},
+  "k_target": {
+    "current_k": 0.15,
+    "target_k": 1.2,
+    "kind": "self_sustaining",
+    "benchmark": {"range_low": 0.1, "range_high": 0.3, "source": "a blog"}
+  },
+  "invitee_path": [
+    {"name": "open link", "conversion": 0.6},
+    {"name": "landing page", "conversion": 0.7},
+    {"name": "create account", "conversion": 0.55},
+    {"name": "verify email", "conversion": 0.7},
+    {"name": "onboarding survey", "conversion": 0.8}
+  ],
+  "friction_experiments": [
+    {"name": "improve onboarding", "target_step": "onboarding", "current_conversion": 0.8, "expected_conversion": 0.8}
+  ],
+  "events": [
+    {"name": "invite_sent", "keys": ["user_id"]},
+    {"name": "invite_accepted", "keys": ["user_id"]}
+  ],
+  "retention": {"invitee_d30": 0.12, "organic_d30": 0.38},
+  "incentive": {
+    "referrer_reward": "10 USD credit",
+    "invitee_reward": "10 USD credit",
+    "trigger_milestone": "signup_completed",
+    "window_days": 30,
+    "max_rewards_per_referrer_per_12_months": 1000,
+    "self_referral_block": ["ip"],
+    "excludes_existing_and_past_users": false
+  },
+  "consent_and_disclosure": {
+    "recipient_source": "contact_import_without_consent",
+    "casl_express_consent": false,
+    "gdpr_lawful_basis": "consent",
+    "compensation_disclosure": "not_applicable"
+  }
+}
+]]></example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`primary_loop.share_event` is a product action that creates value for the inviter; any invite modal or referral page sits in `secondary_loop` with its own K.</item>
+      <item>`k_factor.k` = `invites_per_active_user.value` x `accept_rate_per_invite.value` to three decimals, on at least two full cycles; `k_target.current_k` is that number.</item>
+      <item>`projection.projected_users` is what `templates/loop-projection.py` returns for `starting_users`, k, `cycle_time.days` and `days`, and the projection says it ignores churn.</item>
+      <item>`invitee_path` has at most three steps; every friction experiment names one of them and moves its conversion up.</item>
+      <item>All five loop events carry invite_id and inviter_user_id; invitee D30 is reported next to organic D30.</item>
+      <item>An incentive, if present, triggers on an activation milestone within a window, is capped per referrer, blocks self-referral on device, IP and payment instrument, and is disclosed.</item>
+    </list>
   </section>
-  <reference path="scripts/validate-growth-viral-loops.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-growth-viral-loops.py">Validator implementing this schema and the cross-field rules (K product, projection arithmetic per loop-projection.py, target ceiling, experiment steps, five-event coverage, disclosure when incentivised).</reference>
 </text>

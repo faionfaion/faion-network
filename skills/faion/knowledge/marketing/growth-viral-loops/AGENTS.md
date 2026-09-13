@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=spec`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- The product has a named event where a user shares, invites or sends to another person as part of getting their own value (collaboration, messaging, publishing, splitting a bill).
+- invite_shown, invite_sent, invite_opened, invite_accepted and invitee_activated exist or can be added, each carrying an invite_id and the inviter's user_id so i, c and cycle time can be joined per invite.
+- At least two full loop cycles of joined event data are available, so K can be decomposed into invites per active user and accept rate per invite and cycle time can be measured from timestamps.
+- Current measured K is at least 0.4 if the sponsor expects a self-sustaining target; otherwise the team accepts a K-increment target anchored to a named benchmark.
+- Invitee and organic D30 retention can be reported separately, and any reward can be triggered on an activation milestone rather than signup.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- No inherent sharing moment exists and the only candidate is a post-signup invite modal or a /refer page: run an activation or acquisition methodology, or design the sharing feature first.
+- invite_sent and invite_accepted cannot be joined on an invite_id: the first deliverable is instrumentation, not a loop spec, and no K target is set until then.
+- The sponsor wants a K above 1.0 written into the spec from a baseline below 0.4 or from no baseline at all.
+- The loop's growth engine is a contact-list import that emails addresses without consent, and the team will not change it: the spec is not shippable under CASL, GDPR and the FTC guides.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
-|----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+|---|---|---|
+| Joined loop events | per-invite rows: invite_id, inviter_user_id, timestamps for invite_shown, invite_sent, invite_opened, invite_accepted, invitee_activated | product analytics warehouse |
+| K components | invites per active user and accept rate per invite, each with window in days and sample size, over at least two cycles | warehouse query over the joined events |
+| Cycle-time distribution | median days from the inviter's send event to the invitee's first send event | warehouse query |
+| Invitee path conversions | measured drop-off at each step from first exposure to activated account, at most three steps | funnel query |
+| Category K benchmark | range with a named source (templates/loop-projection.py lists consumer 0.10-0.30, B2B SaaS 0.05-0.20) | published practitioner benchmarks |
+| `templates/loop-anatomy.md.j2`, `templates/referral-program.md.j2`, `templates/loop-projection.py` | anatomy worksheet, incentive design worksheet with the compliance checklist, projection model | this methodology |
 
 ## Assumes Loaded
 
@@ -48,11 +52,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: K decomposed as i x c, cycle time measured and projected, K target anchored to baseline, inherent share moment, friction capped at 3 steps, five joinable loop events, reward on activation, consent and disclosure | 2450 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
-| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
-| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the viral-loop spec: inherent share event with an optional secondary incentivised loop, K as i x c with windows and samples, cycle time from timestamps, churn-free projection reproduced by loop-projection.py, K target anchored to baseline and benchmark, invitee path of at most 3 steps with friction experiments per step, five joinable events, invitee vs organic D30, activation-triggered incentive with caps and self-referral block, consent and disclosure; valid and invalid specs; 8 forbidden patterns | 4800 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 950 |
+| `content/04-procedure.xml` | essential | 8 steps: name the inherent share event, instrument the five joinable events, decompose K over two cycles, measure cycle time and run the projection, anchor the K target, map the invitee path and friction experiments, design any incentive on activation, clear consent and disclosure and validate | 1650 |
+| `content/05-examples.xml` | recommended | Complete spec for a board-collaboration loop (board_shared, K 0.648 from 1.8 x 0.36, 6-day cycle, 1,000 to 2,838 users in 90 days, target 0.8 as an increment against a 0.05-0.20 benchmark, three-step invitee path, two friction experiments, invitee D30 0.41 vs 0.38, no incentive) with a note per value, plus a bolt-on referral page spec and what the validator prints | 2150 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 650 |
 
 ## Task Routing
 

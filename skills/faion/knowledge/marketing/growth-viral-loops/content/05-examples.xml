@@ -1,24 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Growth Viral Loops Worked Example" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>End-to-end worked example walking from inputs to a signed-off `spec` artefact, including a forced skip scenario.</summary>
+<text id="05-examples" title="Growth Viral Loops Worked Example" version="1.2.0" est_tokens="2150" depth="recommended">
+  <summary>One complete viral-loop spec for a collaborative whiteboard (board_shared as the inherent loop, K 0.648 from 1.8 invites per user x 0.36 accept rate over three cycles, 6-day cycle, 1,000 to 2,838 users in 90 days ignoring churn, target 0.8 as an increment against a 0.05-0.20 benchmark, three-step invitee path with two friction experiments, five joinable events, invitee D30 0.41 vs organic 0.38, no incentive) with a note on each value, plus a bolt-on referral page written up as a viral loop and what the validator prints.</summary>
 
-  <section title="Happy path">
-    <example trace="happy-path">
-      <p>A small B2B SaaS commissions a growth-viral-loops spec; growth lead is named owner; review deadline 2026-06-15. The agent gathers inputs (brief + last quarter's metrics), confirms all `Applies If` items hold, applies rules, synthesises a 3-section spec, validates it (exit 0), surfaces ready_for_review, growth lead signs off.</p>
-      <p>Trace through the five-step procedure:</p>
-      <list>
-        <item>Step 1 gather-inputs: preconditions report = all true</item>
-        <item>Step 2 apply-rules: decision-tree leaf -> conclusion ref="output-contract-binding"</item>
-        <item>Step 3 synthesise-output: artefact draft produced</item>
-        <item>Step 4 validate-output: scripts/validate-growth-viral-loops.py --file draft.json -> exit 0</item>
-        <item>Step 5 human-checkpoint: reviewer signs off, artefact lands at output location</item>
-      </list>
+  <section title="Scenario">
+    <p>A collaborative whiteboard product: users share boards with colleagues to get work done, and some of those colleagues become users. Every invite carries an invite_id and the inviter's user_id. Over the last three loop cycles active users sent 1.8 invites each and 36 percent of invites turned into accounts; the median invitee sends their own first invite 6 days after receiving one. Nothing is paid for referrals. The team wants a spec with a defensible K target and the experiments most likely to move it.</p>
+  </section>
+
+  <section title="Resulting spec">
+    <example type="good" title="board collaboration loop">
+      <code lang="json"><![CDATA[
+{
+  "loop_name": "board collaboration loop",
+  "primary_loop": {
+    "share_event": "board_shared",
+    "kind": "inherent",
+    "value_to_inviter": "the inviter needs the collaborator on the board to finish the work; sharing is the product action, not a favour",
+    "secondary_loop": null
+  },
+  "k_factor": {
+    "invites_per_active_user": {"value": 1.8, "window_days": 30, "sample_size": 12400},
+    "accept_rate_per_invite": {"value": 0.36, "window_days": 30, "sample_size": 22300},
+    "k": 0.648,
+    "cycles_measured": 3
+  },
+  "cycle_time": {"days": 6, "method": "send_to_first_send_timestamps", "sample_size": 4100},
+  "projection": {"starting_users": 1000, "days": 90, "projected_users": 2838, "ignores_churn": true},
+  "k_target": {
+    "current_k": 0.648,
+    "target_k": 0.8,
+    "kind": "increment",
+    "benchmark": {"range_low": 0.05, "range_high": 0.2, "source": "widely cited practitioner benchmarks for B2B SaaS, as listed in templates/loop-projection.py"}
+  },
+  "invitee_path": [
+    {"name": "open invite link", "conversion": 0.62},
+    {"name": "create account", "conversion": 0.58},
+    {"name": "first board edit", "conversion": 0.78}
+  ],
+  "friction_experiments": [
+    {"name": "remove the email verification gate before the first board edit", "target_step": "create account", "current_conversion": 0.58, "expected_conversion": 0.75},
+    {"name": "open the shared board read-only before account creation", "target_step": "open invite link", "current_conversion": 0.62, "expected_conversion": 0.7}
+  ],
+  "events": [
+    {"name": "invite_shown", "keys": ["invite_id", "inviter_user_id", "board_id"]},
+    {"name": "invite_sent", "keys": ["invite_id", "inviter_user_id", "board_id"]},
+    {"name": "invite_opened", "keys": ["invite_id", "inviter_user_id"]},
+    {"name": "invite_accepted", "keys": ["invite_id", "inviter_user_id", "invitee_user_id"]},
+    {"name": "invitee_activated", "keys": ["invite_id", "inviter_user_id", "invitee_user_id"]}
+  ],
+  "retention": {"invitee_d30": 0.41, "organic_d30": 0.38},
+  "incentive": null,
+  "consent_and_disclosure": {
+    "recipient_source": "entered_by_inviter",
+    "casl_express_consent": true,
+    "gdpr_lawful_basis": "legitimate_interest",
+    "compensation_disclosure": "not_applicable"
+  }
+}
+]]></code>
+      <note>`board_shared` is the moment the inviter needs a collaborator to finish their own work, so the loop fires on every board rather than once after signup, and no invite modal is listed as the primary loop (r-share-moment-is-inherent). K = 1.8 invites per active user x 0.36 accepts per invite = 0.648, each component with its 30-day window and sample, measured over three cycles (r-k-factor-decomposed). Cycle time is the median of 4,100 send-to-first-send pairs, 6 days; `project(1000, 0.648, 6, 90)` in templates/loop-projection.py returns 2,838, and the spec says the model ignores churn (r-cycle-time-measured-and-projected). Current K is above 0.4 so a self-sustaining target would be permitted, but the team targets 0.8 as an increment because the B2B SaaS benchmark is 0.05 to 0.20 and 0.648 is already far above it (r-k-target-anchored-to-baseline). The invitee path is three steps; the accept rate 0.36 is open link 0.62 x create account 0.58, and the rank-one experiment removes the email verification gate at the weakest step, naming the conversion it expects to move (r-friction-steps-capped). All five events carry invite_id and inviter_user_id so K and cycle time come from joined rows; invitee D30 0.41 is reported next to organic 0.38 (r-loop-events-instrumented). No reward is paid, so `incentive` is null and `compensation_disclosure` is not_applicable; recipients are addresses the inviter types in, with CASL consent and a GDPR basis recorded (r-referral-consent-and-disclosure).</note>
     </example>
   </section>
 
-  <section title="Forced skip">
-    <example trace="skip-path">
-      <p>Same team but the input brief omits the named owner field. Step 1 preconditions report flags `named-owner` rule as false. Agent returns an action=skip envelope per rule `skip-this-methodology` and yields control to the parent workflow.</p>
+  <section title="Rejected spec">
+    <example type="bad" title="a referral page written up as a viral loop">
+      <code lang="json"><![CDATA[
+{
+  "loop_name": "refer a friend",
+  "primary_loop": {
+    "share_event": "invite_modal_shown",
+    "kind": "incentivised",
+    "value_to_inviter": "the inviter gets a 10 USD credit",
+    "secondary_loop": null
+  },
+  "k_factor": {
+    "invites_per_active_user": {"value": 0, "window_days": 30, "sample_size": 1},
+    "accept_rate_per_invite": {"value": 0, "window_days": 30, "sample_size": 1},
+    "k": 0.7,
+    "cycles_measured": 1
+  },
+  "cycle_time": {"days": 7, "method": "estimated", "sample_size": 1},
+  "projection": {"starting_users": 1000, "days": 90, "projected_users": 12000, "ignores_churn": false},
+  "k_target": {
+    "current_k": 0.15,
+    "target_k": 1.2,
+    "kind": "self_sustaining",
+    "benchmark": {"range_low": 0.1, "range_high": 0.3, "source": "a blog"}
+  },
+  "invitee_path": [
+    {"name": "open link", "conversion": 0.6},
+    {"name": "landing page", "conversion": 0.7},
+    {"name": "create account", "conversion": 0.55},
+    {"name": "verify email", "conversion": 0.7},
+    {"name": "onboarding survey", "conversion": 0.8}
+  ],
+  "friction_experiments": [
+    {"name": "improve onboarding", "target_step": "onboarding", "current_conversion": 0.8, "expected_conversion": 0.8}
+  ],
+  "events": [
+    {"name": "invite_sent", "keys": ["user_id"]},
+    {"name": "invite_accepted", "keys": ["user_id"]}
+  ],
+  "retention": {"invitee_d30": 0.12, "organic_d30": 0.38},
+  "incentive": {
+    "referrer_reward": "10 USD credit",
+    "invitee_reward": "10 USD credit",
+    "trigger_milestone": "signup_completed",
+    "window_days": 30,
+    "max_rewards_per_referrer_per_12_months": 1000,
+    "self_referral_block": ["ip"],
+    "excludes_existing_and_past_users": false
+  },
+  "consent_and_disclosure": {
+    "recipient_source": "contact_import_without_consent",
+    "casl_express_consent": false,
+    "gdpr_lawful_basis": "consent",
+    "compensation_disclosure": "not_applicable"
+  }
+}
+]]></code>
+      <note>What the validator prints: `primary_loop.share_event` invite_modal_shown is a bolt-on surface and `kind` is not inherent (r-share-moment-is-inherent); K components are 0 with a sample of 1 while `k` is 0.7, and `cycles_measured` 1 is below 2 (r-k-factor-decomposed); `cycle_time.method` estimated and `projection.ignores_churn` false (r-cycle-time-measured-and-projected); `target_k` 1.2 as self_sustaining from `current_k` 0.15, benchmark source too short (r-k-target-anchored-to-baseline); five steps in `invitee_path` where three is the cap, an experiment on a step that is not in the path with no expected lift (r-friction-steps-capped); two events instead of five, keyed on user_id without invite_id (r-loop-events-instrumented); `incentive.trigger_milestone` signup_completed, `self_referral_block` with only ip, `excludes_existing_and_past_users` false (r-reward-on-activation-not-signup); `recipient_source` contact import without consent, `casl_express_consent` false, and a paid referral with `compensation_disclosure` not_applicable (r-referral-consent-and-disclosure). Once the schema violations are fixed the cross-field checks add: 0.7 is not 0 x 0, and 12,000 projected users is not what loop-projection.py returns for K 0.15.</note>
     </example>
   </section>
 </text>
