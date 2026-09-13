@@ -46,7 +46,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 rules: fault catalogue, injection points, grade recovery, baseline first | ~800 |
+| `content/01-core-rules.xml` | essential | 7 rules: fault catalogue, injection points, grade recovery, baseline first, r1 (run + promotion gate, catalogue complete first), r2 (no harness, no injection), r3 (rubric before grading) | ~900 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the chaos-eval report | ~700 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns | ~700 |
 | `content/04-procedure.xml` | medium | 5-step procedure | ~900 |

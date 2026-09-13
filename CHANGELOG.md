@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Stub rules, batch 2 of 6: nine `ai-agents` slugs, 24 stubs → 24 rules.**
+  The LangChain and LlamaIndex family carried whole `low / high / advanced`
+  tiers with no rule behind any of them. Each tier is now anchored to a number
+  or distinction the document already states: RAG `high` is a corpus of 1M+
+  tokens (its own r7), `advanced` is documents over ten chunk widths;
+  workflows `high` is ten or more steps, `advanced` any cycle, fan-out ≥ 2 or
+  nesting; `langchain-production-patterns` gets real fallback, retry and
+  circuit-breaker rules (Brooker's exponential backoff with jitter, Nygard).
+  One inconsistency surfaced and is left visible: that slug's tree says "no
+  retries" under 500 ms while step 3 of its procedure says two linear attempts;
+  the new rule follows the tree, and the procedure line now needs the owner's
+  call. Seventeen of 57 slugs done.
+
 - **Near-duplicate rules: the first pass is done, and it found something else.**
   Five Sonnet agents read all 123 pairs the token-overlap scan had flagged
   across 46 slugs, under a brief that said "if unsure, keep". Verdicts: **8

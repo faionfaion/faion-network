@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3 rules: top-level object, metadata fields, total_found honest | ~700 |
+| `content/01-core-rules.xml` | essential | 4 rules: top-level object, metadata fields, total_found honest, r1 (shape chosen by cardinality / strict-mode / streaming) | ~700 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the envelope | ~600 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns | ~700 |
 | `content/06-decision-tree.xml` | essential | Tree: variable-card? → strict-mode? → wrap or stream | ~500 |

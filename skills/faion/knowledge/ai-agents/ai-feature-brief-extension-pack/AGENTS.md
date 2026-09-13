@@ -46,7 +46,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 rules: model-pinned, eval-named, policy-explicit, cost-capped | ~900 |
+| `content/01-core-rules.xml` | essential | 6 rules: model-pinned, eval-named, policy-explicit, cost-capped, r1 (base PRD first, joint sign-off to publish), r2 (unfilled section blocks review) | ~750 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the extended brief | ~700 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns | ~900 |
 | `content/04-procedure.xml` | medium | 5-step procedure: collect base → fill 4 sections → review → validate → publish | ~900 |
