@@ -35,7 +35,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for index types, node parser, embedding model, persistence. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for index types, node parser, embedding model, persistence. | ~2400 |
 | `content/02-output-contract.xml` | essential | index-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | In-mem default in prod, wrong chunk size, no metadata extractor. | ~700 |
 | `content/04-procedure.xml` | recommended | 5-step bootstrap procedure. | ~800 |

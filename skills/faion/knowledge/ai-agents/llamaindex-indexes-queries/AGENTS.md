@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for index types, query engines, response synthesizers, retrievers. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for index types, query engines, response synthesizers, retrievers. | ~3250 |
 | `content/02-output-contract.xml` | essential | indexing-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Wrong index for workload, sub-question explosion, no-rerank. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step selection procedure. | ~800 |

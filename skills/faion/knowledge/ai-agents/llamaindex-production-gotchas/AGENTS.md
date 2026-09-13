@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for async usage, concurrency caps, agent error catch, eval sampling, callbacks. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for async usage, concurrency caps, agent error catch, eval sampling, callbacks. | ~1400 |
 | `content/02-output-contract.xml` | essential | hardening-record schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Blocked event loop, unbounded fusion, swallowed tool error, eval cost spiral. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step hardening procedure. | ~800 |

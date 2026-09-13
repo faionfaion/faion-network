@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for chat modes, ChatMemoryBuffer, streaming. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for chat modes, ChatMemoryBuffer, streaming. | ~2000 |
 | `content/02-output-contract.xml` | essential | chat-engine-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Unbounded buffer, wrong mode for follow-ups, streaming UX broken. | ~700 |
 | `content/04-procedure.xml` | recommended | 5-step selection procedure. | ~800 |

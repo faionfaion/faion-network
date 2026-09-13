@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Stub rules, batch 3 of 6: the LlamaIndex family and `llm-judge-rubric-
+  evidence-first`, 24 stubs → 24 rules.** Every tree here used the same
+  auto-generated `driver == 'high' / 'advanced'` branch with no threshold
+  anywhere. Each tier is now the number the slug's own rules already state —
+  `llamaindex-basics` high at 10k documents (its r8), `ingestion-pipeline` at
+  100K nodes (r7), `sql-query` at 20 tables (r2/r3), `hybrid-retrieval` at the
+  1000 ms latency line with the 500 ms Skip-If floor — with named sources
+  (Reciprocal Rank Fusion, SIGIR 2009; Zheng et al., NeurIPS 2023; LlamaIndex
+  docs by module). Twenty-five of 57 slugs done.
+
 - **Stub rules, batch 2 of 6: nine `ai-agents` slugs, 24 stubs → 24 rules.**
   The LangChain and LlamaIndex family carried whole `low / high / advanced`
   tiers with no rule behind any of them. Each tier is now anchored to a number

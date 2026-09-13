@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for QueryFusionRetriever, RRF, cross-encoder rerank, AutoMergingRetriever, threshold. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for QueryFusionRetriever, RRF, cross-encoder rerank, AutoMergingRetriever, threshold. | ~2000 |
 | `content/02-output-contract.xml` | essential | hybrid-retriever-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Rerank-after-too-few, latency blow-up, threshold too tight, fusion fails on tiny corpus. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step wiring procedure. | ~800 |

@@ -35,7 +35,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for rubric structure, evidence-first, per-criterion, JSON, bias mitigations. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for rubric structure, evidence-first, per-criterion, JSON, bias mitigations. | ~1750 |
 | `content/02-output-contract.xml` | essential | judge-spec + rubric schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | 1-10 prompt, no JSON, position bias, verbosity bias, self-preference. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step build procedure. | ~800 |

@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for IngestionPipeline composition, splitter choice, vector-store persistence. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for IngestionPipeline composition, splitter choice, vector-store persistence. | ~1250 |
 | `content/02-output-contract.xml` | essential | ingestion-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Re-embed on restart, missing dedup, splitter mismatch. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step pipeline procedure. | ~800 |

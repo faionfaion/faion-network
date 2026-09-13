@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for include_tables, read-only, schema retrieval, SQL safety. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules for include_tables, read-only, schema retrieval, SQL safety. | ~1250 |
 | `content/02-output-contract.xml` | essential | nlsql-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Read-write conn used, full-schema dump, SQL injection via prompt, hallucinated columns. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step wiring procedure. | ~800 |
