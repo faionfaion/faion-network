@@ -1,45 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="LLM-Friendly Architecture (Software Developer) — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `llm-friendly-architecture`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="LLM-Friendly Architecture (Software Developer) — Procedure" version="2.0.0" est_tokens="1500" depth="recommended">
+  <summary>Eight steps from a committed audit script to a decision that names files: pin the line limit and SHA, run the audit, rank oversized files with a split each, list depth violations, barrels and wildcard imports, score naming with offenders, find inline data, reconcile CLAUDE.md, then decide and wire the audit into CI.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="pin-limit-and-sha">
+      <input>The repo at the commit to audit; `templates/llm-arch-audit.sh` or the project's committed equivalent.</input>
+      <action>Record `repo.url`, `repo.commit_sha` (`git rev-parse HEAD`), `repo.source_root`; set the `line_limit` input (default 250, never above 300) and, if the project uses namespace imports deliberately, the `namespace_import_allowlist`.</action>
+      <output>`repo` block and `inputs[]`.</output>
+      <decision-gate>A line limit above 300 is rejected (r-file-size-histogram-with-threshold).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="run-audit-script">
+      <input>`bash templates/llm-arch-audit.sh &lt;source_root&gt; &lt;line_limit&gt;` (or the project's committed script).</input>
+      <action>Run it on the pinned SHA; copy the exact command into `audit.command` and `evidence[]`, and the SHA into `evidence[]`.</action>
+      <output>Raw audit output; `audit.command` and two `evidence[]` entries.</output>
+      <decision-gate>A list typed from memory is not an audit (r-audit-is-reproducible-command).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="rank-oversized-files">
+      <input>The "files exceeding" section of the audit output; `wc -l` over the source tree.</input>
+      <action>Fill `file_size.histogram` (buckets such as 0-100, 101-250, 251-500, 501+) and `file_size.oversized[]` sorted by lines descending, each with a `proposed_split` that names the target files: data to `src/data/`, hooks to `hooks/`, pure functions to `utils/`.</action>
+      <output>Histogram and ranked oversized list.</output>
+      <decision-gate>"Split later" or a `Foo2.tsx` proposal is rejected (fm-01).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="list-depth-barrels-wildcards">
+      <input>`find &lt;source_root&gt; -type f | awk -F/ 'NF-1 &gt; 3'`; the barrel section of the audit; Ruff `F403`/`F405` or `eslint-plugin-import` `import/no-namespace` output.</input>
+      <action>Fill `directory_depth.violations[]` with each path deeper than 3 levels (feature folders deeper than 2) and its depth; `barrels[]` with every `export * from` or re-export-only `index.ts`; `wildcard_imports.lint` and `hits[]` with every star or namespace import outside the allow-list.</action>
+      <output>Three lists.</output>
+      <decision-gate>Barrels and wildcard imports go first in the decision; they invalidate every other navigation finding (r-no-barrel-reexports, r-explicit-imports-no-wildcards, r-directory-depth-cap).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="score-naming-with-offenders">
+      <input>The file list; the rubric (file name equals primary export; PascalCase components, `use-*` hooks, kebab-case utils; no `utils2` / `misc` / `helpers` / `common` / `stuff`; no unexplained abbreviations).</input>
+      <action>Write `naming.rubric[]`, compute `naming.score` as the percentage of files passing every rubric line, and list every failing file in `offenders[]` with `reason` and `proposed_name`.</action>
+      <output>`naming` block.</output>
+      <decision-gate>A score below 100 with no offenders is rejected (r-naming-clarity-score-lists-offenders).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="find-inline-data">
+      <input>Components and route files; a grep for array or object literals longer than 20 lines.</input>
+      <action>List each component carrying a literal data block in `inline_data[]` with the number of lines it occupies; propose the `src/data/` target in the decision.</action>
+      <output>`inline_data[]`.</output>
     </step>
+
+    <step n="7" name="reconcile-claude-md">
+      <input>`CLAUDE.md` at the repo root; `templates/claude-md-project.md.j2`.</input>
+      <action>If absent, generate `CLAUDE.md` from the template. Read its max-file-size line into `claude_md.line_limit` and set `claude_md.present`.</action>
+      <output>`claude_md` block; `CLAUDE.md` committed.</output>
+      <decision-gate>`claude_md.line_limit` different from the `line_limit` input fails the audit; fix both in the same PR (r-claude-md-matches-audit).</decision-gate>
+    </step>
+
+    <step n="8" name="decide-and-wire-ci">
+      <input>All audit sections; the CI pipeline definition.</input>
+      <action>Write `decision` naming every file to split, flatten, delete or rename in order: barrels and wildcards, then oversized files by size, then depth, then names and inline data. If every section is empty, the decision is to commit `CLAUDE.md` and add the audit command to the pull-request pipeline; set `ci_wired`. Set `review.cadence` and `next_review_at`; fill `templates/skeleton.md.j2`; run `scripts/validate-llm-friendly-architecture.py --file`.</action>
+      <output>Committed audit record; CI job once the baseline is clean.</output>
+      <decision-gate>A clean audit with `ci_wired: false` is rejected (r-audit-is-reproducible-command).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Record validates via `scripts/validate-llm-friendly-architecture.py`.</item>
+      <item>Every `oversized[]`, `barrels[]`, `directory_depth.violations[]`, `wildcard_imports.hits[]`, `naming.offenders[]` and `inline_data[]` entry is named in the decision.</item>
+      <item>`CLAUDE.md` exists and states the same line limit as the audit.</item>
+    </list>
   </section>
 </text>

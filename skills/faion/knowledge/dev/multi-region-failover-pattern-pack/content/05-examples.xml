@@ -1,45 +1,169 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Multi-Region Failover Pattern Pack — Worked Example" version="1.1.0" est_tokens="600" depth="recommended">
-  <summary>One end-to-end worked example showing `multi-region-failover-pattern-pack` applied from trigger to committed artefact.</summary>
+<text id="05-examples" title="Multi-Region Failover Pattern Pack — Worked Example" version="2.0.0" est_tokens="2550" depth="recommended">
+  <summary>One complete warm-standby pack for a tier-1 payments API (RPO 5 / RTO 30, async PostgreSQL at 12 s lag, S3 with a cited backfill job, six dependencies with one bypass, a 5 percent live drill measuring RTO 22) with a note on each non-obvious value, then the pilot-light pack that says "zero data loss" and what the validator prints.</summary>
 
-  <section title="Worked example">
-    <example type="good" title="Quarterly review of a billing-service refactor">
-      <note>Trigger fired; owner assigned; typed inputs gathered; decision authored; evidence anchored; review scheduled.</note>
+  <section title="Scenario">
+    <p>payments-api runs in eu-west-1 with a read replica and replicated S3 bucket in eu-central-1. The product owner (product:maria) agreed RPO 5 minutes and RTO 30 minutes for tier-1. The architect (arch:alice) has to write down which pattern that buys, what it costs in standing capacity, and prove it with a drill before the quarterly review.</p>
+  </section>
+
+  <section title="Resulting pack">
+    <example type="good" title="payments-api warm standby">
       <code lang="json"><![CDATA[
 {
-  "trigger": {
-    "kind":  "quarterly-architecture-review",
-    "url":   "https://github.com/acme/billing/issues/4421"
+  "workload": {"name": "payments-api", "tier": "tier-1", "business_owner": "product:maria"},
+  "owner": "arch:alice",
+  "inputs": [
+    {"name": "rpo_minutes", "value": 5},
+    {"name": "rto_minutes", "value": 30},
+    {"name": "primary_region", "value": "eu-west-1"},
+    {"name": "secondary_region", "value": "eu-central-1"}
+  ],
+  "pattern": {
+    "chosen": "warm-standby",
+    "achievable_rpo_minutes": 1,
+    "achievable_rto_minutes": 22,
+    "secondary_capacity": {"mode": "scale-up", "percent_of_primary": 40, "scale_up_minutes": 12, "quotas_verified": true}
   },
-  "owner":   "arch:alice",
-  "inputs":  [
-    {"name": "scope",         "value": "billing-service"},
-    {"name": "window_days",   "value": 90},
-    {"name": "prs_in_window", "value": 142}
+  "dns": {
+    "mechanism": "dns-failover",
+    "ttl_seconds": 60,
+    "health_check": {"endpoint": "https://api.payments.example.com/healthz", "interval_seconds": 10, "failure_threshold": 3},
+    "observed_propagation_seconds": 95,
+    "ttl_ignoring_clients": [{"client": "ios-sdk 4.x (caches resolved IP for process lifetime)", "fallback": "client-side-retry-to-secondary"}]
+  },
+  "database": {
+    "engine": "PostgreSQL 16 (RDS)",
+    "replication": "asynchronous",
+    "p99_lag_seconds_30d": 12,
+    "promotion_procedure": "runbook RB-114: promote eu-central-1 read replica via aws rds promote-read-replica, then rotate the writer endpoint in Secrets Manager",
+    "fencing": "revoke the app role's write grant on the old primary and set default_transaction_read_only=on before promotion",
+    "single_writer_enforcement": "writer endpoint resolved from Secrets Manager only; the old primary's security group drops port 5432 from app subnets after fencing"
+  },
+  "object_store": {
+    "provider": "Amazon S3",
+    "replication_enabled": true,
+    "versioning": true,
+    "backlog_metric": "AWS/S3 OperationsPendingReplication on payments-docs",
+    "replication_time_alert": "ReplicationLatency above 900 s for 15 min pages sre-primary",
+    "existing_objects_backfilled": true,
+    "backfill_job": "S3 Batch Replication job 7f2e9c (2026-03-04), 1.2 M objects"
+  },
+  "dependencies": [
+    {"name": "Okta", "kind": "identity-provider", "reachable_from_secondary": true},
+    {"name": "AWS Secrets Manager (replicated secret)", "kind": "secrets-manager", "reachable_from_secondary": true},
+    {"name": "GitHub Actions self-hosted runners", "kind": "ci-cd", "reachable_from_secondary": false, "bypass": "failover script is also runnable from the break-glass bastion in eu-central-1: runbook RB-114 step 2"},
+    {"name": "Route 53", "kind": "dns-provider", "reachable_from_secondary": true},
+    {"name": "ACM certificates", "kind": "certificate-issuance", "reachable_from_secondary": true},
+    {"name": "Adyen", "kind": "payments", "reachable_from_secondary": true}
   ],
-  "decision": "Adopt variant A behind feature flag; deprecate variant B by EOQ.",
+  "drill": {
+    "checklist": [
+      "announce drill window and freeze deploys",
+      "fence the primary database (RB-114 step 1)",
+      "promote the eu-central-1 replica and rotate the writer secret",
+      "flip the Route 53 failover record and start the propagation timer",
+      "scale the secondary ASG to 100 percent and confirm quota headroom",
+      "run the synthetic checkout and record measured RTO and RPO",
+      "list every step that needed a human"
+    ],
+    "mechanics_last_changed_at": "2026-07-14",
+    "last": {
+      "date": "2026-08-20",
+      "scope_services": ["payments-api", "payments-worker"],
+      "traffic_percent": 5,
+      "measured_rto_minutes": 22,
+      "measured_rpo_minutes": 0.5,
+      "manual_steps": ["writer secret rotation required a human approval in Secrets Manager"]
+    }
+  },
+  "failback": {
+    "trigger": "primary region healthy for 60 minutes and replication from secondary to primary caught up (lag under 5 s)",
+    "rpo_minutes": 0,
+    "rto_minutes": 45,
+    "reconciliation_step": "replay writes accepted in eu-central-1 from the logical replication slot into the rebuilt primary; verify row counts per table",
+    "procedure": "runbook RB-115: rebuild eu-west-1 as replica of the promoted primary, re-fence, promote back during a change window, flip DNS"
+  },
+  "decision": "Adopt warm-standby for payments-api: achievable RTO 22 min against required 30, achievable RPO 1 min against required 5; verified by the 2026-08-20 drill at 5 percent of traffic.",
   "evidence": [
-    "https://github.com/acme/billing/pull/9981",
-    "https://sentry.io/acme/issues/12345/",
-    "https://acme.grafana.net/dashboard/billing-p95"
+    "https://wiki.example.com/dr/drills/2026-08-20-payments",
+    "https://grafana.example.com/d/rds-replication?from=1751328000000&to=1753920000000",
+    "https://console.aws.amazon.com/servicequotas/home/requests/abc123"
   ],
-  "review": {
-    "cadence":         "quarterly",
-    "next_review_at":  "2026-08-22"
-  }
+  "review": {"cadence": "quarterly", "next_review_at": "2026-11-20"}
 }
 ]]></code>
+      <note>Warm standby is the cheapest pattern whose achievable RTO (22, measured) sits under the required 30; pilot light was costed at 60 minutes of scale-up and rejected (r-pattern-chosen-from-rpo-rto-and-cost). The secondary runs at 40 percent with a 12-minute scale-up inside the RTO, and `quotas_verified` is true because the quota request in `evidence[]` was approved (fm-07). The Route 53 record sits at 60 s but the drill measured 95 s of propagation, and the iOS SDK that caches IPs is listed with a client-side retry fallback (r-dns-failover-ttl-and-health-check). Async replication at 12 s p99 lag fits inside RPO 5 minutes; fencing revokes writes before promotion so the old primary cannot keep accepting them (r-database-replication-mode-and-promotion). S3 replication was enabled after the bucket had 1.2 M objects, so the Batch Replication job is cited (r-object-store-replication-verified). GitHub runners live only in the primary, so the failover script has a break-glass path from the secondary (r-region-scoped-dependencies-listed). The drill on 2026-08-20 is after the last mechanics change on 2026-07-14, so the decision is not labelled `unverified`; the one manual step is recorded for the next drill (r-drill-live-with-measured-results). Failback has its own RTO of 45 and a reconciliation step for writes taken in eu-central-1 (r-failback-procedure-included).</note>
     </example>
   </section>
 
-  <section title="Walk-through">
-    <list>
-      <item>Step 1 — trigger captured from the recurring quarterly-review calendar entry; URL points to the GitHub issue.</item>
-      <item>Step 2 — owner resolved to `arch:alice` from the RACI; alice on-call this quarter.</item>
-      <item>Step 3 — inputs typed: scope is a service slug, window_days is int, prs_in_window is int.</item>
-      <item>Step 4 — decision is a single declarative sentence with a deadline.</item>
-      <item>Step 5 — evidence anchors point at the canonical PR, the perf dashboard, and the related Sentry issue.</item>
-      <item>Step 6 — review scheduled three months out; entry on alice's calendar.</item>
-    </list>
+  <section title="Rejected pack">
+    <example type="bad" title="pilot light with zero data loss">
+      <code lang="json"><![CDATA[
+{
+  "workload": {"name": "payments-api", "tier": "tier-1", "business_owner": "product:maria"},
+  "owner": "arch:alice",
+  "inputs": [
+    {"name": "rpo_minutes", "value": 0},
+    {"name": "rto_minutes", "value": 30}
+  ],
+  "pattern": {
+    "chosen": "pilot-light",
+    "achievable_rpo_minutes": 0,
+    "achievable_rto_minutes": 90,
+    "secondary_capacity": {"mode": "scale-up", "percent_of_primary": 10, "scale_up_minutes": 60, "quotas_verified": true}
+  },
+  "dns": {
+    "mechanism": "dns-failover",
+    "ttl_seconds": 3600,
+    "health_check": {"endpoint": "https://api.payments.example.com/healthz", "interval_seconds": 30, "failure_threshold": 3},
+    "observed_propagation_seconds": 0,
+    "ttl_ignoring_clients": []
+  },
+  "database": {
+    "engine": "PostgreSQL 16 (RDS)",
+    "replication": "asynchronous",
+    "p99_lag_seconds_30d": 40,
+    "promotion_procedure": "promote the replica in the console",
+    "fencing": "n/a",
+    "single_writer_enforcement": "n/a"
+  },
+  "object_store": {
+    "provider": "Amazon S3",
+    "replication_enabled": true,
+    "versioning": true,
+    "backlog_metric": "none yet",
+    "replication_time_alert": "none yet",
+    "existing_objects_backfilled": false
+  },
+  "dependencies": [
+    {"name": "Okta", "kind": "identity-provider", "reachable_from_secondary": true},
+    {"name": "GitHub Actions self-hosted runners", "kind": "ci-cd", "reachable_from_secondary": false},
+    {"name": "Route 53", "kind": "dns-provider", "reachable_from_secondary": true}
+  ],
+  "drill": {
+    "checklist": [
+      "announce drill window and freeze deploys",
+      "promote the replica",
+      "flip DNS",
+      "scale up the secondary",
+      "run the synthetic checkout"
+    ],
+    "mechanics_last_changed_at": "2026-07-14",
+    "last": null
+  },
+  "failback": {
+    "trigger": "when the primary is back",
+    "rpo_minutes": 0,
+    "rto_minutes": 45,
+    "reconciliation_step": "to be defined",
+    "procedure": "reverse the failover"
+  },
+  "decision": "Adopt pilot-light for payments-api with zero data loss.",
+  "evidence": ["https://wiki.example.com/dr/payments-plan"],
+  "review": {"cadence": "quarterly", "next_review_at": "2026-11-20"}
+}
+]]></code>
+      <note>What the validator prints: `dns.ttl_seconds` 3600 above the maximum of 60 (r-dns-failover-ttl-and-health-check); `database.fencing` and `single_writer_enforcement` are "n/a" (fm-03); the CI/CD dependency is unreachable with no `bypass` (r-region-scoped-dependencies-listed); cross-field: `achievable_rto_minutes` 90 above required 30 and `scale_up_minutes` 60 above RTO (r-pattern-chosen-from-rpo-rto-and-cost); `rpo_minutes` 0 with asynchronous replication at 40 s p99 lag (fm-01); `drill.last` null and `decision` not labelled `unverified` (fm-02). What the reviewer sees: "zero data loss" in the decision on top of async replication, an S3 bucket with no backfill and no backlog alert, and a failback that says "reverse the failover" (fm-05, r-failback-procedure-included).</note>
+    </example>
   </section>
 </text>

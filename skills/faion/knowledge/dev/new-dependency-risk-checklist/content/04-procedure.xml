@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="New Dependency Risk Checklist — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `new-dependency-risk-checklist`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="New Dependency Risk Checklist — Procedure" version="2.0.0" est_tokens="1700" depth="recommended">
+  <summary>Nine steps that turn "npm install foo" into a risk record: check the lockfile for the package, read the SPDX licence, count the transitive subtree with a dry run, read maintainers and release date, run the dated advisory lookup, review install hooks and provenance, list alternatives including in-house, pin the exact version with the lockfile commit, then decide and route the alert to the owner.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="check-already-in-tree">
+      <input>The committed lockfile; the package name and the exact version proposed.</input>
+      <action>Search the lockfile for the package at the same major version. Record `package.name`, `version` (exact, from the registry), `ecosystem`.</action>
+      <output>`package.name` / `version` / `ecosystem`, or a skip.</output>
+      <decision-gate>Already in tree at the same major: skip this methodology; import from the existing version (06 root question). No committed lockfile: stop until one exists (r-exact-version-pinned-in-lockfile).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="read-spdx-licence">
+      <input>`license` in package.json / `project.license` in pyproject.toml / `license` in Cargo.toml; the LICENSE file in the source repository.</input>
+      <action>Record the SPDX identifier as the `licence` input; if metadata and LICENSE disagree, record the LICENSE file's identifier and note the mismatch in `decision.statement`. For GPL-*, AGPL-*, LGPL-*, SSPL, BUSL or modified MPL-2.0, set the `distribution_model` input and `decision.distribution_model`.</action>
+      <output>`licence` input; `distribution_model` where copyleft.</output>
+      <decision-gate>`unknown`, `see repo`, `MIT-ish` or empty stops the record (r-licence-spdx-recorded).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="count-transitive-subtree">
+      <input>`npm install --package-lock-only` then a lockfile diff; `pip install --dry-run --report`; `cargo tree --prefix none | sort -u`.</input>
+      <action>Record the number of packages added beyond the direct one as `transitive_count`.</action>
+      <output>`transitive_count` input.</output>
+      <decision-gate>Zero on a package that imports other packages is an unfilled field; re-run the dry run (r-transitive-footprint-counted).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="read-maintainers-and-recency">
+      <input>`npm view &lt;pkg&gt; maintainers`, the PyPI project page, crates.io owners; the latest non-prerelease date.</input>
+      <action>Record `maintainers` and `last_release`.</action>
+      <output>Two inputs.</output>
+      <decision-gate>One maintainer or a release older than 12 months requires `decision.fallback` (vendor, fork or a named alternative) before any accept (r-maintainer-and-release-recency).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="run-advisory-lookup">
+      <input>OSV.dev, the GitHub Advisory Database or NVD, queried for the exact name and version today.</input>
+      <action>Record `advisory_lookup.source`, `url`, `checked_on`, `open_advisories[]`; add the URL to `evidence[]`. Run `npm audit` / `pip-audit` / `cargo audit` on the lockfile so the subtree is covered too.</action>
+      <output>`advisory_lookup` block and the first `evidence[]` entry.</output>
+      <decision-gate>An open, unpatched advisory forces `reject` or `accept-with-mitigation` naming the id (r-advisory-query-in-evidence).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="review-hooks-and-provenance">
+      <input>`npm view &lt;pkg&gt; scripts`; the registry `repository` field; the README's repository link; a registry search for the name with one character changed.</input>
+      <action>Fill `package.install_scripts` (each hook and what it runs), `registry_repository_url`, `readme_repository_url`, `repository_matches`, `near_name.searched`, `near_name.popular_near_name`.</action>
+      <output>Provenance fields in `package`.</output>
+      <decision-gate>A near-name of a far more popular package, a repository mismatch, or a hook that fetches a remote binary is a reject unless `decision.install_hook_reason` says why it is needed (r-install-hooks-and-provenance-reviewed).</decision-gate>
     </step>
+
+    <step n="7" name="list-alternatives-including-in-house">
+      <input>The package's exported surface; the current lockfile; the registry.</input>
+      <action>Record `alternative` with at least one entry and always `in-house` or `already-in-tree`, each with a one-line reason; record `useful_surface_lines` when the package is small.</action>
+      <output>`alternative` input; optional `useful_surface_lines`.</output>
+      <decision-gate>A useful surface of 20 lines or fewer defaults to `verdict: in-house`; overriding needs `decision.override_reason` (r-alternative-considered-including-in-house).</decision-gate>
+    </step>
+
+    <step n="8" name="pin-version-and-lockfile">
+      <input>The PR that adds the dependency.</input>
+      <action>Confirm the manifest pins the exact version and the lockfile diff is committed; record `lockfile.file` and `lockfile.commit_url`; add the URL to `evidence[]`.</action>
+      <output>`lockfile` block and the second `evidence[]` entry.</output>
+      <decision-gate>A range (`^`, `~`, `>=`) in the manifest or no lockfile commit blocks approval (r-exact-version-pinned-in-lockfile).</decision-gate>
+    </step>
+
+    <step n="9" name="decide-and-route-alerts">
+      <input>All inputs; the Dependabot / Renovate / audit configuration.</input>
+      <action>Write `decision.verdict` and `statement` naming `name@version`; add `fallback`, `mitigation`, `distribution_model`, `override_reason`, `install_hook_reason` where the gates above require them. Set `patch_window` (`critical`, `high`), `alert_routing.tool` and `recipient` = `owner`, `review.next_review_at`. Fill `templates/skeleton.md.j2`; run `scripts/validate-new-dependency-risk-checklist.py --file`; the owner reads the advisory and licence lines before the lockfile change merges.</action>
+      <output>Committed risk record; alert routed to the owner.</output>
+      <decision-gate>An owner with no alert routed to them, or no patch window, is unfilled (r-upgrade-owner-and-patch-window, 03 human checkpoint).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Record validates via `scripts/validate-new-dependency-risk-checklist.py`, including the 12-month, single-maintainer, advisory and 20-line cross-field checks.</item>
+      <item>`evidence[]` carries the dated advisory URL and the lockfile commit.</item>
+      <item>The owner is the alert recipient and has read the record before merge.</item>
+    </list>
   </section>
 </text>

@@ -1,28 +1,186 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for fitness-function-suite-bootstrap: _smoke-test.json",
+    "purpose": "Template fixture for fitness-function-suite-bootstrap: _smoke-test.json \u2014 minimum five-function suite that passes the validator",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
+  "suite_id": "ffsb-orders-api",
+  "system": "orders-api",
+  "owner": "arch:alice",
+  "dependency_graph": {
+    "layers": [
+      "http",
+      "application",
+      "domain",
+      "infrastructure"
+    ],
+    "allowed_edges": [
+      {
+        "from": "http",
+        "to": "application"
+      },
+      {
+        "from": "application",
+        "to": "domain"
+      },
+      {
+        "from": "application",
+        "to": "infrastructure"
+      },
+      {
+        "from": "infrastructure",
+        "to": "domain"
+      }
+    ]
   },
-  "owner": "swe:alice",
-  "inputs": [
+  "launch_date": "2026-09-07",
+  "weekly_reviews": [
     {
-      "name": "scope",
-      "value": "billing"
+      "date": "2026-09-14",
+      "reviewed_by": "arch:alice",
+      "red_functions": [
+        "checkout-p95"
+      ],
+      "actions": [
+        "raise k6 VUs to match prod profile v2"
+      ]
+    },
+    {
+      "date": "2026-09-21",
+      "reviewed_by": "arch:alice",
+      "red_functions": [],
+      "actions": [
+        "promote layer-direction to blocking"
+      ]
+    },
+    {
+      "date": "2026-09-28",
+      "reviewed_by": "arch:alice",
+      "red_functions": [],
+      "actions": []
+    },
+    {
+      "date": "2026-10-05",
+      "reviewed_by": "arch:alice",
+      "red_functions": [],
+      "actions": [
+        "set cadence to monthly"
+      ]
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
-  "evidence": [
-    "https://example.com/pr/1"
-  ],
-  "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
-  }
+  "cadence_after_week_four": "monthly",
+  "functions": [
+    {
+      "id": "checkout-p95",
+      "category": "performance",
+      "tool": "k6",
+      "command": "k6 run --config perf/profiles/checkout-v2.json perf/checkout.js",
+      "endpoint": "POST /v1/checkout",
+      "load_profile": "perf/profiles/checkout-v2.json",
+      "runner_kind": "dedicated-runner",
+      "threshold": {
+        "operator": "<",
+        "value": 400,
+        "unit": "ms"
+      },
+      "baseline": {
+        "value": 340,
+        "measured_at": "2026-09-04"
+      },
+      "mode": "informational",
+      "runs_on": "nightly",
+      "owner": "sre:carol",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "pipeline-duration",
+      "category": "deployability",
+      "tool": "gh",
+      "command": "python3 ci/pipeline_duration.py --last 20",
+      "metric": "pipeline_duration",
+      "script_path": "ci/pipeline_duration.py",
+      "threshold": {
+        "operator": "<=",
+        "value": 15,
+        "unit": "minutes"
+      },
+      "baseline": {
+        "value": 12,
+        "measured_at": "2026-09-04"
+      },
+      "mode": "informational",
+      "runs_on": "post_merge",
+      "owner": "platform:dan",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "layer-direction",
+      "category": "dependency",
+      "tool": "import-linter",
+      "command": "lint-imports --config .importlinter",
+      "threshold": {
+        "operator": "==",
+        "value": 0,
+        "unit": "violations"
+      },
+      "baseline": {
+        "value": 0,
+        "measured_at": "2026-09-04"
+      },
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "arch:alice",
+      "consecutive_red_reviews": 0,
+      "promotion": {
+        "green_runs_on_main": 9,
+        "approved_by": "arch:alice",
+        "review_date": "2026-09-21",
+        "promoted_at": "2026-09-22"
+      }
+    },
+    {
+      "id": "cyclomatic-complexity",
+      "category": "complexity",
+      "tool": "lizard",
+      "command": "lizard -C 10 -w src/orders --ignore_warnings 173",
+      "per_function_limit": 10,
+      "baseline_file": "quality/complexity-baseline.txt",
+      "threshold": {
+        "operator": "==",
+        "value": 0,
+        "unit": "new violations"
+      },
+      "baseline": {
+        "value": 173,
+        "measured_at": "2026-09-04"
+      },
+      "mode": "ratchet",
+      "runs_on": "pull_request",
+      "owner": "swe:bob",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "openapi-breaking-diff",
+      "category": "contract",
+      "tool": "oasdiff",
+      "command": "oasdiff breaking https://api.example.com/openapi/v1.12.0.yaml openapi.yaml --fail-on ERR",
+      "method": "schema-diff",
+      "released_schema_ref": "https://api.example.com/openapi/v1.12.0.yaml",
+      "threshold": {
+        "operator": "==",
+        "value": 0,
+        "unit": "breaking changes"
+      },
+      "baseline": {
+        "value": 0,
+        "measured_at": "2026-09-04"
+      },
+      "mode": "ratchet",
+      "runs_on": "pull_request",
+      "owner": "swe:erin",
+      "consecutive_red_reviews": 0
+    }
+  ]
 }

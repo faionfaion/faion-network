@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Fitness-Function Suite Bootstrap — Worked Example" version="1.0.0" est_tokens="2300" depth="recommended">
+  <summary>One complete five-function starter suite for an orders API (k6 p95 nightly, pipeline duration from CI, import-linter layers, lizard complexity ratchet with a baseline file, oasdiff breaking-change gate) with the four weekly reviews filled in and a note on each non-obvious value; then a three-function launch that the validator rejects and why.</summary>
+
+  <section title="Scenario">
+    <p>orders-api, a Python service with a `http` / `application` / `domain` / `infrastructure` layout, a published OpenAPI v1.12.0, and a GitHub Actions pipeline. The team agreed on evolutionary architecture a quarter ago and has shipped nothing. The architect (arch:alice) bootstraps five functions, launches all of them non-blocking on 2026-09-07, and promotes the layer guard at the second weekly review.</p>
+  </section>
+
+  <section title="Resulting spec">
+    <example type="good" title="ffsb-orders-api">
+      <code lang="json"><![CDATA[
+{
+  "suite_id": "ffsb-orders-api",
+  "system": "orders-api",
+  "owner": "arch:alice",
+  "dependency_graph": {
+    "layers": ["http", "application", "domain", "infrastructure"],
+    "allowed_edges": [{"from": "http", "to": "application"}, {"from": "application", "to": "domain"}, {"from": "application", "to": "infrastructure"}, {"from": "infrastructure", "to": "domain"}]
+  },
+  "launch_date": "2026-09-07",
+  "weekly_reviews": [
+    {"date": "2026-09-14", "reviewed_by": "arch:alice", "red_functions": ["checkout-p95"], "actions": ["raise k6 VUs to match prod profile v2"]},
+    {"date": "2026-09-21", "reviewed_by": "arch:alice", "red_functions": [], "actions": ["promote layer-direction to blocking"]},
+    {"date": "2026-09-28", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-10-05", "reviewed_by": "arch:alice", "red_functions": [], "actions": ["set cadence to monthly"]}
+  ],
+  "cadence_after_week_four": "monthly",
+  "functions": [
+    {
+      "id": "checkout-p95",
+      "category": "performance",
+      "tool": "k6",
+      "command": "k6 run --config perf/profiles/checkout-v2.json perf/checkout.js",
+      "endpoint": "POST /v1/checkout",
+      "load_profile": "perf/profiles/checkout-v2.json",
+      "runner_kind": "dedicated-runner",
+      "threshold": {"operator": "<", "value": 400, "unit": "ms"},
+      "baseline": {"value": 340, "measured_at": "2026-09-04"},
+      "mode": "informational",
+      "runs_on": "nightly",
+      "owner": "sre:carol",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "pipeline-duration",
+      "category": "deployability",
+      "tool": "gh",
+      "command": "python3 ci/pipeline_duration.py --last 20",
+      "metric": "pipeline_duration",
+      "script_path": "ci/pipeline_duration.py",
+      "threshold": {"operator": "<=", "value": 15, "unit": "minutes"},
+      "baseline": {"value": 12, "measured_at": "2026-09-04"},
+      "mode": "informational",
+      "runs_on": "post_merge",
+      "owner": "platform:dan",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "layer-direction",
+      "category": "dependency",
+      "tool": "import-linter",
+      "command": "lint-imports --config .importlinter",
+      "threshold": {"operator": "==", "value": 0, "unit": "violations"},
+      "baseline": {"value": 0, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "arch:alice",
+      "consecutive_red_reviews": 0,
+      "promotion": {"green_runs_on_main": 9, "approved_by": "arch:alice", "review_date": "2026-09-21", "promoted_at": "2026-09-22"}
+    },
+    {
+      "id": "cyclomatic-complexity",
+      "category": "complexity",
+      "tool": "lizard",
+      "command": "lizard -C 10 -w src/orders --ignore_warnings 173",
+      "per_function_limit": 10,
+      "baseline_file": "quality/complexity-baseline.txt",
+      "threshold": {"operator": "==", "value": 0, "unit": "new violations"},
+      "baseline": {"value": 173, "measured_at": "2026-09-04"},
+      "mode": "ratchet",
+      "runs_on": "pull_request",
+      "owner": "swe:bob",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "openapi-breaking-diff",
+      "category": "contract",
+      "tool": "oasdiff",
+      "command": "oasdiff breaking https://api.example.com/openapi/v1.12.0.yaml openapi.yaml --fail-on ERR",
+      "method": "schema-diff",
+      "released_schema_ref": "https://api.example.com/openapi/v1.12.0.yaml",
+      "threshold": {"operator": "==", "value": 0, "unit": "breaking changes"},
+      "baseline": {"value": 0, "measured_at": "2026-09-04"},
+      "mode": "ratchet",
+      "runs_on": "pull_request",
+      "owner": "swe:erin",
+      "consecutive_red_reviews": 0
+    }
+  ]
+}
+]]></code>
+      <note>Five functions, one per category; three extra slots are left empty on purpose (r-ffsb-five-to-eight-functions). `checkout-p95` runs nightly on a dedicated runner with the load profile committed at `perf/profiles/checkout-v2.json`, so a red means the service got slower, not that a neighbour job compiled (r-ffsb-perf-p95-under-fixed-load). `pipeline-duration` is computed by `ci/pipeline_duration.py` from the last 20 runs and its unit is minutes (r-ffsb-deploy-lead-time-from-ci). `layer-direction` is the only blocking function and carries a promotion record: nine green runs on main, approved by arch:alice at the 2026-09-21 review (r-ffsb-ratchet-first-then-block). `cyclomatic-complexity` has 173 current violators in `quality/complexity-baseline.txt` and fails only on new ones, so its threshold is 0 new violations, not 0 violations (r-ffsb-complexity-ratchet-with-baseline). `openapi-breaking-diff` names the released schema it diffs against (r-ffsb-contract-breaking-change-gate). The first review recorded `checkout-p95` red and the action taken; the fourth set the ongoing cadence (r-ffsb-owner-and-weekly-review).</note>
+    </example>
+  </section>
+
+  <section title="Rejected launch">
+    <example type="bad" title="three blocking functions on day one">
+      <code lang="json"><![CDATA[
+{
+  "suite_id": "ffsb-orders-api",
+  "system": "orders-api",
+  "owner": "arch:alice",
+  "dependency_graph": {
+    "layers": ["http", "application", "domain"],
+    "allowed_edges": [{"from": "http", "to": "application"}, {"from": "application", "to": "domain"}]
+  },
+  "launch_date": "2026-09-07",
+  "weekly_reviews": [
+    {"date": "2026-09-14", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-09-21", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-09-28", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-10-05", "reviewed_by": "arch:alice", "red_functions": [], "actions": []}
+  ],
+  "cadence_after_week_four": "monthly",
+  "functions": [
+    {
+      "id": "checkout-p95",
+      "category": "performance",
+      "tool": "k6",
+      "command": "k6 run perf/checkout.js",
+      "endpoint": "POST /v1/checkout",
+      "load_profile": "perf/profiles/checkout-v2.json",
+      "runner_kind": "dedicated-runner",
+      "threshold": {"operator": "<", "value": 400, "unit": "ms"},
+      "baseline": {"value": 340, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "sre:carol",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "layer-direction",
+      "category": "dependency",
+      "tool": "import-linter",
+      "command": "lint-imports --config .importlinter",
+      "threshold": {"operator": "==", "value": 0, "unit": "violations"},
+      "baseline": {"value": 0, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "arch:alice",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "cyclomatic-complexity",
+      "category": "complexity",
+      "tool": "lizard",
+      "command": "lizard -C 10 -w src/orders",
+      "per_function_limit": 10,
+      "threshold": {"operator": "==", "value": 0, "unit": "violations"},
+      "baseline": {"value": 173, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "swe:bob",
+      "consecutive_red_reviews": 0
+    }
+  ]
+}
+]]></code>
+      <note>What the validator prints: `functions` has 3 items, fewer than minItems 5, and no element has category deployability or contract (r-ffsb-five-to-eight-functions); `checkout-p95` has `runs_on: pull_request`, not post_merge or nightly (r-ffsb-perf-p95-under-fixed-load); all three are `mode: blocking` with no `promotion` record (r-ffsb-ratchet-first-then-block); `cyclomatic-complexity` has no `baseline_file` while its baseline is 173 violators against a threshold of 0 (r-ffsb-complexity-ratchet-with-baseline). What the reviewer sees: a complexity job red on its first run, a latency job that fails whenever the runner is busy, and a team that adds `continue-on-error: true` by Friday (fm-blocking-on-day-one, fm-perf-on-shared-runner).</note>
+    </example>
+  </section>
+</text>

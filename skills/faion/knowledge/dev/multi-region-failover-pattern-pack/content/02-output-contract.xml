@@ -1,121 +1,408 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Multi-Region Failover Pattern Pack — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `multi-region-failover-pattern-pack` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="Multi-Region Failover Pattern Pack — Output Contract" version="2.0.0" est_tokens="5650" depth="essential">
+  <summary>JSON Schema (draft-07) for the failover pattern pack: numeric `rpo_minutes` / `rto_minutes` inputs per workload tier, one chosen pattern with achievable RPO/RTO and secondary capacity and quotas, DNS mechanics (TTL at most 60 s, health check, observed propagation, TTL-ignoring clients), database replication mode with measured p99 lag, promotion and fencing, object-store replication with backfill and backlog alert, region-scoped dependency list with bypasses, the live drill checklist and last measured result, and the failback procedure. Validator in scripts/validate-multi-region-failover-pattern-pack.py enforces it, including achievable-versus-required and lag-versus-RPO.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="workload" type="object" required="true">`name`, `tier`, `business_owner` who agreed the numbers (r-rpo-rto-numeric-per-tier)</field>
+      <field name="owner" type="string" required="true">architect accountable for the pack, `role:handle`</field>
+      <field name="inputs" type="list" required="true">must contain `rpo_minutes` and `rto_minutes` as integers (r-rpo-rto-numeric-per-tier)</field>
+      <field name="pattern" type="object" required="true">`chosen` (one of five), `achievable_rpo_minutes`, `achievable_rto_minutes`, `secondary_capacity` (`mode`, `percent_of_primary`, `scale_up_minutes`, `quotas_verified`) (r-pattern-chosen-from-rpo-rto-and-cost)</field>
+      <field name="dns" type="object" required="true">`mechanism`; for dns-failover: `ttl_seconds` at most 60, `health_check` (endpoint, interval, failure threshold), `observed_propagation_seconds`; `ttl_ignoring_clients[]` each with a `fallback` (r-dns-failover-ttl-and-health-check)</field>
+      <field name="database" type="object" required="true">`engine`, `replication` (synchronous | asynchronous), `p99_lag_seconds_30d`, `promotion_procedure`, `fencing`, `single_writer_enforcement` (r-database-replication-mode-and-promotion)</field>
+      <field name="object_store" type="object" required="true">`provider`, `replication_enabled`, `versioning`, `backlog_metric`, `replication_time_alert`, `existing_objects_backfilled`, `backfill_job` when backfilled (r-object-store-replication-verified)</field>
+      <field name="dependencies" type="list" required="true">every dependency on the failover path with `kind`, `reachable_from_secondary`, and `bypass` when not reachable (r-region-scoped-dependencies-listed)</field>
+      <field name="drill" type="object" required="true">`checklist[]`, `mechanics_last_changed_at`, `last` (`date`, `scope_services[]`, `traffic_percent`, `measured_rto_minutes`, `measured_rpo_minutes`, `manual_steps[]`) or `null` (r-drill-live-with-measured-results)</field>
+      <field name="failback" type="object" required="true">`trigger`, `rpo_minutes`, `rto_minutes`, `reconciliation_step`, `procedure` (r-failback-procedure-included)</field>
+      <field name="decision" type="string" required="true">names exactly the chosen pattern; carries the word `unverified` when the last drill is missing or older than the last mechanics change (r-pattern-chosen-from-rpo-rto-and-cost, r-drill-live-with-measured-results)</field>
+      <field name="evidence" type="list" required="true">at least one URL: drill report, replication dashboard, quota request, backfill job</field>
+      <field name="review" type="object" required="true">`cadence` (monthly | quarterly), `next_review_at`</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`rpo_minutes` / `rto_minutes` missing or non-numeric, or asynchronous replication with `rpo_minutes` × 60 below `p99_lag_seconds_30d` — fm-01</pattern>
+      <pattern id="f2">`drill.last` null, or `drill.last.date` before `drill.mechanics_last_changed_at`, without `unverified` in `decision` — fm-02</pattern>
+      <pattern id="f3">`database.fencing` or `single_writer_enforcement` empty — fm-03</pattern>
+      <pattern id="f4">dns-failover with `ttl_seconds` above 60, no `health_check`, or no `observed_propagation_seconds` — fm-04</pattern>
+      <pattern id="f5">`existing_objects_backfilled: true` with no `backfill_job`, or no `backlog_metric` — fm-05</pattern>
+      <pattern id="f6">a dependency with `reachable_from_secondary: false` and no `bypass` — fm-06</pattern>
+      <pattern id="f7">`secondary_capacity.quotas_verified: false`, or `scale_up_minutes` above `rto_minutes` — fm-07</pattern>
+      <pattern id="f8">`achievable_rto_minutes` above `rto_minutes` or `achievable_rpo_minutes` above `rpo_minutes`; `decision` naming zero or two patterns, or a pattern other than `pattern.chosen` — r-pattern-chosen-from-rpo-rto-and-cost</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://multi-region-failover-pattern-pack/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/multi-region-failover-pattern-pack.json",
+  "title": "Multi-region failover pattern pack",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": ["workload", "owner", "inputs", "pattern", "dns", "database", "object_store", "dependencies", "drill", "failback", "decision", "evidence", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "text": {"type": "string", "minLength": 8}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "workload": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["name", "tier", "business_owner"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "name": {"type": "string", "minLength": 2},
+        "tier": {"type": "string", "enum": ["tier-0", "tier-1", "tier-2", "tier-3"]},
+        "business_owner": {"$ref": "#/definitions/handle"}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "owner": {"$ref": "#/definitions/handle"},
     "inputs": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 2,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "rpo_minutes"}}}},
+        {"contains": {"properties": {"name": {"const": "rto_minutes"}}}}
+      ],
       "items": {
         "type": "object",
         "required": ["name", "value"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
+          "name": {"type": "string", "enum": ["rpo_minutes", "rto_minutes", "primary_region", "secondary_region"]},
           "value": {}
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"enum": ["rpo_minutes", "rto_minutes"]}}}, "then": {"properties": {"value": {"type": "integer", "minimum": 0}}}},
+          {"if": {"properties": {"name": {"enum": ["primary_region", "secondary_region"]}}}, "then": {"properties": {"value": {"type": "string", "minLength": 3}}}}
+        ]
+      }
+    },
+    "pattern": {
+      "type": "object",
+      "required": ["chosen", "achievable_rpo_minutes", "achievable_rto_minutes", "secondary_capacity"],
+      "additionalProperties": false,
+      "properties": {
+        "chosen": {"type": "string", "enum": ["backup-and-restore", "pilot-light", "warm-standby", "active-passive-hot-standby", "active-active"]},
+        "achievable_rpo_minutes": {"type": "integer", "minimum": 0},
+        "achievable_rto_minutes": {"type": "integer", "minimum": 0},
+        "secondary_capacity": {
+          "type": "object",
+          "required": ["mode", "percent_of_primary", "quotas_verified"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {"type": "string", "enum": ["pre-provisioned", "scale-up"]},
+            "percent_of_primary": {"type": "integer", "minimum": 0, "maximum": 200},
+            "scale_up_minutes": {"type": "integer", "minimum": 0},
+            "quotas_verified": {"type": "boolean", "const": true}
+          },
+          "if": {"properties": {"mode": {"const": "scale-up"}}},
+          "then": {"required": ["scale_up_minutes"]}
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+    "dns": {
+      "type": "object",
+      "required": ["mechanism", "ttl_ignoring_clients"],
+      "additionalProperties": false,
+      "properties": {
+        "mechanism": {"type": "string", "enum": ["dns-failover", "global-load-balancer", "anycast", "none"]},
+        "ttl_seconds": {"type": "integer", "minimum": 1, "maximum": 60},
+        "health_check": {
+          "type": "object",
+          "required": ["endpoint", "interval_seconds", "failure_threshold"],
+          "additionalProperties": false,
+          "properties": {
+            "endpoint": {"type": "string", "minLength": 4},
+            "interval_seconds": {"type": "integer", "minimum": 1},
+            "failure_threshold": {"type": "integer", "minimum": 1}
+          }
+        },
+        "observed_propagation_seconds": {"type": "integer", "minimum": 0},
+        "ttl_ignoring_clients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["client", "fallback"],
+            "additionalProperties": false,
+            "properties": {
+              "client": {"type": "string", "minLength": 2},
+              "fallback": {"type": "string", "enum": ["global-load-balancer", "anycast", "client-side-retry-to-secondary"]}
+            }
+          }
+        }
+      },
+      "if": {"properties": {"mechanism": {"const": "dns-failover"}}},
+      "then": {"required": ["ttl_seconds", "health_check", "observed_propagation_seconds"]}
     },
+    "database": {
+      "type": "object",
+      "required": ["engine", "replication", "p99_lag_seconds_30d", "promotion_procedure", "fencing", "single_writer_enforcement"],
+      "additionalProperties": false,
+      "properties": {
+        "engine": {"type": "string", "minLength": 2},
+        "replication": {"type": "string", "enum": ["synchronous", "asynchronous"]},
+        "p99_lag_seconds_30d": {"type": "number", "minimum": 0},
+        "promotion_procedure": {"$ref": "#/definitions/text"},
+        "fencing": {"$ref": "#/definitions/text"},
+        "single_writer_enforcement": {"$ref": "#/definitions/text"}
+      }
+    },
+    "object_store": {
+      "type": "object",
+      "required": ["provider", "replication_enabled", "versioning", "backlog_metric", "replication_time_alert", "existing_objects_backfilled"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {"type": "string", "minLength": 2},
+        "replication_enabled": {"type": "boolean", "const": true},
+        "versioning": {"type": "boolean", "const": true},
+        "backlog_metric": {"type": "string", "minLength": 4},
+        "replication_time_alert": {"type": "string", "minLength": 4},
+        "existing_objects_backfilled": {"type": "boolean"},
+        "backfill_job": {"type": "string", "minLength": 4}
+      },
+      "if": {"properties": {"existing_objects_backfilled": {"const": true}}},
+      "then": {"required": ["backfill_job"]}
+    },
+    "dependencies": {
+      "type": "array",
+      "minItems": 3,
+      "allOf": [
+        {"contains": {"properties": {"kind": {"const": "identity-provider"}}}},
+        {"contains": {"properties": {"kind": {"const": "dns-provider"}}}},
+        {"contains": {"properties": {"kind": {"const": "ci-cd"}}}}
+      ],
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "reachable_from_secondary"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "kind": {"type": "string", "enum": ["identity-provider", "secrets-manager", "ci-cd", "dns-provider", "certificate-issuance", "payments", "email", "cloud-control-plane", "other"]},
+          "reachable_from_secondary": {"type": "boolean"},
+          "bypass": {"$ref": "#/definitions/text"}
+        },
+        "if": {"properties": {"reachable_from_secondary": {"const": false}}},
+        "then": {"required": ["bypass"]}
+      }
+    },
+    "drill": {
+      "type": "object",
+      "required": ["checklist", "mechanics_last_changed_at", "last"],
+      "additionalProperties": false,
+      "properties": {
+        "checklist": {"type": "array", "minItems": 5, "items": {"$ref": "#/definitions/text"}},
+        "mechanics_last_changed_at": {"$ref": "#/definitions/date"},
+        "last": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["date", "scope_services", "traffic_percent", "measured_rto_minutes", "measured_rpo_minutes", "manual_steps"],
+              "additionalProperties": false,
+              "properties": {
+                "date": {"$ref": "#/definitions/date"},
+                "scope_services": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+                "traffic_percent": {"type": "number", "minimum": 0, "maximum": 100},
+                "measured_rto_minutes": {"type": "number", "minimum": 0},
+                "measured_rpo_minutes": {"type": "number", "minimum": 0},
+                "manual_steps": {"type": "array", "items": {"$ref": "#/definitions/text"}}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "failback": {
+      "type": "object",
+      "required": ["trigger", "rpo_minutes", "rto_minutes", "reconciliation_step", "procedure"],
+      "additionalProperties": false,
+      "properties": {
+        "trigger": {"$ref": "#/definitions/text"},
+        "rpo_minutes": {"type": "integer", "minimum": 0},
+        "rto_minutes": {"type": "integer", "minimum": 0},
+        "reconciliation_step": {"$ref": "#/definitions/text"},
+        "procedure": {"$ref": "#/definitions/text"}
+      }
+    },
+    "decision": {"type": "string", "minLength": 20, "pattern": "(backup-and-restore|pilot-light|warm-standby|active-passive-hot-standby|active-active)"},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^https://"}},
     "review": {
       "type": "object",
       "required": ["cadence", "next_review_at"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "cadence": {"type": "string", "enum": ["monthly", "quarterly"]},
+        "next_review_at": {"$ref": "#/definitions/date"}
       }
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "workload": {"name": "payments-api", "tier": "tier-1", "business_owner": "product:maria"},
+  "owner": "arch:alice",
+  "inputs": [
+    {"name": "rpo_minutes", "value": 5},
+    {"name": "rto_minutes", "value": 30},
+    {"name": "primary_region", "value": "eu-west-1"},
+    {"name": "secondary_region", "value": "eu-central-1"}
+  ],
+  "pattern": {
+    "chosen": "warm-standby",
+    "achievable_rpo_minutes": 1,
+    "achievable_rto_minutes": 22,
+    "secondary_capacity": {"mode": "scale-up", "percent_of_primary": 40, "scale_up_minutes": 12, "quotas_verified": true}
   },
-  "additionalProperties": false
+  "dns": {
+    "mechanism": "dns-failover",
+    "ttl_seconds": 60,
+    "health_check": {"endpoint": "https://api.payments.example.com/healthz", "interval_seconds": 10, "failure_threshold": 3},
+    "observed_propagation_seconds": 95,
+    "ttl_ignoring_clients": [{"client": "ios-sdk 4.x (caches resolved IP for process lifetime)", "fallback": "client-side-retry-to-secondary"}]
+  },
+  "database": {
+    "engine": "PostgreSQL 16 (RDS)",
+    "replication": "asynchronous",
+    "p99_lag_seconds_30d": 12,
+    "promotion_procedure": "runbook RB-114: promote eu-central-1 read replica via aws rds promote-read-replica, then rotate the writer endpoint in Secrets Manager",
+    "fencing": "revoke the app role's write grant on the old primary and set default_transaction_read_only=on before promotion",
+    "single_writer_enforcement": "writer endpoint resolved from Secrets Manager only; the old primary's security group drops port 5432 from app subnets after fencing"
+  },
+  "object_store": {
+    "provider": "Amazon S3",
+    "replication_enabled": true,
+    "versioning": true,
+    "backlog_metric": "AWS/S3 OperationsPendingReplication on payments-docs",
+    "replication_time_alert": "ReplicationLatency above 900 s for 15 min pages sre-primary",
+    "existing_objects_backfilled": true,
+    "backfill_job": "S3 Batch Replication job 7f2e9c (2026-03-04), 1.2 M objects"
+  },
+  "dependencies": [
+    {"name": "Okta", "kind": "identity-provider", "reachable_from_secondary": true},
+    {"name": "AWS Secrets Manager (replicated secret)", "kind": "secrets-manager", "reachable_from_secondary": true},
+    {"name": "GitHub Actions self-hosted runners", "kind": "ci-cd", "reachable_from_secondary": false, "bypass": "failover script is also runnable from the break-glass bastion in eu-central-1: runbook RB-114 step 2"},
+    {"name": "Route 53", "kind": "dns-provider", "reachable_from_secondary": true},
+    {"name": "ACM certificates", "kind": "certificate-issuance", "reachable_from_secondary": true},
+    {"name": "Adyen", "kind": "payments", "reachable_from_secondary": true}
+  ],
+  "drill": {
+    "checklist": [
+      "announce drill window and freeze deploys",
+      "fence the primary database (RB-114 step 1)",
+      "promote the eu-central-1 replica and rotate the writer secret",
+      "flip the Route 53 failover record and start the propagation timer",
+      "scale the secondary ASG to 100 percent and confirm quota headroom",
+      "run the synthetic checkout and record measured RTO and RPO",
+      "list every step that needed a human"
+    ],
+    "mechanics_last_changed_at": "2026-07-14",
+    "last": {
+      "date": "2026-08-20",
+      "scope_services": ["payments-api", "payments-worker"],
+      "traffic_percent": 5,
+      "measured_rto_minutes": 22,
+      "measured_rpo_minutes": 0.5,
+      "manual_steps": ["writer secret rotation required a human approval in Secrets Manager"]
+    }
+  },
+  "failback": {
+    "trigger": "primary region healthy for 60 minutes and replication from secondary to primary caught up (lag under 5 s)",
+    "rpo_minutes": 0,
+    "rto_minutes": 45,
+    "reconciliation_step": "replay writes accepted in eu-central-1 from the logical replication slot into the rebuilt primary; verify row counts per table",
+    "procedure": "runbook RB-115: rebuild eu-west-1 as replica of the promoted primary, re-fence, promote back during a change window, flip DNS"
+  },
+  "decision": "Adopt warm-standby for payments-api: achievable RTO 22 min against required 30, achievable RPO 1 min against required 5; verified by the 2026-08-20 drill at 5 percent of traffic.",
+  "evidence": [
+    "https://wiki.example.com/dr/drills/2026-08-20-payments",
+    "https://grafana.example.com/d/rds-replication?from=1751328000000&to=1753920000000",
+    "https://console.aws.amazon.com/servicequotas/home/requests/abc123"
+  ],
+  "review": {"cadence": "quarterly", "next_review_at": "2026-11-20"}
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "workload": {"name": "payments-api", "tier": "tier-1", "business_owner": "product:maria"},
+  "owner": "arch:alice",
+  "inputs": [
+    {"name": "rpo_minutes", "value": 0},
+    {"name": "rto_minutes", "value": 30}
+  ],
+  "pattern": {
+    "chosen": "pilot-light",
+    "achievable_rpo_minutes": 0,
+    "achievable_rto_minutes": 90,
+    "secondary_capacity": {"mode": "scale-up", "percent_of_primary": 10, "scale_up_minutes": 60, "quotas_verified": true}
+  },
+  "dns": {
+    "mechanism": "dns-failover",
+    "ttl_seconds": 3600,
+    "health_check": {"endpoint": "https://api.payments.example.com/healthz", "interval_seconds": 30, "failure_threshold": 3},
+    "observed_propagation_seconds": 0,
+    "ttl_ignoring_clients": []
+  },
+  "database": {
+    "engine": "PostgreSQL 16 (RDS)",
+    "replication": "asynchronous",
+    "p99_lag_seconds_30d": 40,
+    "promotion_procedure": "promote the replica in the console",
+    "fencing": "n/a",
+    "single_writer_enforcement": "n/a"
+  },
+  "object_store": {
+    "provider": "Amazon S3",
+    "replication_enabled": true,
+    "versioning": true,
+    "backlog_metric": "none yet",
+    "replication_time_alert": "none yet",
+    "existing_objects_backfilled": false
+  },
+  "dependencies": [
+    {"name": "Okta", "kind": "identity-provider", "reachable_from_secondary": true},
+    {"name": "GitHub Actions self-hosted runners", "kind": "ci-cd", "reachable_from_secondary": false},
+    {"name": "Route 53", "kind": "dns-provider", "reachable_from_secondary": true}
+  ],
+  "drill": {
+    "checklist": [
+      "announce drill window and freeze deploys",
+      "promote the replica",
+      "flip DNS",
+      "scale up the secondary",
+      "run the synthetic checkout"
+    ],
+    "mechanics_last_changed_at": "2026-07-14",
+    "last": null
+  },
+  "failback": {
+    "trigger": "when the primary is back",
+    "rpo_minutes": 0,
+    "rto_minutes": 45,
+    "reconciliation_step": "to be defined",
+    "procedure": "reverse the failover"
+  },
+  "decision": "Adopt pilot-light for payments-api with zero data loss.",
+  "evidence": ["https://wiki.example.com/dr/payments-plan"],
+  "review": {"cadence": "quarterly", "next_review_at": "2026-11-20"}
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>`rpo_minutes` and `rto_minutes` are integers agreed with `workload.business_owner` (r-rpo-rto-numeric-per-tier).</item>
+      <item>`pattern.chosen` is one of five, `achievable_*` are at or below the required numbers, secondary capacity and `quotas_verified` are recorded, and `decision` names that pattern once (r-pattern-chosen-from-rpo-rto-and-cost).</item>
+      <item>For dns-failover: TTL at most 60 s, health check endpoint / interval / threshold, propagation from the last drill, TTL-ignoring clients with fallbacks (r-dns-failover-ttl-and-health-check).</item>
+      <item>Replication mode, 30-day p99 lag, promotion, fencing and single-writer enforcement are stated; async lag in seconds is at most `rpo_minutes` × 60 (r-database-replication-mode-and-promotion).</item>
+      <item>Object-store replication and versioning on, backlog metric and replication-time alert named, backfill status recorded with the job (r-object-store-replication-verified).</item>
+      <item>Every dependency on the failover path is listed; each unreachable one has a bypass (r-region-scoped-dependencies-listed).</item>
+      <item>Drill checklist present; `drill.last` measured since the last mechanics change, or `decision` says `unverified` (r-drill-live-with-measured-results).</item>
+      <item>Failback has its own RPO/RTO, trigger, reconciliation and procedure (r-failback-procedure-included).</item>
     </list>
   </section>
 </text>

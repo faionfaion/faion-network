@@ -1,45 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Evolutionary Architecture Fitness Functions — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `evolutionary-architecture-fitness-functions`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="Evolutionary Architecture Fitness Functions — Procedure" version="2.0.0" est_tokens="1600" depth="recommended">
+  <summary>Eight steps from the architectural characteristics the team cares about to a committed fitness-function suite spec running in CI with a trended results series: name characteristics, write the dependency graph and structural function, pick a tool and command per function, measure baselines, set thresholds in absolute or ratchet mode, classify blocking/triggered, wire the results store, assign owners and the review.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="name-characteristics">
+      <input>Architecture decision records, the last two incident reviews, the quality attributes the architecture claims to protect.</input>
+      <action>List every characteristic worth guarding as one noun phrase with a metric and unit ("afferent coupling of billing.core, count"; "p95 latency of POST /checkout at 200 rps, ms"). Strike every entry that is an -ility with no metric.</action>
+      <output>Candidate list of `characteristic` / `metric` / `unit` triples.</output>
+      <decision-gate>An entry that cannot be given a metric and unit is deleted, not kept as a manual review item (r-ff-one-attribute-one-metric).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="write-dependency-graph">
+      <input>The intended layering or module boundaries (C4 container/component view, package layout).</input>
+      <action>Write `dependency_graph.layers[]` and `dependency_graph.allowed_edges[]` in the spec, then add the structural function (`kind: structural`) that enforces it: ArchUnit `layeredArchitecture()` / `slices().should().beFreeOfCycles()`, NetArchTest, `dependency-cruiser` `no-circular`, or `import-linter` layers contract.</action>
+      <output>`dependency_graph` block and one structural function entry with its verbatim command.</output>
+      <decision-gate>If the module graph already has cycles, the structural function starts in ratchet mode at the current violation count (r-ff-structural-dependency-function, r-ff-threshold-with-baseline-ratchet).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="pick-tool-and-command">
+      <input>Candidate list from step 1; the CI runner and the languages in the repo.</input>
+      <action>For each characteristic choose the tool that measures it and write the exact command into `command` (`lizard -C 10 -w src/`, `k6 run perf/checkout.js`, `npx depcruise --config .dependency-cruiser.js src`). Where no tool measures it, set `mode: manual` and a `review_cadence`.</action>
+      <output>Every function has `tool` and either `command` or `review_cadence`.</output>
+      <decision-gate>If manual entries exceed one fifth of the suite, automate or delete until they do not (r-ff-executable-in-ci).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="measure-baselines">
+      <input>The commands from step 3 run once against the current main branch.</input>
+      <action>Record the measured value and date as `baseline.value` / `baseline.measured_at` for every function.</action>
+      <output>Dated baseline per function.</output>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="set-thresholds">
+      <input>Baselines from step 4; the target values the architecture requires.</input>
+      <action>Write `threshold.operator` / `threshold.value`. Where the baseline already satisfies the threshold set `threshold_mode: absolute`; where it does not, set `threshold_mode: ratchet` (fail only when worse than baseline) and state `absolute_from` — the date or condition on which the absolute limit takes over.</action>
+      <output>Threshold and mode per function.</output>
+      <decision-gate>An absolute threshold the baseline fails today is rejected: it would be red on its first run and disabled within a week (r-ff-threshold-with-baseline-ratchet, fm-threshold-fails-today).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="classify-and-wire-ci">
+      <input>Runtime of each command measured in step 4; the pull-request pipeline definition.</input>
+      <action>Set `scope` (atomic | holistic), `trigger` (triggered | continual) and `consequence` (blocking | informational). Wire atomic blocking functions into the pull-request job; wire holistic functions (k6, chaos, full dependency scans) into a scheduled or post-merge job.</action>
+      <output>CI configuration with every function running; spec entries classified.</output>
+      <decision-gate>A holistic function marked `triggered` is rejected (r-ff-blocking-vs-informational, fm-holistic-in-pr-path).</decision-gate>
     </step>
+
+    <step n="7" name="wire-results-store">
+      <input>The CI job outputs; the metrics backend or a committed CSV location.</input>
+      <action>Emit each run's measured value keyed by function id and commit to `results_store.location`; set `retention_days` to at least the review horizon (90 for quarterly, 30 for monthly).</action>
+      <output>`results_store` block; a time series with at least one point per function.</output>
+      <decision-gate>A pipeline that records only pass/fail is not done (r-ff-results-trended).</decision-gate>
+    </step>
+
+    <step n="8" name="assign-owners-and-review">
+      <input>Org directory; the team calendar.</input>
+      <action>Set `owner` (`role:handle`) on the suite and on every function; set `review.cadence`, `last_reviewed_at`, `next_review_at`. Fill the spec into `templates/skeleton.md.j2`, validate the JSON with `scripts/validate-evolutionary-architecture-fitness-functions.py`, commit. At each review read the trend per function; any function red or disabled for two consecutive reviews gets `action: fix | rebaseline | delete`.</action>
+      <output>Committed suite spec; review entry on the owner's calendar.</output>
+      <decision-gate>Promoting a function to blocking or lowering a threshold is approved by the named owner before it lands in CI (03 human checkpoint).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates against the schema in `content/02-output-contract.xml` and the validator reports no cross-field violation.</item>
+      <item>Every function has run at least once in CI and its value appears in the results series.</item>
+      <item>The structural function is green or in ratchet mode with a stated `absolute_from`.</item>
+    </list>
   </section>
 </text>

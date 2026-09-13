@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- The codebase has a declared layering or module boundary (C4 view, package layout, ADR) that a structural test can enforce.
+- A CI pipeline exists that can run a test or linter on every pull request and on a schedule.
+- At least one architectural characteristic can be measured by a tool with a number and a unit (ArchUnit, NetArchTest, dependency-cruiser, import-linter, lizard, k6).
+- One person per function will own it as `role:handle` and the team will review the suite monthly or quarterly.
+- A metrics backend, CI artifact store or committed CSV can keep a per-run value series for at least the review horizon.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- The system is a prototype or throwaway with no architecture to protect; write the first ADR instead.
+- No CI runs on pull requests, so every function would be `manual` and the one-fifth cap cannot be met.
+- The characteristics on the table are only -ilities with no agreed metric; hold a quality-attribute workshop first.
+- Every measurable check is already a blocking CI gate with a trended series and an owner; run the cadence review, not this methodology.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/evolutionary-architecture-fitness-functions/` |
+| Intended dependency graph (layers and allowed edges) | C4 component view, package layout or ADR | architecture docs / repo |
+| Candidate characteristics with metric and unit | list of noun phrases with a number and unit | architecture review, last two incident reviews |
+| One baseline measurement per function | command output on current main, dated | the tool run once locally or in CI |
+| CI pipeline definition | `.github/workflows/*.yml`, `.gitlab-ci.yml` or equivalent | repo |
+| Results store location | metrics series name, artifact path or CSV path | SRE / platform team |
+| Owner per function | `role:handle` | org directory |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 7 rules: one attribute one metric, executable in CI, baseline ratchet, blocking vs informational, structural dependency guard, trended results, owner and cadence | ~1800 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the suite spec: per-function characteristic, metric, unit, tool, command, threshold, dated baseline, ratchet mode, blocking/triggered, owner; suite-level dependency graph, results store, review; valid and invalid suites; 8 forbidden patterns | ~3450 |
 | `content/03-failure-modes.xml` | essential | 7 antipatterns with detector + repair | ~900 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 8 steps: name characteristics, write the dependency graph and structural function, pick tool and command, measure baselines, set thresholds (absolute or ratchet), classify and wire CI, wire the results store, assign owners and review | ~1600 |
+| `content/05-examples.xml` | recommended | Complete billing-service suite (ArchUnit layer guard, lizard complexity ratchet, nightly k6 latency) with a note per non-obvious value, plus a rejected manual quality-score entry and what the validator prints | ~1450 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

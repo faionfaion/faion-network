@@ -1,45 +1,119 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="LLM-Friendly Architecture (Software Developer) — Worked Example" version="1.1.0" est_tokens="600" depth="recommended">
-  <summary>One end-to-end worked example showing `llm-friendly-architecture` applied from trigger to committed artefact.</summary>
+<text id="05-examples" title="LLM-Friendly Architecture (Software Developer) — Worked Example" version="2.0.0" est_tokens="1900" depth="recommended">
+  <summary>One complete audit record for a React storefront edited daily by Claude Code — histogram, three oversized files with named splits, one depth violation, one barrel, one namespace import, naming score with offenders, inline data, CLAUDE.md at the same limit — with a note on each non-obvious value, then the audit as it is usually written (a 400-line limit, "split later", a score with no names) and what the validator prints.</summary>
 
-  <section title="Worked example">
-    <example type="good" title="Quarterly review of a billing-service refactor">
-      <note>Trigger fired; owner assigned; typed inputs gathered; decision authored; evidence anchored; review scheduled.</note>
+  <section title="Scenario">
+    <p>acme/storefront, TypeScript and React, edited by Claude Code on most pull requests. Edits to `CheckoutPage.tsx` keep breaking the address form because the model never sees the bottom of the 1,412-line file. swe:alice runs `templates/llm-arch-audit.sh` on `a1b2c3d4e5f` with the default limit of 250.</p>
+  </section>
+
+  <section title="Resulting record">
+    <example type="good" title="storefront first audit">
       <code lang="json"><![CDATA[
 {
-  "trigger": {
-    "kind":  "quarterly-architecture-review",
-    "url":   "https://github.com/acme/billing/issues/4421"
+  "repo": {"url": "https://github.com/acme/storefront", "commit_sha": "a1b2c3d4e5f", "source_root": "src"},
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "line_limit", "value": 250},
+    {"name": "namespace_import_allowlist", "value": ["react", "three"]}
+  ],
+  "audit": {
+    "command": "bash scripts/llm-arch-audit.sh src 250",
+    "file_size": {
+      "histogram": [
+        {"bucket": "0-100", "files": 212},
+        {"bucket": "101-250", "files": 61},
+        {"bucket": "251-500", "files": 4},
+        {"bucket": "501+", "files": 1}
+      ],
+      "oversized": [
+        {"path": "src/features/checkout/CheckoutPage.tsx", "lines": 1412, "proposed_split": "menu and copy arrays to src/data/checkout.ts; useCheckoutTotals to src/hooks/use-checkout-totals.ts; AddressForm to src/features/checkout/AddressForm.tsx"},
+        {"path": "src/components/ProductCard.tsx", "lines": 388, "proposed_split": "price formatting to src/utils/format-price.ts; badges to src/components/ProductBadges.tsx"},
+        {"path": "src/utils/helpers.ts", "lines": 302, "proposed_split": "one function per file under src/utils/: format-date.ts, slugify.ts, debounce.ts"}
+      ]
+    },
+    "directory_depth": {
+      "limit": 3,
+      "feature_limit": 2,
+      "violations": [{"path": "src/features/billing/invoices/pdf/renderers/table.ts", "depth": 5}]
+    },
+    "barrels": ["src/components/index.ts"],
+    "wildcard_imports": {
+      "lint": "eslint import/no-namespace",
+      "hits": [{"path": "src/features/search/SearchPanel.tsx", "line": 3}]
+    },
+    "naming": {
+      "rubric": [
+        "file name equals its primary export",
+        "components PascalCase, hooks use-*.ts, utils kebab-case",
+        "no catch-all names: utils2, misc, helpers, common, stuff",
+        "no unexplained abbreviations"
+      ],
+      "score": 84,
+      "offenders": [
+        {"path": "src/utils/helpers.ts", "reason": "catch-all name", "proposed_name": "src/utils/format-date.ts"},
+        {"path": "src/components/misc/Btn.tsx", "reason": "catch-all directory and abbreviation", "proposed_name": "src/components/Button.tsx"}
+      ]
+    },
+    "inline_data": [{"path": "src/features/checkout/CheckoutPage.tsx", "lines": 214}],
+    "claude_md": {"present": true, "line_limit": 250},
+    "ci_wired": false
   },
-  "owner":   "arch:alice",
-  "inputs":  [
-    {"name": "scope",         "value": "billing-service"},
-    {"name": "window_days",   "value": 90},
-    {"name": "prs_in_window", "value": 142}
-  ],
-  "decision": "Adopt variant A behind feature flag; deprecate variant B by EOQ.",
+  "decision": "Delete src/components/index.ts and rewrite its 14 importers; split CheckoutPage.tsx into src/data/checkout.ts, use-checkout-totals.ts and AddressForm.tsx; split ProductCard.tsx and helpers.ts as proposed; flatten billing/invoices/pdf/renderers into src/features/billing-invoice-pdf/; replace the namespace import in SearchPanel.tsx; rename misc/Btn.tsx to Button.tsx; then wire the audit into CI.",
   "evidence": [
-    "https://github.com/acme/billing/pull/9981",
-    "https://sentry.io/acme/issues/12345/",
-    "https://acme.grafana.net/dashboard/billing-p95"
+    "bash scripts/llm-arch-audit.sh src 250",
+    "a1b2c3d4e5f",
+    "https://github.com/acme/storefront/pull/2210"
   ],
-  "review": {
-    "cadence":         "quarterly",
-    "next_review_at":  "2026-08-22"
-  }
+  "review": {"cadence": "quarterly", "next_review_at": "2026-12-12"}
 }
 ]]></code>
+      <note>`line_limit` is 250, the script default, so this audit is comparable with the next one (r-file-size-histogram-with-threshold). `oversized[]` is sorted by lines and every `proposed_split` names target files, which is what separates a split from a `Foo2.tsx` (fm-01). The single `directory_depth` violation is 5 levels below `src` and the decision flattens it into one kebab-case feature folder (r-directory-depth-cap). `barrels[]` and the namespace import in `SearchPanel.tsx` come first in the decision because they hide symbol locations for every other finding (r-no-barrel-reexports, r-explicit-imports-no-wildcards); `react` and `three` are on the allow-list so their namespace imports are not hits. `naming.score` 84 is accompanied by the two offenders, each with a new name (r-naming-clarity-score-lists-offenders). `inline_data[]` shows the 214-line menu array inside `CheckoutPage.tsx`, the cheapest 214 lines to remove (r-static-data-extracted-from-components). `claude_md.line_limit` equals the input, so the agent will read the same number the audit enforces (r-claude-md-matches-audit). `evidence[]` carries the command and the SHA; `ci_wired` is false because the baseline is not yet clean, and the decision ends with wiring CI (r-audit-is-reproducible-command).</note>
     </example>
   </section>
 
-  <section title="Walk-through">
-    <list>
-      <item>Step 1 — trigger captured from the recurring quarterly-review calendar entry; URL points to the GitHub issue.</item>
-      <item>Step 2 — owner resolved to `arch:alice` from the RACI; alice on-call this quarter.</item>
-      <item>Step 3 — inputs typed: scope is a service slug, window_days is int, prs_in_window is int.</item>
-      <item>Step 4 — decision is a single declarative sentence with a deadline.</item>
-      <item>Step 5 — evidence anchors point at the canonical PR, the perf dashboard, and the related Sentry issue.</item>
-      <item>Step 6 — review scheduled three months out; entry on alice's calendar.</item>
-    </list>
+  <section title="Rejected record">
+    <example type="bad" title="the audit as it is usually written">
+      <code lang="json"><![CDATA[
+{
+  "repo": {"url": "https://github.com/acme/storefront", "commit_sha": "a1b2c3d4e5f", "source_root": "src"},
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "line_limit", "value": 400}
+  ],
+  "audit": {
+    "command": "bash scripts/llm-arch-audit.sh src 400",
+    "file_size": {
+      "histogram": [
+        {"bucket": "0-400", "files": 274},
+        {"bucket": "401+", "files": 4}
+      ],
+      "oversized": [
+        {"path": "src/features/checkout/CheckoutPage.tsx", "lines": 1412, "proposed_split": "split later"}
+      ]
+    },
+    "directory_depth": {"limit": 3, "feature_limit": 2, "violations": []},
+    "barrels": ["src/components/index.ts"],
+    "wildcard_imports": {"lint": "eslint import/no-namespace", "hits": []},
+    "naming": {
+      "rubric": [
+        "file name equals its primary export",
+        "components PascalCase, hooks use-*.ts, utils kebab-case",
+        "no catch-all names: utils2, misc, helpers, common, stuff",
+        "no unexplained abbreviations"
+      ],
+      "score": 71,
+      "offenders": []
+    },
+    "inline_data": [],
+    "claude_md": {"present": true, "line_limit": 250},
+    "ci_wired": false
+  },
+  "decision": "Reduce file sizes across the codebase and improve naming over the next quarter.",
+  "evidence": ["https://github.com/acme/storefront/pull/2210"],
+  "review": {"cadence": "quarterly", "next_review_at": "2026-12-12"}
+}
+]]></code>
+      <note>What the validator prints: `line_limit` 400 is above the maximum of 300 (r-file-size-histogram-with-threshold); `proposed_split` "split later" is too short and names no file (fm-01); `naming.score` 71 with empty `offenders[]` (r-naming-clarity-score-lists-offenders); `decision` names no file (r-file-size-histogram-with-threshold); `evidence[]` has one entry and neither an audit command nor a SHA (r-audit-is-reproducible-command); `claude_md.line_limit` 250 does not equal the input 400 (r-claude-md-matches-audit, cross-field). What the reviewer sees: a barrel listed but not deleted, so the next agent session opens `index.ts` and finds nothing (fm-02).</note>
+    </example>
   </section>
 </text>

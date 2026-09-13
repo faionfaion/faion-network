@@ -1,121 +1,334 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="LLM-Friendly Architecture (Software Developer) — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `llm-friendly-architecture` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="LLM-Friendly Architecture (Software Developer) — Output Contract" version="2.0.0" est_tokens="4150" depth="essential">
+  <summary>JSON Schema (draft-07) for the LLM-friendly architecture audit record: the repo and commit audited, the `line_limit` input (at most 300, default 250), an `audit` block with the file-size histogram and ranked oversized files each with a proposed split, directory-depth violations, barrel files, wildcard-import lint hits, the naming rubric with score and offenders, components carrying inline data, the CLAUDE.md line limit, and CI wiring; a decision that names files; evidence carrying the audit command and SHA. Validator in scripts/validate-llm-friendly-architecture.py enforces it, including the CLAUDE.md / line_limit match.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="repo" type="object" required="true">`url`, `commit_sha` (7 to 40 hex), `source_root` (r-audit-is-reproducible-command)</field>
+      <field name="owner" type="string" required="true">the developer accountable for the split and rename work, `role:handle`</field>
+      <field name="inputs" type="list" required="true">must contain `line_limit` (integer, 100 to 300; default 250); may contain `namespace_import_allowlist` (array of module names) (r-file-size-histogram-with-threshold, r-explicit-imports-no-wildcards)</field>
+      <field name="audit" type="object" required="true">`command`, `file_size` (histogram + `oversized[]` with `path`, `lines`, `proposed_split`), `directory_depth.violations[]` (`path`, `depth` at least 4), `barrels[]`, `wildcard_imports` (`lint`, `hits[]`), `naming` (`rubric[]`, `score`, `offenders[]` with `path`, `reason`, `proposed_name`), `inline_data[]` (`path`, `lines`), `claude_md` (`present`, `line_limit`), `ci_wired` (all eight rules)</field>
+      <field name="decision" type="string" required="true">names the specific files to split, flatten, delete or rename, or commits `CLAUDE.md` and wires CI when the baseline is clean; never "reduce file sizes" (r-file-size-histogram-with-threshold)</field>
+      <field name="evidence" type="list" required="true">at least two entries: the exact audit command run and the commit SHA it ran against; PR and CI-run URLs may follow (r-audit-is-reproducible-command)</field>
+      <field name="review" type="object" required="true">`cadence` (monthly | quarterly), `next_review_at`</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`oversized[]` entries that share a name stem with a `2` / `-part` suffix, or a `proposed_split` of "split later" — fm-01</pattern>
+      <pattern id="f2">`barrels[]` non-empty while `decision` does not name them for deletion — fm-02</pattern>
+      <pattern id="f3">any `directory_depth.violations[].depth` below 4, or a violation left out of the decision — fm-03</pattern>
+      <pattern id="f4">`naming.score` below 100 with `offenders[]` empty, or `rubric[]` empty — fm-04</pattern>
+      <pattern id="f5">`claude_md.line_limit` different from the `line_limit` input, or `claude_md.present: false` — fm-05</pattern>
+      <pattern id="f6">`evidence[]` with no audit command or no commit SHA; `audit.command` not naming an audit script — fm-06</pattern>
+      <pattern id="f7">`line_limit` above 300, or `oversized[]` containing a file at or below `line_limit` — r-file-size-histogram-with-threshold</pattern>
+      <pattern id="f8">a clean audit (no oversized, depth, barrel, wildcard, naming or inline-data findings) with `ci_wired: false` — r-audit-is-reproducible-command</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://llm-friendly-architecture/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/llm-friendly-architecture.json",
+  "title": "LLM-friendly architecture audit record",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": ["repo", "owner", "inputs", "audit", "decision", "evidence", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "path": {"type": "string", "minLength": 3, "pattern": "^[^\\s]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "repo": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["url", "commit_sha", "source_root"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "url": {"type": "string", "pattern": "^(https://|git@)"},
+        "commit_sha": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+        "source_root": {"$ref": "#/definitions/path"}
       }
     },
     "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
     "inputs": {
       "type": "array",
       "minItems": 1,
+      "contains": {"properties": {"name": {"const": "line_limit"}}},
       "items": {
         "type": "object",
         "required": ["name", "value"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
+          "name": {"type": "string", "enum": ["line_limit", "namespace_import_allowlist"]},
           "value": {}
-        }
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "line_limit"}}},
+           "then": {"properties": {"value": {"type": "integer", "minimum": 100, "maximum": 300, "default": 250}}}},
+          {"if": {"properties": {"name": {"const": "namespace_import_allowlist"}}},
+           "then": {"properties": {"value": {"type": "array", "items": {"type": "string", "minLength": 1}}}}}
+        ]
       }
     },
-    "decision": {"type": "string", "minLength": 4},
+    "audit": {
+      "type": "object",
+      "required": ["command", "file_size", "directory_depth", "barrels", "wildcard_imports", "naming", "inline_data", "claude_md", "ci_wired"],
+      "additionalProperties": false,
+      "properties": {
+        "command": {"type": "string", "minLength": 8, "pattern": "audit"},
+        "file_size": {
+          "type": "object",
+          "required": ["histogram", "oversized"],
+          "additionalProperties": false,
+          "properties": {
+            "histogram": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "required": ["bucket", "files"],
+                "additionalProperties": false,
+                "properties": {
+                  "bucket": {"type": "string", "pattern": "^[0-9]+(-[0-9]+|\\+)$"},
+                  "files": {"type": "integer", "minimum": 0}
+                }
+              }
+            },
+            "oversized": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "lines", "proposed_split"],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {"$ref": "#/definitions/path"},
+                  "lines": {"type": "integer", "minimum": 101},
+                  "proposed_split": {"type": "string", "minLength": 12, "pattern": "/"}
+                }
+              }
+            }
+          }
+        },
+        "directory_depth": {
+          "type": "object",
+          "required": ["limit", "feature_limit", "violations"],
+          "additionalProperties": false,
+          "properties": {
+            "limit": {"type": "integer", "const": 3},
+            "feature_limit": {"type": "integer", "const": 2},
+            "violations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "depth"],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {"$ref": "#/definitions/path"},
+                  "depth": {"type": "integer", "minimum": 4}
+                }
+              }
+            }
+          }
+        },
+        "barrels": {"type": "array", "items": {"$ref": "#/definitions/path"}},
+        "wildcard_imports": {
+          "type": "object",
+          "required": ["lint", "hits"],
+          "additionalProperties": false,
+          "properties": {
+            "lint": {"type": "string", "enum": ["ruff F403/F405", "eslint import/no-namespace", "eslint no-restricted-syntax", "biome noNamespaceImport"]},
+            "hits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "line"],
+                "additionalProperties": false,
+                "properties": {"path": {"$ref": "#/definitions/path"}, "line": {"type": "integer", "minimum": 1}}
+              }
+            }
+          }
+        },
+        "naming": {
+          "type": "object",
+          "required": ["rubric", "score", "offenders"],
+          "additionalProperties": false,
+          "properties": {
+            "rubric": {"type": "array", "minItems": 4, "items": {"type": "string", "minLength": 8}},
+            "score": {"type": "integer", "minimum": 0, "maximum": 100},
+            "offenders": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["path", "reason", "proposed_name"],
+                "additionalProperties": false,
+                "properties": {
+                  "path": {"$ref": "#/definitions/path"},
+                  "reason": {"type": "string", "minLength": 8},
+                  "proposed_name": {"$ref": "#/definitions/path"}
+                }
+              }
+            }
+          },
+          "if": {"properties": {"score": {"maximum": 99}}},
+          "then": {"properties": {"offenders": {"minItems": 1}}}
+        },
+        "inline_data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "lines"],
+            "additionalProperties": false,
+            "properties": {"path": {"$ref": "#/definitions/path"}, "lines": {"type": "integer", "minimum": 1}}
+          }
+        },
+        "claude_md": {
+          "type": "object",
+          "required": ["present", "line_limit"],
+          "additionalProperties": false,
+          "properties": {
+            "present": {"type": "boolean", "const": true},
+            "line_limit": {"type": "integer", "minimum": 100, "maximum": 300}
+          }
+        },
+        "ci_wired": {"type": "boolean"}
+      }
+    },
+    "decision": {"type": "string", "minLength": 20, "pattern": "(\\.(tsx?|jsx?|py|md)\\b|/)"},
     "evidence": {
       "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+      "minItems": 2,
+      "items": {"type": "string", "minLength": 7},
+      "allOf": [
+        {"contains": {"pattern": "audit"}},
+        {"contains": {"pattern": "\\b[0-9a-f]{7,40}\\b"}}
+      ]
     },
     "review": {
       "type": "object",
       "required": ["cadence", "next_review_at"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "cadence": {"type": "string", "enum": ["monthly", "quarterly"]},
+        "next_review_at": {"$ref": "#/definitions/date"}
       }
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "repo": {"url": "https://github.com/acme/storefront", "commit_sha": "a1b2c3d4e5f", "source_root": "src"},
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "line_limit", "value": 250},
+    {"name": "namespace_import_allowlist", "value": ["react", "three"]}
+  ],
+  "audit": {
+    "command": "bash scripts/llm-arch-audit.sh src 250",
+    "file_size": {
+      "histogram": [
+        {"bucket": "0-100", "files": 212},
+        {"bucket": "101-250", "files": 61},
+        {"bucket": "251-500", "files": 4},
+        {"bucket": "501+", "files": 1}
+      ],
+      "oversized": [
+        {"path": "src/features/checkout/CheckoutPage.tsx", "lines": 1412, "proposed_split": "menu and copy arrays to src/data/checkout.ts; useCheckoutTotals to src/hooks/use-checkout-totals.ts; AddressForm to src/features/checkout/AddressForm.tsx"},
+        {"path": "src/components/ProductCard.tsx", "lines": 388, "proposed_split": "price formatting to src/utils/format-price.ts; badges to src/components/ProductBadges.tsx"},
+        {"path": "src/utils/helpers.ts", "lines": 302, "proposed_split": "one function per file under src/utils/: format-date.ts, slugify.ts, debounce.ts"}
+      ]
+    },
+    "directory_depth": {
+      "limit": 3,
+      "feature_limit": 2,
+      "violations": [{"path": "src/features/billing/invoices/pdf/renderers/table.ts", "depth": 5}]
+    },
+    "barrels": ["src/components/index.ts"],
+    "wildcard_imports": {
+      "lint": "eslint import/no-namespace",
+      "hits": [{"path": "src/features/search/SearchPanel.tsx", "line": 3}]
+    },
+    "naming": {
+      "rubric": [
+        "file name equals its primary export",
+        "components PascalCase, hooks use-*.ts, utils kebab-case",
+        "no catch-all names: utils2, misc, helpers, common, stuff",
+        "no unexplained abbreviations"
+      ],
+      "score": 84,
+      "offenders": [
+        {"path": "src/utils/helpers.ts", "reason": "catch-all name", "proposed_name": "src/utils/format-date.ts"},
+        {"path": "src/components/misc/Btn.tsx", "reason": "catch-all directory and abbreviation", "proposed_name": "src/components/Button.tsx"}
+      ]
+    },
+    "inline_data": [{"path": "src/features/checkout/CheckoutPage.tsx", "lines": 214}],
+    "claude_md": {"present": true, "line_limit": 250},
+    "ci_wired": false
   },
-  "additionalProperties": false
+  "decision": "Delete src/components/index.ts and rewrite its 14 importers; split CheckoutPage.tsx into src/data/checkout.ts, use-checkout-totals.ts and AddressForm.tsx; split ProductCard.tsx and helpers.ts as proposed; flatten billing/invoices/pdf/renderers into src/features/billing-invoice-pdf/; replace the namespace import in SearchPanel.tsx; rename misc/Btn.tsx to Button.tsx; then wire the audit into CI.",
+  "evidence": [
+    "bash scripts/llm-arch-audit.sh src 250",
+    "a1b2c3d4e5f",
+    "https://github.com/acme/storefront/pull/2210"
+  ],
+  "review": {"cadence": "quarterly", "next_review_at": "2026-12-12"}
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "repo": {"url": "https://github.com/acme/storefront", "commit_sha": "a1b2c3d4e5f", "source_root": "src"},
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "line_limit", "value": 400}
+  ],
+  "audit": {
+    "command": "bash scripts/llm-arch-audit.sh src 400",
+    "file_size": {
+      "histogram": [
+        {"bucket": "0-400", "files": 274},
+        {"bucket": "401+", "files": 4}
+      ],
+      "oversized": [
+        {"path": "src/features/checkout/CheckoutPage.tsx", "lines": 1412, "proposed_split": "split later"}
+      ]
+    },
+    "directory_depth": {"limit": 3, "feature_limit": 2, "violations": []},
+    "barrels": ["src/components/index.ts"],
+    "wildcard_imports": {"lint": "eslint import/no-namespace", "hits": []},
+    "naming": {
+      "rubric": [
+        "file name equals its primary export",
+        "components PascalCase, hooks use-*.ts, utils kebab-case",
+        "no catch-all names: utils2, misc, helpers, common, stuff",
+        "no unexplained abbreviations"
+      ],
+      "score": 71,
+      "offenders": []
+    },
+    "inline_data": [],
+    "claude_md": {"present": true, "line_limit": 250},
+    "ci_wired": false
+  },
+  "decision": "Reduce file sizes across the codebase and improve naming over the next quarter.",
+  "evidence": ["https://github.com/acme/storefront/pull/2210"],
+  "review": {"cadence": "quarterly", "next_review_at": "2026-12-12"}
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>`line_limit` is between 100 and 300, every `oversized[]` file is above it, sorted by size, each with a split that names target files (r-file-size-histogram-with-threshold).</item>
+      <item>`directory_depth.violations[]` lists every path deeper than 3 levels with its depth (r-directory-depth-cap).</item>
+      <item>`barrels[]` lists every `export * from` / re-export-only `index.ts`, and the decision deletes them (r-no-barrel-reexports).</item>
+      <item>`wildcard_imports.lint` names the rule run and `hits[]` lists every star or namespace import outside the allow-list (r-explicit-imports-no-wildcards).</item>
+      <item>`naming.rubric[]` is stated and `offenders[]` is non-empty whenever `score` is below 100 (r-naming-clarity-score-lists-offenders).</item>
+      <item>`inline_data[]` lists components carrying literal data blocks and the decision moves them to `src/data/` (r-static-data-extracted-from-components).</item>
+      <item>`claude_md.present` is true and `claude_md.line_limit` equals the `line_limit` input (r-claude-md-matches-audit).</item>
+      <item>`audit.command` and `evidence[]` carry the exact command and the commit SHA; `ci_wired` is true once the baseline is clean (r-audit-is-reproducible-command).</item>
     </list>
   </section>
 </text>

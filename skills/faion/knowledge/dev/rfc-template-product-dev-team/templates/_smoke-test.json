@@ -1,28 +1,172 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for rfc-template-product-dev-team: _smoke-test.json",
+    "purpose": "Template fixture for rfc-template-product-dev-team: _smoke-test.json \u2014 accepted RFC with outcome that passes the validator",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
+  "rfc": {
+    "id": "RFC-118",
+    "title": "Checkout p95 latency under 1.2 s",
+    "author": "swe:alice",
+    "shared_on": "2026-05-29"
   },
   "owner": "swe:alice",
   "inputs": [
     {
-      "name": "scope",
-      "value": "billing"
+      "name": "problem",
+      "value": {
+        "metric": "checkout p95 latency (Grafana checkout-overview, 7-day window)",
+        "current_value": "2.4 s",
+        "target_value": "1.2 s",
+        "by_date": "2026-07-15",
+        "statement": "Checkout p95 is 2.4 s over the last 7 days against a 1.2 s target; 18 percent of mobile sessions abandon on the payment step, and the abandonment correlates with latency above 2 s."
+      }
+    },
+    {
+      "name": "options",
+      "value": [
+        {
+          "name": "precompute cart totals into the orders table (checkout_v2 behind a flag)",
+          "chosen": true
+        },
+        {
+          "name": "cache the pricing service responses in Redis for 60 s",
+          "chosen": false,
+          "rejection_reason": "cuts p95 to about 1.8 s in the spike test, short of the 1.2 s target; stale prices during promotions"
+        },
+        {
+          "name": "do nothing / keep current behaviour",
+          "chosen": false,
+          "rejection_reason": "abandonment cost estimated at 40k per month at current traffic"
+        }
+      ]
+    },
+    {
+      "name": "blast_radius",
+      "value": {
+        "items": [
+          {
+            "kind": "service",
+            "name": "checkout-service",
+            "owner": "swe:alice"
+          },
+          {
+            "kind": "data-store",
+            "name": "orders table (shared with billing-job)",
+            "owner": "swe:olena"
+          },
+          {
+            "kind": "api",
+            "name": "mobile checkout API v3",
+            "owner": "mobile:dmytro",
+            "count": "18 percent of traffic, 2 API consumers"
+          },
+          {
+            "kind": "scheduled-job",
+            "name": "billing-job nightly reconciliation",
+            "owner": "swe:olena"
+          },
+          {
+            "kind": "user-segment",
+            "name": "mobile checkout users",
+            "owner": "product:maria",
+            "count": "18 percent of sessions"
+          }
+        ],
+        "schema_change": true,
+        "public_api_change": false,
+        "data_backfill": true,
+        "third_party_change": false
+      }
+    },
+    {
+      "name": "rollback",
+      "value": {
+        "mechanism": "feature-flag-off",
+        "execute_minutes": 1,
+        "executor": "oncall:checkout",
+        "staging_run": {
+          "exercised": true,
+          "url": "https://ci.example.com/runs/88412"
+        },
+        "points_of_no_return": [
+          {
+            "step": "backfill of orders.total_cents for historical rows",
+            "pre_check": "row count of orders with NULL total_cents equals the count from the dry run within 0.1 percent"
+          }
+        ]
+      }
+    },
+    {
+      "name": "milestones",
+      "value": [
+        {
+          "date": "2026-06-12",
+          "increment": "orders.total_cents column added and backfilled in staging; query proves parity with computed totals",
+          "ship": false
+        },
+        {
+          "date": "2026-06-26",
+          "increment": "checkout_v2 flag on for internal users; p95 visible on the dashboard",
+          "ship": false
+        },
+        {
+          "date": "2026-07-03",
+          "increment": "flag on for 100 percent of mobile traffic; abandonment panel updated",
+          "ship": true
+        }
+      ]
+    },
+    {
+      "name": "status",
+      "value": "accepted"
+    },
+    {
+      "name": "decided_on",
+      "value": "2026-06-05"
+    },
+    {
+      "name": "reviewers",
+      "value": [
+        {
+          "handle": "swe:olena",
+          "commented": true
+        },
+        {
+          "handle": "mobile:dmytro",
+          "commented": true
+        },
+        {
+          "handle": "product:maria",
+          "commented": false
+        }
+      ]
+    },
+    {
+      "name": "comment_deadline",
+      "value": "2026-06-04"
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
+  "decision": "Precompute cart totals into the orders table behind the checkout_v2 flag and ship to mobile by 2026-07-03.",
+  "supersession": {
+    "superseded_by": null,
+    "supersedes": null
+  },
   "evidence": [
-    "https://example.com/pr/1"
+    "https://grafana.example.com/d/checkout-overview?from=now-7d&to=now",
+    "https://ci.example.com/runs/88412",
+    "https://github.com/acme/checkout/pull/2210"
   ],
   "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
+    "next_review_at": "2026-08-07",
+    "outcome": {
+      "remeasured_value": "1.1 s",
+      "same_method": true,
+      "result": "met",
+      "url": "https://grafana.example.com/d/checkout-overview?from=1785024000000&to=1785628800000",
+      "reviewed_on": "2026-08-06"
+    }
   }
 }

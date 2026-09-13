@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="RFC Template for Product Dev Team — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `rfc-template-product-dev-team`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="RFC Template for Product Dev Team — Procedure" version="2.0.0" est_tokens="1650" depth="recommended">
+  <summary>Nine steps from a measured problem to an outcome-reviewed RFC: state the metric, current, target and date; list two or more options with rejection reasons; enumerate the blast radius with owners; name and test the rollback; date the milestones inside six weeks; name reviewers from the blast radius with a deadline; decide and set status; supersede rather than edit; re-measure the metric one cycle after ship.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="state-the-problem-as-a-metric">
+      <input>The dashboard or query that shows the current state; the product goal that sets the target and date.</input>
+      <action>Fill `rfc` (`id`, `title`, `author`, `shared_on`) and the `problem` input: `metric` with its source, `current_value`, `target_value`, `by_date`, and a `statement` that names no solution. Add the dashboard URL to `evidence[]`.</action>
+      <output>`rfc` block and `problem` input.</output>
+      <decision-gate>A statement that names a technology ("migrate to", "adopt") or has no number is rewritten before anything else (r-problem-states-metric-and-target).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="list-options-with-rejection-reasons">
+      <input>Candidate approaches, including "do nothing / keep current behaviour".</input>
+      <action>Fill `options` with at least two entries, at least one a real alternative implementation; mark exactly one `chosen: true` and give every other a `rejection_reason` tied to the metric, cost or risk.</action>
+      <output>`options` input.</output>
+      <decision-gate>One option means this is a ticket, not an RFC (r-two-options-with-rejection-reasons).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="enumerate-blast-radius">
+      <input>The service map; the PR diff or design; traffic and tenant counts.</input>
+      <action>Fill `blast_radius.items[]` with every service, data store, API, scheduled job and user segment touched, each with its `owner` and a `count` for APIs and segments; set `schema_change`, `public_api_change`, `data_backfill`, `third_party_change`.</action>
+      <output>`blast_radius` input.</output>
+      <decision-gate>"Low" or "none" without the list is rejected (r-blast-radius-enumerated).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="name-and-test-rollback">
+      <input>The deployment mechanism; a staging environment.</input>
+      <action>Fill `rollback.mechanism`, `execute_minutes`, `executor`; exercise the rollback in staging and record `staging_run.url` (or `exercised: false` with a reason); list every irreversible step in `points_of_no_return[]` with the check that runs immediately before it.</action>
+      <output>`rollback` input; staging run URL in `evidence[]`.</output>
+      <decision-gate>`data_backfill` or `schema_change` true with no point of no return is rejected (r-rollback-named-timed-and-tested).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="date-milestones-inside-six-weeks">
+      <input>The chosen option broken into demonstrable increments.</input>
+      <action>Fill `milestones[]` with at least two dated increments a reviewer can click, query or observe; the last carries `ship: true`. Keep first-to-last within 42 days.</action>
+      <output>`milestones` input.</output>
+      <decision-gate>A span above 6 weeks splits into separately shippable RFCs; phase names ("design", "implementation") are rejected (r-scope-fits-one-cycle-with-milestones).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="name-reviewers-with-deadline">
+      <input>`blast_radius.items[].owner`; the calendar.</input>
+      <action>Fill `reviewers[]` with every blast-radius owner plus anyone else who must read it, as `role:handle` with `commented: false`; set `comment_deadline` at least 3 working days after `shared_on`; set `status: proposed`. Share the RFC.</action>
+      <output>`reviewers` and `comment_deadline` inputs; RFC shared.</output>
+      <decision-gate>A channel, team alias or "everyone" is not a reviewer (r-reviewers-named-with-comment-deadline).</decision-gate>
     </step>
+
+    <step n="7" name="decide-and-set-status">
+      <input>Reviewer comments; the deadline.</input>
+      <action>Once every reviewer has commented or the deadline has passed, write `decision` as one sentence naming the chosen option, set `status` (`accepted` or `rejected`) and `decided_on`, and mark each reviewer's `commented`. Fill `templates/skeleton.md.j2`; run `scripts/validate-rfc-template-product-dev-team.py --file`; commit.</action>
+      <output>Committed RFC with status and decision.</output>
+      <decision-gate>`accepted` before comments or deadline is approval by silence (r-decision-has-status-and-supersession, fm-approval-by-silence).</decision-gate>
+    </step>
+
+    <step n="8" name="supersede-not-edit">
+      <input>A later change to an accepted decision.</input>
+      <action>Write a new RFC; set the old one to `status: superseded` with `supersession.superseded_by`, set the new one's `supersession.supersedes`, and link both in `evidence[]`. Never edit the accepted decision in place.</action>
+      <output>Linked chain of RFCs.</output>
+      <decision-gate>An accepted RFC whose `decision` text changes in place is rejected (r-decision-has-status-and-supersession).</decision-gate>
+    </step>
+
+    <step n="9" name="outcome-review-remeasures-metric">
+      <input>The metric source from step 1; the ship milestone date.</input>
+      <action>Set `review.next_review_at` no later than 42 days after the ship milestone. At the review, re-measure with the same method and fill `review.outcome`: `remeasured_value`, `same_method: true`, `result` (met | partially-met | not-met), `url`, `reviewed_on`.</action>
+      <output>Outcome recorded.</output>
+      <decision-gate>An outcome that restates delivery ("shipped on time") without the metric fails (r-outcome-review-remeasures-problem-metric).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>RFC validates via `scripts/validate-rfc-template-product-dev-team.py`, including the 42-day span, 3-working-day deadline, blast-radius owner coverage and accepted-only-after-comments checks.</item>
+      <item>Every blast-radius owner appears in `reviewers[]`.</item>
+      <item>`review.outcome` is filled with the re-measured metric within one cycle of ship, or `next_review_at` is still in the future.</item>
+    </list>
   </section>
 </text>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Incident Decision Template — Worked Example" version="1.0.0" est_tokens="1450" depth="recommended">
+  <summary>One complete incident decision record from a 02:14 checkout incident — sidecar disabled in eu-west-1, three options, quantified blast radius, numeric rollback trigger, pinned evidence, reviewed at the postmortem — with a note on each non-obvious value, and the same call written the way it usually is, with what the validator and the postmortem reviewer see.</summary>
+
+  <section title="Scenario">
+    <p>INC-2417, 2026-09-12 02:14 UTC. Checkout 5xx in eu-west-1 climbing since a release of the recommendations sidecar. Incident commander ic:alice decides on the bridge to disable the sidecar; sre:bob will run the command. The scribe types while she talks and commits at 02:15:40.</p>
+  </section>
+
+  <section title="Resulting record">
+    <example type="good" title="INC-2417 sidecar disable">
+      <code lang="json"><![CDATA[
+{
+  "trigger": {
+    "kind": "incident",
+    "url": "https://acme.pagerduty.com/incidents/Q2X4",
+    "incident_id": "INC-2417",
+    "decided_at": "2026-09-12T02:14:00Z",
+    "committed_at": "2026-09-12T02:15:40Z",
+    "bridge_open_at_commit": true
+  },
+  "owner": "ic:alice",
+  "inputs": [
+    {"name": "options_considered", "value": [
+      "disable the recommendations sidecar in eu-west-1 (chosen: isolates the failing dependency, 1 min to apply)",
+      "roll back the full checkout release 41 -> 40 (rejected: 20 min, widens blast radius to all regions)",
+      "do nothing / keep observing for 10 min (rejected: 5xx rate rising 0.4 pp per minute)"
+    ]},
+    {"name": "blast_radius", "value": "38% of checkout requests in eu-west-1 returning 5xx, approx. 1,900 req/min, 3 tenants on dedicated shards unaffected"},
+    {"name": "rollback_trigger", "value": {
+      "metric": "checkout_http_5xx_rate (grafana: checkout-overview)",
+      "threshold": "above 2%",
+      "window": "5 consecutive minutes",
+      "rollback": "helm rollback checkout 41 -n prod-eu-west-1"
+    }},
+    {"name": "executor", "value": "sre:bob"}
+  ],
+  "decision": "Disable the recommendations sidecar in eu-west-1 now.",
+  "evidence": [
+    "https://grafana.acme.internal/d/checkout-overview?from=1789178400000&to=1789180200000&var-region=eu-west-1",
+    "https://acme.pagerduty.com/incidents/Q2X4/alerts/A7",
+    "https://acme.slack.com/archives/C0INC2417/p1789178040001200"
+  ],
+  "review": {
+    "postmortem_date": "2026-09-15",
+    "next_review_at": "2026-09-15",
+    "outcome": {
+      "rollback_trigger_fired": false,
+      "blast_radius_matched": true,
+      "measured_blast_radius": "36% of eu-west-1 checkout requests over 11 minutes",
+      "reviewed_at": "2026-09-15"
+    }
+  }
+}
+]]></code>
+      <note>`committed_at` is 100 seconds after `decided_at` with the bridge open, so no `reconstructed` entry is needed (r-record-before-bridge-closes). `owner` is the commander, and the engineer who ran `helm` is the `executor` entry, so the postmortem can see who decided and who typed (r-owner-is-commander-or-delegate). Three options including the do-nothing line with the reason it was rejected (r-options-considered-min-two). `blast_radius` carries a percentage, a request rate and the tenants that were not affected (r-blast-radius-quantified). `rollback_trigger` is four fields, each of which someone on the bridge could act on without asking (r-rollback-trigger-measurable). The Grafana link carries `from`/`to` in epoch milliseconds, and the Slack permalink shows the moment the decision was announced (r-evidence-is-timestamped-signal). `next_review_at` equals the postmortem date and `outcome` was filled there: the trigger never fired and the measured radius (36%) matched the recorded 38% (r-review-at-postmortem).</note>
+    </example>
+  </section>
+
+  <section title="Rejected record">
+    <example type="bad" title="the same call as it is usually written">
+      <code lang="json"><![CDATA[
+{
+  "trigger": {
+    "kind": "incident",
+    "url": "https://acme.pagerduty.com/incidents/Q2X4",
+    "incident_id": "INC-2417",
+    "decided_at": "2026-09-12T02:14:00Z",
+    "committed_at": "2026-09-12T02:15:40Z",
+    "bridge_open_at_commit": true
+  },
+  "owner": "sre:bob",
+  "inputs": [
+    {"name": "options_considered", "value": [
+      "disable the recommendations sidecar in eu-west-1 (chosen)"
+    ]},
+    {"name": "blast_radius", "value": "some EU users seeing errors on checkout"},
+    {"name": "rollback_trigger", "value": {
+      "metric": "checkout errors",
+      "threshold": "if it gets worse",
+      "window": "a while",
+      "rollback": "roll back"
+    }},
+    {"name": "executor", "value": "sre:bob"}
+  ],
+  "decision": "We should probably consider disabling the sidecar and look into the release.",
+  "evidence": [
+    "https://grafana.acme.internal/d/checkout-overview",
+    "https://docs.acme.internal/runbooks/checkout"
+  ],
+  "review": {
+    "postmortem_date": "2026-09-15",
+    "next_review_at": "2026-12-15"
+  }
+}
+]]></code>
+      <note>What the validator prints: `options_considered` has 1 item and none contains do nothing / keep observing (r-options-considered-min-two); `blast_radius` has no number (r-blast-radius-quantified); `rollback_trigger.threshold` and `window` carry no number (r-rollback-trigger-measurable); `decision` contains "should probably", "consider" and "look into" (r-decision-is-one-imperative-sentence); the Grafana URL has no pinned time range and the second URL is a runbook page (r-evidence-is-timestamped-signal); `next_review_at` is three months after the postmortem (r-review-at-postmortem). What the postmortem reviewer sees: the owner is the executor, so nobody can say who made the call (fm-06), and the dashboard link now shows a healthy system (fm-05).</note>
+    </example>
+  </section>
+</text>

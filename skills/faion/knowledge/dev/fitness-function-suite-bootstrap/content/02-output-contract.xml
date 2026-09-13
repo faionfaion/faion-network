@@ -1,121 +1,333 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Fitness-Function Suite Bootstrap — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `fitness-function-suite-bootstrap` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="Fitness-Function Suite Bootstrap — Output Contract" version="2.0.0" est_tokens="4450" depth="essential">
+  <summary>JSON Schema (draft-07) for the starter suite spec this methodology produces: 5 to 8 functions, at least one in each of performance, deployability, dependency, complexity and contract, each with tool, verbatim command, threshold, dated baseline, rollout mode, run stage, owner, and the category-specific fields the rules demand (endpoint and load profile, CI-derived minutes, dependency graph, baseline file, consumers or released schema); plus a promotion record for any blocking function and the four weekly reviews. Validator in scripts/validate-fitness-function-suite-bootstrap.py enforces it.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="suite_id" type="string" required="true">kebab-case id; prefix `ffsb-`</field>
+      <field name="system" type="string" required="true">the service the suite guards, as named in the service catalogue</field>
+      <field name="owner" type="string" required="true">suite owner as `role:handle` (r-ffsb-owner-and-weekly-review)</field>
+      <field name="dependency_graph" type="object" required="true">`layers[]` and `allowed_edges[]` written in the spec, not only in the tool config (r-ffsb-dependency-direction-tool)</field>
+      <field name="launch_date" type="date" required="true">the day the suite first runs in CI; weekly reviews are dated from it</field>
+      <field name="weekly_reviews" type="list" required="true">exactly four review entries, each with `date`, `reviewed_by`, `red_functions[]`, `actions[]` (r-ffsb-owner-and-weekly-review)</field>
+      <field name="cadence_after_week_four" type="string" required="true">monthly | quarterly — set at the fourth review</field>
+      <field name="functions" type="list" required="true">5 to 8 entries; every category present; per entry `id`, `category`, `tool`, `command`, `threshold` (operator, value, unit), `baseline` (value, measured_at), `mode`, `runs_on`, `owner`, `consecutive_red_reviews`; `promotion` when `mode` is blocking (r-ffsb-five-to-eight-functions, r-ffsb-ratchet-first-then-block)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">fewer than 5 or more than 8 functions — fm-oversized-launch</pattern>
+      <pattern id="f2">any of performance, deployability, dependency, complexity, contract with zero functions — fm-category-gap</pattern>
+      <pattern id="f3">a performance function with `runs_on: pull_request`, or with `runner_kind` other than dedicated-runner / dedicated-environment, or without a versioned `load_profile` — fm-perf-on-shared-runner</pattern>
+      <pattern id="f4">`mode: blocking` without a `promotion` record of at least 5 green runs on main, an approver and a review date — fm-blocking-on-day-one</pattern>
+      <pattern id="f5">a complexity function without a committed `baseline_file` — fm-complexity-without-baseline</pattern>
+      <pattern id="f6">a contract function that names neither `consumers[]` (Pact) nor `released_schema_ref` (schema diff) — fm-contract-provider-side-only</pattern>
+      <pattern id="f7">a deployability function whose `threshold.unit` is not minutes or that has no committed `script_path` — r-ffsb-deploy-lead-time-from-ci</pattern>
+      <pattern id="f8">fewer than four `weekly_reviews`, or `consecutive_red_reviews` of 2 or more with no `action` — fm-no-weekly-review</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://fitness-function-suite-bootstrap/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/fitness-function-suite-bootstrap.json",
+  "title": "Starter fitness-function suite spec",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": ["suite_id", "system", "owner", "dependency_graph", "launch_date", "weekly_reviews", "cadence_after_week_four", "functions"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "suite_id": {"type": "string", "pattern": "^ffsb-[a-z0-9]+(-[a-z0-9]+)*$"},
+    "system": {"type": "string", "minLength": 2},
+    "owner": {"$ref": "#/definitions/handle"},
+    "dependency_graph": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["layers", "allowed_edges"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
-      }
-    },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["name", "value"],
-        "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+        "layers": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}},
+        "allowed_edges": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {"from": {"type": "string", "minLength": 1}, "to": {"type": "string", "minLength": 1}}
+          }
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
+    "launch_date": {"$ref": "#/definitions/date"},
+    "weekly_reviews": {
       "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["date", "reviewed_by", "red_functions", "actions"],
+        "additionalProperties": false,
+        "properties": {
+          "date": {"$ref": "#/definitions/date"},
+          "reviewed_by": {"$ref": "#/definitions/handle"},
+          "red_functions": {"type": "array", "items": {"type": "string"}},
+          "actions": {"type": "array", "items": {"type": "string", "minLength": 4}}
+        }
+      }
     },
-    "review": {
-      "type": "object",
-      "required": ["cadence", "next_review_at"],
-      "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+    "cadence_after_week_four": {"type": "string", "enum": ["monthly", "quarterly"]},
+    "functions": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 8,
+      "allOf": [
+        {"contains": {"properties": {"category": {"const": "performance"}}}},
+        {"contains": {"properties": {"category": {"const": "deployability"}}}},
+        {"contains": {"properties": {"category": {"const": "dependency"}}}},
+        {"contains": {"properties": {"category": {"const": "complexity"}}}},
+        {"contains": {"properties": {"category": {"const": "contract"}}}}
+      ],
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "tool", "command", "threshold", "baseline", "mode", "runs_on", "owner", "consecutive_red_reviews"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+          "category": {"type": "string", "enum": ["performance", "deployability", "dependency", "complexity", "contract"]},
+          "tool": {"type": "string", "minLength": 2},
+          "command": {"type": "string", "minLength": 4},
+          "threshold": {
+            "type": "object",
+            "required": ["operator", "value", "unit"],
+            "additionalProperties": false,
+            "properties": {
+              "operator": {"type": "string", "enum": ["<", "<=", ">", ">=", "=="]},
+              "value": {"type": "number"},
+              "unit": {"type": "string", "minLength": 1}
+            }
+          },
+          "baseline": {
+            "type": "object",
+            "required": ["value", "measured_at"],
+            "additionalProperties": false,
+            "properties": {"value": {"type": "number"}, "measured_at": {"$ref": "#/definitions/date"}}
+          },
+          "mode": {"type": "string", "enum": ["informational", "ratchet", "blocking"]},
+          "runs_on": {"type": "string", "enum": ["pull_request", "post_merge", "nightly"]},
+          "owner": {"$ref": "#/definitions/handle"},
+          "consecutive_red_reviews": {"type": "integer", "minimum": 0},
+          "action": {"type": "string", "enum": ["fix", "rebaseline", "remove"]},
+          "promotion": {
+            "type": "object",
+            "required": ["green_runs_on_main", "approved_by", "review_date", "promoted_at"],
+            "additionalProperties": false,
+            "properties": {
+              "green_runs_on_main": {"type": "integer", "minimum": 5},
+              "approved_by": {"$ref": "#/definitions/handle"},
+              "review_date": {"$ref": "#/definitions/date"},
+              "promoted_at": {"$ref": "#/definitions/date"}
+            }
+          },
+          "endpoint": {"type": "string", "minLength": 2},
+          "load_profile": {"type": "string", "minLength": 4},
+          "runner_kind": {"type": "string", "enum": ["dedicated-runner", "dedicated-environment"]},
+          "metric": {"type": "string", "enum": ["pipeline_duration", "merge_to_production_lead_time"]},
+          "script_path": {"type": "string", "minLength": 4},
+          "per_function_limit": {"type": "integer", "minimum": 1, "default": 10},
+          "baseline_file": {"type": "string", "minLength": 4},
+          "method": {"type": "string", "enum": ["pact", "schema-diff"]},
+          "consumers": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "released_schema_ref": {"type": "string", "minLength": 4}
+        },
+        "allOf": [
+          {"if": {"properties": {"mode": {"const": "blocking"}}}, "then": {"required": ["promotion"]}},
+          {"if": {"properties": {"consecutive_red_reviews": {"minimum": 2}}}, "then": {"required": ["action"]}},
+          {"if": {"properties": {"category": {"const": "performance"}}},
+           "then": {"required": ["endpoint", "load_profile", "runner_kind"], "properties": {"runs_on": {"enum": ["post_merge", "nightly"]}}}},
+          {"if": {"properties": {"category": {"const": "deployability"}}},
+           "then": {"required": ["metric", "script_path"], "properties": {"threshold": {"properties": {"unit": {"const": "minutes"}}}}}},
+          {"if": {"properties": {"category": {"const": "dependency"}}},
+           "then": {"properties": {"tool": {"enum": ["ArchUnit", "NetArchTest", "dependency-cruiser", "import-linter"]}, "runs_on": {"const": "pull_request"}}}},
+          {"if": {"properties": {"category": {"const": "complexity"}}},
+           "then": {"required": ["per_function_limit", "baseline_file"], "properties": {"tool": {"enum": ["radon", "lizard", "eslint-complexity", "SonarQube"]}}}},
+          {"if": {"properties": {"category": {"const": "contract"}}},
+           "then": {"required": ["method"], "properties": {"tool": {"enum": ["Pact", "oasdiff", "openapi-diff", "buf"]}}, "anyOf": [{"required": ["consumers"]}, {"required": ["released_schema_ref"]}]}}
+        ]
       }
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "suite_id": "ffsb-orders-api",
+  "system": "orders-api",
+  "owner": "arch:alice",
+  "dependency_graph": {
+    "layers": ["http", "application", "domain", "infrastructure"],
+    "allowed_edges": [{"from": "http", "to": "application"}, {"from": "application", "to": "domain"}, {"from": "application", "to": "infrastructure"}, {"from": "infrastructure", "to": "domain"}]
   },
-  "additionalProperties": false
+  "launch_date": "2026-09-07",
+  "weekly_reviews": [
+    {"date": "2026-09-14", "reviewed_by": "arch:alice", "red_functions": ["checkout-p95"], "actions": ["raise k6 VUs to match prod profile v2"]},
+    {"date": "2026-09-21", "reviewed_by": "arch:alice", "red_functions": [], "actions": ["promote layer-direction to blocking"]},
+    {"date": "2026-09-28", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-10-05", "reviewed_by": "arch:alice", "red_functions": [], "actions": ["set cadence to monthly"]}
+  ],
+  "cadence_after_week_four": "monthly",
+  "functions": [
+    {
+      "id": "checkout-p95",
+      "category": "performance",
+      "tool": "k6",
+      "command": "k6 run --config perf/profiles/checkout-v2.json perf/checkout.js",
+      "endpoint": "POST /v1/checkout",
+      "load_profile": "perf/profiles/checkout-v2.json",
+      "runner_kind": "dedicated-runner",
+      "threshold": {"operator": "<", "value": 400, "unit": "ms"},
+      "baseline": {"value": 340, "measured_at": "2026-09-04"},
+      "mode": "informational",
+      "runs_on": "nightly",
+      "owner": "sre:carol",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "pipeline-duration",
+      "category": "deployability",
+      "tool": "gh",
+      "command": "python3 ci/pipeline_duration.py --last 20",
+      "metric": "pipeline_duration",
+      "script_path": "ci/pipeline_duration.py",
+      "threshold": {"operator": "<=", "value": 15, "unit": "minutes"},
+      "baseline": {"value": 12, "measured_at": "2026-09-04"},
+      "mode": "informational",
+      "runs_on": "post_merge",
+      "owner": "platform:dan",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "layer-direction",
+      "category": "dependency",
+      "tool": "import-linter",
+      "command": "lint-imports --config .importlinter",
+      "threshold": {"operator": "==", "value": 0, "unit": "violations"},
+      "baseline": {"value": 0, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "arch:alice",
+      "consecutive_red_reviews": 0,
+      "promotion": {"green_runs_on_main": 9, "approved_by": "arch:alice", "review_date": "2026-09-21", "promoted_at": "2026-09-22"}
+    },
+    {
+      "id": "cyclomatic-complexity",
+      "category": "complexity",
+      "tool": "lizard",
+      "command": "lizard -C 10 -w src/orders --ignore_warnings 173",
+      "per_function_limit": 10,
+      "baseline_file": "quality/complexity-baseline.txt",
+      "threshold": {"operator": "==", "value": 0, "unit": "new violations"},
+      "baseline": {"value": 173, "measured_at": "2026-09-04"},
+      "mode": "ratchet",
+      "runs_on": "pull_request",
+      "owner": "swe:bob",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "openapi-breaking-diff",
+      "category": "contract",
+      "tool": "oasdiff",
+      "command": "oasdiff breaking https://api.example.com/openapi/v1.12.0.yaml openapi.yaml --fail-on ERR",
+      "method": "schema-diff",
+      "released_schema_ref": "https://api.example.com/openapi/v1.12.0.yaml",
+      "threshold": {"operator": "==", "value": 0, "unit": "breaking changes"},
+      "baseline": {"value": 0, "measured_at": "2026-09-04"},
+      "mode": "ratchet",
+      "runs_on": "pull_request",
+      "owner": "swe:erin",
+      "consecutive_red_reviews": 0
+    }
+  ]
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "suite_id": "ffsb-orders-api",
+  "system": "orders-api",
+  "owner": "arch:alice",
+  "dependency_graph": {
+    "layers": ["http", "application", "domain"],
+    "allowed_edges": [{"from": "http", "to": "application"}, {"from": "application", "to": "domain"}]
+  },
+  "launch_date": "2026-09-07",
+  "weekly_reviews": [
+    {"date": "2026-09-14", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-09-21", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-09-28", "reviewed_by": "arch:alice", "red_functions": [], "actions": []},
+    {"date": "2026-10-05", "reviewed_by": "arch:alice", "red_functions": [], "actions": []}
+  ],
+  "cadence_after_week_four": "monthly",
+  "functions": [
+    {
+      "id": "checkout-p95",
+      "category": "performance",
+      "tool": "k6",
+      "command": "k6 run perf/checkout.js",
+      "endpoint": "POST /v1/checkout",
+      "load_profile": "perf/profiles/checkout-v2.json",
+      "runner_kind": "dedicated-runner",
+      "threshold": {"operator": "<", "value": 400, "unit": "ms"},
+      "baseline": {"value": 340, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "sre:carol",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "layer-direction",
+      "category": "dependency",
+      "tool": "import-linter",
+      "command": "lint-imports --config .importlinter",
+      "threshold": {"operator": "==", "value": 0, "unit": "violations"},
+      "baseline": {"value": 0, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "arch:alice",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "cyclomatic-complexity",
+      "category": "complexity",
+      "tool": "lizard",
+      "command": "lizard -C 10 -w src/orders",
+      "per_function_limit": 10,
+      "threshold": {"operator": "==", "value": 0, "unit": "violations"},
+      "baseline": {"value": 173, "measured_at": "2026-09-04"},
+      "mode": "blocking",
+      "runs_on": "pull_request",
+      "owner": "swe:bob",
+      "consecutive_red_reviews": 0
+    }
+  ]
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>5 to 8 functions and every one of the five categories present (r-ffsb-five-to-eight-functions).</item>
+      <item>The performance function names one endpoint, a versioned load profile and a dedicated runner, and runs post-merge or nightly (r-ffsb-perf-p95-under-fixed-load).</item>
+      <item>The deployability function has a threshold in minutes computed by a committed script (r-ffsb-deploy-lead-time-from-ci).</item>
+      <item>The dependency function uses ArchUnit / NetArchTest / dependency-cruiser / import-linter on every pull request and the graph is written in `dependency_graph` (r-ffsb-dependency-direction-tool).</item>
+      <item>The complexity function has a per-function limit and a committed baseline file (r-ffsb-complexity-ratchet-with-baseline).</item>
+      <item>The contract function names its consumers or the released schema it diffs against (r-ffsb-contract-breaking-change-gate).</item>
+      <item>Every `mode: blocking` function carries a promotion record with at least five green runs on main, an approver and a review date (r-ffsb-ratchet-first-then-block).</item>
+      <item>Four weekly reviews are dated from launch, every function has an owner, and any function at two consecutive reds carries an action (r-ffsb-owner-and-weekly-review).</item>
     </list>
   </section>
 </text>

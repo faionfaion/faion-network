@@ -1,45 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="PR Mentoring Session Protocol — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `pr-mentoring-session-protocol`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="PR Mentoring Session Protocol — Procedure" version="2.0.0" est_tokens="1500" depth="recommended">
+  <summary>Eight steps for one mentoring session on one PR: pick the single learning goal from the prior record, anchor the observed gap to a diff line, post labelled comments with at least one praise, have the junior restate the gap and author the fix, park unrelated findings, name the follow-up PR and window, get the junior's confirmation and share the record, then close it when the follow-up PR lands.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="open-session-from-prior-record">
+      <input>The junior's open PR; the prior session record for the same junior, if any; the follow-up PR that record named.</input>
+      <action>Fill `session` (one `pr_url`, `junior`, `senior`, `date`, `evaluation_use`). If a prior record exists, judge its follow-up PR and set `progression.prior_record_url`, `prior_action_status`, `not_demonstrated_streak`; link the prior record in `evidence[]`.</action>
+      <output>`session` and `progression`.</output>
+      <decision-gate>Prior goal `not-demonstrated`: keep the same `learning_goal`; a streak of 3 changes the intervention and escalates in `decision` (r-progression-linked-to-prior-session).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="state-one-observable-goal">
+      <input>The prior goal, or the most consequential gap visible in the diff.</input>
+      <action>Write `learning_goal` as one code behaviour the next PR can show; park any second skill for another session.</action>
+      <output>`learning_goal` input.</output>
+      <decision-gate>Attitude wording ("be more careful", "think about edge cases") or two skills is rejected (r-one-observable-learning-goal).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="anchor-the-gap-to-a-line">
+      <input>The diff; the review comment thread.</input>
+      <action>Write `observed_gap.did` and `should` about the code, and add the diff-line or comment anchor (`#discussion_r...`, `#L...`, `#note_...`) to `evidence[]`.</action>
+      <output>`observed_gap` input and the line-level URL.</output>
+      <decision-gate>A gap about the person, or no line anchor, is rejected (r-observed-gap-cites-diff-line, fm-gap-is-a-trait).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="post-labelled-comments">
+      <input>The PR review interface; the Conventional Comments labels.</input>
+      <action>Post every comment with a label as its first word; at least one `praise` on a specific line the junior got right; count them into `comment_counts`.</action>
+      <output>`comment_counts` input.</output>
+      <decision-gate>Nitpicks outnumbering all other labels combined: set `session_outcome: learning_goal_not_addressed`, move the nits to a formatter or linter task, and re-run on the one `issue` (r-comments-labelled-with-counts, fm-nit-storm).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="junior-restates-and-fixes">
+      <input>The junior on the call or in the thread.</input>
+      <action>Ask the junior to restate the gap in their own words; record it as `restated_gap`. The junior writes and pushes the fix; record `fix_commit.url` and `author`. The senior pushes nothing to the branch.</action>
+      <output>`restated_gap` and `fix_commit`.</output>
+      <decision-gate>A fix commit authored by the senior fails the session (r-junior-restates-and-writes-the-fix, fm-senior-rewrites-the-code).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="park-deferred-findings">
+      <input>Everything else noticed in the diff that is unrelated to the goal.</input>
+      <action>Record each as `deferred_findings[]` (line URL plus one line) and post them as ordinary review comments after the session.</action>
+      <output>`deferred_findings` input; `session_outcome` set.</output>
+      <decision-gate>A second PR in the same session is a second record (r-session-scoped-to-one-pr-and-goal).</decision-gate>
     </step>
+
+    <step n="7" name="name-follow-up-and-share">
+      <input>The junior's upcoming work.</input>
+      <action>Write `decision.follow_up_action` as the behaviour the junior will show, `demonstrate_in.window` (at most 14 days or `next-two-prs`), and the ticket or PR URL if it already exists; add `escalation` when the streak is 3. Store the record where the junior can read it, get their confirmation of `observed_gap` and `decision` as a comment, reaction or co-authorship, record `junior_confirmation`, and commit with `status: open`. Fill `templates/skeleton.md.j2`; run `scripts/validate-pr-mentoring-session-protocol.py --file`.</action>
+      <output>Committed open record with the junior's confirmation.</output>
+      <decision-gate>"Keep this in mind", a window above 14 days, or no confirmation blocks the commit (r-follow-up-is-a-named-next-pr, r-record-shared-with-junior).</decision-gate>
+    </step>
+
+    <step n="8" name="close-on-follow-up-pr">
+      <input>The follow-up PR when it opens.</input>
+      <action>Add its URL to `decision.demonstrate_in.url` and `evidence[]`; set `status: closed`. Its review becomes step 1 of the next session, which judges `prior_action_status`.</action>
+      <output>Closed record; input for the next session.</output>
+      <decision-gate>The window passes with no PR: keep the record open and raise it at the next 1:1; do not close without a URL (r-follow-up-is-a-named-next-pr).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Record validates via `scripts/validate-pr-mentoring-session-protocol.py`, including the fix-author, nit-storm, streak and window checks.</item>
+      <item>The junior has confirmed the gap and decision text and can open the record.</item>
+      <item>`status` is `closed` with the follow-up PR URL, or `open` with the window still running.</item>
+    </list>
   </section>
 </text>

@@ -1,42 +1,77 @@
 <!--
-purpose: Canonical skeleton for the `new-dependency-risk-checklist` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/new-dependency-risk-checklist/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-new-dependency-risk-checklist.py.
+purpose: Canonical skeleton for the `new-dependency-risk-checklist` record — one record per net-new package at an exact version, filled before the lockfile change merges.
+consumes: Registry metadata (licence, maintainers, last release, install scripts, repository), a dry-run install for the transitive count, a dated advisory lookup, and the lockfile PR.
+produces: A committed record at .product/new-dependency-risk-checklist/<name>@<version>.md, mirrored as JSON for scripts/validate-new-dependency-risk-checklist.py.
+depends-on: templates/header.yaml, content/02-output-contract.xml, scripts/validate-new-dependency-risk-checklist.py.
 token-budget-impact: ~500 tokens to fill end-to-end.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+package: <package_name>@<package_version>
+owner: <owner>
+checked_on: <checked_on>
 ---
 
-# Trigger
+# Package
 
-- kind: <trigger_kind>
-- url:  <URL>
+- name: <package_name>
+- version: <package_version>
+- ecosystem: <ecosystem>
+- registry_repository_url: <registry_repository_url>
+- readme_repository_url: <URL from the README; must match the registry field>
+- repository_matches: <true | false>
+- near_name: searched true, popular_near_name <name or null>
+- install_scripts: declared <true | false>; hooks: <preinstall | install | postinstall> runs <what it executes>
 
 # Owner
 
-- role:<handle>
+- <owner>
 
 # Inputs
 
-- name: <input_name>
-  value: <typed_value>
+- licence: <licence>
+- transitive_count: <transitive_count>
+- maintainers: <maintainers>
+- last_release: <last_release>
+- alternative:
+  - in-house: <in_house_reason>
+  - <alternative_name>: <alternative_reason>
+- patch_window: critical <patch_window_critical>, high <patch_window_high>
+- useful_surface_lines: <lines when the package is small; 20 or fewer defaults to in-house>
+- distribution_model: <saas-backend | shipped-binary | browser-bundle | internal-tool; required for copyleft>
+
+# Advisory lookup
+
+- source: <advisory_source>
+- url: <advisory_url>
+- checked_on: <checked_on>
+- open_advisories: <CVE-YYYY-NNNNN or GHSA ids, or none>
+
+# Lockfile
+
+- file: <lockfile>
+- commit_url: <lockfile_commit_url>
 
 # Decision
 
-<decision_statement>
+- verdict: <verdict>
+- statement: <decision_statement>
+- fallback: <vendor | fork | alternative and its target; required when maintainers is 1 or last_release is over 12 months old>
+- mitigation: <advisory id and action; required for accept-with-mitigation>
+- override_reason: <required when useful_surface_lines is 20 or fewer and the verdict is not in-house>
+- install_hook_reason: <required when a hook fetches or runs a remote binary and the verdict is not reject>
 
 # Evidence
 
-- <url_1>
-- <url_2>
+- <advisory_url>
+- <lockfile_commit_url>
+
+# Alert routing
+
+- tool: <alert_tool>
+- recipient: <owner>
 
 # Review
 
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- reopen_on: major-version-bump
+- next_review_at: <next_review_date>

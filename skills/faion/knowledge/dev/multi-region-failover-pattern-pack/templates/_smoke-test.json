@@ -1,21 +1,18 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for multi-region-failover-pattern-pack: _smoke-test.json",
+    "purpose": "Template fixture for multi-region-failover-pattern-pack: _smoke-test.json \u2014 verified warm-standby pack that passes the validator",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
+  "workload": {
+    "name": "payments-api",
+    "tier": "tier-1",
+    "business_owner": "product:maria"
   },
-  "owner": "swe:alice",
+  "owner": "arch:alice",
   "inputs": [
-    {
-      "name": "scope",
-      "value": "billing"
-    },
     {
       "name": "rpo_minutes",
       "value": 5
@@ -23,14 +20,133 @@
     {
       "name": "rto_minutes",
       "value": 30
+    },
+    {
+      "name": "primary_region",
+      "value": "eu-west-1"
+    },
+    {
+      "name": "secondary_region",
+      "value": "eu-central-1"
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
+  "pattern": {
+    "chosen": "warm-standby",
+    "achievable_rpo_minutes": 1,
+    "achievable_rto_minutes": 22,
+    "secondary_capacity": {
+      "mode": "scale-up",
+      "percent_of_primary": 40,
+      "scale_up_minutes": 12,
+      "quotas_verified": true
+    }
+  },
+  "dns": {
+    "mechanism": "dns-failover",
+    "ttl_seconds": 60,
+    "health_check": {
+      "endpoint": "https://api.payments.example.com/healthz",
+      "interval_seconds": 10,
+      "failure_threshold": 3
+    },
+    "observed_propagation_seconds": 95,
+    "ttl_ignoring_clients": [
+      {
+        "client": "ios-sdk 4.x (caches resolved IP for process lifetime)",
+        "fallback": "client-side-retry-to-secondary"
+      }
+    ]
+  },
+  "database": {
+    "engine": "PostgreSQL 16 (RDS)",
+    "replication": "asynchronous",
+    "p99_lag_seconds_30d": 12,
+    "promotion_procedure": "runbook RB-114: promote eu-central-1 read replica via aws rds promote-read-replica, then rotate the writer endpoint in Secrets Manager",
+    "fencing": "revoke the app role's write grant on the old primary and set default_transaction_read_only=on before promotion",
+    "single_writer_enforcement": "writer endpoint resolved from Secrets Manager only; the old primary's security group drops port 5432 from app subnets after fencing"
+  },
+  "object_store": {
+    "provider": "Amazon S3",
+    "replication_enabled": true,
+    "versioning": true,
+    "backlog_metric": "AWS/S3 OperationsPendingReplication on payments-docs",
+    "replication_time_alert": "ReplicationLatency above 900 s for 15 min pages sre-primary",
+    "existing_objects_backfilled": true,
+    "backfill_job": "S3 Batch Replication job 7f2e9c (2026-03-04), 1.2 M objects"
+  },
+  "dependencies": [
+    {
+      "name": "Okta",
+      "kind": "identity-provider",
+      "reachable_from_secondary": true
+    },
+    {
+      "name": "AWS Secrets Manager (replicated secret)",
+      "kind": "secrets-manager",
+      "reachable_from_secondary": true
+    },
+    {
+      "name": "GitHub Actions self-hosted runners",
+      "kind": "ci-cd",
+      "reachable_from_secondary": false,
+      "bypass": "failover script is also runnable from the break-glass bastion in eu-central-1: runbook RB-114 step 2"
+    },
+    {
+      "name": "Route 53",
+      "kind": "dns-provider",
+      "reachable_from_secondary": true
+    },
+    {
+      "name": "ACM certificates",
+      "kind": "certificate-issuance",
+      "reachable_from_secondary": true
+    },
+    {
+      "name": "Adyen",
+      "kind": "payments",
+      "reachable_from_secondary": true
+    }
+  ],
+  "drill": {
+    "checklist": [
+      "announce drill window and freeze deploys",
+      "fence the primary database (RB-114 step 1)",
+      "promote the eu-central-1 replica and rotate the writer secret",
+      "flip the Route 53 failover record and start the propagation timer",
+      "scale the secondary ASG to 100 percent and confirm quota headroom",
+      "run the synthetic checkout and record measured RTO and RPO",
+      "list every step that needed a human"
+    ],
+    "mechanics_last_changed_at": "2026-07-14",
+    "last": {
+      "date": "2026-08-20",
+      "scope_services": [
+        "payments-api",
+        "payments-worker"
+      ],
+      "traffic_percent": 5,
+      "measured_rto_minutes": 22,
+      "measured_rpo_minutes": 0.5,
+      "manual_steps": [
+        "writer secret rotation required a human approval in Secrets Manager"
+      ]
+    }
+  },
+  "failback": {
+    "trigger": "primary region healthy for 60 minutes and replication from secondary to primary caught up (lag under 5 s)",
+    "rpo_minutes": 0,
+    "rto_minutes": 45,
+    "reconciliation_step": "replay writes accepted in eu-central-1 from the logical replication slot into the rebuilt primary; verify row counts per table",
+    "procedure": "runbook RB-115: rebuild eu-west-1 as replica of the promoted primary, re-fence, promote back during a change window, flip DNS"
+  },
+  "decision": "Adopt warm-standby for payments-api: achievable RTO 22 min against required 30, achievable RPO 1 min against required 5; verified by the 2026-08-20 drill at 5 percent of traffic.",
   "evidence": [
-    "https://example.com/pr/1"
+    "https://wiki.example.com/dr/drills/2026-08-20-payments",
+    "https://grafana.example.com/d/rds-replication?from=1751328000000&to=1753920000000",
+    "https://console.aws.amazon.com/servicequotas/home/requests/abc123"
   ],
   "review": {
     "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
+    "next_review_at": "2026-11-20"
   }
 }

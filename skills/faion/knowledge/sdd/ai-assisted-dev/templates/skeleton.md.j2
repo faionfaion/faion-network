@@ -1,30 +1,74 @@
 <!--
-purpose: Canonical skeleton for the `ai-assisted-dev` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/ai-assisted-dev/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-ai-assisted-dev.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Canonical skeleton for the `ai-assisted-dev` workflow record — tool-to-task map, security-critical block-list, context files, secrets exclusion, retention checks, prompt template, label, and the cadence comparison.
+consumes: The tools in use, the repo layout, each vendor's data-usage terms, and the PR quality dashboard split by the ai-assisted label.
+produces: A committed record at .product/ai-assisted-dev/<team>.md, mirrored as JSON for scripts/validate-ai-assisted-dev.py.
+depends-on: templates/header.yaml, templates/prompt-code.txt, templates/gen-tests.sh, content/02-output-contract.xml, scripts/validate-ai-assisted-dev.py.
+token-budget-impact: ~900 tokens to fill end-to-end.
 -->
 ---
-version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+version: {{ record_version }}
+team: {{ team_name }}
+owner: {{ owner }}
 ---
 
-# Trigger
+# Team
 
-- kind: {{ trigger_kind }}
-- url:  <URL>
+- name: {{ team_name }}
+- repo_url: {{ repo_url }}
+- record_version: {{ record_version }} (bump whenever the map is tightened)
+- owner: {{ owner }}
 
-# Owner
+# Tool-to-task map
 
-- role:<handle>
+One line per task class; tool is claude-code | cursor | copilot | other | ai-off; checkpoint is self-review | one-reviewer | two-reviewers-non-prompter | ai-off. Data migrations and infrastructure sit at two reviewers or ai-off.
 
-# Inputs
+- boilerplate-scaffolding: {{ scaffolding_tool }} / <checkpoint>
+- unit-tests: {{ tests_tool }} / <checkpoint>
+- refactor: <tool> / <checkpoint>
+- code-review: <tool> / <checkpoint>
+- documentation: <tool> / <checkpoint>
+- data-migration: <tool> / <two-reviewers-non-prompter | ai-off>
+- infrastructure: <tool> / <two-reviewers-non-prompter | ai-off>
 
-- name: {{ input_name }}
-  value: {{ typed_value }}
+# Block-list
+
+All eight areas; policy is ai-off or two-reviewers-non-prompter; a labelled PR touching a listed path with fewer than two reviewers does not merge.
+
+- authentication-session: paths <globs> policy <policy>
+- authorization: paths <globs> policy <policy>
+- cryptography-keys: paths <globs> policy <policy>
+- payments-billing: paths <globs> policy <policy>
+- pii-processing: paths <globs> policy <policy>
+- secrets-config-loading: paths <globs> policy <policy>
+- production-iac: paths <globs> policy <policy>
+- database-migrations: paths <globs> policy <policy>
+
+# Context files
+
+One per tool in the map.
+
+- {{ primary_tool }}: {{ context_file_path }} last_reviewed {{ context_reviewed_on }}
+- <tool>: <CLAUDE.md | .cursor/rules | .github/copilot-instructions.md> last_reviewed <YYYY-MM-DD>
+
+# Exclusion file
+
+- path: {{ exclusion_file }}
+- excludes: <.env*, secrets/**, data exports, customer fixtures>
+
+# Tool retention
+
+- {{ primary_tool }}: terms_checked <true | false>, source {{ retention_source_url }}, checked_on <YYYY-MM-DD>
+- <tool>: terms_checked <true | false>, source <URL>, checked_on <YYYY-MM-DD>
+
+# Prompt template
+
+- path: templates/prompt-code.txt
+- blocks: Context, Task, Requirements, Output
+
+# AI-assisted label
+
+- label: {{ ai_label }}
+- auto_merge_disabled: true
 
 # Decision
 
@@ -32,11 +76,12 @@ trigger_url: <URL>
 
 # Evidence
 
-- {{ url_1 }}
-- {{ url_2 }}
+- {{ context_file_url }}
+- <exclusion file URL>
+- <cadence comparison dashboard URL>
 
 # Review
 
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- cadence: {{ review_cadence }}
+- next_review_at: {{ next_review_date }}
+- last_outcome: period <YYYY-MM>, ai_assisted pr_count <n> defect_escape_rate <0-1> revert_rate <0-1> churn_2w_rate <0-1>, other pr_count <n> defect_escape_rate <0-1> revert_rate <0-1> churn_2w_rate <0-1>, worse_on <list>, map_tightened <true when worse_on is non-empty>, action <what changed in the map>, url <dashboard>

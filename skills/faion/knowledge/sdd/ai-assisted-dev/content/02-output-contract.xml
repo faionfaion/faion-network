@@ -1,121 +1,335 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI-Assisted Development — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `ai-assisted-dev` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="AI-Assisted Development — Output Contract" version="2.0.0" est_tokens="5550" depth="essential">
+  <summary>JSON Schema (draft-07) for the AI-assisted dev workflow record: named `inputs[]` entries for the `tool_task_map` (all seven task classes, each with tool and review checkpoint), the `block_list` (the eight minimum security-critical areas with paths and policy), `context_files` per tool, the `exclusion_file` for secrets and data, `tool_retention` checks, the `prompt_template`, the `ai_assisted_label` with auto-merge disabled; a decision; evidence; and a review whose outcome compares defect escape, revert rate and two-week churn for AI-assisted versus other PRs and tightens the map when worse. Validator in scripts/validate-ai-assisted-dev.py enforces it, including context-file coverage and the tighten-when-worse rule.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="team" type="object" required="true">`name`, `repo_url`, `record_version` (semver, bumped whenever the map is tightened)</field>
+      <field name="owner" type="string" required="true">the engineer accountable for the map and the cadence review, `role:handle`</field>
+      <field name="inputs" type="list" required="true">named entries: `tool_task_map` (seven task classes, each `tool` and `checkpoint`), `block_list` (eight minimum areas, `paths[]`, `policy`), `context_files` (one per tool in the map with a path and review date), `exclusion_file` (path and excluded patterns), `tool_retention` (per tool: terms checked, source), `prompt_template` (path), `ai_assisted_label` (label and `auto_merge_disabled`) (r-tool-to-task-map-written, r-security-critical-block-list, r-repo-context-file-maintained, r-no-secrets-or-customer-data-in-prompts, r-structured-prompt-four-blocks, r-ai-diff-reviewed-like-human-code)</field>
+      <field name="decision" type="string" required="true">one sentence stating which task classes are AI-assisted with which tool, and which are ai-off</field>
+      <field name="evidence" type="list" required="true">at least one URL: the context file, the exclusion file, the retention terms, the cadence comparison (r-defect-rate-tracked-ai-vs-human)</field>
+      <field name="review" type="object" required="true">`cadence` (monthly | quarterly), `next_review_at`, `last_outcome` null or the comparison: `period`, `ai_assisted` and `other` each with `defect_escape_rate`, `revert_rate`, `churn_2w_rate`, `worse_on[]`, `map_tightened`, `action`, `url` (r-defect-rate-tracked-ai-vs-human)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`tool_task_map` missing a task class, or `block_list` missing any of authentication-session, authorization, cryptography-keys, payments-billing, pii-processing, secrets-config-loading, production-iac, database-migrations — fm-ai-everywhere-no-map</pattern>
+      <pattern id="f2">a block-list entry with `policy` other than `ai-off` or `two-reviewers-non-prompter`; `data-migration` or `infrastructure` in the map with a checkpoint weaker than two reviewers — fm-confident-insecure-default</pattern>
+      <pattern id="f3">`prompt_template` not naming a four-block template, or a tool in the map with no `context_files` entry or one reviewed before the last cadence — fm-prose-prompt</pattern>
+      <pattern id="f4">no `exclusion_file`, or `tool_retention.terms_checked: false` for a tool the map still uses — fm-secrets-in-the-prompt</pattern>
+      <pattern id="f5">`ai_assisted_label` empty or `auto_merge_disabled: false` — fm-churn-nobody-measures, r-ai-diff-reviewed-like-human-code</pattern>
+      <pattern id="f6">`review.last_outcome.worse_on` non-empty with `map_tightened: false` or no `action` — fm-churn-nobody-measures</pattern>
+      <pattern id="f7">a map entry with `tool: ai-off` and a checkpoint other than `ai-off`, or the reverse — r-tool-to-task-map-written</pattern>
+      <pattern id="f8">`review.cadence` missing or `last_outcome` recording no numbers for both groups — r-defect-rate-tracked-ai-vs-human</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://ai-assisted-dev/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-assisted-dev.json",
+  "title": "AI-assisted development workflow record",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
-  "properties": {
-    "trigger": {
+  "required": ["team", "owner", "inputs", "decision", "evidence", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "url": {"type": "string", "pattern": "^https://"},
+    "tool": {"type": "string", "enum": ["claude-code", "cursor", "copilot", "other", "ai-off"]},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "metrics": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["pr_count", "defect_escape_rate", "revert_rate", "churn_2w_rate"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
-      }
-    },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["name", "value"],
-        "properties": {
-          "name":  {"type": "string"},
-          "value": {}
-        }
-      }
-    },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
-    },
-    "review": {
-      "type": "object",
-      "required": ["cadence", "next_review_at"],
-      "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "pr_count": {"type": "integer", "minimum": 0},
+        "defect_escape_rate": {"$ref": "#/definitions/rate"},
+        "revert_rate": {"$ref": "#/definitions/rate"},
+        "churn_2w_rate": {"$ref": "#/definitions/rate"}
       }
     }
   },
-  "additionalProperties": false
+  "properties": {
+    "__faion_header__": {"type": "object"},
+    "team": {
+      "type": "object",
+      "required": ["name", "repo_url", "record_version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 2},
+        "repo_url": {"$ref": "#/definitions/url"},
+        "record_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "owner": {"$ref": "#/definitions/handle"},
+    "inputs": {
+      "type": "array",
+      "minItems": 7,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "tool_task_map"}}}},
+        {"contains": {"properties": {"name": {"const": "block_list"}}}},
+        {"contains": {"properties": {"name": {"const": "context_files"}}}},
+        {"contains": {"properties": {"name": {"const": "exclusion_file"}}}},
+        {"contains": {"properties": {"name": {"const": "tool_retention"}}}},
+        {"contains": {"properties": {"name": {"const": "prompt_template"}}}},
+        {"contains": {"properties": {"name": {"const": "ai_assisted_label"}}}}
+      ],
+      "items": {
+        "type": "object",
+        "required": ["name", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "enum": ["tool_task_map", "block_list", "context_files", "exclusion_file", "tool_retention", "prompt_template", "ai_assisted_label"]},
+          "value": {}
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "tool_task_map"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 7,
+             "allOf": [
+               {"contains": {"properties": {"task_class": {"const": "boilerplate-scaffolding"}}}},
+               {"contains": {"properties": {"task_class": {"const": "unit-tests"}}}},
+               {"contains": {"properties": {"task_class": {"const": "refactor"}}}},
+               {"contains": {"properties": {"task_class": {"const": "code-review"}}}},
+               {"contains": {"properties": {"task_class": {"const": "documentation"}}}},
+               {"contains": {"properties": {"task_class": {"const": "data-migration"}}}},
+               {"contains": {"properties": {"task_class": {"const": "infrastructure"}}}}
+             ],
+             "items": {
+               "type": "object",
+               "required": ["task_class", "tool", "checkpoint"],
+               "additionalProperties": false,
+               "properties": {
+                 "task_class": {"type": "string", "enum": ["boilerplate-scaffolding", "unit-tests", "refactor", "code-review", "documentation", "data-migration", "infrastructure"]},
+                 "tool": {"$ref": "#/definitions/tool"},
+                 "checkpoint": {"type": "string", "enum": ["self-review", "one-reviewer", "two-reviewers-non-prompter", "ai-off"]}},
+               "allOf": [
+                 {"if": {"properties": {"tool": {"const": "ai-off"}}}, "then": {"properties": {"checkpoint": {"const": "ai-off"}}}},
+                 {"if": {"properties": {"checkpoint": {"const": "ai-off"}}}, "then": {"properties": {"tool": {"const": "ai-off"}}}},
+                 {"if": {"properties": {"task_class": {"enum": ["data-migration", "infrastructure"]}}}, "then": {"properties": {"checkpoint": {"enum": ["two-reviewers-non-prompter", "ai-off"]}}}}
+               ]}}}}},
+          {"if": {"properties": {"name": {"const": "block_list"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 8,
+             "allOf": [
+               {"contains": {"properties": {"area": {"const": "authentication-session"}}}},
+               {"contains": {"properties": {"area": {"const": "authorization"}}}},
+               {"contains": {"properties": {"area": {"const": "cryptography-keys"}}}},
+               {"contains": {"properties": {"area": {"const": "payments-billing"}}}},
+               {"contains": {"properties": {"area": {"const": "pii-processing"}}}},
+               {"contains": {"properties": {"area": {"const": "secrets-config-loading"}}}},
+               {"contains": {"properties": {"area": {"const": "production-iac"}}}},
+               {"contains": {"properties": {"area": {"const": "database-migrations"}}}}
+             ],
+             "items": {
+               "type": "object",
+               "required": ["area", "paths", "policy"],
+               "additionalProperties": false,
+               "properties": {
+                 "area": {"type": "string", "enum": ["authentication-session", "authorization", "cryptography-keys", "payments-billing", "pii-processing", "secrets-config-loading", "production-iac", "database-migrations", "other"]},
+                 "paths": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+                 "policy": {"type": "string", "enum": ["ai-off", "two-reviewers-non-prompter"]}}}}}}},
+          {"if": {"properties": {"name": {"const": "context_files"}}},
+           "then": {"properties": {"value": {
+             "type": "array",
+             "items": {
+               "type": "object",
+               "required": ["tool", "path", "last_reviewed"],
+               "additionalProperties": false,
+               "properties": {
+                 "tool": {"type": "string", "enum": ["claude-code", "cursor", "copilot", "other"]},
+                 "path": {"type": "string", "pattern": "(CLAUDE\\.md|\\.cursor/rules|\\.cursorrules|\\.github/copilot-instructions\\.md|AGENTS\\.md)$"},
+                 "last_reviewed": {"$ref": "#/definitions/date"}}}}}}},
+          {"if": {"properties": {"name": {"const": "exclusion_file"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["path", "excludes"],
+             "additionalProperties": false,
+             "properties": {
+               "path": {"type": "string", "pattern": "(\\.cursorignore|\\.claudeignore|\\.gitignore|\\.aiignore|\\.copilotignore)$"},
+               "excludes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}}}}}}},
+          {"if": {"properties": {"name": {"const": "tool_retention"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 1,
+             "items": {
+               "type": "object",
+               "required": ["tool", "terms_checked", "source"],
+               "additionalProperties": false,
+               "properties": {
+                 "tool": {"type": "string", "enum": ["claude-code", "cursor", "copilot", "other"]},
+                 "terms_checked": {"type": "boolean"},
+                 "source": {"$ref": "#/definitions/url"},
+                 "checked_on": {"$ref": "#/definitions/date"}}}}}}},
+          {"if": {"properties": {"name": {"const": "prompt_template"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["path", "blocks"],
+             "additionalProperties": false,
+             "properties": {
+               "path": {"type": "string", "minLength": 4},
+               "blocks": {"type": "array", "const": ["Context", "Task", "Requirements", "Output"]}}}}}},
+          {"if": {"properties": {"name": {"const": "ai_assisted_label"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["label", "auto_merge_disabled"],
+             "additionalProperties": false,
+             "properties": {
+               "label": {"type": "string", "minLength": 4},
+               "auto_merge_disabled": {"type": "boolean", "const": true}}}}}}
+        ]
+      }
+    },
+    "decision": {"type": "string", "minLength": 20, "pattern": "ai-off"},
+    "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/url"}},
+    "review": {
+      "type": "object",
+      "required": ["cadence", "next_review_at", "last_outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "cadence": {"type": "string", "enum": ["monthly", "quarterly"]},
+        "next_review_at": {"$ref": "#/definitions/date"},
+        "last_outcome": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["period", "ai_assisted", "other", "worse_on", "map_tightened", "url"],
+              "additionalProperties": false,
+              "properties": {
+                "period": {"type": "string", "minLength": 6},
+                "ai_assisted": {"$ref": "#/definitions/metrics"},
+                "other": {"$ref": "#/definitions/metrics"},
+                "worse_on": {"type": "array", "items": {"type": "string", "enum": ["defect_escape_rate", "revert_rate", "churn_2w_rate"]}},
+                "map_tightened": {"type": "boolean"},
+                "action": {"type": "string", "minLength": 12},
+                "url": {"$ref": "#/definitions/url"}
+              },
+              "if": {"properties": {"worse_on": {"minItems": 1}}},
+              "then": {"required": ["action"], "properties": {"map_tightened": {"const": true}}}
+            }
+          ]
+        }
+      }
+    }
+  }
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="true"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "team": {"name": "billing-platform", "repo_url": "https://github.com/acme/billing", "record_version": "1.1.0"},
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "tool_task_map", "value": [
+      {"task_class": "boilerplate-scaffolding", "tool": "claude-code", "checkpoint": "self-review"},
+      {"task_class": "unit-tests", "tool": "claude-code", "checkpoint": "one-reviewer"},
+      {"task_class": "refactor", "tool": "cursor", "checkpoint": "one-reviewer"},
+      {"task_class": "code-review", "tool": "copilot", "checkpoint": "one-reviewer"},
+      {"task_class": "documentation", "tool": "claude-code", "checkpoint": "self-review"},
+      {"task_class": "data-migration", "tool": "ai-off", "checkpoint": "ai-off"},
+      {"task_class": "infrastructure", "tool": "claude-code", "checkpoint": "two-reviewers-non-prompter"}
+    ]},
+    {"name": "block_list", "value": [
+      {"area": "authentication-session", "paths": ["src/billing/auth/**"], "policy": "ai-off"},
+      {"area": "authorization", "paths": ["src/billing/permissions/**"], "policy": "two-reviewers-non-prompter"},
+      {"area": "cryptography-keys", "paths": ["src/billing/crypto/**"], "policy": "ai-off"},
+      {"area": "payments-billing", "paths": ["src/billing/charges/**", "src/billing/invoices/**"], "policy": "two-reviewers-non-prompter"},
+      {"area": "pii-processing", "paths": ["src/billing/customers/**"], "policy": "two-reviewers-non-prompter"},
+      {"area": "secrets-config-loading", "paths": ["src/billing/config.py", "deploy/secrets/**"], "policy": "ai-off"},
+      {"area": "production-iac", "paths": ["infra/prod/**"], "policy": "two-reviewers-non-prompter"},
+      {"area": "database-migrations", "paths": ["migrations/**"], "policy": "ai-off"}
+    ]},
+    {"name": "context_files", "value": [
+      {"tool": "claude-code", "path": "CLAUDE.md", "last_reviewed": "2026-09-01"},
+      {"tool": "cursor", "path": ".cursor/rules", "last_reviewed": "2026-09-01"},
+      {"tool": "copilot", "path": ".github/copilot-instructions.md", "last_reviewed": "2026-09-01"}
+    ]},
+    {"name": "exclusion_file", "value": {"path": ".cursorignore", "excludes": [".env*", "deploy/secrets/**", "data/exports/**", "fixtures/customers/**"]}},
+    {"name": "tool_retention", "value": [
+      {"tool": "claude-code", "terms_checked": true, "source": "https://www.anthropic.com/legal/commercial-terms", "checked_on": "2026-08-28"},
+      {"tool": "cursor", "terms_checked": true, "source": "https://cursor.com/privacy", "checked_on": "2026-08-28"},
+      {"tool": "copilot", "terms_checked": true, "source": "https://docs.github.com/en/copilot/how-tos/manage-your-account/managing-copilot-policies-as-an-individual-subscriber", "checked_on": "2026-08-28"}
+    ]},
+    {"name": "prompt_template", "value": {"path": "templates/prompt-code.txt", "blocks": ["Context", "Task", "Requirements", "Output"]}},
+    {"name": "ai_assisted_label", "value": {"label": "ai-assisted", "auto_merge_disabled": true}}
+  ],
+  "decision": "Claude Code for scaffolding, tests and docs, Cursor for refactors, Copilot for review suggestions; infrastructure only with two non-prompter reviewers; data migrations, auth, crypto and secrets loading are ai-off.",
+  "evidence": [
+    "https://github.com/acme/billing/blob/main/CLAUDE.md",
+    "https://github.com/acme/billing/blob/main/.cursorignore",
+    "https://grafana.example.com/d/pr-quality?var-label=ai-assisted&from=1751328000000&to=1756684800000"
+  ],
+  "review": {
+    "cadence": "monthly",
+    "next_review_at": "2026-10-01",
+    "last_outcome": {
+      "period": "2026-08",
+      "ai_assisted": {"pr_count": 41, "defect_escape_rate": 0.047, "revert_rate": 0.024, "churn_2w_rate": 0.17},
+      "other": {"pr_count": 63, "defect_escape_rate": 0.048, "revert_rate": 0.032, "churn_2w_rate": 0.09},
+      "worse_on": ["churn_2w_rate"],
+      "map_tightened": true,
+      "action": "refactor moved from self-review to one-reviewer; record_version bumped 1.0.0 to 1.1.0",
+      "url": "https://grafana.example.com/d/pr-quality?var-label=ai-assisted&from=1751328000000&to=1756684800000"
+    }
+  }
 }
-]]></code>
-    </example>
-  </section>
+]]></example>
 
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
+  "team": {"name": "billing-platform", "repo_url": "https://github.com/acme/billing", "record_version": "1.0.0"},
+  "owner": "swe:bob",
+  "inputs": [
+    {"name": "tool_task_map", "value": [
+      {"task_class": "boilerplate-scaffolding", "tool": "copilot", "checkpoint": "self-review"},
+      {"task_class": "unit-tests", "tool": "copilot", "checkpoint": "self-review"},
+      {"task_class": "refactor", "tool": "copilot", "checkpoint": "self-review"},
+      {"task_class": "code-review", "tool": "copilot", "checkpoint": "self-review"},
+      {"task_class": "documentation", "tool": "copilot", "checkpoint": "self-review"},
+      {"task_class": "data-migration", "tool": "copilot", "checkpoint": "self-review"},
+      {"task_class": "infrastructure", "tool": "copilot", "checkpoint": "one-reviewer"}
+    ]},
+    {"name": "block_list", "value": [
+      {"area": "payments-billing", "paths": ["src/billing/charges/**"], "policy": "two-reviewers-non-prompter"}
+    ]},
+    {"name": "context_files", "value": []},
+    {"name": "exclusion_file", "value": {"path": ".gitignore", "excludes": [".env"]}},
+    {"name": "tool_retention", "value": [
+      {"tool": "copilot", "terms_checked": false, "source": "https://github.com/features/copilot"}
+    ]},
+    {"name": "prompt_template", "value": {"path": "none", "blocks": ["Task"]}},
+    {"name": "ai_assisted_label", "value": {"label": "", "auto_merge_disabled": false}}
+  ],
+  "decision": "We use Copilot for everything.",
+  "evidence": ["https://github.com/acme/billing"],
+  "review": {
+    "cadence": "quarterly",
+    "next_review_at": "2026-12-01",
+    "last_outcome": {
+      "period": "2026-Q2",
+      "ai_assisted": {"pr_count": 80, "defect_escape_rate": 0.09, "revert_rate": 0.06, "churn_2w_rate": 0.31},
+      "other": {"pr_count": 20, "defect_escape_rate": 0.04, "revert_rate": 0.02, "churn_2w_rate": 0.08},
+      "worse_on": ["defect_escape_rate", "revert_rate", "churn_2w_rate"],
+      "map_tightened": false,
+      "url": "https://grafana.example.com/d/pr-quality"
+    }
+  }
 }
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>`tool_task_map` covers all seven task classes with a tool and a checkpoint each; `ai-off` tool and checkpoint agree (r-tool-to-task-map-written).</item>
+      <item>`block_list` covers the eight minimum areas with paths and a policy of ai-off or two non-prompter reviewers; data migrations and infrastructure sit at two reviewers or ai-off (r-security-critical-block-list).</item>
+      <item>`prompt_template` names a four-block template (r-structured-prompt-four-blocks).</item>
+      <item>Every tool in the map has a `context_files` entry reviewed within the last cadence (r-repo-context-file-maintained).</item>
+      <item>`exclusion_file` excludes secrets and data directories; every tool's retention terms are checked or the tool is ai-off (r-no-secrets-or-customer-data-in-prompts).</item>
+      <item>`ai_assisted_label` is set and auto-merge is disabled (r-ai-diff-reviewed-like-human-code).</item>
+      <item>`review.last_outcome` compares defect escape, revert and two-week churn for both groups; any `worse_on` entry comes with `map_tightened: true`, an `action` and a bumped `record_version` (r-defect-rate-tracked-ai-vs-human).</item>
+      <item>Dependency verification and the break-the-function test check are applied per PR through the checkpoint matrix, not recorded here (r-verify-introduced-dependencies-and-apis, r-ai-tests-must-assert-and-fail-when-broken).</item>
     </list>
   </section>
 </text>

@@ -1,45 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Incident Decision Template — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `incident-decision-template`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="Incident Decision Template — Procedure" version="2.0.0" est_tokens="1350" depth="recommended">
+  <summary>Seven steps the scribe runs on a live bridge, in the two minutes after the commander speaks: open the record from the incident, write the one-sentence decision, list the options including do-nothing, take the blast radius from the open dashboard, agree the numeric rollback trigger, pin the evidence, commit, then close the loop at the postmortem.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="open-record-on-bridge">
+      <input>The incident ticket or PagerDuty incident; the time the commander announced the call; the commander's handle.</input>
+      <action>Copy `templates/skeleton.md.j2`; fill `trigger.kind: incident`, `trigger.url`, `incident_id`, `decided_at` (the spoken time), `owner` = commander (or the delegate the commander named on the bridge). If the executor is someone else, add the `executor` entry.</action>
+      <output>Record opened with trigger and owner.</output>
+      <decision-gate>If the bridge has already closed, add `reconstructed: {reconstructed: true, at: now}` before writing anything else (r-record-before-bridge-closes, r-owner-is-commander-or-delegate).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
-    </step>
-
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
-    </step>
-
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
+    <step n="2" name="write-the-decision-sentence">
+      <input>The commander's words.</input>
+      <action>Write `decision` as one imperative sentence: action, target system, region, when ("Disable the recommendations sidecar in eu-west-1 now."). Read it back on the bridge.</action>
       <output>`decision` field.</output>
+      <decision-gate>"Consider", "maybe", "look into", "should probably", or a second sentence: rewrite before continuing (r-decision-is-one-imperative-sentence).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="3" name="list-options-considered">
+      <input>What was proposed and rejected on the bridge in the last few minutes.</input>
+      <action>Add `options_considered` with one line per option: action plus why it was or was not chosen. Always include the "do nothing / keep observing" line with its reason.</action>
+      <output>`options_considered` entry with at least two items.</output>
+      <decision-gate>Only one option and nobody mentioned waiting: record that as a finding for the postmortem rather than inventing a second option (r-options-considered-min-two).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="4" name="quantify-blast-radius">
+      <input>The dashboard already open on the bridge: error rate, affected request count, affected tenants or regions.</input>
+      <action>Write `blast_radius` as systems / regions / tenants plus a number (percent of traffic, req/min, customer count or revenue per minute).</action>
+      <output>`blast_radius` entry.</output>
+      <decision-gate>No number available: write the count from the alert payload or the log query, never "some users" (r-blast-radius-quantified).</decision-gate>
     </step>
+
+    <step n="5" name="agree-rollback-trigger">
+      <input>The metric the bridge is watching; the runbook or the command that undoes the mitigation.</input>
+      <action>Agree out loud and record `rollback_trigger` as `metric`, `threshold` (a number), `window` (a duration) and `rollback` (command or runbook URL).</action>
+      <output>`rollback_trigger` entry.</output>
+      <decision-gate>The mitigation does not ship until the trigger is numeric (r-rollback-trigger-measurable, fm-02).</decision-gate>
+    </step>
+
+    <step n="6" name="pin-evidence-and-commit">
+      <input>The dashboard URL with the incident window selected; the alert permalink; the chat message where the decision was announced.</input>
+      <action>Add each URL to `evidence[]`, making sure dashboard links carry the pinned time range in the query string; set `review.postmortem_date` and `review.next_review_at` to the postmortem; run `scripts/validate-incident-decision-template.py --file`; commit; set `trigger.committed_at` and `bridge_open_at_commit`.</action>
+      <output>Committed record within 2 minutes of `decided_at`.</output>
+      <decision-gate>A dashboard URL without `from`/`to` (or equivalent) is replaced before commit; if commit lands more than 2 minutes after the decision, add the `reconstructed` entry (r-evidence-is-timestamped-signal, r-record-before-bridge-closes).</decision-gate>
+    </step>
+
+    <step n="7" name="review-at-postmortem">
+      <input>The incident timeline; the committed record; the metric history for the rollback trigger.</input>
+      <action>At the postmortem fill `review.outcome`: `rollback_trigger_fired`, `blast_radius_matched`, `measured_blast_radius`, `reviewed_at`. Mark the record stale if the postmortem closes without it.</action>
+      <output>Reviewed record.</output>
+      <decision-gate>`next_review_at` later than the postmortem date is rejected by the validator (r-review-at-postmortem).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Record validates via `scripts/validate-incident-decision-template.py` with no violation.</item>
+      <item>`committed_at` minus `decided_at` is at most 2 minutes, or `reconstructed` is present.</item>
+      <item>`review.outcome` is filled by the postmortem date.</item>
+    </list>
   </section>
 </text>

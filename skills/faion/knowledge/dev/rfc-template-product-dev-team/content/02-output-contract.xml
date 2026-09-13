@@ -1,121 +1,350 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="RFC Template for Product Dev Team — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `rfc-template-product-dev-team` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="RFC Template for Product Dev Team — Output Contract" version="2.0.0" est_tokens="5350" depth="essential">
+  <summary>JSON Schema (draft-07) for the product-dev RFC: named `inputs[]` entries for `problem` (metric, current, target, date, no solution), `options` (at least two, one chosen, rejection reasons), `blast_radius` (enumerated items with counts, owners and four flags), `rollback` (mechanism, minutes, executor, staging run, points of no return), `milestones` (two or more dated increments inside 6 weeks, last is ship), `status`, `decided_on`, `reviewers` (with commented flag), `comment_deadline`; a one-sentence decision naming the chosen option; supersession links; a review no later than one cycle after ship that re-measures the metric. Validator in scripts/validate-rfc-template-product-dev-team.py enforces it, including the 6-week span, 3-working-day deadline and reviewer coverage of the blast radius.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="rfc" type="object" required="true">`id` (`RFC-NNN`), `title`, `author` (`role:handle`), `shared_on` date</field>
+      <field name="owner" type="string" required="true">the tech lead accountable for the RFC through its outcome review, `role:handle`</field>
+      <field name="inputs" type="list" required="true">named entries: `problem` (`metric`, `current_value`, `target_value`, `by_date`, `statement` with no solution), `options` (at least two, exactly one `chosen`, `rejection_reason` on the rest), `blast_radius` (`items[]` with `kind`, `name`, `owner`, `count`; `schema_change`, `public_api_change`, `data_backfill`, `third_party_change`), `rollback` (`mechanism`, `execute_minutes`, `executor`, `staging_run`, `points_of_no_return[]`), `milestones` (two or more dated increments, last `ship: true`), `status`, `decided_on`, `reviewers` (`handle`, `commented`), `comment_deadline` (r-problem-states-metric-and-target, r-two-options-with-rejection-reasons, r-blast-radius-enumerated, r-rollback-named-timed-and-tested, r-scope-fits-one-cycle-with-milestones, r-decision-has-status-and-supersession, r-reviewers-named-with-comment-deadline)</field>
+      <field name="decision" type="string" required="true">one declarative sentence naming the chosen option (r-decision-has-status-and-supersession)</field>
+      <field name="supersession" type="object" required="true">`superseded_by` and `supersedes` URLs or null; both directions linked in `evidence[]` (r-decision-has-status-and-supersession)</field>
+      <field name="evidence" type="list" required="true">at least one URL: the metric dashboard or query, the staging rollback run, successor and predecessor RFCs (r-outcome-review-remeasures-problem-metric)</field>
+      <field name="review" type="object" required="true">`next_review_at` no later than 6 weeks after the ship milestone; `outcome` null or `remeasured_value`, `same_method`, `result` (met | partially-met | not-met), `url` (r-outcome-review-remeasures-problem-metric)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`problem.statement` naming a technology or migration ("move to GraphQL", "adopt Kafka"), or `problem` with no `current_value`, `target_value` or `by_date` — fm-solution-shaped-problem</pattern>
+      <pattern id="f2">`options` with fewer than two entries, every non-chosen option being "do nothing", or a non-chosen option without `rejection_reason` — fm-single-option</pattern>
+      <pattern id="f3">`blast_radius.items` empty, a user-segment or API item without `count`, or a blast-radius owner other than the author absent from `reviewers` — fm-blast-radius-low</pattern>
+      <pattern id="f4">`rollback` without `mechanism`, `execute_minutes`, `executor` or `staging_run`; `data_backfill: true` or `schema_change: true` with empty `points_of_no_return` — fm-rollback-is-a-sentence</pattern>
+      <pattern id="f5">milestone span above 42 days, fewer than two milestones, or a milestone named as a phase ("design", "implementation", "testing") — fm-four-month-rfc</pattern>
+      <pattern id="f6">`reviewers` empty or a team / channel handle; `comment_deadline` fewer than 3 working days after `shared_on`; `status: accepted` before every reviewer commented or the deadline passed — fm-approval-by-silence</pattern>
+      <pattern id="f7">`status: superseded` with `supersession.superseded_by` null, or the successor missing from `evidence[]` — r-decision-has-status-and-supersession</pattern>
+      <pattern id="f8">`review.next_review_at` later than ship plus 42 days, or `review.outcome` recording delivery ("shipped on time") instead of the re-measured metric — r-outcome-review-remeasures-problem-metric</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://rfc-template-product-dev-team/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/rfc-template-product-dev-team.json",
+  "title": "Product-dev RFC",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": ["rfc", "owner", "inputs", "decision", "supersession", "evidence", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "url": {"type": "string", "pattern": "^https://"},
+    "text": {"type": "string", "minLength": 8}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "rfc": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["id", "title", "author", "shared_on"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "id": {"type": "string", "pattern": "^RFC-[0-9]{3,}$"},
+        "title": {"type": "string", "minLength": 8},
+        "author": {"$ref": "#/definitions/handle"},
+        "shared_on": {"$ref": "#/definitions/date"}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "owner": {"$ref": "#/definitions/handle"},
     "inputs": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 9,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "problem"}}}},
+        {"contains": {"properties": {"name": {"const": "options"}}}},
+        {"contains": {"properties": {"name": {"const": "blast_radius"}}}},
+        {"contains": {"properties": {"name": {"const": "rollback"}}}},
+        {"contains": {"properties": {"name": {"const": "milestones"}}}},
+        {"contains": {"properties": {"name": {"const": "status"}}}},
+        {"contains": {"properties": {"name": {"const": "decided_on"}}}},
+        {"contains": {"properties": {"name": {"const": "reviewers"}}}},
+        {"contains": {"properties": {"name": {"const": "comment_deadline"}}}}
+      ],
       "items": {
         "type": "object",
         "required": ["name", "value"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
+          "name": {"type": "string", "enum": ["problem", "options", "blast_radius", "rollback", "milestones", "status", "decided_on", "reviewers", "comment_deadline"]},
           "value": {}
-        }
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "problem"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["metric", "current_value", "target_value", "by_date", "statement"],
+             "additionalProperties": false,
+             "properties": {
+               "metric": {"$ref": "#/definitions/text"},
+               "current_value": {"type": "string", "minLength": 1, "pattern": "[0-9]"},
+               "target_value": {"type": "string", "minLength": 1, "pattern": "[0-9]"},
+               "by_date": {"$ref": "#/definitions/date"},
+               "statement": {"type": "string", "minLength": 20, "pattern": "^(?![\\s\\S]*([Mm]igrate to|[Aa]dopt |[Ss]witch to|[Mm]ove to|[Nn]eed to use|[Rr]ewrite in))"}}}}}},
+          {"if": {"properties": {"name": {"const": "options"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 2,
+             "contains": {"properties": {"chosen": {"const": true}}},
+             "items": {
+               "type": "object",
+               "required": ["name", "chosen"],
+               "additionalProperties": false,
+               "properties": {
+                 "name": {"type": "string", "minLength": 4},
+                 "chosen": {"type": "boolean"},
+                 "rejection_reason": {"$ref": "#/definitions/text"}},
+               "if": {"properties": {"chosen": {"const": false}}},
+               "then": {"required": ["rejection_reason"]}}}}}},
+          {"if": {"properties": {"name": {"const": "blast_radius"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["items", "schema_change", "public_api_change", "data_backfill", "third_party_change"],
+             "additionalProperties": false,
+             "properties": {
+               "items": {
+                 "type": "array", "minItems": 1,
+                 "items": {
+                   "type": "object",
+                   "required": ["kind", "name", "owner"],
+                   "additionalProperties": false,
+                   "properties": {
+                     "kind": {"type": "string", "enum": ["service", "data-store", "api", "scheduled-job", "user-segment"]},
+                     "name": {"type": "string", "minLength": 2},
+                     "owner": {"$ref": "#/definitions/handle"},
+                     "count": {"type": "string", "minLength": 1, "pattern": "[0-9]"}},
+                   "if": {"properties": {"kind": {"enum": ["api", "user-segment"]}}},
+                   "then": {"required": ["count"]}}},
+               "schema_change": {"type": "boolean"},
+               "public_api_change": {"type": "boolean"},
+               "data_backfill": {"type": "boolean"},
+               "third_party_change": {"type": "boolean"}}}}}},
+          {"if": {"properties": {"name": {"const": "rollback"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["mechanism", "execute_minutes", "executor", "staging_run", "points_of_no_return"],
+             "additionalProperties": false,
+             "properties": {
+               "mechanism": {"type": "string", "enum": ["feature-flag-off", "revert-pr", "down-migration", "config-revert"]},
+               "execute_minutes": {"type": "number", "minimum": 0},
+               "executor": {"$ref": "#/definitions/handle"},
+               "staging_run": {
+                 "type": "object",
+                 "required": ["exercised"],
+                 "additionalProperties": false,
+                 "properties": {
+                   "exercised": {"type": "boolean"},
+                   "url": {"$ref": "#/definitions/url"},
+                   "reason": {"$ref": "#/definitions/text"}},
+                 "if": {"properties": {"exercised": {"const": true}}},
+                 "then": {"required": ["url"]},
+                 "else": {"required": ["reason"]}},
+               "points_of_no_return": {
+                 "type": "array",
+                 "items": {
+                   "type": "object",
+                   "required": ["step", "pre_check"],
+                   "additionalProperties": false,
+                   "properties": {"step": {"$ref": "#/definitions/text"}, "pre_check": {"$ref": "#/definitions/text"}}}}}}}}},
+          {"if": {"properties": {"name": {"const": "milestones"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 2,
+             "contains": {"properties": {"ship": {"const": true}}},
+             "items": {
+               "type": "object",
+               "required": ["date", "increment", "ship"],
+               "additionalProperties": false,
+               "properties": {
+                 "date": {"$ref": "#/definitions/date"},
+                 "increment": {"type": "string", "minLength": 12, "pattern": "^(?!(design|implementation|build|testing|test|launch|done|qa)$)"},
+                 "ship": {"type": "boolean"}}}}}}},
+          {"if": {"properties": {"name": {"const": "status"}}},
+           "then": {"properties": {"value": {"type": "string", "enum": ["proposed", "accepted", "rejected", "superseded"]}}}},
+          {"if": {"properties": {"name": {"const": "decided_on"}}},
+           "then": {"properties": {"value": {"$ref": "#/definitions/date"}}}},
+          {"if": {"properties": {"name": {"const": "reviewers"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 1,
+             "items": {
+               "type": "object",
+               "required": ["handle", "commented"],
+               "additionalProperties": false,
+               "properties": {
+                 "handle": {"type": "string", "pattern": "^(?!(team|channel|everyone|all)[:@])[a-z-]+:[a-z0-9._-]+$"},
+                 "commented": {"type": "boolean"}}}}}}},
+          {"if": {"properties": {"name": {"const": "comment_deadline"}}},
+           "then": {"properties": {"value": {"$ref": "#/definitions/date"}}}}
+        ]
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+    "decision": {"type": "string", "minLength": 20, "pattern": "^[^.!?]+[.]?$"},
+    "supersession": {
+      "type": "object",
+      "required": ["superseded_by", "supersedes"],
+      "additionalProperties": false,
+      "properties": {
+        "superseded_by": {"type": ["string", "null"], "pattern": "^https://"},
+        "supersedes": {"type": ["string", "null"], "pattern": "^https://"}
+      }
     },
+    "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/url"}},
     "review": {
       "type": "object",
-      "required": ["cadence", "next_review_at"],
+      "required": ["next_review_at", "outcome"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "next_review_at": {"$ref": "#/definitions/date"},
+        "outcome": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["remeasured_value", "same_method", "result", "url", "reviewed_on"],
+              "additionalProperties": false,
+              "properties": {
+                "remeasured_value": {"type": "string", "minLength": 1, "pattern": "[0-9]"},
+                "same_method": {"type": "boolean", "const": true},
+                "result": {"type": "string", "enum": ["met", "partially-met", "not-met"]},
+                "url": {"$ref": "#/definitions/url"},
+                "reviewed_on": {"$ref": "#/definitions/date"}
+              }
+            }
+          ]
+        }
       }
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="true"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "rfc": {"id": "RFC-118", "title": "Checkout p95 latency under 1.2 s", "author": "swe:alice", "shared_on": "2026-05-29"},
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "problem", "value": {
+      "metric": "checkout p95 latency (Grafana checkout-overview, 7-day window)",
+      "current_value": "2.4 s",
+      "target_value": "1.2 s",
+      "by_date": "2026-07-15",
+      "statement": "Checkout p95 is 2.4 s over the last 7 days against a 1.2 s target; 18 percent of mobile sessions abandon on the payment step, and the abandonment correlates with latency above 2 s."
+    }},
+    {"name": "options", "value": [
+      {"name": "precompute cart totals into the orders table (checkout_v2 behind a flag)", "chosen": true},
+      {"name": "cache the pricing service responses in Redis for 60 s", "chosen": false, "rejection_reason": "cuts p95 to about 1.8 s in the spike test, short of the 1.2 s target; stale prices during promotions"},
+      {"name": "do nothing / keep current behaviour", "chosen": false, "rejection_reason": "abandonment cost estimated at 40k per month at current traffic"}
+    ]},
+    {"name": "blast_radius", "value": {
+      "items": [
+        {"kind": "service", "name": "checkout-service", "owner": "swe:alice"},
+        {"kind": "data-store", "name": "orders table (shared with billing-job)", "owner": "swe:olena"},
+        {"kind": "api", "name": "mobile checkout API v3", "owner": "mobile:dmytro", "count": "18 percent of traffic, 2 API consumers"},
+        {"kind": "scheduled-job", "name": "billing-job nightly reconciliation", "owner": "swe:olena"},
+        {"kind": "user-segment", "name": "mobile checkout users", "owner": "product:maria", "count": "18 percent of sessions"}
+      ],
+      "schema_change": true,
+      "public_api_change": false,
+      "data_backfill": true,
+      "third_party_change": false
+    }},
+    {"name": "rollback", "value": {
+      "mechanism": "feature-flag-off",
+      "execute_minutes": 1,
+      "executor": "oncall:checkout",
+      "staging_run": {"exercised": true, "url": "https://ci.example.com/runs/88412"},
+      "points_of_no_return": [
+        {"step": "backfill of orders.total_cents for historical rows", "pre_check": "row count of orders with NULL total_cents equals the count from the dry run within 0.1 percent"}
+      ]
+    }},
+    {"name": "milestones", "value": [
+      {"date": "2026-06-12", "increment": "orders.total_cents column added and backfilled in staging; query proves parity with computed totals", "ship": false},
+      {"date": "2026-06-26", "increment": "checkout_v2 flag on for internal users; p95 visible on the dashboard", "ship": false},
+      {"date": "2026-07-03", "increment": "flag on for 100 percent of mobile traffic; abandonment panel updated", "ship": true}
+    ]},
+    {"name": "status", "value": "accepted"},
+    {"name": "decided_on", "value": "2026-06-05"},
+    {"name": "reviewers", "value": [
+      {"handle": "swe:olena", "commented": true},
+      {"handle": "mobile:dmytro", "commented": true},
+      {"handle": "product:maria", "commented": false}
+    ]},
+    {"name": "comment_deadline", "value": "2026-06-04"}
+  ],
+  "decision": "Precompute cart totals into the orders table behind the checkout_v2 flag and ship to mobile by 2026-07-03.",
+  "supersession": {"superseded_by": null, "supersedes": null},
+  "evidence": [
+    "https://grafana.example.com/d/checkout-overview?from=now-7d&to=now",
+    "https://ci.example.com/runs/88412",
+    "https://github.com/acme/checkout/pull/2210"
+  ],
+  "review": {
+    "next_review_at": "2026-08-07",
+    "outcome": {"remeasured_value": "1.1 s", "same_method": true, "result": "met", "url": "https://grafana.example.com/d/checkout-overview?from=1785024000000&to=1785628800000", "reviewed_on": "2026-08-06"}
+  }
 }
-]]></code>
-    </example>
-  </section>
+]]></example>
 
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
+  "rfc": {"id": "RFC-119", "title": "Move checkout to GraphQL", "author": "swe:bob", "shared_on": "2026-05-29"},
+  "owner": "swe:bob",
+  "inputs": [
+    {"name": "problem", "value": {
+      "metric": "checkout latency",
+      "current_value": "slow",
+      "target_value": "fast",
+      "by_date": "2026-07-15",
+      "statement": "We need to migrate to GraphQL so the mobile checkout stops being slow."
+    }},
+    {"name": "options", "value": [
+      {"name": "move checkout to GraphQL", "chosen": true}
+    ]},
+    {"name": "blast_radius", "value": {
+      "items": [{"kind": "service", "name": "checkout-service", "owner": "swe:bob"}],
+      "schema_change": true,
+      "public_api_change": true,
+      "data_backfill": true,
+      "third_party_change": false
+    }},
+    {"name": "rollback", "value": {
+      "mechanism": "revert-pr",
+      "execute_minutes": 5,
+      "executor": "swe:bob",
+      "staging_run": {"exercised": false, "reason": "revert is trivial"},
+      "points_of_no_return": []
+    }},
+    {"name": "milestones", "value": [
+      {"date": "2026-09-30", "increment": "launch", "ship": true}
+    ]},
+    {"name": "status", "value": "accepted"},
+    {"name": "decided_on", "value": "2026-05-31"},
+    {"name": "reviewers", "value": [{"handle": "team:backend", "commented": false}]},
+    {"name": "comment_deadline", "value": "2026-05-30"}
+  ],
+  "decision": "Move to GraphQL. It will be faster and cleaner.",
+  "supersession": {"superseded_by": null, "supersedes": null},
+  "evidence": ["https://notion.example.com/rfc-119"],
+  "review": {"next_review_at": "2027-01-15", "outcome": null}
 }
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>`problem` carries metric, current value, target value and date, and names no solution (r-problem-states-metric-and-target).</item>
+      <item>`options` has at least two entries, exactly one chosen, a real alternative besides do-nothing, and a rejection reason on every other (r-two-options-with-rejection-reasons).</item>
+      <item>`blast_radius.items` lists every service, store, API, job and segment with counts, owners and the four flags (r-blast-radius-enumerated).</item>
+      <item>`rollback` names mechanism, minutes, executor, staging run, and a point of no return for every irreversible step (r-rollback-named-timed-and-tested).</item>
+      <item>`milestones` has two or more dated increments within 42 days and the last is the ship date (r-scope-fits-one-cycle-with-milestones).</item>
+      <item>`decision` is one sentence naming the chosen option; `status` and `decided_on` set; supersession linked both ways (r-decision-has-status-and-supersession).</item>
+      <item>`reviewers` are people, include every blast-radius owner, and `comment_deadline` is at least 3 working days after `shared_on`; `accepted` only after comments or deadline (r-reviewers-named-with-comment-deadline).</item>
+      <item>`review.next_review_at` is within 6 weeks of ship and `outcome` re-measures the metric with the same method (r-outcome-review-remeasures-problem-metric).</item>
     </list>
   </section>
 </text>

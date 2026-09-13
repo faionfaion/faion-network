@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- The team has agreed to run fitness functions but has none in CI yet, and wants the first 5 to 8 live within a week.
+- One critical endpoint is known and a load tool (k6, Gatling, Locust) can hit it from a dedicated runner or environment.
+- The CI system exposes pipeline timestamps (GitHub Actions, GitLab CI, Jenkins) so lead time can be computed by a script.
+- The service has a declared layering and a published API definition (OpenAPI, GraphQL, protobuf) or Pact consumers to gate against.
+- One person per function will own it as `role:handle` and four weekly reviews can be scheduled from launch.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- A fitness-function suite already runs in CI with owners and a review history; use the ongoing suite review, not a bootstrap.
+- No CI runs on pull requests or on a schedule, so nothing can be triggered or continual; set up CI first.
+- The service has no published API and no consumers, so the contract category cannot be filled and the five-category minimum cannot be met.
+- The team wants twelve or more functions in week one; cut to 5 to 8 before applying, or the launch drowns in unexplained reds.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/fitness-function-suite-bootstrap/` |
+| Critical endpoint and a versioned load profile | `METHOD /path` plus a committed k6 / Gatling / Locust config | product owner + `perf/profiles/` in the repo |
+| Dependency graph (layers and allowed edges) | package layout, C4 component view or ADR | architecture docs / repo |
+| Pipeline run history | last 20 runs on main via `gh run list` or the GitLab pipelines API | CI system |
+| Last released API definition or consumer contracts | OpenAPI / GraphQL / protobuf at a released tag, or Pact broker URL | API repo / Pact broker |
+| Current complexity violators | tool output at the per-function limit, committed as a baseline file | `radon` / `lizard` / ESLint / SonarQube run on main |
+| Owner per function and a reviewer | `role:handle` | org directory |
 
 ## Assumes Loaded
 
@@ -45,9 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: 5 to 8 functions, p95 under fixed load, deploy lead time from CI, dependency direction tool, complexity baseline ratchet, contract breaking-change gate, ratchet before block, owner and weekly review | ~2000 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the starter suite: 5 to 8 functions with all five categories present, per-function tool, command, threshold, dated baseline, mode, run stage, owner, category-specific fields (endpoint and load profile, minutes from CI, dependency graph, baseline file, consumers or released schema), promotion record for blocking, four weekly reviews; valid and invalid suites; 8 forbidden patterns | ~4450 |
 | `content/03-failure-modes.xml` | essential | 7 antipatterns with detector + repair | ~900 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/04-procedure.xml` | recommended | 9 steps: one function per category, write the dependency graph, wire performance / deployability / complexity / contract with their tools, baseline and launch non-blocking, four weekly reviews, promote to blocking on five green runs | ~1750 |
+| `content/05-examples.xml` | recommended | Complete five-function orders-api suite (k6 nightly, pipeline duration script, import-linter, lizard ratchet with baseline file, oasdiff) with reviews filled and a note per value, plus a three-function blocking launch the validator rejects | ~2300 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

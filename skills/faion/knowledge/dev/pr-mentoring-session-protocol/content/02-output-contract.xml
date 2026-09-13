@@ -1,121 +1,290 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="PR Mentoring Session Protocol — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `pr-mentoring-session-protocol` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="PR Mentoring Session Protocol — Output Contract" version="2.0.0" est_tokens="4350" depth="essential">
+  <summary>JSON Schema (draft-07) for the PR-mentoring session record: one PR, junior and senior, named `inputs[]` entries for `learning_goal` (one observable behaviour), `observed_gap` (did / should), `restated_gap`, `comment_counts` per Conventional Comments label with at least one praise, `deferred_findings`, `session_outcome`; the junior-authored fix commit; progression linked to the prior record with `prior_action_status` and a not-demonstrated streak; a decision naming the follow-up PR within 14 days or two PRs, with escalation on the third miss; the junior's confirmation; evidence anchored to diff lines. Validator in scripts/validate-pr-mentoring-session-protocol.py enforces it, including the nit-storm and fix-author rules.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="session" type="object" required="true">`pr_url` (exactly one PR), `junior`, `senior` (`role:handle`), `date`, `record_readable_by_junior` (true), `evaluation_use` (stated at creation) (r-session-scoped-to-one-pr-and-goal, r-record-shared-with-junior)</field>
+      <field name="owner" type="string" required="true">the senior reviewer, `role:handle`</field>
+      <field name="inputs" type="list" required="true">named entries: `learning_goal` (one observable behaviour, no attitude words), `observed_gap` (`did`, `should`), `restated_gap` (the junior's words), `comment_counts` (issue, suggestion, question, nitpick, praise, thought; praise at least 1), `deferred_findings[]` (url + note), `session_outcome` (r-one-observable-learning-goal, r-observed-gap-cites-diff-line, r-junior-restates-and-writes-the-fix, r-comments-labelled-with-counts)</field>
+      <field name="fix_commit" type="object" required="true">`url` and `author`, or `null` while the junior is still writing it; the author must be the junior (r-junior-restates-and-writes-the-fix)</field>
+      <field name="progression" type="object" required="true">`prior_record_url` or null, `prior_action_status` (demonstrated | partial | not-demonstrated) when a prior record exists, `not_demonstrated_streak` (r-progression-linked-to-prior-session)</field>
+      <field name="decision" type="object" required="true">`follow_up_action` (an observable behaviour, not "keep this in mind"), `demonstrate_in` (`window_days` at most 14 or `next_two_prs`, `url` once the PR exists), `escalation` (intervention + engineering manager) when the streak reaches 3 (r-follow-up-is-a-named-next-pr, r-progression-linked-to-prior-session)</field>
+      <field name="junior_confirmation" type="object" required="true">`method` (comment | reaction | co-authorship), `url`, `confirmed_at` (r-record-shared-with-junior)</field>
+      <field name="evidence" type="list" required="true">at least two URLs; one is a line-level diff or review-comment anchor (`#discussion_r`, `#L`, `#note_`, `#diff`); the prior record and the follow-up PR when they exist (r-observed-gap-cites-diff-line)</field>
+      <field name="status" type="string" required="true">`open` until the follow-up PR URL is recorded, then `closed` (r-follow-up-is-a-named-next-pr)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`observed_gap.did` / `should` phrased about the person ("sloppy", "rushed", "careless"), or no line-level URL in `evidence[]` — fm-gap-is-a-trait</pattern>
+      <pattern id="f2">`fix_commit.author` equal to `session.senior`, or `restated_gap` missing — fm-senior-rewrites-the-code</pattern>
+      <pattern id="f3">`prior_record_url` set with no `prior_action_status`, or a new `learning_goal` while the prior one is `not-demonstrated` — fm-goal-of-the-week</pattern>
+      <pattern id="f4">`comment_counts.nitpick` greater than the sum of all other labels with `session_outcome: learning_goal_addressed` — fm-nit-storm</pattern>
+      <pattern id="f5">`follow_up_action` containing "keep this in mind", "be careful" or "next time"; `window_days` above 14; `status: closed` with no `demonstrate_in.url` — fm-follow-up-never-checked</pattern>
+      <pattern id="f6">`record_readable_by_junior: false`, no `junior_confirmation.url`, or `evaluation_use` empty — fm-secret-dossier</pattern>
+      <pattern id="f7">`learning_goal` phrased as an attitude ("be more careful", "think about edge cases") or naming two skills — r-one-observable-learning-goal</pattern>
+      <pattern id="f8">`not_demonstrated_streak` of 3 or more with no `decision.escalation` — r-progression-linked-to-prior-session</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://pr-mentoring-session-protocol/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pr-mentoring-session-protocol.json",
+  "title": "PR mentoring session record",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": ["session", "owner", "inputs", "fix_commit", "progression", "decision", "junior_confirmation", "evidence", "status"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "url": {"type": "string", "pattern": "^https://"},
+    "behaviour": {"type": "string", "minLength": 15, "pattern": "^(?![\\s\\S]*([Bb]e more careful|[Tt]hink about|[Bb]e careful|[Kk]eep this in mind|[Nn]ext time|[Ss]loppy|[Rr]ushed|[Cc]areless))"}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "session": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["pr_url", "junior", "senior", "date", "record_readable_by_junior", "evaluation_use"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "pr_url": {"type": "string", "pattern": "^https://[^\\s,]+/(pull|merge_requests|pull-requests)/[0-9]+$"},
+        "junior": {"$ref": "#/definitions/handle"},
+        "senior": {"$ref": "#/definitions/handle"},
+        "date": {"$ref": "#/definitions/date"},
+        "record_readable_by_junior": {"type": "boolean", "const": true},
+        "evaluation_use": {"type": "string", "enum": ["not-used-in-evaluation", "aggregated-in-performance-review", "aggregated-in-promotion-case"]}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "owner": {"$ref": "#/definitions/handle"},
     "inputs": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 6,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "learning_goal"}}}},
+        {"contains": {"properties": {"name": {"const": "observed_gap"}}}},
+        {"contains": {"properties": {"name": {"const": "restated_gap"}}}},
+        {"contains": {"properties": {"name": {"const": "comment_counts"}}}},
+        {"contains": {"properties": {"name": {"const": "deferred_findings"}}}},
+        {"contains": {"properties": {"name": {"const": "session_outcome"}}}}
+      ],
       "items": {
         "type": "object",
         "required": ["name", "value"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
+          "name": {"type": "string", "enum": ["learning_goal", "observed_gap", "restated_gap", "comment_counts", "deferred_findings", "session_outcome"]},
           "value": {}
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "learning_goal"}}},
+           "then": {"properties": {"value": {"$ref": "#/definitions/behaviour"}}}},
+          {"if": {"properties": {"name": {"const": "observed_gap"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["did", "should"],
+             "additionalProperties": false,
+             "properties": {"did": {"$ref": "#/definitions/behaviour"}, "should": {"$ref": "#/definitions/behaviour"}}}}}},
+          {"if": {"properties": {"name": {"const": "restated_gap"}}},
+           "then": {"properties": {"value": {"type": "string", "minLength": 20}}}},
+          {"if": {"properties": {"name": {"const": "comment_counts"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["issue", "suggestion", "question", "nitpick", "praise", "thought"],
+             "additionalProperties": false,
+             "properties": {
+               "issue": {"type": "integer", "minimum": 0},
+               "suggestion": {"type": "integer", "minimum": 0},
+               "question": {"type": "integer", "minimum": 0},
+               "nitpick": {"type": "integer", "minimum": 0},
+               "praise": {"type": "integer", "minimum": 1},
+               "thought": {"type": "integer", "minimum": 0}}}}}},
+          {"if": {"properties": {"name": {"const": "deferred_findings"}}},
+           "then": {"properties": {"value": {
+             "type": "array",
+             "items": {
+               "type": "object",
+               "required": ["url", "note"],
+               "additionalProperties": false,
+               "properties": {"url": {"$ref": "#/definitions/url"}, "note": {"type": "string", "minLength": 8}}}}}}},
+          {"if": {"properties": {"name": {"const": "session_outcome"}}},
+           "then": {"properties": {"value": {"type": "string", "enum": ["learning_goal_addressed", "learning_goal_not_addressed"]}}}}
+        ]
+      }
+    },
+    "fix_commit": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["url", "author"],
+          "additionalProperties": false,
+          "properties": {"url": {"$ref": "#/definitions/url"}, "author": {"$ref": "#/definitions/handle"}}
+        }
+      ]
+    },
+    "progression": {
+      "type": "object",
+      "required": ["prior_record_url", "not_demonstrated_streak"],
+      "additionalProperties": false,
+      "properties": {
+        "prior_record_url": {"type": ["string", "null"], "pattern": "^https://"},
+        "prior_action_status": {"type": "string", "enum": ["demonstrated", "partial", "not-demonstrated"]},
+        "not_demonstrated_streak": {"type": "integer", "minimum": 0}
+      },
+      "allOf": [
+        {"if": {"properties": {"prior_record_url": {"type": "string"}}}, "then": {"required": ["prior_action_status"]}},
+        {"if": {"properties": {"prior_record_url": {"type": "null"}}}, "then": {"properties": {"not_demonstrated_streak": {"const": 0}}}}
+      ]
+    },
+    "decision": {
+      "type": "object",
+      "required": ["follow_up_action", "demonstrate_in"],
+      "additionalProperties": false,
+      "properties": {
+        "follow_up_action": {"$ref": "#/definitions/behaviour"},
+        "demonstrate_in": {
+          "type": "object",
+          "required": ["window", "url"],
+          "additionalProperties": false,
+          "properties": {
+            "window": {
+              "oneOf": [
+                {"type": "integer", "minimum": 1, "maximum": 14},
+                {"type": "string", "const": "next-two-prs"}
+              ]
+            },
+            "url": {"type": ["string", "null"], "pattern": "^https://"}
+          }
+        },
+        "escalation": {
+          "type": "object",
+          "required": ["intervention", "escalated_to"],
+          "additionalProperties": false,
+          "properties": {
+            "intervention": {"type": "string", "enum": ["pairing-session", "structured-exercise", "course"]},
+            "escalated_to": {"$ref": "#/definitions/handle"}
+          }
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
+    "junior_confirmation": {
+      "type": "object",
+      "required": ["method", "url", "confirmed_at"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"type": "string", "enum": ["comment", "reaction", "co-authorship"]},
+        "url": {"$ref": "#/definitions/url"},
+        "confirmed_at": {"$ref": "#/definitions/date"}
+      }
+    },
     "evidence": {
       "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+      "minItems": 2,
+      "items": {"$ref": "#/definitions/url"},
+      "contains": {"pattern": "#(discussion_r[0-9]+|L[0-9]+|note_[0-9]+|diff)"}
     },
-    "review": {
-      "type": "object",
-      "required": ["cadence", "next_review_at"],
-      "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
-      }
-    }
+    "status": {"type": "string", "enum": ["open", "closed"]}
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "session": {
+    "pr_url": "https://github.com/acme/billing/pull/412",
+    "junior": "swe:bohdan",
+    "senior": "swe:alice",
+    "date": "2026-09-09",
+    "record_readable_by_junior": true,
+    "evaluation_use": "not-used-in-evaluation"
   },
-  "additionalProperties": false
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "learning_goal", "value": "writes a migration that is safe to re-run: every ALTER guarded by IF NOT EXISTS or a state check"},
+    {"name": "observed_gap", "value": {
+      "did": "migrations/0042.py line 18 runs ALTER TABLE invoices ADD COLUMN vat_rate unconditionally, so a second apply fails",
+      "should": "check for the column with IF NOT EXISTS (or inspect information_schema) so the migration can run twice without error"
+    }},
+    {"name": "restated_gap", "value": "my ALTER assumes the column is absent; if the deploy retries the migration it crashes, so I need to guard the ADD COLUMN"},
+    {"name": "comment_counts", "value": {"issue": 1, "suggestion": 1, "question": 1, "nitpick": 2, "praise": 1, "thought": 0}},
+    {"name": "deferred_findings", "value": [
+      {"url": "https://github.com/acme/billing/pull/412/files#diff-9a1L44", "note": "unused import of Decimal; posted as an ordinary nitpick after the session"}
+    ]},
+    {"name": "session_outcome", "value": "learning_goal_addressed"}
+  ],
+  "fix_commit": {"url": "https://github.com/acme/billing/pull/412/commits/c4d5e6f", "author": "swe:bohdan"},
+  "progression": {
+    "prior_record_url": "https://github.com/acme/billing/blob/main/.product/pr-mentoring-session-protocol/bohdan-2026-08-26.md",
+    "prior_action_status": "not-demonstrated",
+    "not_demonstrated_streak": 2
+  },
+  "decision": {
+    "follow_up_action": "opens the next migration PR with every ALTER guarded and a re-run test in the PR description",
+    "demonstrate_in": {"window": 14, "url": "https://github.com/acme/billing/pull/420"}
+  },
+  "junior_confirmation": {"method": "comment", "url": "https://github.com/acme/billing/pull/412#issuecomment-2210001", "confirmed_at": "2026-09-09"},
+  "evidence": [
+    "https://github.com/acme/billing/pull/412/files#discussion_r1987001",
+    "https://github.com/acme/billing/blob/main/.product/pr-mentoring-session-protocol/bohdan-2026-08-26.md",
+    "https://github.com/acme/billing/pull/420"
+  ],
+  "status": "closed"
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "session": {
+    "pr_url": "https://github.com/acme/billing/pull/412",
+    "junior": "swe:bohdan",
+    "senior": "swe:alice",
+    "date": "2026-09-09",
+    "record_readable_by_junior": true,
+    "evaluation_use": "not-used-in-evaluation"
+  },
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "learning_goal", "value": "be more careful with migrations and think about edge cases"},
+    {"name": "observed_gap", "value": {
+      "did": "the migration was rushed and sloppy",
+      "should": "take more time before opening the PR"
+    }},
+    {"name": "restated_gap", "value": "I will be more careful next time with migrations"},
+    {"name": "comment_counts", "value": {"issue": 1, "suggestion": 0, "question": 0, "nitpick": 14, "praise": 0, "thought": 0}},
+    {"name": "deferred_findings", "value": []},
+    {"name": "session_outcome", "value": "learning_goal_addressed"}
+  ],
+  "fix_commit": {"url": "https://github.com/acme/billing/pull/412/commits/a1b2c3d", "author": "swe:alice"},
+  "progression": {
+    "prior_record_url": "https://github.com/acme/billing/blob/main/.product/pr-mentoring-session-protocol/bohdan-2026-08-26.md",
+    "not_demonstrated_streak": 3
+  },
+  "decision": {
+    "follow_up_action": "keep this in mind next time",
+    "demonstrate_in": {"window": 30, "url": null}
+  },
+  "junior_confirmation": {"method": "comment", "url": "https://github.com/acme/billing/pull/412#issuecomment-2210001", "confirmed_at": "2026-09-09"},
+  "evidence": [
+    "https://github.com/acme/billing/pull/412",
+    "https://github.com/acme/billing/blob/main/.product/pr-mentoring-session-protocol/bohdan-2026-08-26.md"
+  ],
+  "status": "closed"
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>`learning_goal` names one skill as a code behaviour the next PR can show (r-one-observable-learning-goal).</item>
+      <item>`observed_gap` says what the code did and should do, and `evidence[]` has the diff-line or comment anchor (r-observed-gap-cites-diff-line).</item>
+      <item>`comment_counts` has every label, praise at least 1, and a nitpick majority forces `session_outcome: learning_goal_not_addressed` (r-comments-labelled-with-counts).</item>
+      <item>`restated_gap` is in the junior's words and `fix_commit.author` is the junior (r-junior-restates-and-writes-the-fix).</item>
+      <item>`session.pr_url` is one PR and unrelated problems sit in `deferred_findings` (r-session-scoped-to-one-pr-and-goal).</item>
+      <item>`decision.follow_up_action` is a behaviour with a window of at most 14 days or the next two PRs; `status` is `closed` only once `demonstrate_in.url` exists (r-follow-up-is-a-named-next-pr).</item>
+      <item>`progression.prior_record_url` is linked with `prior_action_status`; a streak of 3 carries `decision.escalation` (r-progression-linked-to-prior-session).</item>
+      <item>`record_readable_by_junior` is true, `junior_confirmation.url` exists, `evaluation_use` is stated (r-record-shared-with-junior).</item>
     </list>
   </section>
 </text>

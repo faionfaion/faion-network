@@ -1,121 +1,330 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="New Dependency Risk Checklist — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `new-dependency-risk-checklist` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="New Dependency Risk Checklist — Output Contract" version="2.0.0" est_tokens="4800" depth="essential">
+  <summary>JSON Schema (draft-07) for the new-dependency risk record: the exact package and version with its registry provenance, install hooks and near-name check; named `inputs[]` entries for SPDX `licence`, `transitive_count`, `maintainers`, `last_release`, `alternative` (always including in-house or already-in-tree) and `patch_window`; the dated advisory lookup; the lockfile commit; a structured decision with verdict, fallback and mitigation; the alert recipient who is the owner. Validator in scripts/validate-new-dependency-risk-checklist.py enforces it, including the 12-month, single-maintainer and 20-line rules.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="package" type="object" required="true">`name`, exact `version` (no range operator), `ecosystem`, `registry_repository_url`, `readme_repository_url`, `repository_matches`, `near_name` (searched, popular near-name or null), `install_scripts` (declared, hooks with what they run) (r-exact-version-pinned-in-lockfile, r-install-hooks-and-provenance-reviewed)</field>
+      <field name="owner" type="string" required="true">the person who receives the Dependabot / Renovate / audit alert for this package, `role:handle` (r-upgrade-owner-and-patch-window)</field>
+      <field name="inputs" type="list" required="true">named entries: `licence` (SPDX id), `transitive_count` (integer), `maintainers` (integer), `last_release` (date), `alternative` (list with at least one entry, one named `in-house` or `already-in-tree`), `patch_window` (`critical`, `high` as `Nd`); optional `useful_surface_lines`, `distribution_model` (r-licence-spdx-recorded, r-transitive-footprint-counted, r-maintainer-and-release-recency, r-alternative-considered-including-in-house, r-upgrade-owner-and-patch-window)</field>
+      <field name="advisory_lookup" type="object" required="true">`source` (osv.dev | github-advisory-database | nvd), `url` for the exact name and version, `checked_on`, `open_advisories[]` ids (r-advisory-query-in-evidence)</field>
+      <field name="lockfile" type="object" required="true">`file` (package-lock.json, yarn.lock, pnpm-lock.yaml, poetry.lock, uv.lock, Cargo.lock, go.sum), `commit_url` (r-exact-version-pinned-in-lockfile)</field>
+      <field name="decision" type="object" required="true">`verdict` (accept | accept-with-mitigation | reject | in-house), `statement` naming `name@version`; `fallback` (vendor | fork | alternative) when maintainers is 1 or the last release is over 12 months old; `mitigation` (advisory id + action) for accept-with-mitigation; `distribution_model` for a copyleft licence; `override_reason` when the useful surface is 20 lines or fewer and the verdict is not in-house; `install_hook_reason` when a hook fetches or runs a remote binary</field>
+      <field name="evidence" type="list" required="true">at least two: the advisory lookup URL and the lockfile commit or PR URL (r-advisory-query-in-evidence, r-exact-version-pinned-in-lockfile)</field>
+      <field name="alert_routing" type="object" required="true">`tool` (dependabot | renovate | npm-audit | pip-audit | cargo-audit) and `recipient` equal to `owner` (r-upgrade-owner-and-patch-window)</field>
+      <field name="review" type="object" required="true">`reopen_on` = `major-version-bump`, `next_review_at`</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`licence` of `unknown`, `see repo`, `MIT-ish` or empty, or a copyleft licence with no `decision.distribution_model` — fm-copyleft-discovered-late</pattern>
+      <pattern id="f2">`transitive_count` 0 on a package whose lockfile diff adds more than one package; an advisory URL naming only the direct package while the subtree is non-empty — fm-transitive-blind-spot</pattern>
+      <pattern id="f3">`maintainers` 1 or `last_release` older than 12 months with no `decision.fallback` — fm-abandoned-upstream</pattern>
+      <pattern id="f4">`package.version` with `^`, `~`, `>=` or `*`; no `lockfile.commit_url` — fm-floating-range-no-lockfile</pattern>
+      <pattern id="f5">`near_name.popular_near_name` set, `repository_matches: false`, or an install hook that fetches a remote binary, with a verdict other than `reject` and no `install_hook_reason` — fm-typosquat-or-install-hook</pattern>
+      <pattern id="f6">`useful_surface_lines` 20 or fewer with a verdict other than `in-house` and no `override_reason` — fm-trivial-utility-adopted</pattern>
+      <pattern id="f7">`open_advisories[]` non-empty with verdict `accept`, or `accept-with-mitigation` whose `mitigation.advisory_id` is not in the list — r-advisory-query-in-evidence</pattern>
+      <pattern id="f8">`alert_routing.recipient` different from `owner`, or `patch_window` missing `critical` or `high` — r-upgrade-owner-and-patch-window</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://new-dependency-risk-checklist/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/new-dependency-risk-checklist.json",
+  "title": "New dependency risk record",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": ["package", "owner", "inputs", "advisory_lookup", "lockfile", "decision", "evidence", "alert_routing", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "url": {"type": "string", "pattern": "^https://"},
+    "window": {"type": "string", "pattern": "^[0-9]+d$"}
+  },
   "properties": {
-    "trigger": {
+    "__faion_header__": {"type": "object"},
+    "package": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["name", "version", "ecosystem", "registry_repository_url", "readme_repository_url", "repository_matches", "near_name", "install_scripts"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
-      }
-    },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["name", "value"],
-        "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+        "name": {"type": "string", "minLength": 1, "pattern": "^[^\\s]+$"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?([-+][0-9A-Za-z.-]+)?$"},
+        "ecosystem": {"type": "string", "enum": ["npm", "pypi", "crates.io", "go", "maven", "rubygems", "nuget"]},
+        "registry_repository_url": {"$ref": "#/definitions/url"},
+        "readme_repository_url": {"$ref": "#/definitions/url"},
+        "repository_matches": {"type": "boolean"},
+        "near_name": {
+          "type": "object",
+          "required": ["searched", "popular_near_name"],
+          "additionalProperties": false,
+          "properties": {
+            "searched": {"type": "boolean", "const": true},
+            "popular_near_name": {"type": ["string", "null"]}
+          }
+        },
+        "install_scripts": {
+          "type": "object",
+          "required": ["declared", "hooks"],
+          "additionalProperties": false,
+          "properties": {
+            "declared": {"type": "boolean"},
+            "hooks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["hook", "runs"],
+                "additionalProperties": false,
+                "properties": {
+                  "hook": {"type": "string", "enum": ["preinstall", "install", "postinstall"]},
+                  "runs": {"type": "string", "minLength": 2}
+                }
+              }
+            }
+          },
+          "if": {"properties": {"declared": {"const": true}}},
+          "then": {"properties": {"hooks": {"minItems": 1}}}
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
+    "owner": {"$ref": "#/definitions/handle"},
+    "inputs": {
+      "type": "array",
+      "minItems": 6,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "licence"}}}},
+        {"contains": {"properties": {"name": {"const": "transitive_count"}}}},
+        {"contains": {"properties": {"name": {"const": "maintainers"}}}},
+        {"contains": {"properties": {"name": {"const": "last_release"}}}},
+        {"contains": {"properties": {"name": {"const": "alternative"}}}},
+        {"contains": {"properties": {"name": {"const": "patch_window"}}}}
+      ],
+      "items": {
+        "type": "object",
+        "required": ["name", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "enum": ["licence", "transitive_count", "maintainers", "last_release", "alternative", "patch_window", "useful_surface_lines", "distribution_model"]},
+          "value": {}
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "licence"}}},
+           "then": {"properties": {"value": {"type": "string", "minLength": 3, "pattern": "^(?![Uu]nknown|[Ss]ee repo|MIT-ish)[A-Za-z0-9.+-]+( (WITH|OR|AND) [A-Za-z0-9.+-]+)*$"}}}},
+          {"if": {"properties": {"name": {"const": "transitive_count"}}},
+           "then": {"properties": {"value": {"type": "integer", "minimum": 0}}}},
+          {"if": {"properties": {"name": {"const": "maintainers"}}},
+           "then": {"properties": {"value": {"type": "integer", "minimum": 1}}}},
+          {"if": {"properties": {"name": {"const": "last_release"}}},
+           "then": {"properties": {"value": {"$ref": "#/definitions/date"}}}},
+          {"if": {"properties": {"name": {"const": "alternative"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 1,
+             "items": {
+               "type": "object",
+               "required": ["name", "reason"],
+               "additionalProperties": false,
+               "properties": {"name": {"type": "string", "minLength": 2}, "reason": {"type": "string", "minLength": 8}}
+             },
+             "contains": {"properties": {"name": {"enum": ["in-house", "already-in-tree"]}}}}}}},
+          {"if": {"properties": {"name": {"const": "patch_window"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["critical", "high"],
+             "additionalProperties": false,
+             "properties": {"critical": {"$ref": "#/definitions/window"}, "high": {"$ref": "#/definitions/window"}}}}}},
+          {"if": {"properties": {"name": {"const": "useful_surface_lines"}}},
+           "then": {"properties": {"value": {"type": "integer", "minimum": 1}}}},
+          {"if": {"properties": {"name": {"const": "distribution_model"}}},
+           "then": {"properties": {"value": {"type": "string", "enum": ["saas-backend", "shipped-binary", "browser-bundle", "internal-tool"]}}}}
+        ]
+      }
+    },
+    "advisory_lookup": {
+      "type": "object",
+      "required": ["source", "url", "checked_on", "open_advisories"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {"type": "string", "enum": ["osv.dev", "github-advisory-database", "nvd"]},
+        "url": {"$ref": "#/definitions/url"},
+        "checked_on": {"$ref": "#/definitions/date"},
+        "open_advisories": {"type": "array", "items": {"type": "string", "pattern": "^(CVE-[0-9]{4}-[0-9]{4,}|GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4})$"}}
+      }
+    },
+    "lockfile": {
+      "type": "object",
+      "required": ["file", "commit_url"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {"type": "string", "enum": ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "uv.lock", "requirements.txt (hashed)", "Cargo.lock", "go.sum", "Gemfile.lock", "packages.lock.json"]},
+        "commit_url": {"$ref": "#/definitions/url"}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["verdict", "statement"],
+      "additionalProperties": false,
+      "properties": {
+        "verdict": {"type": "string", "enum": ["accept", "accept-with-mitigation", "reject", "in-house"]},
+        "statement": {"type": "string", "minLength": 20, "pattern": "@[0-9]+\\.[0-9]+"},
+        "fallback": {
+          "type": "object",
+          "required": ["kind", "target"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {"type": "string", "enum": ["vendor", "fork", "alternative"]},
+            "target": {"type": "string", "minLength": 2}
+          }
+        },
+        "mitigation": {
+          "type": "object",
+          "required": ["advisory_id", "action"],
+          "additionalProperties": false,
+          "properties": {
+            "advisory_id": {"type": "string", "pattern": "^(CVE-[0-9]{4}-[0-9]{4,}|GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4})$"},
+            "action": {"type": "string", "minLength": 8}
+          }
+        },
+        "distribution_model": {"type": "string", "enum": ["saas-backend", "shipped-binary", "browser-bundle", "internal-tool"]},
+        "override_reason": {"type": "string", "minLength": 12},
+        "install_hook_reason": {"type": "string", "minLength": 12}
+      },
+      "if": {"properties": {"verdict": {"const": "accept-with-mitigation"}}},
+      "then": {"required": ["mitigation"]}
+    },
     "evidence": {
       "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+      "minItems": 2,
+      "items": {"$ref": "#/definitions/url"},
+      "allOf": [
+        {"contains": {"pattern": "osv\\.dev|github\\.com/advisories|nvd\\.nist\\.gov"}},
+        {"contains": {"pattern": "/commit/|/pull/|/merge_requests/"}}
+      ]
+    },
+    "alert_routing": {
+      "type": "object",
+      "required": ["tool", "recipient"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": {"type": "string", "enum": ["dependabot", "renovate", "npm-audit", "pip-audit", "cargo-audit", "govulncheck"]},
+        "recipient": {"$ref": "#/definitions/handle"}
+      }
     },
     "review": {
       "type": "object",
-      "required": ["cadence", "next_review_at"],
+      "required": ["reopen_on", "next_review_at"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "reopen_on": {"type": "string", "const": "major-version-bump"},
+        "next_review_at": {"$ref": "#/definitions/date"}
       }
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "package": {
+    "name": "dayjs",
+    "version": "1.11.10",
+    "ecosystem": "npm",
+    "registry_repository_url": "https://github.com/iamkun/dayjs",
+    "readme_repository_url": "https://github.com/iamkun/dayjs",
+    "repository_matches": true,
+    "near_name": {"searched": true, "popular_near_name": null},
+    "install_scripts": {"declared": false, "hooks": []}
   },
-  "additionalProperties": false
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "licence", "value": "MIT"},
+    {"name": "transitive_count", "value": 0},
+    {"name": "maintainers", "value": 3},
+    {"name": "last_release", "value": "2026-07-18"},
+    {"name": "alternative", "value": [
+      {"name": "in-house", "reason": "locale tables and DST handling are far more than twenty lines"},
+      {"name": "already-in-tree", "reason": "no date library in the lockfile; Intl.DateTimeFormat lacks parsing"},
+      {"name": "date-fns", "reason": "tree-shakeable but 3x the bundle for the four functions we need"}
+    ]},
+    {"name": "patch_window", "value": {"critical": "7d", "high": "30d"}},
+    {"name": "useful_surface_lines", "value": 400},
+    {"name": "distribution_model", "value": "browser-bundle"}
+  ],
+  "advisory_lookup": {
+    "source": "osv.dev",
+    "url": "https://osv.dev/list?ecosystem=npm&q=dayjs%401.11.10",
+    "checked_on": "2026-09-10",
+    "open_advisories": []
+  },
+  "lockfile": {"file": "pnpm-lock.yaml", "commit_url": "https://github.com/acme/storefront/pull/2231/commits/9f3c1e2"},
+  "decision": {
+    "verdict": "accept",
+    "statement": "Accept dayjs@1.11.10 as a direct dependency of the storefront browser bundle; MIT; no transitive additions; three maintainers with a release two months ago."
+  },
+  "evidence": [
+    "https://osv.dev/list?ecosystem=npm&q=dayjs%401.11.10",
+    "https://github.com/acme/storefront/pull/2231/commits/9f3c1e2",
+    "https://www.npmjs.com/package/dayjs"
+  ],
+  "alert_routing": {"tool": "renovate", "recipient": "swe:alice"},
+  "review": {"reopen_on": "major-version-bump", "next_review_at": "2027-03-10"}
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "package": {
+    "name": "crossenv",
+    "version": "^6.1.1",
+    "ecosystem": "npm",
+    "registry_repository_url": "https://github.com/kentcdodds/cross-env",
+    "readme_repository_url": "https://github.com/kentcdodds/cross-env",
+    "repository_matches": false,
+    "near_name": {"searched": true, "popular_near_name": "cross-env"},
+    "install_scripts": {"declared": true, "hooks": [{"hook": "postinstall", "runs": "node package-setup.js (posts process.env to a remote host)"}]}
+  },
+  "owner": "swe:bob",
+  "inputs": [
+    {"name": "licence", "value": "MIT-ish"},
+    {"name": "transitive_count", "value": 0},
+    {"name": "maintainers", "value": 1},
+    {"name": "last_release", "value": "2024-06-01"},
+    {"name": "alternative", "value": [
+      {"name": "dotenv", "reason": "different purpose, does not set env for a child process"}
+    ]},
+    {"name": "patch_window", "value": {"critical": "7d", "high": "30d"}}
+  ],
+  "advisory_lookup": {
+    "source": "osv.dev",
+    "url": "https://osv.dev/list?ecosystem=npm&q=crossenv",
+    "checked_on": "2026-09-10",
+    "open_advisories": ["GHSA-6h6q-4wq8-7w5g"]
+  },
+  "lockfile": {"file": "package-lock.json", "commit_url": "https://github.com/acme/storefront/pull/2232"},
+  "decision": {
+    "verdict": "accept",
+    "statement": "Accept crossenv for cross-platform env vars in npm scripts."
+  },
+  "evidence": [
+    "https://osv.dev/list?ecosystem=npm&q=crossenv",
+    "https://github.com/acme/storefront/pull/2232"
+  ],
+  "alert_routing": {"tool": "dependabot", "recipient": "team:platform"},
+  "review": {"reopen_on": "major-version-bump", "next_review_at": "2027-03-10"}
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>`licence` is an SPDX identifier from package metadata, cross-checked against the LICENSE file; a copyleft licence names its `distribution_model` in the decision (r-licence-spdx-recorded).</item>
+      <item>`transitive_count` comes from a dry-run install and the decision covers the whole subtree (r-transitive-footprint-counted).</item>
+      <item>`maintainers` and `last_release` are recorded; one maintainer or a release older than 12 months forces `decision.fallback` (r-maintainer-and-release-recency).</item>
+      <item>`advisory_lookup.url` is for the exact name and version, dated today; an open advisory forces `reject` or `accept-with-mitigation` naming it (r-advisory-query-in-evidence).</item>
+      <item>`alternative` lists at least one option and always `in-house` or `already-in-tree`; a surface of 20 lines or fewer defaults to `in-house` (r-alternative-considered-including-in-house).</item>
+      <item>`package.version` is exact and `lockfile.commit_url` points at the lockfile change (r-exact-version-pinned-in-lockfile).</item>
+      <item>Install hooks are listed with what they run, `repository_matches` is true, and `near_name.popular_near_name` is null (r-install-hooks-and-provenance-reviewed).</item>
+      <item>`alert_routing.recipient` equals `owner` and `patch_window` has `critical` and `high` (r-upgrade-owner-and-patch-window).</item>
     </list>
   </section>
 </text>

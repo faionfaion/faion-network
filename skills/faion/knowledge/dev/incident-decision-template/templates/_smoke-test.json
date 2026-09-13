@@ -1,44 +1,51 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for incident-decision-template: _smoke-test.json",
+    "purpose": "Template fixture for incident-decision-template: _smoke-test.json \u2014 minimum record that passes the validator",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
   "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
+    "kind": "incident",
+    "url": "https://acme.pagerduty.com/incidents/Q2X4",
+    "incident_id": "INC-2417",
+    "decided_at": "2026-09-12T02:14:00Z",
+    "committed_at": "2026-09-12T02:15:40Z",
+    "bridge_open_at_commit": true
   },
-  "owner": "swe:alice",
+  "owner": "ic:alice",
   "inputs": [
-    {
-      "name": "scope",
-      "value": "billing"
-    },
     {
       "name": "options_considered",
       "value": [
-        "disable recommendations sidecar (chosen: isolates the failing dependency)",
-        "roll back full release (rejected: 20 min, wider blast)",
-        "do nothing / keep observing (rejected: error rate rising)"
+        "disable the recommendations sidecar in eu-west-1 (chosen: isolates the failing dependency, 1 min to apply)",
+        "roll back the full checkout release 41 -> 40 (rejected: 20 min, widens blast radius to all regions)",
+        "do nothing / keep observing for 10 min (rejected: 5xx rate rising 0.4 pp per minute)"
       ]
     },
     {
       "name": "blast_radius",
-      "value": "38% of checkout requests in eu-west-1"
+      "value": "38% of checkout requests in eu-west-1 returning 5xx, approx. 1,900 req/min, 3 tenants on dedicated shards unaffected"
     },
     {
       "name": "rollback_trigger",
-      "value": "checkout 5xx rate above 2% for 5 consecutive minutes; rollback: helm rollback checkout 41"
+      "value": {
+        "metric": "checkout_http_5xx_rate (grafana: checkout-overview)",
+        "threshold": "above 2%",
+        "window": "5 consecutive minutes",
+        "rollback": "helm rollback checkout 41 -n prod-eu-west-1"
+      }
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
+  "decision": "Disable the recommendations sidecar in eu-west-1 now.",
   "evidence": [
-    "https://example.com/pr/1"
+    "https://grafana.acme.internal/d/checkout-overview?from=1789178400000&to=1789180200000&var-region=eu-west-1",
+    "https://acme.pagerduty.com/incidents/Q2X4/alerts/A7",
+    "https://acme.slack.com/archives/C0INC2417/p1789178040001200"
   ],
   "review": {
-    "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
+    "postmortem_date": "2026-09-15",
+    "next_review_at": "2026-09-15"
   }
 }

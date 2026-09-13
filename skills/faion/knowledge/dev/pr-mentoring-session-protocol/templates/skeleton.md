@@ -1,42 +1,86 @@
 <!--
-purpose: Canonical skeleton for the `pr-mentoring-session-protocol` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/pr-mentoring-session-protocol/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-pr-mentoring-session-protocol.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Canonical skeleton for the `pr-mentoring-session-protocol` record — one PR, one learning goal, the gap anchored to a diff line, labelled comment counts, the junior's restatement and fix, the follow-up PR, and the junior's confirmation.
+consumes: The junior's open PR, the prior session record, the review comment thread, and the follow-up PR once it exists.
+produces: A committed record at .product/pr-mentoring-session-protocol/<junior>-<date>.md readable by the junior, mirrored as JSON for scripts/validate-pr-mentoring-session-protocol.py.
+depends-on: templates/header.yaml, content/02-output-contract.xml, scripts/validate-pr-mentoring-session-protocol.py.
+token-budget-impact: ~600 tokens to fill end-to-end.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+pr: <pr_url>
+junior: <junior>
+senior: <senior>
+date: <session_date>
 ---
 
-# Trigger
+# Session
 
-- kind: <trigger_kind>
-- url:  <URL>
+- pr_url: <pr_url>
+- junior: <junior>
+- senior: <senior>
+- date: <session_date>
+- record_readable_by_junior: true
+- evaluation_use: <evaluation_use>
 
-# Owner
+# Learning goal
 
-- role:<handle>
+<learning_goal>
 
-# Inputs
+# Observed gap
 
-- name: <input_name>
-  value: <typed_value>
+- did: <gap_did>
+- should: <gap_should>
+- line: <gap_line_url>
+
+# Restated gap (the junior's words)
+
+<restated_gap>
+
+# Comment counts
+
+- issue: <issue_count>
+- suggestion: <n>
+- question: <n>
+- nitpick: <nitpick_count>
+- praise: <praise_count>
+- thought: <n>
+- session_outcome: <learning_goal_addressed | learning_goal_not_addressed; not_addressed when nitpicks outnumber every other label combined>
+
+# Fix commit
+
+- url: <commit URL, authored by the junior; null until pushed>
+- author: <junior>
+
+# Deferred findings
+
+Unrelated problems, posted as ordinary review comments after the session.
+
+- <line URL>: <one line>
+
+# Progression
+
+- prior_record_url: <prior_record_url>
+- prior_action_status: <demonstrated | partial | not-demonstrated; required when a prior record exists>
+- not_demonstrated_streak: <not_demonstrated_streak>
 
 # Decision
 
-<decision_statement>
+- follow_up_action: <follow_up_action>
+- demonstrate_in: window <follow_up_window>, url <follow-up PR or ticket URL; null until it exists>
+- escalation: <intervention pairing-session | structured-exercise | course, escalated_to role:handle; required at a streak of 3>
+
+# Junior confirmation
+
+- method: <comment | reaction | co-authorship>
+- url: <URL of the confirmation>
+- confirmed_at: <YYYY-MM-DD>
 
 # Evidence
 
-- <url_1>
-- <url_2>
+- <gap_line_url>
+- <prior_record_url>
+- <follow-up PR URL when it exists>
 
-# Review
+# Status
 
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+<open until the follow-up PR URL is recorded, then closed>

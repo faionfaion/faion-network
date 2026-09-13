@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Multi-Region Failover Pattern Pack — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `multi-region-failover-pattern-pack`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="Multi-Region Failover Pattern Pack — Procedure" version="2.0.0" est_tokens="1850" depth="recommended">
+  <summary>Nine steps from two agreed numbers to a drilled pack: get RPO/RTO per tier from the business owner, collect replication lag, backfill and dependency facts, choose the pattern whose achievable numbers fit and whose capacity and quotas are real, write the DNS, database and object-store mechanics, list dependencies with bypasses, write failback, run the live drill and record measurements, then decide and label verified or unverified.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="agree-rpo-rto-per-tier">
+      <input>Workload tier list; the business owner for the tier.</input>
+      <action>Record `workload.name`, `tier`, `business_owner`, and the agreed `rpo_minutes` and `rto_minutes` in `inputs[]`, plus `primary_region` and `secondary_region`. An unassigned workload takes the strictest tier's numbers.</action>
+      <output>`workload` and `inputs[]`.</output>
+      <decision-gate>"Near zero", "as fast as possible" or "same as today" stops the procedure here (r-rpo-rto-numeric-per-tier).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="collect-replication-facts">
+      <input>Database replication metrics for the last 30 days; object-store replication configuration and metrics.</input>
+      <action>Fill `database.engine`, `replication`, `p99_lag_seconds_30d`; fill `object_store.replication_enabled`, `versioning`, `backlog_metric`, `replication_time_alert`, `existing_objects_backfilled` and the `backfill_job` (on Amazon S3, the Batch Replication job id).</action>
+      <output>Replication facts in `database` and `object_store`.</output>
+      <decision-gate>Asynchronous replication with p99 lag above `rpo_minutes` × 60 s means either the RPO goes up or replication goes synchronous and is re-costed (r-database-replication-mode-and-promotion, r-object-store-replication-verified).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="list-region-scoped-dependencies">
+      <input>Everything the failover script and the secondary region touch: IdP, secrets manager, CI/CD, DNS provider, certificates, payment and email providers, cloud control-plane endpoints.</input>
+      <action>Fill `dependencies[]` with `kind` and `reachable_from_secondary`; for each unreachable one write the `bypass` (replicated copy, break-glass path, manual step).</action>
+      <output>`dependencies[]` with at least the IdP, DNS provider and CI/CD.</output>
+      <decision-gate>An unreachable dependency with no bypass invalidates any pattern claim (r-region-scoped-dependencies-listed).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="choose-pattern-and-capacity">
+      <input>Required RPO/RTO; cost per pattern; secondary capacity and regional service quotas.</input>
+      <action>Choose one of backup-and-restore, pilot-light, warm-standby, active-passive-hot-standby, active-active. Record `achievable_rpo_minutes` / `achievable_rto_minutes`, `secondary_capacity.mode`, `percent_of_primary`, `scale_up_minutes` (for scale-up), and `quotas_verified` after requesting quotas in the secondary region for full production load.</action>
+      <output>`pattern` block.</output>
+      <decision-gate>Achievable RTO above required, or scale-up time above RTO, or quotas not requested: choose the next pattern up and re-cost (r-pattern-chosen-from-rpo-rto-and-cost, fm-07).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="write-dns-mechanics">
+      <input>DNS provider configuration; client inventory (mobile SDKs, server-side connection pools).</input>
+      <action>Set `dns.mechanism`; for dns-failover set `ttl_seconds` (60 or less on failover records), `health_check` endpoint / interval / failure threshold; list `ttl_ignoring_clients[]` with a `fallback` each. `observed_propagation_seconds` is filled from the drill in step 8.</action>
+      <output>`dns` block.</output>
+      <decision-gate>A TTL above 60 s on the failover record is rejected (r-dns-failover-ttl-and-health-check).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="write-promotion-and-fencing">
+      <input>Database vendor documentation for promotion; the app's connection configuration.</input>
+      <action>Write `database.promotion_procedure` (runbook reference and command), `fencing` (how the old primary stops accepting writes before promotion) and `single_writer_enforcement` (how only one writer endpoint can exist).</action>
+      <output>Promotion, fencing and single-writer text in `database`.</output>
+      <decision-gate>No fencing step means split brain on the first real failover (fm-03).</decision-gate>
     </step>
+
+    <step n="7" name="write-failback">
+      <input>The promotion procedure; the replication topology after failover.</input>
+      <action>Fill `failback.trigger`, its own `rpo_minutes` / `rto_minutes`, the `reconciliation_step` for writes accepted in the secondary, and the `procedure` back to the primary or to two healthy regions.</action>
+      <output>`failback` block.</output>
+      <decision-gate>One-way failover is incomplete (r-failback-procedure-included).</decision-gate>
+    </step>
+
+    <step n="8" name="run-live-drill">
+      <input>`drill.checklist[]` (at least five steps: freeze, fence, promote, flip DNS, scale, synthetic transaction, record manual steps); a bounded traffic slice; a drill window.</input>
+      <action>Run the drill on real traffic; fill `drill.last` with `date`, `scope_services[]`, `traffic_percent`, `measured_rto_minutes`, `measured_rpo_minutes`, `manual_steps[]`; write `dns.observed_propagation_seconds` from the timer; set `drill.mechanics_last_changed_at` to the last change to replication, DNS or promotion.</action>
+      <output>`drill.last` and the propagation figure.</output>
+      <decision-gate>The drill is re-run after any change to replication, DNS or promotion mechanics (r-drill-live-with-measured-results).</decision-gate>
+    </step>
+
+    <step n="9" name="decide-and-label">
+      <input>All blocks; the drill result.</input>
+      <action>Write `decision` naming the chosen pattern once with achievable versus required numbers; add `unverified` if `drill.last` is null or older than `mechanics_last_changed_at`. Add `evidence[]` (drill report, replication dashboard, quota request, backfill job); set `review.cadence` and `next_review_at`. Fill `templates/skeleton.md.j2`; run `scripts/validate-multi-region-failover-pattern-pack.py --file`; the named owner reviews before commit.</action>
+      <output>Committed pattern pack.</output>
+      <decision-gate>A pack labelled `unverified` schedules its drill before `next_review_at` (r-drill-live-with-measured-results, 03 human checkpoint).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Pack validates via `scripts/validate-multi-region-failover-pattern-pack.py`, including achievable-versus-required and lag-versus-RPO checks.</item>
+      <item>`drill.last` is dated after `mechanics_last_changed_at`, or `decision` carries `unverified` and a drill is scheduled.</item>
+      <item>Every dependency on the failover path is reachable from the secondary or has a drilled bypass.</item>
+    </list>
   </section>
 </text>

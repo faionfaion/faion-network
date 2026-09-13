@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 layer 2, batch 1 of 2: nine documents whose whole body is now about
+  their subject.** `dev/evolutionary-architecture-fitness-functions`,
+  `fitness-function-suite-bootstrap`, `incident-decision-template`,
+  `llm-friendly-architecture`, `multi-region-failover-pattern-pack`,
+  `new-dependency-risk-checklist`, `pr-mentoring-session-protocol`,
+  `rfc-template-product-dev-team`, `sdd/ai-assisted-dev`. The generic
+  `trigger / owner / inputs / decision / evidence / review` contract is replaced
+  by a draft-07 schema of 6-13 named fields the rules actually constrain
+  (`multi-region-failover-pattern-pack`: RPO/RTO per tier, replication mode,
+  promotion path, last drill result); the four-step
+  `check-prerequisites → gather-evidence → fill-artefact → surface-for-review`
+  procedure by 7-9 subject steps; Applies If / Skip If / Prerequisites name real
+  preconditions. Every slug's validator was rewritten in the `cd-basics` shape
+  with an `extra()` block for the cross-field numbers JSON Schema cannot express
+  (a 2-minute commit window, a 42-day RFC span, lag-vs-RPO), and `--self-test`
+  runs the contract's own examples. Templates realigned to the new field names;
+  `llm-arch-audit.sh`'s default file-size limit corrected to the 250 the rule
+  states. Generic-step residue: 0 in all nine.
+
 - **The fold's eleven visible disagreements, in one table for the owner.**
   `.aidocs/improvements/fold-disagreements-decisions.md` lists every place a
   hand-written extra and its generated canonical rule state the same thing with

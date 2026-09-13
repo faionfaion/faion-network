@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- The codebase is edited by an AI coding agent (Claude Code, Cursor or similar) on a recurring basis, not only by people.
+- The language is TypeScript / JavaScript or Python, so `templates/llm-arch-audit.sh` and the import lint (Ruff F403/F405, eslint-plugin-import no-namespace) apply.
+- The repo can be audited at a pinned commit by a committed script, and the command can later run in CI on pull requests.
+- A `CLAUDE.md` exists at the repo root or can be generated from `templates/claude-md-project.md.j2` and committed.
+- One developer will own the splits, deletions and renames the decision names, as `role:handle`.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- No AI agent edits the codebase; a human-only repo gets a normal architecture review, not this rubric.
+- The tree is generated or vendored code (protobuf stubs, ORM migrations, node_modules-style bundles) where file size and naming are not the team's to change.
+- The language has no wildcard-import or barrel construct and a monolithic file layout is imposed by the framework (a single Arduino sketch, a Jupyter notebook).
+- An audit at the same commit already exists with the same line limit; rerun only after the named splits have merged.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/llm-friendly-architecture/` |
+| Repo at a pinned commit | clone plus `git rev-parse HEAD` | the project repo |
+| Audit script | `templates/llm-arch-audit.sh` or the project's committed equivalent | this methodology / `scripts/` in the repo |
+| Line limit | integer 100 to 300 (default 250) | team convention, written into CLAUDE.md |
+| Import lint output | Ruff `F403`/`F405` or `eslint-plugin-import` `import/no-namespace` report | the project's linter |
+| CLAUDE.md | Markdown at the repo root with commands, structure, conventions and the max file size | `templates/claude-md-project.md.j2` |
+| Namespace import allow-list | list of module names (e.g. react, three) | team convention |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: file-size histogram with threshold, directory depth cap, no barrels, explicit imports, naming score lists offenders, static data extracted, CLAUDE.md matches audit, reproducible audit command | ~1750 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the audit record: repo and SHA, line_limit (100 to 300), audit block with histogram and ranked oversized files each with a named split, depth violations, barrels, wildcard-import hits, naming rubric with score and offenders, inline data, CLAUDE.md line limit, CI wiring; decision that names files; evidence with command and SHA; valid and invalid records; 8 forbidden patterns | ~4150 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 8 steps: pin limit and SHA, run the audit script, rank oversized files with splits, list depth / barrels / wildcards, score naming with offenders, find inline data, reconcile CLAUDE.md, decide and wire CI | ~1500 |
+| `content/05-examples.xml` | recommended | Complete storefront audit record (1,412-line CheckoutPage split, one barrel, one namespace import, depth-5 path, naming 84 with offenders, CLAUDE.md at 250) with a note per value, plus the usual 400-line 'split later' audit and what the validator prints | ~1900 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

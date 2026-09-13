@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="New Dependency Risk Checklist — Worked Example" version="1.0.0" est_tokens="1800" depth="recommended">
+  <summary>One complete risk record for adding dayjs@1.11.10 to a browser bundle — MIT, zero transitive packages, three maintainers, clean OSV lookup, no install hooks, three alternatives including in-house, pnpm lockfile commit, Renovate routed to the owner — with a note on each non-obvious value, then the crossenv typosquat record as a reviewer would be tempted to write it and what the validator prints.</summary>
+
+  <section title="Scenario">
+    <p>The storefront needs date parsing and formatting in four places. swe:alice proposes `dayjs@1.11.10` for the browser bundle; a second engineer proposes `crossenv` for cross-platform environment variables in npm scripts. Both go through the record on 2026-09-10.</p>
+  </section>
+
+  <section title="Resulting record">
+    <example type="good" title="dayjs@1.11.10 accepted">
+      <code lang="json"><![CDATA[
+{
+  "package": {
+    "name": "dayjs",
+    "version": "1.11.10",
+    "ecosystem": "npm",
+    "registry_repository_url": "https://github.com/iamkun/dayjs",
+    "readme_repository_url": "https://github.com/iamkun/dayjs",
+    "repository_matches": true,
+    "near_name": {"searched": true, "popular_near_name": null},
+    "install_scripts": {"declared": false, "hooks": []}
+  },
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "licence", "value": "MIT"},
+    {"name": "transitive_count", "value": 0},
+    {"name": "maintainers", "value": 3},
+    {"name": "last_release", "value": "2026-07-18"},
+    {"name": "alternative", "value": [
+      {"name": "in-house", "reason": "locale tables and DST handling are far more than twenty lines"},
+      {"name": "already-in-tree", "reason": "no date library in the lockfile; Intl.DateTimeFormat lacks parsing"},
+      {"name": "date-fns", "reason": "tree-shakeable but 3x the bundle for the four functions we need"}
+    ]},
+    {"name": "patch_window", "value": {"critical": "7d", "high": "30d"}},
+    {"name": "useful_surface_lines", "value": 400},
+    {"name": "distribution_model", "value": "browser-bundle"}
+  ],
+  "advisory_lookup": {
+    "source": "osv.dev",
+    "url": "https://osv.dev/list?ecosystem=npm&q=dayjs%401.11.10",
+    "checked_on": "2026-09-10",
+    "open_advisories": []
+  },
+  "lockfile": {"file": "pnpm-lock.yaml", "commit_url": "https://github.com/acme/storefront/pull/2231/commits/9f3c1e2"},
+  "decision": {
+    "verdict": "accept",
+    "statement": "Accept dayjs@1.11.10 as a direct dependency of the storefront browser bundle; MIT; no transitive additions; three maintainers with a release two months ago."
+  },
+  "evidence": [
+    "https://osv.dev/list?ecosystem=npm&q=dayjs%401.11.10",
+    "https://github.com/acme/storefront/pull/2231/commits/9f3c1e2",
+    "https://www.npmjs.com/package/dayjs"
+  ],
+  "alert_routing": {"tool": "renovate", "recipient": "swe:alice"},
+  "review": {"reopen_on": "major-version-bump", "next_review_at": "2027-03-10"}
+}
+]]></code>
+      <note>`licence` is the SPDX id `MIT` read from package.json and matched against the LICENSE file; it is permissive, so no `distribution_model` is required in the decision even though the input records the browser bundle (r-licence-spdx-recorded). `transitive_count` 0 came from a pnpm dry run, not from the README's "zero dependencies" claim (r-transitive-footprint-counted). Three maintainers and a release two months old mean no `fallback` is required (r-maintainer-and-release-recency). The OSV URL is for the exact `dayjs@1.11.10` and dated today; `open_advisories` is empty so `verdict: accept` is allowed (r-advisory-query-in-evidence). `alternative` lists `in-house` (rejected: locale and DST tables), `already-in-tree` (nothing covers parsing) and `date-fns`; `useful_surface_lines` 400 is well over the 20-line default-to-in-house threshold (r-alternative-considered-including-in-house). `package.version` is exact and the lockfile commit is in `evidence[]` (r-exact-version-pinned-in-lockfile). No install scripts, repository matches, no popular near-name (r-install-hooks-and-provenance-reviewed). Renovate alerts go to `swe:alice`, who is the owner, with a 7-day critical and 30-day high window; the record reopens only on a major bump (r-upgrade-owner-and-patch-window).</note>
+    </example>
+  </section>
+
+  <section title="Rejected record">
+    <example type="bad" title="crossenv written the tempting way">
+      <code lang="json"><![CDATA[
+{
+  "package": {
+    "name": "crossenv",
+    "version": "^6.1.1",
+    "ecosystem": "npm",
+    "registry_repository_url": "https://github.com/kentcdodds/cross-env",
+    "readme_repository_url": "https://github.com/kentcdodds/cross-env",
+    "repository_matches": false,
+    "near_name": {"searched": true, "popular_near_name": "cross-env"},
+    "install_scripts": {"declared": true, "hooks": [{"hook": "postinstall", "runs": "node package-setup.js (posts process.env to a remote host)"}]}
+  },
+  "owner": "swe:bob",
+  "inputs": [
+    {"name": "licence", "value": "MIT-ish"},
+    {"name": "transitive_count", "value": 0},
+    {"name": "maintainers", "value": 1},
+    {"name": "last_release", "value": "2024-06-01"},
+    {"name": "alternative", "value": [
+      {"name": "dotenv", "reason": "different purpose, does not set env for a child process"}
+    ]},
+    {"name": "patch_window", "value": {"critical": "7d", "high": "30d"}}
+  ],
+  "advisory_lookup": {
+    "source": "osv.dev",
+    "url": "https://osv.dev/list?ecosystem=npm&q=crossenv",
+    "checked_on": "2026-09-10",
+    "open_advisories": ["GHSA-6h6q-4wq8-7w5g"]
+  },
+  "lockfile": {"file": "package-lock.json", "commit_url": "https://github.com/acme/storefront/pull/2232"},
+  "decision": {
+    "verdict": "accept",
+    "statement": "Accept crossenv for cross-platform env vars in npm scripts."
+  },
+  "evidence": [
+    "https://osv.dev/list?ecosystem=npm&q=crossenv",
+    "https://github.com/acme/storefront/pull/2232"
+  ],
+  "alert_routing": {"tool": "dependabot", "recipient": "team:platform"},
+  "review": {"reopen_on": "major-version-bump", "next_review_at": "2027-03-10"}
+}
+]]></code>
+      <note>What the validator prints: `package.version` `^6.1.1` is a range (r-exact-version-pinned-in-lockfile); `licence` `MIT-ish` is not an SPDX id (r-licence-spdx-recorded); `alternative` has no `in-house` or `already-in-tree` entry (r-alternative-considered-including-in-house); `decision.statement` names no `name@version`; cross-field: `open_advisories` non-empty with `verdict: accept` (r-advisory-query-in-evidence); `maintainers` 1 and `last_release` over 12 months old with no `fallback` (r-maintainer-and-release-recency); `popular_near_name` is `cross-env`, `repository_matches` is false and the postinstall hook posts `process.env` to a remote host, so the only allowed verdict is `reject` (r-install-hooks-and-provenance-reviewed); `alert_routing.recipient` `team:platform` is not the owner (r-upgrade-owner-and-patch-window). What the reviewer sees without the validator: the package name is the 2017 typosquat campaign, one character away from the package everyone meant (fm-typosquat-or-install-hook).</note>
+    </example>
+  </section>
+</text>

@@ -1,30 +1,81 @@
 <!--
-purpose: Canonical skeleton for the `llm-friendly-architecture` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/llm-friendly-architecture/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-llm-friendly-architecture.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Canonical skeleton for the `llm-friendly-architecture` audit record — one section per audit rule, filled from the output of templates/llm-arch-audit.sh.
+consumes: The repo at a pinned commit, the line limit (default 250, never above 300), the audit script output, the import lint output, and CLAUDE.md.
+produces: A committed audit record at .product/llm-friendly-architecture/<commit_sha>.md, mirrored as JSON for scripts/validate-llm-friendly-architecture.py.
+depends-on: templates/header.yaml, templates/llm-arch-audit.sh, templates/claude-md-project.md.j2, content/02-output-contract.xml, scripts/validate-llm-friendly-architecture.py.
+token-budget-impact: ~700 tokens to fill for a mid-sized repo.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+owner: {{ owner }}
+commit_sha: {{ commit_sha }}
+line_limit: {{ line_limit }}
 ---
 
-# Trigger
+# Repo
 
-- kind: {{ trigger_kind }}
-- url:  <URL>
-
-# Owner
-
-- role:<handle>
+- url: {{ repo_url }}
+- commit_sha: {{ commit_sha }}
+- source_root: {{ source_root }}
+- owner: {{ owner }}
 
 # Inputs
 
-- name: {{ input_name }}
-  value: {{ typed_value }}
+- line_limit: {{ line_limit }}
+- namespace_import_allowlist: <module names whose namespace import is allowed, or none>
+
+# Audit
+
+- command: `{{ audit_command }}`
+
+## File size
+
+Histogram (r-file-size-histogram-with-threshold):
+
+- 0-100: <files>
+- 101-{{ line_limit }}: <files>
+- above {{ line_limit }}: <files>
+
+Oversized, largest first, each with the target files of its split:
+
+- {{ largest_file }} ({{ largest_file_lines }} lines): {{ largest_file_split }}
+- <path> (<lines>): <data to src/data/..., hooks to hooks/..., pure functions to utils/...>
+
+## Directory depth
+
+Limit 3 levels below source root, 2 inside a feature folder (r-directory-depth-cap).
+
+- <path> depth <n>
+
+## Barrels
+
+`export * from` and re-export-only index files (r-no-barrel-reexports):
+
+- <path>
+
+## Wildcard imports
+
+- lint: {{ import_lint }}
+- <path>:<line>
+
+## Naming
+
+Rubric (r-naming-clarity-score-lists-offenders): file name equals primary export; PascalCase components, use-* hooks, kebab-case utils; no utils2 / misc / helpers / common / stuff; no unexplained abbreviations.
+
+- score: {{ naming_score }}
+- <path>: <reason> -> <proposed name>
+
+## Inline data
+
+Components carrying literal data blocks (r-static-data-extracted-from-components):
+
+- <path>: <lines of inline data>
+
+## CLAUDE.md
+
+- present: <true | false>
+- line_limit: <number stated in CLAUDE.md; must equal {{ line_limit }}>
+- ci_wired: <true once the baseline is clean and the audit runs on every pull request>
 
 # Decision
 
@@ -32,11 +83,11 @@ trigger_url: <URL>
 
 # Evidence
 
-- {{ url_1 }}
-- {{ url_2 }}
+- `{{ audit_command }}`
+- {{ commit_sha }}
+- <PR or CI run URL>
 
 # Review
 
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- cadence: {{ review_cadence }}
+- next_review_at: {{ next_review_date }}

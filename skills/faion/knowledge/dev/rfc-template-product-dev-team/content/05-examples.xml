@@ -1,45 +1,129 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="RFC Template for Product Dev Team — Worked Example" version="1.1.0" est_tokens="600" depth="recommended">
-  <summary>One end-to-end worked example showing `rfc-template-product-dev-team` applied from trigger to committed artefact.</summary>
+<text id="05-examples" title="RFC Template for Product Dev Team — Worked Example" version="2.0.0" est_tokens="2300" depth="recommended">
+  <summary>One complete RFC for cutting checkout p95 from 2.4 s to 1.2 s (three options, five blast-radius items with owners, flag-off rollback exercised in staging, three milestones in five weeks, three named reviewers, accepted after the deadline, outcome re-measured at 1.1 s) with a note on each non-obvious value, then the "move to GraphQL" RFC and what the validator prints.</summary>
 
-  <section title="Worked example">
-    <example type="good" title="Quarterly review of a billing-service refactor">
-      <note>Trigger fired; owner assigned; typed inputs gathered; decision authored; evidence anchored; review scheduled.</note>
+  <section title="Scenario">
+    <p>acme/checkout. Mobile checkout p95 sits at 2.4 s over the last week and 18 percent of mobile sessions abandon on the payment step. swe:alice writes RFC-118 on 2026-05-29, proposing to precompute cart totals into the shared `orders` table behind a `checkout_v2` flag; swe:bob writes RFC-119 the same day proposing to move checkout to GraphQL.</p>
+  </section>
+
+  <section title="Resulting RFC">
+    <example type="good" title="RFC-118 checkout p95 under 1.2 s">
       <code lang="json"><![CDATA[
 {
-  "trigger": {
-    "kind":  "quarterly-architecture-review",
-    "url":   "https://github.com/acme/billing/issues/4421"
-  },
-  "owner":   "arch:alice",
-  "inputs":  [
-    {"name": "scope",         "value": "billing-service"},
-    {"name": "window_days",   "value": 90},
-    {"name": "prs_in_window", "value": 142}
+  "rfc": {"id": "RFC-118", "title": "Checkout p95 latency under 1.2 s", "author": "swe:alice", "shared_on": "2026-05-29"},
+  "owner": "swe:alice",
+  "inputs": [
+    {"name": "problem", "value": {
+      "metric": "checkout p95 latency (Grafana checkout-overview, 7-day window)",
+      "current_value": "2.4 s",
+      "target_value": "1.2 s",
+      "by_date": "2026-07-15",
+      "statement": "Checkout p95 is 2.4 s over the last 7 days against a 1.2 s target; 18 percent of mobile sessions abandon on the payment step, and the abandonment correlates with latency above 2 s."
+    }},
+    {"name": "options", "value": [
+      {"name": "precompute cart totals into the orders table (checkout_v2 behind a flag)", "chosen": true},
+      {"name": "cache the pricing service responses in Redis for 60 s", "chosen": false, "rejection_reason": "cuts p95 to about 1.8 s in the spike test, short of the 1.2 s target; stale prices during promotions"},
+      {"name": "do nothing / keep current behaviour", "chosen": false, "rejection_reason": "abandonment cost estimated at 40k per month at current traffic"}
+    ]},
+    {"name": "blast_radius", "value": {
+      "items": [
+        {"kind": "service", "name": "checkout-service", "owner": "swe:alice"},
+        {"kind": "data-store", "name": "orders table (shared with billing-job)", "owner": "swe:olena"},
+        {"kind": "api", "name": "mobile checkout API v3", "owner": "mobile:dmytro", "count": "18 percent of traffic, 2 API consumers"},
+        {"kind": "scheduled-job", "name": "billing-job nightly reconciliation", "owner": "swe:olena"},
+        {"kind": "user-segment", "name": "mobile checkout users", "owner": "product:maria", "count": "18 percent of sessions"}
+      ],
+      "schema_change": true,
+      "public_api_change": false,
+      "data_backfill": true,
+      "third_party_change": false
+    }},
+    {"name": "rollback", "value": {
+      "mechanism": "feature-flag-off",
+      "execute_minutes": 1,
+      "executor": "oncall:checkout",
+      "staging_run": {"exercised": true, "url": "https://ci.example.com/runs/88412"},
+      "points_of_no_return": [
+        {"step": "backfill of orders.total_cents for historical rows", "pre_check": "row count of orders with NULL total_cents equals the count from the dry run within 0.1 percent"}
+      ]
+    }},
+    {"name": "milestones", "value": [
+      {"date": "2026-06-12", "increment": "orders.total_cents column added and backfilled in staging; query proves parity with computed totals", "ship": false},
+      {"date": "2026-06-26", "increment": "checkout_v2 flag on for internal users; p95 visible on the dashboard", "ship": false},
+      {"date": "2026-07-03", "increment": "flag on for 100 percent of mobile traffic; abandonment panel updated", "ship": true}
+    ]},
+    {"name": "status", "value": "accepted"},
+    {"name": "decided_on", "value": "2026-06-05"},
+    {"name": "reviewers", "value": [
+      {"handle": "swe:olena", "commented": true},
+      {"handle": "mobile:dmytro", "commented": true},
+      {"handle": "product:maria", "commented": false}
+    ]},
+    {"name": "comment_deadline", "value": "2026-06-04"}
   ],
-  "decision": "Adopt variant A behind feature flag; deprecate variant B by EOQ.",
+  "decision": "Precompute cart totals into the orders table behind the checkout_v2 flag and ship to mobile by 2026-07-03.",
+  "supersession": {"superseded_by": null, "supersedes": null},
   "evidence": [
-    "https://github.com/acme/billing/pull/9981",
-    "https://sentry.io/acme/issues/12345/",
-    "https://acme.grafana.net/dashboard/billing-p95"
+    "https://grafana.example.com/d/checkout-overview?from=now-7d&to=now",
+    "https://ci.example.com/runs/88412",
+    "https://github.com/acme/checkout/pull/2210"
   ],
   "review": {
-    "cadence":         "quarterly",
-    "next_review_at":  "2026-08-22"
+    "next_review_at": "2026-08-07",
+    "outcome": {"remeasured_value": "1.1 s", "same_method": true, "result": "met", "url": "https://grafana.example.com/d/checkout-overview?from=1785024000000&to=1785628800000", "reviewed_on": "2026-08-06"}
   }
 }
 ]]></code>
+      <note>`problem` has the metric with its source, 2.4 s today, 1.2 s by 2026-07-15, and a statement about abandonment rather than about a technology (r-problem-states-metric-and-target). Three options: the chosen precompute, a Redis cache rejected because the spike test stopped at 1.8 s, and do-nothing rejected on the abandonment cost (r-two-options-with-rejection-reasons). Five blast-radius items each carry an owner; the shared `orders` table and the billing job belong to swe:olena, which is why she is a reviewer; the mobile API and user segment carry counts (r-blast-radius-enumerated). Rollback is the flag off in one minute by the checkout on-call, exercised in staging run 88412, and the backfill is the point of no return with a row-count pre-check (r-rollback-named-timed-and-tested). Three milestones from 2026-06-12 to 2026-07-03 span three weeks; each is something a reviewer can query or see (r-scope-fits-one-cycle-with-milestones). The deadline 2026-06-04 is four working days after sharing on Friday 2026-05-29; the RFC was accepted on 2026-06-05, after the deadline, with product:maria not having commented, which the rule allows (r-reviewers-named-with-comment-deadline). The decision is one sentence naming the chosen option (r-decision-has-status-and-supersession). `next_review_at` 2026-08-07 is 35 days after ship and the outcome re-measured p95 at 1.1 s with the same dashboard: `met` (r-outcome-review-remeasures-problem-metric).</note>
     </example>
   </section>
 
-  <section title="Walk-through">
-    <list>
-      <item>Step 1 — trigger captured from the recurring quarterly-review calendar entry; URL points to the GitHub issue.</item>
-      <item>Step 2 — owner resolved to `arch:alice` from the RACI; alice on-call this quarter.</item>
-      <item>Step 3 — inputs typed: scope is a service slug, window_days is int, prs_in_window is int.</item>
-      <item>Step 4 — decision is a single declarative sentence with a deadline.</item>
-      <item>Step 5 — evidence anchors point at the canonical PR, the perf dashboard, and the related Sentry issue.</item>
-      <item>Step 6 — review scheduled three months out; entry on alice's calendar.</item>
-    </list>
+  <section title="Rejected RFC">
+    <example type="bad" title="RFC-119 move checkout to GraphQL">
+      <code lang="json"><![CDATA[
+{
+  "rfc": {"id": "RFC-119", "title": "Move checkout to GraphQL", "author": "swe:bob", "shared_on": "2026-05-29"},
+  "owner": "swe:bob",
+  "inputs": [
+    {"name": "problem", "value": {
+      "metric": "checkout latency",
+      "current_value": "slow",
+      "target_value": "fast",
+      "by_date": "2026-07-15",
+      "statement": "We need to migrate to GraphQL so the mobile checkout stops being slow."
+    }},
+    {"name": "options", "value": [
+      {"name": "move checkout to GraphQL", "chosen": true}
+    ]},
+    {"name": "blast_radius", "value": {
+      "items": [{"kind": "service", "name": "checkout-service", "owner": "swe:bob"}],
+      "schema_change": true,
+      "public_api_change": true,
+      "data_backfill": true,
+      "third_party_change": false
+    }},
+    {"name": "rollback", "value": {
+      "mechanism": "revert-pr",
+      "execute_minutes": 5,
+      "executor": "swe:bob",
+      "staging_run": {"exercised": false, "reason": "revert is trivial"},
+      "points_of_no_return": []
+    }},
+    {"name": "milestones", "value": [
+      {"date": "2026-09-30", "increment": "launch", "ship": true}
+    ]},
+    {"name": "status", "value": "accepted"},
+    {"name": "decided_on", "value": "2026-05-31"},
+    {"name": "reviewers", "value": [{"handle": "team:backend", "commented": false}]},
+    {"name": "comment_deadline", "value": "2026-05-30"}
+  ],
+  "decision": "Move to GraphQL. It will be faster and cleaner.",
+  "supersession": {"superseded_by": null, "supersedes": null},
+  "evidence": ["https://notion.example.com/rfc-119"],
+  "review": {"next_review_at": "2027-01-15", "outcome": null}
+}
+]]></code>
+      <note>What the validator prints: `problem.current_value` and `target_value` carry no number and the statement says "migrate to" (r-problem-states-metric-and-target); `options` has one entry (r-two-options-with-rejection-reasons); `milestones` has one entry named "launch" (r-scope-fits-one-cycle-with-milestones); reviewer `team:backend` is a team alias (r-reviewers-named-with-comment-deadline); `decision` is two sentences (r-decision-has-status-and-supersession); cross-field: the deadline is one day after sharing and the RFC was accepted before it passed with no comments (fm-approval-by-silence); `schema_change` and `data_backfill` are true with no point of no return and the rollback was never exercised (fm-rollback-is-a-sentence); the ship milestone is 124 days out (fm-four-month-rfc); `next_review_at` is far beyond one cycle after ship (r-outcome-review-remeasures-problem-metric). What the reviewer sees: a public API change on a shared table with the author as the only listed owner (fm-blast-radius-low).</note>
+    </example>
   </section>
 </text>

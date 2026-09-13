@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- The change takes more than a few engineer-days and touches a shared service, a data schema, a public API or another team's code.
+- A metric that describes the problem exists on a dashboard or query today, so current value, target and date can be written down.
+- The work fits in one 3 to 6 week cycle, or can be split into RFCs that each ship alone.
+- Owners of every touched service, store and API can be named as `role:handle` and given a comment deadline.
+- A staging environment exists where the rollback can be exercised before review.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- The change lives inside one team's own code with no shared surface; write a ticket with a PR, not an RFC.
+- There is no measurable problem metric and none can be instrumented first; an RFC without a number cannot be reviewed or outcome-checked.
+- The change is an emergency mitigation on a live incident; use the incident decision record and write the RFC afterwards if the fix stays.
+- An accepted RFC already covers the same problem and metric; a change of decision is a superseding RFC, not a new one on the same problem.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/rfc-template-product-dev-team/` |
+| Problem metric | dashboard or query URL with current value, target and date | observability / product analytics |
+| Service map and PR diff | list of services, data stores, APIs, jobs and user segments the change touches, with owners | architecture docs / repo |
+| Staging rollback run | CI or runbook run URL showing the rollback executed, with its duration | staging environment |
+| Traffic and tenant counts | percent of traffic, tenant count, API consumer count per user-facing item | analytics / API gateway |
+| Reviewer handles | `role:handle` for every blast-radius owner | org directory / service catalogue |
+| Prior RFC on the same problem | URL, or none | `.product/rfc-template-product-dev-team/` |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: problem with metric + target, two options with rejection reasons, blast radius enumerated, rollback named + tested, scope fits one cycle, decision status + supersession, reviewers + deadline, outcome review re-measures metric | ~2100 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the RFC: problem with metric / current / target / date and no solution, two or more options with one chosen and rejection reasons, enumerated blast radius with owners and four flags, rollback with mechanism / minutes / executor / staging run / points of no return, dated milestones inside 42 days, status, decided_on, reviewers with commented flag, comment deadline, one-sentence decision, supersession links, outcome review re-measuring the metric; valid and invalid RFCs; 8 forbidden patterns | ~5350 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | ~1200 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 9 steps: state the problem as a metric, options with rejection reasons, enumerate blast radius, name and test rollback, date milestones inside six weeks, name reviewers with deadline, decide and set status, supersede not edit, outcome review re-measures the metric | ~1650 |
+| `content/05-examples.xml` | recommended | Complete RFC-118 (checkout p95 2.4 s to 1.2 s: three options, five blast-radius items with owners, flag-off rollback exercised in staging, three milestones in five weeks, accepted after the deadline, outcome 1.1 s met) with a note per value, plus the 'move to GraphQL' RFC and what the validator prints | ~2300 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~750 |
 
 ## Task Routing

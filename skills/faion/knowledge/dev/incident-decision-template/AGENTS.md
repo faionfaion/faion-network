@@ -10,26 +10,28 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- A decision is being made on a live incident bridge right now: mitigation, rollback, release hold, traffic shift.
+- An incident commander (or a delegate named on the bridge) exists and can be recorded as `role:handle`.
+- A scribe or the commander can type the record and commit it within 2 minutes of the call.
+- A dashboard, alert or log query showing the affected system is open and its time range can be pinned in a URL.
+- A postmortem date is set or will be set before the incident closes, so the record has a review date.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- The incident is over and this is a retrospective write-up; that belongs in the postmortem document, not an incident decision record.
+- The change is planned rather than reactive (a migration, an architecture choice); write an ADR instead.
+- No metric exists yet for the affected system, so a numeric rollback trigger cannot be written; page the observability owner first.
+- The call is fully specified by an existing runbook step with its own rollback criteria; link the runbook in the incident timeline instead.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/incident-decision-template/` |
+| Incident ticket or PagerDuty incident | URL plus incident id | alerting / incident tooling |
+| Commander and executor handles | `role:handle` | the bridge roster / on-call schedule |
+| Dashboard with the incident window | URL with `from`/`to` (or equivalent) pinned | the dashboard open on the bridge |
+| Rollback command or runbook | shell command or runbook URL | deploy tooling / runbook repo |
+| Postmortem date | YYYY-MM-DD | incident process / calendar |
 
 ## Assumes Loaded
 
@@ -45,9 +47,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: record before bridge closes, options considered, blast radius quantified, rollback trigger measurable, one-sentence decision, commander as owner, timestamped evidence, review at postmortem | ~1650 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the incident decision record: incident trigger with decided_at / committed_at, commander as owner, named inputs (options_considered with do-nothing, blast_radius with a number, rollback_trigger as metric / threshold / window / rollback, executor, reconstructed), one-sentence decision, pinned evidence, review at the postmortem; valid and invalid records; 8 forbidden patterns | ~3150 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/04-procedure.xml` | recommended | 7 steps on the bridge: open the record, one-sentence decision, options including do-nothing, blast radius from the open dashboard, numeric rollback trigger, pin evidence and commit within 2 minutes, review at the postmortem | ~1350 |
+| `content/05-examples.xml` | recommended | Complete INC-2417 record (sidecar disabled in eu-west-1, three options, 38% blast radius, helm rollback trigger, pinned Grafana and Slack links, postmortem outcome) with a note per value, plus the same call written the usual way and what the validator prints | ~1450 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

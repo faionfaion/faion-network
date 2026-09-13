@@ -1,121 +1,230 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Incident Decision Template — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `incident-decision-template` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="Incident Decision Template — Output Contract" version="2.0.0" est_tokens="3150" depth="essential">
+  <summary>JSON Schema (draft-07) for the 2-minute incident decision record: the incident trigger with the time the call was spoken and the time the record was committed, the commander as owner, named `inputs[]` entries for options_considered (at least two, one of them do-nothing), blast_radius (with a number), rollback_trigger (metric, threshold, window, rollback command), optional executor and reconstructed, a one-sentence imperative decision, pinned evidence URLs, and a review dated no later than the postmortem. Validator in scripts/validate-incident-decision-template.py enforces it, including the 2-minute window.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="trigger" type="object" required="true">`kind` = `incident`, `url` of the incident ticket or channel, `incident_id`, `decided_at` and `committed_at` as ISO-8601 timestamps, `bridge_open_at_commit` (r-record-before-bridge-closes)</field>
+      <field name="owner" type="string" required="true">the incident commander or the recorded delegate, `role:handle` (r-owner-is-commander-or-delegate)</field>
+      <field name="inputs" type="list" required="true">named entries: `options_considered` (array of at least 2 one-line options, one containing "do nothing" or "keep observing"), `blast_radius` (string with a number and a named system, region or tenant), `rollback_trigger` (object: `metric`, `threshold`, `window`, `rollback`); optional `executor` (`role:handle`) and `reconstructed` (`true` plus `at`) (r-options-considered-min-two, r-blast-radius-quantified, r-rollback-trigger-measurable)</field>
+      <field name="decision" type="string" required="true">one imperative sentence: action, target system, when; no "consider", "maybe", "look into", "should probably" (r-decision-is-one-imperative-sentence)</field>
+      <field name="evidence" type="list" required="true">at least one URL; dashboard links carry a pinned time range (`from=`/`to=`, `start=`/`end=`, `time=`/`time.window=`); alert, log-query, chat-permalink and commit URLs allowed; documentation pages are not evidence (r-evidence-is-timestamped-signal)</field>
+      <field name="review" type="object" required="true">`postmortem_date`, `next_review_at` no later than it, `outcome` filled at the postmortem with `rollback_trigger_fired` and `blast_radius_matched` (r-review-at-postmortem)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`committed_at` more than 2 minutes after `decided_at`, or `bridge_open_at_commit: false`, without a `reconstructed` entry — fm-01</pattern>
+      <pattern id="f2">`rollback_trigger` as a sentence ("if it gets worse") instead of metric + threshold + window + rollback — fm-02</pattern>
+      <pattern id="f3">`options_considered` with one item, or with no "do nothing / keep observing" item — fm-03</pattern>
+      <pattern id="f4">`blast_radius` with no number ("some EU users") — fm-04</pattern>
+      <pattern id="f5">a dashboard `evidence[]` URL with no pinned time range, or evidence consisting only of documentation pages — fm-05</pattern>
+      <pattern id="f6">`owner` equal to the `executor` entry with no delegation recorded, or a team / channel handle — fm-06</pattern>
+      <pattern id="f7">`decision` containing "consider", "maybe", "look into" or "should probably", or more than one sentence — r-decision-is-one-imperative-sentence</pattern>
+      <pattern id="f8">`review.next_review_at` later than `review.postmortem_date` — r-review-at-postmortem</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://incident-decision-template/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/incident-decision-template.json",
+  "title": "Incident decision record",
   "type": "object",
   "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "handle": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+  },
   "properties": {
+    "__faion_header__": {"type": "object"},
     "trigger": {
       "type": "object",
-      "required": ["kind", "url"],
+      "required": ["kind", "url", "incident_id", "decided_at", "committed_at", "bridge_open_at_commit"],
+      "additionalProperties": false,
       "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
+        "kind": {"type": "string", "const": "incident"},
+        "url": {"type": "string", "pattern": "^https://"},
+        "incident_id": {"type": "string", "minLength": 3},
+        "decided_at": {"$ref": "#/definitions/timestamp"},
+        "committed_at": {"$ref": "#/definitions/timestamp"},
+        "bridge_open_at_commit": {"type": "boolean"}
       }
     },
-    "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+    "owner": {"$ref": "#/definitions/handle"},
     "inputs": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 3,
+      "allOf": [
+        {"contains": {"properties": {"name": {"const": "options_considered"}}}},
+        {"contains": {"properties": {"name": {"const": "blast_radius"}}}},
+        {"contains": {"properties": {"name": {"const": "rollback_trigger"}}}}
+      ],
       "items": {
         "type": "object",
         "required": ["name", "value"],
+        "additionalProperties": false,
         "properties": {
-          "name":  {"type": "string"},
+          "name": {"type": "string", "enum": ["options_considered", "blast_radius", "rollback_trigger", "executor", "reconstructed"]},
           "value": {}
-        }
+        },
+        "allOf": [
+          {"if": {"properties": {"name": {"const": "options_considered"}}},
+           "then": {"properties": {"value": {
+             "type": "array", "minItems": 2,
+             "items": {"type": "string", "minLength": 12},
+             "contains": {"type": "string", "pattern": "[Dd]o nothing|[Kk]eep observing"}}}}},
+          {"if": {"properties": {"name": {"const": "blast_radius"}}},
+           "then": {"properties": {"value": {"type": "string", "minLength": 10, "pattern": "[0-9]"}}}},
+          {"if": {"properties": {"name": {"const": "rollback_trigger"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["metric", "threshold", "window", "rollback"],
+             "additionalProperties": false,
+             "properties": {
+               "metric": {"type": "string", "minLength": 3},
+               "threshold": {"type": "string", "minLength": 2, "pattern": "[0-9]"},
+               "window": {"type": "string", "minLength": 2, "pattern": "[0-9]"},
+               "rollback": {"type": "string", "minLength": 4}}}}}},
+          {"if": {"properties": {"name": {"const": "executor"}}},
+           "then": {"properties": {"value": {"$ref": "#/definitions/handle"}}}},
+          {"if": {"properties": {"name": {"const": "reconstructed"}}},
+           "then": {"properties": {"value": {
+             "type": "object",
+             "required": ["reconstructed", "at"],
+             "additionalProperties": false,
+             "properties": {"reconstructed": {"const": true}, "at": {"$ref": "#/definitions/timestamp"}}}}}}
+        ]
       }
     },
-    "decision": {"type": "string", "minLength": 4},
+    "decision": {
+      "type": "string",
+      "minLength": 12,
+      "pattern": "^(?![\\s\\S]*([Cc]onsider|[Mm]aybe|[Ll]ook into|[Ss]hould probably))[^.!?]+[.!]?$"
+    },
     "evidence": {
       "type": "array",
       "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+      "items": {"type": "string", "pattern": "^https://"}
     },
     "review": {
       "type": "object",
-      "required": ["cadence", "next_review_at"],
+      "required": ["postmortem_date", "next_review_at"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "postmortem_date": {"$ref": "#/definitions/date"},
+        "next_review_at": {"$ref": "#/definitions/date"},
+        "outcome": {
+          "type": "object",
+          "required": ["rollback_trigger_fired", "blast_radius_matched", "reviewed_at"],
+          "additionalProperties": false,
+          "properties": {
+            "rollback_trigger_fired": {"type": "boolean"},
+            "blast_radius_matched": {"type": "boolean"},
+            "measured_blast_radius": {"type": "string"},
+            "reviewed_at": {"$ref": "#/definitions/date"}
+          }
+        }
       }
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "trigger": {
+    "kind": "incident",
+    "url": "https://acme.pagerduty.com/incidents/Q2X4",
+    "incident_id": "INC-2417",
+    "decided_at": "2026-09-12T02:14:00Z",
+    "committed_at": "2026-09-12T02:15:40Z",
+    "bridge_open_at_commit": true
   },
-  "additionalProperties": false
+  "owner": "ic:alice",
+  "inputs": [
+    {"name": "options_considered", "value": [
+      "disable the recommendations sidecar in eu-west-1 (chosen: isolates the failing dependency, 1 min to apply)",
+      "roll back the full checkout release 41 -> 40 (rejected: 20 min, widens blast radius to all regions)",
+      "do nothing / keep observing for 10 min (rejected: 5xx rate rising 0.4 pp per minute)"
+    ]},
+    {"name": "blast_radius", "value": "38% of checkout requests in eu-west-1 returning 5xx, approx. 1,900 req/min, 3 tenants on dedicated shards unaffected"},
+    {"name": "rollback_trigger", "value": {
+      "metric": "checkout_http_5xx_rate (grafana: checkout-overview)",
+      "threshold": "above 2%",
+      "window": "5 consecutive minutes",
+      "rollback": "helm rollback checkout 41 -n prod-eu-west-1"
+    }},
+    {"name": "executor", "value": "sre:bob"}
+  ],
+  "decision": "Disable the recommendations sidecar in eu-west-1 now.",
+  "evidence": [
+    "https://grafana.acme.internal/d/checkout-overview?from=1789178400000&to=1789180200000&var-region=eu-west-1",
+    "https://acme.pagerduty.com/incidents/Q2X4/alerts/A7",
+    "https://acme.slack.com/archives/C0INC2417/p1789178040001200"
+  ],
+  "review": {
+    "postmortem_date": "2026-09-15",
+    "next_review_at": "2026-09-15",
+    "outcome": {
+      "rollback_trigger_fired": false,
+      "blast_radius_matched": true,
+      "measured_blast_radius": "36% of eu-west-1 checkout requests over 11 minutes",
+      "reviewed_at": "2026-09-15"
+    }
+  }
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "trigger": {
+    "kind": "incident",
+    "url": "https://acme.pagerduty.com/incidents/Q2X4",
+    "incident_id": "INC-2417",
+    "decided_at": "2026-09-12T02:14:00Z",
+    "committed_at": "2026-09-12T02:15:40Z",
+    "bridge_open_at_commit": true
+  },
+  "owner": "sre:bob",
+  "inputs": [
+    {"name": "options_considered", "value": [
+      "disable the recommendations sidecar in eu-west-1 (chosen)"
+    ]},
+    {"name": "blast_radius", "value": "some EU users seeing errors on checkout"},
+    {"name": "rollback_trigger", "value": {
+      "metric": "checkout errors",
+      "threshold": "if it gets worse",
+      "window": "a while",
+      "rollback": "roll back"
+    }},
+    {"name": "executor", "value": "sre:bob"}
+  ],
+  "decision": "We should probably consider disabling the sidecar and look into the release.",
+  "evidence": [
+    "https://grafana.acme.internal/d/checkout-overview",
+    "https://docs.acme.internal/runbooks/checkout"
+  ],
+  "review": {
+    "postmortem_date": "2026-09-15",
+    "next_review_at": "2026-12-15"
+  }
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>`committed_at` is within 2 minutes of `decided_at` and the bridge was open; otherwise a `reconstructed` entry with its time is present (r-record-before-bridge-closes).</item>
+      <item>`options_considered` lists at least two one-line options and one of them is do nothing / keep observing (r-options-considered-min-two).</item>
+      <item>`blast_radius` names systems, regions or tenants and carries a number (r-blast-radius-quantified).</item>
+      <item>`rollback_trigger` has metric, numeric threshold, time window and the rollback command or runbook URL (r-rollback-trigger-measurable).</item>
+      <item>`decision` is one imperative sentence with action, target and when; no hedging words (r-decision-is-one-imperative-sentence).</item>
+      <item>`owner` is the commander or recorded delegate; the executor, if different, is an `executor` entry (r-owner-is-commander-or-delegate).</item>
+      <item>Every dashboard URL has a pinned time range; at least one URL shows the system at the moment of the decision (r-evidence-is-timestamped-signal).</item>
+      <item>`review.next_review_at` is on or before `review.postmortem_date`; `outcome` is filled at the postmortem (r-review-at-postmortem).</item>
     </list>
   </section>
 </text>

@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- The team uses at least one AI coding tool (Claude Code, Cursor, Copilot or another) on a repository it owns and can add files to.
+- PRs carry labels or a field, and auto-merge can be disabled, so AI-assisted diffs can be marked and reviewed under a checkpoint.
+- The repo has identifiable auth, authorization, crypto, payments, PII, secrets-loading, production IaC and migration paths to block-list.
+- Defect escapes, reverts and two-week churn can be counted per PR from the code host or a dashboard, split by the label.
+- One engineer owns the map and the cadence comparison as `role:handle`.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- The team uses no AI coding tool; there is nothing to map.
+- The repository is read-only for the team (a vendored or upstream fork) so no context file, ignore file or label can be added.
+- PR-level metrics cannot be produced at all (no code host history, no CI), so the cadence comparison cannot run; instrument first.
+- A parent organisation policy already fixes the map, block-list and review checkpoints for this repo; record a pointer to it, not a second record.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/ai-assisted-dev/` |
+| Tools in use | list of Claude Code / Cursor / Copilot / other with the developers using each | team survey / tool licences |
+| Repo layout for the block-list | paths of auth, authorization, crypto, payments, PII, secrets loading, production IaC, migrations | repo tree / CODEOWNERS |
+| Vendor data-usage terms | URL and date read for each tool | vendor documentation |
+| Context and ignore files | `CLAUDE.md`, `.cursor/rules`, `.github/copilot-instructions.md`, `.cursorignore` or equivalent | repo root |
+| Prompt template | `templates/prompt-code.txt` committed into the repo | this methodology |
+| PR quality numbers by label | pr_count, defect escape rate, revert rate, two-week churn for ai-assisted and other PRs over the period | code host API / PR quality dashboard |
 
 ## Assumes Loaded
 
@@ -45,9 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 9 rules: tool-to-task map, security-critical block-list, four-block prompt, repo context file, no secrets in prompts, verify introduced dependencies, AI tests must fail when broken, AI diff reviewed like human code, defect rate tracked AI vs human | ~2750 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the workflow record: seven-class tool-to-task map with checkpoints, eight-area block-list with paths and policy, context file per tool, secrets exclusion file, retention checks, four-block prompt template, ai-assisted label with auto-merge off, decision, evidence, cadence outcome comparing defect / revert / churn with tighten-when-worse; valid and invalid records; 8 forbidden patterns | ~5550 |
 | `content/03-failure-modes.xml` | essential | 7 modes: AI everywhere no map, confident insecure default, prose prompt, secrets in the prompt, hallucinated package, tests that test nothing, churn nobody measures | ~950 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/04-procedure.xml` | recommended | 9 steps: write the map, write the block-list, commit context files, exclude secrets and check retention, adopt the four-block prompt, verify introduced dependencies, break the function for generated tests, label and review every AI diff, compare defects at cadence | ~1700 |
+| `content/05-examples.xml` | recommended | Complete billing-platform record (map across three tools, eight-area block-list, three context files, .cursorignore, retention checked, August churn comparison and tightened refactor checkpoint) with a note per value, plus the 'Copilot for everything' record and what the validator prints | ~2400 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

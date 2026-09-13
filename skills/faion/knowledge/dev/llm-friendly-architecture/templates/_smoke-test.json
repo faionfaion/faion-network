@@ -1,32 +1,132 @@
 {
   "__faion_header__": {
-    "purpose": "Template fixture for llm-friendly-architecture: _smoke-test.json",
+    "purpose": "Template fixture for llm-friendly-architecture: _smoke-test.json \u2014 audit record that passes the validator",
     "consumes": "content/01-core-rules.xml",
     "produces": "test fixture",
     "depends-on": "content/02-output-contract.xml",
     "token-budget-impact": "small"
   },
-  "trigger": {
-    "kind": "weekly-review",
-    "url": "https://example.com/trigger/1"
+  "repo": {
+    "url": "https://github.com/acme/storefront",
+    "commit_sha": "a1b2c3d4e5f",
+    "source_root": "src"
   },
   "owner": "swe:alice",
   "inputs": [
     {
-      "name": "scope",
-      "value": "billing"
-    },
-    {
       "name": "line_limit",
       "value": 250
+    },
+    {
+      "name": "namespace_import_allowlist",
+      "value": [
+        "react",
+        "three"
+      ]
     }
   ],
-  "decision": "Adopt variant A behind feature flag.",
+  "audit": {
+    "command": "bash scripts/llm-arch-audit.sh src 250",
+    "file_size": {
+      "histogram": [
+        {
+          "bucket": "0-100",
+          "files": 212
+        },
+        {
+          "bucket": "101-250",
+          "files": 61
+        },
+        {
+          "bucket": "251-500",
+          "files": 4
+        },
+        {
+          "bucket": "501+",
+          "files": 1
+        }
+      ],
+      "oversized": [
+        {
+          "path": "src/features/checkout/CheckoutPage.tsx",
+          "lines": 1412,
+          "proposed_split": "menu and copy arrays to src/data/checkout.ts; useCheckoutTotals to src/hooks/use-checkout-totals.ts; AddressForm to src/features/checkout/AddressForm.tsx"
+        },
+        {
+          "path": "src/components/ProductCard.tsx",
+          "lines": 388,
+          "proposed_split": "price formatting to src/utils/format-price.ts; badges to src/components/ProductBadges.tsx"
+        },
+        {
+          "path": "src/utils/helpers.ts",
+          "lines": 302,
+          "proposed_split": "one function per file under src/utils/: format-date.ts, slugify.ts, debounce.ts"
+        }
+      ]
+    },
+    "directory_depth": {
+      "limit": 3,
+      "feature_limit": 2,
+      "violations": [
+        {
+          "path": "src/features/billing/invoices/pdf/renderers/table.ts",
+          "depth": 5
+        }
+      ]
+    },
+    "barrels": [
+      "src/components/index.ts"
+    ],
+    "wildcard_imports": {
+      "lint": "eslint import/no-namespace",
+      "hits": [
+        {
+          "path": "src/features/search/SearchPanel.tsx",
+          "line": 3
+        }
+      ]
+    },
+    "naming": {
+      "rubric": [
+        "file name equals its primary export",
+        "components PascalCase, hooks use-*.ts, utils kebab-case",
+        "no catch-all names: utils2, misc, helpers, common, stuff",
+        "no unexplained abbreviations"
+      ],
+      "score": 84,
+      "offenders": [
+        {
+          "path": "src/utils/helpers.ts",
+          "reason": "catch-all name",
+          "proposed_name": "src/utils/format-date.ts"
+        },
+        {
+          "path": "src/components/misc/Btn.tsx",
+          "reason": "catch-all directory and abbreviation",
+          "proposed_name": "src/components/Button.tsx"
+        }
+      ]
+    },
+    "inline_data": [
+      {
+        "path": "src/features/checkout/CheckoutPage.tsx",
+        "lines": 214
+      }
+    ],
+    "claude_md": {
+      "present": true,
+      "line_limit": 250
+    },
+    "ci_wired": false
+  },
+  "decision": "Delete src/components/index.ts and rewrite its 14 importers; split CheckoutPage.tsx into src/data/checkout.ts, use-checkout-totals.ts and AddressForm.tsx; split ProductCard.tsx and helpers.ts as proposed; flatten billing/invoices/pdf/renderers into src/features/billing-invoice-pdf/; replace the namespace import in SearchPanel.tsx; rename misc/Btn.tsx to Button.tsx; then wire the audit into CI.",
   "evidence": [
-    "https://example.com/pr/1"
+    "bash scripts/llm-arch-audit.sh src 250",
+    "a1b2c3d4e5f",
+    "https://github.com/acme/storefront/pull/2210"
   ],
   "review": {
     "cadence": "quarterly",
-    "next_review_at": "2026-08-22"
+    "next_review_at": "2026-12-12"
   }
 }

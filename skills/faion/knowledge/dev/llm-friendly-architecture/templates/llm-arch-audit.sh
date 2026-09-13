@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # purpose: Find files violating LLM-friendly architecture limits (size, depth, naming).
-# consumes: A source directory path + optional line-limit override (default 300).
+# consumes: A source directory path + optional line-limit override (default 250, never above 300).
 # produces: Plain-text report on stdout listing each violating file with the violated rule.
 # depends-on: Standard POSIX shell utilities (find, awk, wc).
 # token-budget-impact: zero — local shell run, no LLM calls.

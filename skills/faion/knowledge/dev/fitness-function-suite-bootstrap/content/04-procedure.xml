@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Fitness-Function Suite Bootstrap — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `fitness-function-suite-bootstrap`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="Fitness-Function Suite Bootstrap — Procedure" version="2.0.0" est_tokens="1750" depth="recommended">
+  <summary>Nine steps that take a service from "we agreed on evolutionary architecture" to a 5-to-8-function starter suite running in CI within a week: pick one function per category, write the dependency graph, wire each category's tool, measure baselines, launch everything informational or ratchet, run four weekly reviews, and promote to blocking only on evidence.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="pick-one-per-category">
+      <input>The service's critical endpoint, its CI system, its language, its published API definition, and the last quarter's incidents.</input>
+      <action>Choose exactly one function for each of performance, deployability, dependency, complexity and contract; add up to three more only where an incident in the last quarter would have been caught by one. Stop at eight.</action>
+      <output>List of 5 to 8 function ids with `category` set.</output>
+      <decision-gate>Fewer than five or more than eight, or any category empty, is not a bootstrap suite (r-ffsb-five-to-eight-functions).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="write-dependency-graph">
+      <input>Package layout or C4 component view; the language.</input>
+      <action>Write `dependency_graph.layers[]` and `allowed_edges[]` into the spec, then configure the matching tool: ArchUnit or NetArchTest for JVM/.NET, `dependency-cruiser` `no-circular` for JavaScript/TypeScript, `import-linter` layers contract for Python. Set the dependency function to `runs_on: pull_request`.</action>
+      <output>Dependency function entry with `tool` and verbatim `command`; tool config committed.</output>
+      <decision-gate>A graph that exists only in the tool config is rejected (r-ffsb-dependency-direction-tool).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="wire-performance">
+      <input>The one critical endpoint; a load profile committed and versioned under `perf/profiles/`; a dedicated runner or environment.</input>
+      <action>Write the k6 / Gatling / Locust script with the threshold in its config (`thresholds: {"http_req_duration": ["p(95)&lt;400"]}`); set `endpoint`, `load_profile`, `runner_kind`, `runs_on: post_merge` or `nightly`.</action>
+      <output>Performance function entry; scheduled job on the dedicated runner.</output>
+      <decision-gate>A latency check on the shared runner pool or in the pull-request pipeline is rejected (r-ffsb-perf-p95-under-fixed-load).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="wire-deployability">
+      <input>CI API access (`gh run list`, GitLab pipelines API) for the last 20 runs on main.</input>
+      <action>Commit a script (`ci/pipeline_duration.py` or equivalent) that computes pipeline duration or merge-to-production lead time from pipeline timestamps; set `metric`, `script_path`, and `threshold.unit: minutes`.</action>
+      <output>Deployability function entry with a threshold in minutes and the script path.</output>
+      <decision-gate>A value typed in from a spreadsheet is rejected (r-ffsb-deploy-lead-time-from-ci).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="wire-complexity-with-baseline">
+      <input>The source tree; `radon`, `lizard`, ESLint `complexity` or SonarQube.</input>
+      <action>Run the tool once at the per-function limit (default 10), commit the current violators as `baseline_file`, and configure the job to fail only on new or worsened violations.</action>
+      <output>Complexity function entry with `per_function_limit`, `baseline_file`, `mode: ratchet`.</output>
+      <decision-gate>No baseline file means every build is red on day one (r-ffsb-complexity-ratchet-with-baseline).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="wire-contract-gate">
+      <input>Either the consumers' Pact contracts, or the last released OpenAPI / GraphQL / protobuf definition.</input>
+      <action>Choose `method: pact` (provider-side verification of named `consumers[]`) or `method: schema-diff` (`oasdiff breaking`, `openapi-diff`, `buf breaking` against `released_schema_ref`); write which consumers or which released schema into the entry.</action>
+      <output>Contract function entry; job fails on a breaking change.</output>
+      <decision-gate>The provider's own schema validation is not a contract gate (r-ffsb-contract-breaking-change-gate).</decision-gate>
     </step>
+
+    <step n="7" name="baseline-and-launch">
+      <input>Every command from steps 2 to 6 run once against main.</input>
+      <action>Record `baseline.value` / `measured_at` per function; set every `mode` to `informational` or `ratchet`; set `launch_date`; put four `weekly_reviews` on the calendar at seven-day intervals with `reviewed_by` set; assign `owner` per function. Fill `templates/skeleton.md.j2` and run `scripts/validate-fitness-function-suite-bootstrap.py`.</action>
+      <output>Committed suite spec; all jobs live and non-blocking.</output>
+      <decision-gate>Any function launched with `mode: blocking` is rejected until step 9 (r-ffsb-ratchet-first-then-block).</decision-gate>
+    </step>
+
+    <step n="8" name="weekly-review">
+      <input>Run history per function since launch; the spec.</input>
+      <action>At each of the four reviews record `red_functions[]` and `actions[]`; for a function red at two consecutive reviews set `action: fix | rebaseline | remove` and execute it before the next review; reassign any owner no longer in the directory.</action>
+      <output>Review entry filled; spec updated.</output>
+      <decision-gate>A red function with no action at the second review is removed from the suite, not left as furniture (r-ffsb-owner-and-weekly-review).</decision-gate>
+    </step>
+
+    <step n="9" name="promote-to-blocking">
+      <input>Run history showing at least five consecutive green runs on main for a function; the first weekly review's minutes.</input>
+      <action>The function's owner approves the promotion at a weekly review; record `promotion.green_runs_on_main`, `approved_by`, `review_date`, `promoted_at`; switch `mode` to `blocking` and remove any `allow_failure`. At the fourth review set `cadence_after_week_four`.</action>
+      <output>Blocking functions with promotion records; ongoing cadence set.</output>
+      <decision-gate>Fewer than five green runs or no named approver blocks the promotion (r-ffsb-ratchet-first-then-block, 03 human checkpoint).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates against `content/02-output-contract.xml` via the validator.</item>
+      <item>All 5 to 8 jobs have run at least once on main and every category has a baseline.</item>
+      <item>Four weekly reviews are dated and the first has happened.</item>
+    </list>
   </section>
 </text>

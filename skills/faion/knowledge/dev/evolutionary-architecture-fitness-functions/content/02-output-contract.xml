@@ -1,121 +1,265 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Evolutionary Architecture Fitness Functions — Output Contract" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Pins the shape of a valid `evolutionary-architecture-fitness-functions` output. Subagent must satisfy this contract before returning to the caller.</summary>
+<text id="02-output-contract" title="Evolutionary Architecture Fitness Functions — Output Contract" version="2.0.0" est_tokens="3450" depth="essential">
+  <summary>JSON Schema (draft-07) for the fitness-function suite spec this methodology produces: one entry per architectural characteristic with metric, unit, tool, verbatim command, threshold, dated baseline, ratchet mode, blocking/informational and triggered/continual classification, owner; plus the suite-level dependency graph, results time series and review cadence. Validator in scripts/validate-evolutionary-architecture-fitness-functions.py enforces it, including the one-fifth manual cap.</summary>
 
-  <section title="JSON Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="suite_id" type="string" required="true">kebab-case id of the suite; prefix `ff-`</field>
+      <field name="system" type="string" required="true">the service or codebase the suite guards, as named in the service catalogue</field>
+      <field name="owner" type="string" required="true">suite owner as `role:handle`; a team alias is rejected (r-ff-owner-and-review-cadence)</field>
+      <field name="dependency_graph" type="object" required="true">the allowed dependency direction written in the spec, not only in the tool config: `layers[]` and `allowed_edges[]` of `{from, to}` (r-ff-structural-dependency-function)</field>
+      <field name="results_store" type="object" required="true">where every run's measured value lands: `location`, `keyed_by` = `["function_id", "commit"]`, `retention_days` at least the review horizon (r-ff-results-trended)</field>
+      <field name="review" type="object" required="true">`cadence` (monthly | quarterly), `last_reviewed_at`, `next_review_at` (r-ff-owner-and-review-cadence)</field>
+      <field name="functions" type="list" required="true">at least one entry; at least one entry has `kind: structural`; per entry: `id`, `characteristic`, `metric`, `unit`, `kind`, `mode`, `tool`, `threshold`, `baseline`, `threshold_mode`, `consequence`, `trigger`, `scope`, `owner`, `consecutive_red_reviews`</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a function whose `characteristic` is an adjective or -ility with no metric ("maintainability", "scalable", "clean") — fm-aspiration-not-metric</pattern>
+      <pattern id="f2">`mode: automated` with no verbatim `command`, or `mode: manual` with no `review_cadence` — fm-manual-only-suite</pattern>
+      <pattern id="f3">more than one fifth of `functions[]` with `mode: manual` — fm-manual-only-suite (cross-field; enforced by the validator, not expressible in the schema)</pattern>
+      <pattern id="f4">`threshold_mode: absolute` while `baseline.value` violates the threshold today, or `threshold_mode: ratchet` with no `absolute_from` — fm-threshold-fails-today</pattern>
+      <pattern id="f5">`scope: holistic` with `trigger: triggered` (a load test or chaos run in the pull-request path) — fm-holistic-in-pr-path</pattern>
+      <pattern id="f6">no entry with `kind: structural`, or `dependency_graph.allowed_edges` empty — fm-no-structural-guard</pattern>
+      <pattern id="f7">`results_store` missing or `keyed_by` not `["function_id", "commit"]` (pass/fail only) — fm-pass-fail-only</pattern>
+      <pattern id="f8">`consecutive_red_reviews` of 2 or more with no `action` (fix | rebaseline | delete) — fm-orphaned-red-check</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "faion://evolutionary-architecture-fitness-functions/output.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/evolutionary-architecture-fitness-functions.json",
+  "title": "Fitness-function suite spec",
   "type": "object",
-  "required": ["trigger", "owner", "inputs", "decision", "evidence", "review"],
+  "required": ["suite_id", "system", "owner", "dependency_graph", "results_store", "review", "functions"],
+  "additionalProperties": false,
   "properties": {
-    "trigger": {
-      "type": "object",
-      "required": ["kind", "url"],
-      "properties": {
-        "kind": {"type": "string", "minLength": 2},
-        "url":  {"type": "string", "format": "uri"}
-      }
-    },
+    "__faion_header__": {"type": "object"},
+    "suite_id": {"type": "string", "pattern": "^ff-[a-z0-9]+(-[a-z0-9]+)*$"},
+    "system": {"type": "string", "minLength": 2},
     "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
-    "inputs": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["name", "value"],
-        "properties": {
-          "name":  {"type": "string"},
-          "value": {}
+    "dependency_graph": {
+      "type": "object",
+      "required": ["layers", "allowed_edges"],
+      "additionalProperties": false,
+      "properties": {
+        "layers": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}},
+        "allowed_edges": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "from": {"type": "string", "minLength": 1},
+              "to": {"type": "string", "minLength": 1}
+            }
+          }
         }
       }
     },
-    "decision": {"type": "string", "minLength": 4},
-    "evidence": {
-      "type": "array",
-      "minItems": 1,
-      "items": {"type": "string", "format": "uri"}
+    "results_store": {
+      "type": "object",
+      "required": ["location", "keyed_by", "retention_days"],
+      "additionalProperties": false,
+      "properties": {
+        "location": {"type": "string", "minLength": 3},
+        "keyed_by": {"type": "array", "const": ["function_id", "commit"]},
+        "retention_days": {"type": "integer", "minimum": 30}
+      }
     },
     "review": {
       "type": "object",
-      "required": ["cadence", "next_review_at"],
+      "required": ["cadence", "last_reviewed_at", "next_review_at"],
+      "additionalProperties": false,
       "properties": {
-        "cadence":         {"type": "string", "enum": ["monthly", "quarterly"]},
-        "next_review_at":  {"type": "string", "format": "date"}
+        "cadence": {"type": "string", "enum": ["monthly", "quarterly"]},
+        "last_reviewed_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+        "next_review_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+      }
+    },
+    "functions": {
+      "type": "array",
+      "minItems": 1,
+      "contains": {"type": "object", "properties": {"kind": {"const": "structural"}}, "required": ["kind"]},
+      "items": {
+        "type": "object",
+        "required": ["id", "characteristic", "metric", "unit", "kind", "mode", "tool", "threshold", "baseline", "threshold_mode", "consequence", "trigger", "scope", "owner", "consecutive_red_reviews"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"},
+          "characteristic": {"type": "string", "minLength": 3, "pattern": "^(?![Mm]aintainab|[Ss]calab|[Mm]odular|[Cc]lean|[Qq]uality|[Rr]obust|[Ff]lexib|[Rr]eliab).*$"},
+          "metric": {"type": "string", "minLength": 3},
+          "unit": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "enum": ["structural", "complexity", "performance", "coverage", "delivery", "security", "operability"]},
+          "mode": {"type": "string", "enum": ["automated", "manual"]},
+          "tool": {"type": "string", "minLength": 2},
+          "command": {"type": "string", "minLength": 4},
+          "review_cadence": {"type": "string", "enum": ["monthly", "quarterly"]},
+          "threshold": {
+            "type": "object",
+            "required": ["operator", "value"],
+            "additionalProperties": false,
+            "properties": {
+              "operator": {"type": "string", "enum": ["<", "<=", ">", ">=", "=="]},
+              "value": {"type": "number"}
+            }
+          },
+          "baseline": {
+            "type": "object",
+            "required": ["value", "measured_at"],
+            "additionalProperties": false,
+            "properties": {
+              "value": {"type": "number"},
+              "measured_at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+            }
+          },
+          "threshold_mode": {"type": "string", "enum": ["absolute", "ratchet"]},
+          "absolute_from": {"type": "string", "minLength": 4},
+          "consequence": {"type": "string", "enum": ["blocking", "informational"]},
+          "trigger": {"type": "string", "enum": ["triggered", "continual"]},
+          "scope": {"type": "string", "enum": ["atomic", "holistic"]},
+          "owner": {"type": "string", "pattern": "^[a-z-]+:[a-z0-9._-]+$"},
+          "consecutive_red_reviews": {"type": "integer", "minimum": 0},
+          "action": {"type": "string", "enum": ["fix", "rebaseline", "delete"]}
+        },
+        "allOf": [
+          {"if": {"properties": {"mode": {"const": "automated"}}}, "then": {"required": ["command"]}},
+          {"if": {"properties": {"mode": {"const": "manual"}}}, "then": {"required": ["review_cadence"]}},
+          {"if": {"properties": {"threshold_mode": {"const": "ratchet"}}}, "then": {"required": ["absolute_from"]}},
+          {"if": {"properties": {"scope": {"const": "holistic"}}}, "then": {"properties": {"trigger": {"const": "continual"}}}},
+          {"if": {"properties": {"consecutive_red_reviews": {"minimum": 2}}}, "then": {"required": ["action"]}}
+        ]
       }
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true"><![CDATA[
+{
+  "suite_id": "ff-billing-service",
+  "system": "billing-service",
+  "owner": "arch:alice",
+  "dependency_graph": {
+    "layers": ["api", "domain", "persistence"],
+    "allowed_edges": [{"from": "api", "to": "domain"}, {"from": "domain", "to": "persistence"}]
   },
-  "additionalProperties": false
+  "results_store": {
+    "location": "prometheus://ci-metrics/fitness_function_value",
+    "keyed_by": ["function_id", "commit"],
+    "retention_days": 180
+  },
+  "review": {"cadence": "quarterly", "last_reviewed_at": "2026-09-01", "next_review_at": "2026-12-01"},
+  "functions": [
+    {
+      "id": "layer-direction",
+      "characteristic": "dependency direction between api, domain and persistence",
+      "metric": "count of imports violating the allowed edges or forming a cycle",
+      "unit": "violations",
+      "kind": "structural",
+      "mode": "automated",
+      "tool": "ArchUnit",
+      "command": "./gradlew test --tests com.acme.billing.arch.LayerRulesTest",
+      "threshold": {"operator": "==", "value": 0},
+      "baseline": {"value": 0, "measured_at": "2026-09-01"},
+      "threshold_mode": "absolute",
+      "consequence": "blocking",
+      "trigger": "triggered",
+      "scope": "atomic",
+      "owner": "arch:alice",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "core-cyclomatic-complexity",
+      "characteristic": "cyclomatic complexity of billing.core functions",
+      "metric": "count of functions with cyclomatic complexity above 10",
+      "unit": "functions",
+      "kind": "complexity",
+      "mode": "automated",
+      "tool": "lizard",
+      "command": "lizard -C 10 -w src/billing/core",
+      "threshold": {"operator": "==", "value": 0},
+      "baseline": {"value": 37, "measured_at": "2026-09-01"},
+      "threshold_mode": "ratchet",
+      "absolute_from": "2027-01-01",
+      "consequence": "blocking",
+      "trigger": "triggered",
+      "scope": "atomic",
+      "owner": "swe:bob",
+      "consecutive_red_reviews": 0
+    },
+    {
+      "id": "checkout-p95-latency",
+      "characteristic": "p95 latency of POST /checkout at 200 rps",
+      "metric": "http_req_duration p(95)",
+      "unit": "ms",
+      "kind": "performance",
+      "mode": "automated",
+      "tool": "k6",
+      "command": "k6 run --vus 50 --duration 10m perf/checkout.js",
+      "threshold": {"operator": "<", "value": 400},
+      "baseline": {"value": 310, "measured_at": "2026-09-01"},
+      "threshold_mode": "absolute",
+      "consequence": "informational",
+      "trigger": "continual",
+      "scope": "holistic",
+      "owner": "sre:carol",
+      "consecutive_red_reviews": 0
+    }
+  ]
 }
-]]></code>
-  </section>
+]]></example>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <example valid="false"><![CDATA[
 {
-  "trigger": {"kind": "weekly-review", "url": "https://github.com/org/repo/issues/4421"},
-  "owner":   "swe:alice",
-  "inputs":  [{"name": "scope", "value": "billing-service"}, {"name": "window_days", "value": 7}],
-  "decision": "ship variant A behind feature flag; revisit at next cadence",
-  "evidence": ["https://github.com/org/repo/pull/9981", "https://sentry.io/x/issues/12345/"],
-  "review":   {"cadence": "quarterly", "next_review_at": "2026-08-22"}
+  "suite_id": "ff-billing-service",
+  "system": "billing-service",
+  "owner": "arch:alice",
+  "dependency_graph": {
+    "layers": ["api", "domain", "persistence"],
+    "allowed_edges": [{"from": "api", "to": "domain"}, {"from": "domain", "to": "persistence"}]
+  },
+  "results_store": {
+    "location": "prometheus://ci-metrics/fitness_function_value",
+    "keyed_by": ["function_id", "commit"],
+    "retention_days": 180
+  },
+  "review": {"cadence": "quarterly", "last_reviewed_at": "2026-09-01", "next_review_at": "2026-12-01"},
+  "functions": [
+    {
+      "id": "maintainability",
+      "characteristic": "maintainability stays high",
+      "metric": "quality score",
+      "unit": "points",
+      "kind": "complexity",
+      "mode": "manual",
+      "tool": "architecture sync",
+      "threshold": {"operator": ">", "value": 8},
+      "baseline": {"value": 7, "measured_at": "2026-09-01"},
+      "threshold_mode": "absolute",
+      "consequence": "blocking",
+      "trigger": "triggered",
+      "scope": "holistic",
+      "owner": "arch:alice",
+      "consecutive_red_reviews": 3
+    }
+  ]
 }
-]]></code>
-    </example>
-  </section>
-
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
-{
-  "trigger":  {"kind": "soon", "url": "tbd"},
-  "owner":    "team",
-  "inputs":   [],
-  "decision": "",
-  "evidence": [],
-  "review":   {}
-}
-]]></code>
-      <note>Invalid: trigger.url not a URL; owner must be `role:handle`; inputs empty; decision empty; evidence empty; review missing cadence + next_review_at.</note>
-    </example>
-  </section>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (kind + url)</item>
-      <item>owner (role:handle)</item>
-      <item>inputs (≥1 typed input)</item>
-      <item>decision (non-empty)</item>
-      <item>evidence (≥1 URL)</item>
-      <item>review.cadence + review.next_review_at</item>
-    </list>
-  </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger.kind 'when needed' / 'soon' / 'tbd'</description>
-      <reason>Either fires constantly or never; not reviewable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>owner = team / channel / role-only</description>
-      <reason>Accountability evaporates; artefact decays.</reason>
-    </antipattern>
-    <antipattern>
-      <description>empty evidence array</description>
-      <reason>Conclusion is folklore, not evidence-anchored.</reason>
-    </antipattern>
-  </section>
+]]></example>
+  </output-contract>
 
   <section title="Self-check checklist">
     <list>
-      <item>trigger.kind names a concrete event/threshold/schedule.</item>
-      <item>owner matches `^[a-z-]+:[a-z0-9._-]+$`.</item>
-      <item>≥1 typed input present.</item>
-      <item>decision is a single declarative sentence.</item>
-      <item>≥1 evidence URL.</item>
-      <item>review.cadence + review.next_review_at set.</item>
+      <item>Every function names one characteristic that is not an -ility adjective, one metric and one unit (r-ff-one-attribute-one-metric).</item>
+      <item>Every automated function carries the verbatim CI command; manual functions carry a review cadence and are at most one fifth of the suite (r-ff-executable-in-ci).</item>
+      <item>Every threshold sits next to a dated baseline; a baseline that fails the threshold today means `threshold_mode: ratchet` with `absolute_from` (r-ff-threshold-with-baseline-ratchet).</item>
+      <item>Every function is classified blocking/informational and triggered/continual; holistic functions are continual (r-ff-blocking-vs-informational).</item>
+      <item>At least one `kind: structural` function exists and `dependency_graph.allowed_edges` is written in the spec (r-ff-structural-dependency-function).</item>
+      <item>`results_store` is keyed by function id and commit and retained at least the review horizon (r-ff-results-trended).</item>
+      <item>Every owner is `role:handle`; `review.cadence` is monthly or quarterly; any function at two or more consecutive red reviews carries an action (r-ff-owner-and-review-cadence).</item>
     </list>
   </section>
 </text>

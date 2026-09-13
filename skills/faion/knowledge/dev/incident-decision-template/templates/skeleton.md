@@ -1,42 +1,60 @@
 <!--
-purpose: Canonical skeleton for the `incident-decision-template` artefact.
-consumes: A trigger URL + named owner + typed inputs from upstream methodologies.
-produces: A committed artefact file at .product/incident-decision-template/<instance>.md.
-depends-on: templates/header.yaml, scripts/validate-incident-decision-template.py.
-token-budget-impact: ~500 tokens to fill end-to-end.
+purpose: Canonical 2-minute skeleton for the `incident-decision-template` record — filled by the scribe on the bridge while the commander speaks.
+consumes: The incident ticket, the commander's spoken decision, the dashboard open on the bridge, and the rollback command or runbook.
+produces: A committed record at .product/incident-decision-template/<incident_id>-<decided_at>.md, mirrored as JSON for scripts/validate-incident-decision-template.py.
+depends-on: templates/header.yaml, content/02-output-contract.xml, scripts/validate-incident-decision-template.py.
+token-budget-impact: ~400 tokens to fill; must be committed within 2 minutes of the decision.
 -->
 ---
 version: 0.1.0
-owner: role:<handle>
-last_reviewed: YYYY-MM-DD
-trigger_url: <URL>
+incident_id: <incident_id>
+owner: <commander>
+decided_at: <decided_at>
 ---
 
 # Trigger
 
-- kind: <trigger_kind>
-- url:  <URL>
+- kind: incident
+- url: <incident_url>
+- incident_id: <incident_id>
+- decided_at: <decided_at>
+- committed_at: <ISO-8601 timestamp; fill at commit>
+- bridge_open_at_commit: <true | false>
 
 # Owner
 
-- role:<handle>
-
-# Inputs
-
-- name: <input_name>
-  value: <typed_value>
+- <commander>
+- executor: <executor>
+- reconstructed: <only when committed after the bridge closed or more than 2 minutes after decided_at: true, at ISO-8601>
 
 # Decision
 
 <decision_statement>
 
+# Options considered
+
+- <chosen_option>
+- <rejected_option>
+- do nothing / keep observing: <do_nothing_reason>
+
+# Blast radius
+
+<blast_radius>
+
+# Rollback trigger
+
+- metric: <rollback_metric>
+- threshold: <rollback_threshold>
+- window: <rollback_window>
+- rollback: `<rollback_command>`
+
 # Evidence
 
-- <url_1>
-- <url_2>
+- <dashboard_url>
+- <announcement_url>
 
 # Review
 
-- cadence: monthly | quarterly
-- next_review_at: YYYY-MM-DD
-- outcome: <filled at the next review>
+- postmortem_date: <postmortem_date>
+- next_review_at: <postmortem_date>
+- outcome: <filled at the postmortem: rollback_trigger_fired true|false, blast_radius_matched true|false, measured_blast_radius, reviewed_at>

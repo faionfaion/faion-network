@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- The workload runs, or must run, in more than one cloud region because of a regulatory requirement, a customer commitment, or an RTO a single-region restore cannot meet.
+- A business owner has agreed numeric RPO and RTO for the workload's tier, or will in the first step.
+- Replication metrics exist for the database (30-day p99 lag) and the object store (backlog, replication time), so achievable numbers can be measured rather than assumed.
+- A live drill on a bounded slice of real traffic can be scheduled, with a named architect owning the pack as `role:handle`.
+- The secondary region's capacity and service quotas can be verified or requested before the pattern is claimed.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- The workload is single-region by design and a tested backup-and-restore plan meets its RPO/RTO; a multi-region pack is cost without a driver.
+- RPO and RTO cannot be obtained as numbers from anyone accountable; the pattern cannot be chosen or costed until they exist.
+- The platform is a managed multi-region service whose failover the vendor owns end to end (a global database with automatic promotion and vendor-run drills); record the vendor's published figures instead.
+- The workload is stateless with no database or object store of its own and fails over through a global load balancer already drilled by the platform team.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/multi-region-failover-pattern-pack/` |
+| RPO and RTO per tier | integers in minutes, with the business owner's `role:handle` | business owner / service catalogue |
+| Database replication metrics | replication mode and 30-day p99 lag in seconds | database monitoring (RDS, Cloud SQL, self-managed exporter) |
+| Object-store replication state | replication rule, versioning, backlog metric, backfill job id | cloud console / Batch Replication job history |
+| Dependency inventory | IdP, secrets manager, CI/CD, DNS provider, certificates, payments, email, control plane with region | architecture diagram / infra repo |
+| Secondary-region quotas | quota request ids for full production load | cloud service-quota console |
+| Last drill report | date, scope, traffic percent, measured RTO/RPO, manual steps | DR drill records |
 
 ## Assumes Loaded
 
@@ -45,10 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: numeric RPO/RTO per tier, pattern from RPO/RTO and cost, DNS TTL and health check, DB replication mode and promotion, object-store replication verified, region-scoped dependencies, live drill with measured results, failback procedure | ~2000 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the pack: rpo/rto inputs, one pattern with achievable numbers and secondary capacity, DNS TTL / health check / propagation, database replication mode with p99 lag, fencing and promotion, object-store backfill and backlog alert, dependency list with bypasses, drill checklist and last result, failback; valid and invalid packs; 8 forbidden patterns | ~5650 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with detector + repair | ~900 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
-| `content/05-examples.xml` | recommended | One full worked example end-to-end | ~600 |
+| `content/04-procedure.xml` | recommended | 9 steps: agree RPO/RTO per tier, collect replication facts, list region-scoped dependencies, choose pattern and capacity, write DNS mechanics, write promotion and fencing, write failback, run the live drill, decide and label verified or unverified | ~1850 |
+| `content/05-examples.xml` | recommended | Complete warm-standby pack for a tier-1 payments API (async PostgreSQL at 12 s lag, S3 backfill job, six dependencies with one bypass, 5 percent drill measuring RTO 22) with a note per value, plus the pilot-light 'zero data loss' pack and what the validator prints | ~2550 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~400 |
 
 ## Task Routing

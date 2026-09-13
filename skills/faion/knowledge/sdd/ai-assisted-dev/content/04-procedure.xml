@@ -1,45 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="AI-Assisted Development — Procedure" version="1.1.0" est_tokens="700" depth="recommended">
-  <summary>6-step procedure for one application of `ai-assisted-dev`. Each step lists input → action → output and an optional decision gate.</summary>
+<text id="04-procedure" title="AI-Assisted Development — Procedure" version="2.0.0" est_tokens="1700" depth="recommended">
+  <summary>Nine steps that turn informal assistant use into a reviewable workflow record: write the tool-to-task map, write the security-critical block-list, commit a context file per tool, exclude secrets and check retention terms, adopt the four-block prompt, verify introduced dependencies per diff, break the function to test generated tests, label and review every AI diff, and compare defect, revert and churn rates at each cadence.</summary>
 
   <section title="Steps">
-    <step n="1" name="capture-trigger">
-      <input>Trigger record (event, threshold, schedule) from upstream alerting or planning queue.</input>
-      <action>Read the trigger; record `trigger.kind` + `trigger.url`. Reject if vague.</action>
-      <output>`trigger` block of the artefact.</output>
-      <decision-gate>If trigger.kind is in {'tbd','soon','when needed'} — abort and route to backlog refinement.</decision-gate>
+    <step n="1" name="write-tool-to-task-map">
+      <input>The tools in use (Claude Code, Cursor, Copilot, other); the seven task classes.</input>
+      <action>Fill `team`, `owner` and the `tool_task_map` input: for boilerplate-scaffolding, unit-tests, refactor, code-review, documentation, data-migration and infrastructure, name the tool (or `ai-off`) and the review checkpoint (self-review, one-reviewer, two-reviewers-non-prompter, ai-off).</action>
+      <output>`tool_task_map` with seven entries.</output>
+      <decision-gate>"We use Copilot for everything" is not a map; data-migration and infrastructure cannot sit below two reviewers (r-tool-to-task-map-written, r-security-critical-block-list).</decision-gate>
     </step>
 
-    <step n="2" name="assign-owner">
-      <input>RACI / org directory.</input>
-      <action>Resolve owner to `role:handle`. Confirm availability via the directory, not by guessing.</action>
-      <output>`owner` field set.</output>
-      <decision-gate>If owner cannot be resolved to a person — abort.</decision-gate>
+    <step n="2" name="write-block-list">
+      <input>The repo layout; the paths of auth, authorization, crypto, payments, PII, secrets loading, production IaC and migrations.</input>
+      <action>Fill `block_list` with the eight minimum areas, each with `paths[]` and a `policy` of `ai-off` or `two-reviewers-non-prompter`; wire a CI or CODEOWNERS check so an `ai-assisted` PR touching a block-listed path with fewer than two reviewers cannot merge.</action>
+      <output>`block_list` input; merge rule in CI.</output>
+      <decision-gate>Any of the eight areas missing fails the record (r-security-critical-block-list).</decision-gate>
     </step>
 
-    <step n="3" name="gather-inputs">
-      <input>Upstream methodology outputs + ticket bodies + repo state.</input>
-      <action>Populate `inputs[]` with name+value pairs. Coerce values to typed primitives where possible.</action>
-      <output>`inputs[]` populated.</output>
+    <step n="3" name="commit-context-files">
+      <input>Build and test commands; conventions; forbidden patterns.</input>
+      <action>Create or refresh `CLAUDE.md`, `.cursor/rules` (or `.cursorrules`) and `.github/copilot-instructions.md` for every tool in the map; record each in `context_files` with `last_reviewed`.</action>
+      <output>`context_files` input; files committed.</output>
+      <decision-gate>A tool in the map with no context file, or one with stale commands, is a defect (r-repo-context-file-maintained).</decision-gate>
     </step>
 
-    <step n="4" name="draft-decision">
-      <input>`inputs[]` + rules from `01-core-rules.xml`.</input>
-      <action>Author a single declarative `decision` sentence. No qualifiers ('we should consider', 'maybe').</action>
-      <output>`decision` field.</output>
+    <step n="4" name="exclude-secrets-and-check-retention">
+      <input>Secrets files and data directories; each vendor's data-usage terms.</input>
+      <action>Add `.cursorignore` / `.claudeignore` / `.gitignore` patterns for `.env*`, secrets and customer data and record them in `exclusion_file`; read each tool's retention terms and record `tool_retention` with the source URL and date.</action>
+      <output>`exclusion_file` and `tool_retention` inputs.</output>
+      <decision-gate>A tool whose terms are unchecked is `ai-off` for proprietary code until checked (r-no-secrets-or-customer-data-in-prompts).</decision-gate>
     </step>
 
-    <step n="5" name="anchor-evidence">
-      <input>PRs, tickets, dashboards, transcripts that justify the decision.</input>
-      <action>Add ≥1 URL to `evidence[]`. For each claim that drives the decision, include at least one anchor.</action>
-      <output>`evidence[]` populated.</output>
-      <decision-gate>If evidence[] is empty — demote `decision` to a hypothesis and re-queue.</decision-gate>
+    <step n="5" name="adopt-four-block-prompt">
+      <input>`templates/prompt-code.txt`.</input>
+      <action>Commit the template into the repo and record `prompt_template` with `blocks: Context, Task, Requirements, Output`; every hand-written prompt names a pattern file in Context and an exact path in Output.</action>
+      <output>`prompt_template` input.</output>
+      <decision-gate>A prompt without a pattern file or an output target is rejected at review (r-structured-prompt-four-blocks).</decision-gate>
     </step>
 
-    <step n="6" name="schedule-review">
-      <input>Methodology cadence (monthly / quarterly) and the artefact's blast radius.</input>
-      <action>Set `review.cadence` + `review.next_review_at`. Commit artefact + open follow-up calendar entry.</action>
-      <output>Committed artefact + review entry on owner's calendar.</output>
+    <step n="6" name="verify-introduced-dependencies">
+      <input>Each AI-generated diff before review.</input>
+      <action>For every new package, import or API call: confirm the package exists in the registry at the pinned version, the import resolves, and the signature matches the documentation; list new dependencies in the PR description.</action>
+      <output>PR description with verified dependencies.</output>
+      <decision-gate>A dependency the reviewer cannot find in the registry blocks the merge (r-verify-introduced-dependencies-and-apis).</decision-gate>
     </step>
+
+    <step n="7" name="break-the-function-for-generated-tests">
+      <input>Output of `templates/gen-tests.sh` or any AI-written test file.</input>
+      <action>Read every test for a value assertion; break the function under test on purpose and run the file; delete tests that stay green, mock the unit under test, or assert hallucinated values.</action>
+      <output>Test file where at least one test fails when the function is broken.</output>
+      <decision-gate>Assertion-free tests are deleted, not fixed (r-ai-tests-must-assert-and-fail-when-broken).</decision-gate>
+    </step>
+
+    <step n="8" name="label-and-review-every-ai-diff">
+      <input>The PR; the checkpoint from the map.</input>
+      <action>Record `ai_assisted_label` with `auto_merge_disabled: true`; the prompter self-reviews line by line, applies the label, and requests the reviewers the checkpoint demands. Write `decision`; fill `templates/skeleton.md.j2`; run `scripts/validate-ai-assisted-dev.py --file`; commit the record.</action>
+      <output>Committed record; labelled PRs.</output>
+      <decision-gate>An unlabelled or auto-merged AI diff is outside the methodology (r-ai-diff-reviewed-like-human-code).</decision-gate>
+    </step>
+
+    <step n="9" name="compare-defects-at-cadence">
+      <input>PRs over the period, split by the `ai-assisted` label; defect escapes, reverts, two-week churn.</input>
+      <action>At each `review.cadence` fill `review.last_outcome` with both groups' `pr_count`, `defect_escape_rate`, `revert_rate`, `churn_2w_rate` and the dashboard URL in `evidence[]`; list `worse_on`; if non-empty, tighten the map (stricter checkpoint or `ai-off` for the offending task class), record `action`, set `map_tightened: true` and bump `team.record_version`.</action>
+      <output>Outcome recorded; map tightened when worse.</output>
+      <decision-gate>A review that records worse numbers and changes nothing is invalid (r-defect-rate-tracked-ai-vs-human).</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Record validates via `scripts/validate-ai-assisted-dev.py`, including context-file coverage, retention-versus-map and tighten-when-worse checks.</item>
+      <item>Every AI-assisted PR in the period carries the label and went through its checkpoint.</item>
+      <item>The last outcome compares both groups on all three metrics.</item>
+    </list>
   </section>
 </text>

@@ -10,26 +10,29 @@
 
 ## Applies If (ALL must hold)
 
-- A named trigger has fired (release, incident, schedule, scope change) that warrants producing the artefact.
-- The owner is a named person (role:handle), not a team alias or channel.
-- The required input artefacts in `## Prerequisites` are available and machine-readable.
-- The downstream consumer for the produced artefact is known (review board, CI gate, customer, regulator).
+- A junior engineer has an open PR and a senior reviewer has (or will post) at least one comment on a specific diff line of it.
+- The pair runs a recurring mentoring loop, so a prior session record can be linked and its follow-up PR judged.
+- The code host exposes line-level anchors (`#discussion_r`, `#L`, `#note_`) and commit authorship, so the gap and the fix can be attributed.
+- The record can be stored where the junior can read it (repo `.product/`, shared doc), and the junior can confirm the text with a comment, reaction or co-authorship.
+- One senior owns the record as `role:handle` and an engineering manager exists to escalate to on the third not-demonstrated.
 
 ## Skip If (ANY kills it)
 
-- Trigger is vague ("when needed", "soon"); rewrite the trigger first.
-- No named owner — refuse to produce; assign first.
-- Inputs are missing or non-deterministic; fix the upstream observability before applying.
-- A different, already-pinned methodology handles this exact decision (avoid duplicate artefacts).
+- There is no PR from the junior yet, or the review has no line-level comment; run an ordinary review or wait for the next PR.
+- The review is between peers of equal seniority with no learning goal; use the normal code-review methodology.
+- The organisation keeps mentoring notes private to managers and will not let the junior read or confirm them; the protocol cannot run as a secret dossier.
+- The PR is a generated or mechanical change (dependency bump, formatter run) with nothing to learn from.
 
 ## Prerequisites
 
 | Input artifact | Format | Source |
 |---|---|---|
-| Trigger record | text / ticket link | upstream alerting / planning queue |
-| Owner identity | `role:handle` string | RACI / org directory |
-| Input artefacts | as listed in `02-output-contract.xml` `required` | upstream methodology output |
-| Prior artefact (if exists) | JSON matching the output contract | repo `.product/pr-mentoring-session-protocol/` |
+| Junior's open PR | PR URL on GitHub, GitLab or Bitbucket | code host |
+| Prior session record | previous record for the same junior with its named follow-up PR, or none | `.product/pr-mentoring-session-protocol/` in the repo |
+| Review comment thread | comments labelled per Conventional Comments with line anchors | the PR review |
+| Fix commit | commit URL on the junior's branch with the junior as author | the PR |
+| Junior's confirmation | comment, reaction or co-authorship URL confirming the gap and decision text | the PR or record |
+| Follow-up PR or ticket | URL once it exists, within 14 days or the next two PRs | code host / tracker |
 
 ## Assumes Loaded
 
@@ -45,9 +48,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: one observable goal, gap cites diff line, labelled comments + praise, junior restates and writes fix, one PR per session, follow-up is a named next PR, progression linked to prior session, record shared with junior | ~2100 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the session record: one PR with junior and senior, learning_goal as a behaviour, observed_gap did/should, restated_gap, comment_counts per label with praise, deferred_findings, junior-authored fix commit, progression with prior_action_status and streak, follow-up PR within 14 days with escalation at streak 3, junior confirmation, line-anchored evidence; valid and invalid records; 8 forbidden patterns | ~4350 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | ~1200 |
-| `content/04-procedure.xml` | recommended | Step-by-step procedure with input/action/output | ~700 |
+| `content/04-procedure.xml` | recommended | 8 steps: open from the prior record, one observable goal, anchor the gap to a line, labelled comments with praise, junior restates and fixes, park deferred findings, name the follow-up and share with the junior, close on the follow-up PR | ~1500 |
+| `content/05-examples.xml` | recommended | Complete session record for a junior's second attempt at a re-runnable migration (gap at line 18, six labelled comments, junior's fix commit, streak 2, follow-up PR landed) with a note per value, plus the same session as a trait review and what the validator prints | ~1850 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
