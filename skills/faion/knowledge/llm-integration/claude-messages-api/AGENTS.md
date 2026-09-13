@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 15 testable rules with rationale + source (stop_reason, full-content history, max_tokens, image-first, PDF limits, delta accumulation, metadata, URL-image fetch timing, Claude-vs-OpenAI SSE); Background: request parameters table | ~2100 |
+| `content/01-core-rules.xml` | essential | 14 testable rules with rationale + source (stop_reason, full-content history, max_tokens, image-first, PDF limits, delta accumulation, metadata, URL-image fetch timing, Claude-vs-OpenAI SSE); Background: request parameters table | ~2000 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~750 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
 | `content/04-procedure.xml` | medium | 6-step procedure with input/action/output per step | ~850 |

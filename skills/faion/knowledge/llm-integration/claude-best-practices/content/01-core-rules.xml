@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Claude Best Practices Core Rules" version="1.0.1" est_tokens="2650" depth="essential">
-  <summary>21 testable rules forming the production policy pack: tier-aware model selection, full-date pinning, explicit max_tokens, cache layout, retry-after parsing + shared bucket, batch eligibility. Rules for selecting the right Claude model tier (Haiku, Sonnet, Opus) by task type, setting max_tokens correctly, and avoiding silent truncation of structured output. Rules for prompt caching, Batch API usage, token counting pre-flight, and measuring actual savings in production Claude pipelines. Rules for retry with backoff, rate-limit header parsing, fallback model selection, and async batch processing in production Claude pipelines.</summary>
+<text id="01-core-rules" title="Claude Best Practices Core Rules" version="1.0.2" est_tokens="2500" depth="essential">
+  <summary>19 testable rules forming the production policy pack: tier-aware model selection, full-date pinning, explicit max_tokens, cache layout, retry-after parsing + shared bucket, batch eligibility. Rules for selecting the right Claude model tier (Haiku, Sonnet, Opus) by task type, setting max_tokens correctly, and avoiding silent truncation of structured output. Rules for prompt caching, Batch API usage, token counting pre-flight, and measuring actual savings in production Claude pipelines. Rules for retry with backoff, rate-limit header parsing, fallback model selection, and async batch processing in production Claude pipelines.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -13,11 +13,11 @@
     </rule>
     <rule id="r3" testable="true" depth="essential">
       <statement>Always set `max_tokens` explicitly on every call; treat `stop_reason=="max_tokens"` on a structured-output call as INVALID and retry with higher max_tokens (do not parse a truncated payload).</statement>
-      <rationale source="docs.anthropic.com/en/api/messages">Default `max_tokens` is low; silent truncation produces invalid JSON that downstream parsers handle wrong.</rationale>
+      <rationale source="docs.anthropic.com/en/api/messages">Default `max_tokens` is low; silent truncation produces invalid JSON that downstream parsers handle wrong. A truncated JSON response from a structured output call will raise a parse error downstream; the correct action is to retry with more headroom, not to handle the parse error.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
       <statement>Place stable content at the top of the system prompt with `cache_control:{"type":"ephemeral"}`; put dynamic instructions last; target `cache_read_input_tokens / input_tokens > 0.70`.</statement>
-      <rationale source="platform.claude.com/docs/en/build-with-claude/prompt-caching">Cache uses prefix matching; dynamic content before the cached block busts the cache; below ~70% hit ratio the 25% write surcharge erodes savings.</rationale>
+      <rationale source="platform.claude.com/docs/en/build-with-claude/prompt-caching">Cache uses prefix matching; dynamic content before the cached block busts the cache; below ~70% hit ratio the 25% write surcharge erodes savings. Dynamic content at the top busts the cache on every call; stable content at the top maximizes the proportion of input tokens that are cached.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
       <statement>Parse the `retry-after` header from `RateLimitError` instead of guessing the backoff; in multi-worker orchestrators use a SHARED token bucket, not per-process backoff.</statement>
@@ -42,14 +42,6 @@
     <rule id="max-tokens-explicit-every-call" testable="true" depth="essential">
       <statement>Always set max_tokens explicitly on every Messages API call.</statement>
       <rationale source="01-model-selection">The default max_tokens is low and silently truncates structured output mid-JSON, producing invalid payloads that are hard to debug because the API returns HTTP 200.</rationale>
-    </rule>
-    <rule id="truncated-structured-output-retry" testable="true" depth="essential">
-      <statement>When stop_reason == "max_tokens" on a structured output call, the JSON is truncated and invalid. Retry with higher max_tokens; do not parse the response.</statement>
-      <rationale source="01-model-selection">A truncated JSON response from a structured output call will raise a parse error downstream. The correct action is to retry with more headroom, not to handle the parse error.</rationale>
-    </rule>
-    <rule id="stable-prefix-first-with-cache-control" testable="true" depth="essential">
-      <statement>Place the most stable content at the top of the system prompt with cache_control: ephemeral. Put dynamic instructions last.</statement>
-      <rationale source="02-cost-optimization">Cache uses prefix matching. Dynamic content at the top busts the cache on every call. Stable content at the top maximizes the proportion of input tokens that are cached.</rationale>
     </rule>
     <rule id="no-dynamic-values-before-cached-block" testable="true" depth="essential">
       <statement>Never inject timestamps, request IDs, or user-specific values before the cached block.</statement>

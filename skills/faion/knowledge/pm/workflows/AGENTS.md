@@ -48,7 +48,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 19 testable rules with rationale + source (Phase 4 confirmation, RICE before backlog exit, no invented features, numbering lock, .aidocs source of truth, MLP modes sequential, non-interactive hard-fail, WOW cites scope analysis, WOW cap 7, propose after telemetry, exact numbering patterns, Jira numeric coercion, daily digest diff-only) | ~2800 |
+| `content/01-core-rules.xml` | essential | 15 testable rules with rationale + source (Phase 4 confirmation, RICE before backlog exit, no invented features, numbering lock, .aidocs source of truth, MLP modes sequential, non-interactive hard-fail, WOW cites scope analysis, WOW cap 7, propose after telemetry, exact numbering patterns, Jira numeric coercion, daily digest diff-only) | ~2400 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~700 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix, including MLP update clobbering numbering and cron MLP in MVP phase | ~800 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output gates; seven-phase bootstrap pipeline with .aidocs/ output structure; five-mode MLP pipeline with artifact chain | ~1050 |

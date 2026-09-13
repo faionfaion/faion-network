@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 21 testable rules (model tiers, pinning, max_tokens, caching layout, retry-after, batch) plus the v1 tier-selection, token-configuration, cost-optimization (cache structure, count_tokens pre-flight) and reliability (backoff+jitter, shared bucket, fallback logging, AsyncAnthropic) rules | ~2650 |
+| `content/01-core-rules.xml` | essential | 19 testable rules (model tiers, pinning, max_tokens, caching layout, retry-after, batch) plus the v1 tier-selection, token-configuration, cost-optimization (cache structure, count_tokens pre-flight) and reliability (backoff+jitter, shared bucket, fallback logging, AsyncAnthropic) rules | ~2500 |
 | `content/02-output-contract.xml` | essential | JSON schema + valid/invalid examples for the policy pack | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | ~800 |
 | `content/04-procedure.xml` | medium | 6-step procedure from tier-table to validated policy | ~900 |

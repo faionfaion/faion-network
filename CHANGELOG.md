@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Near-duplicate rules: the first pass is done, and it found something else.**
+  Five Sonnet agents read all 123 pairs the token-overlap scan had flagged
+  across 46 slugs, under a brief that said "if unsure, keep". Verdicts: **8
+  merged, 115 kept, 0 disagree.** The eight merges are in
+  `llm-integration/claude-best-practices` (2), `claude-messages-api` (1),
+  `pm/ai-in-project-management` (1) and `pm/workflows` (4) — each a hand-written
+  rule the fold kept verbatim beside the generated rule it paraphrased; the
+  fuller statement survives, both rationales are in it, and every `ref=` in the
+  slug points at the survivor. 102 of the 115 "keeps" were not near-duplicates
+  at all but literal stub rules sharing one boilerplate sentence — the finding
+  the next entries act on. The remaining 13 are one sentence frame bound to
+  different libraries or opposite conditions, correctly left alone.
+
 - **Stub rules, batch 1 of 6: eight `ai-agents` slugs.** The dedupe scan turned
   out to be measuring something else: 102 of its first 123 near-duplicate pairs
   were **literal stub rules** — `Stub rule for conclusion 'r-default-high'
