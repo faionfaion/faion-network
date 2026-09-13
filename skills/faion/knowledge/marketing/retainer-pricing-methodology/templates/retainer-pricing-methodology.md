@@ -1,33 +1,51 @@
-<!-- purpose: canonical markdown skeleton for the Retainer Pricing Methodology artefact -->
-<!-- consumes: typed inputs declared in content/02-output-contract.xml -->
+<!-- purpose: retainer spec — one named shape with its terms, price at 1.3x hourly equivalent, scope lists and turnaround, term and notice, advance billing, hourly cutover, capacity ledger, 6-month outcome review -->
+<!-- consumes: client request pattern and last 3 months of hourly invoices, rate card, active retainer list, available billable hours -->
 <!-- produces: filled artefact for validate-retainer-pricing-methodology.py -->
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
-<!-- token-budget-impact: ~500 tokens when fully filled -->
+<!-- token-budget-impact: ~700 tokens when fully filled -->
 
----
-artefact_id: retainer-pricing-methodology-<YYYY-MM-DD>-<NN>
-owner: <owner_full_name>
-version: 1.0.0
-last_reviewed: <YYYY-MM-DD>
----
+# Retainer Spec — <client_name>
 
-# Retainer Pricing Methodology
+- start_date: <start_date>
+- owner: <owner_full_name>
 
-## Decision
+## Shape (exactly one)
+- kind: <block_of_hours | outcome_based | availability | hybrid>
+- block_of_hours: prepaid_hours_per_month <n>, rollover <none | one_period | capped with rollover_cap_hours>, overage_hourly_rate <n>
+- outcome_based: deliverables_per_period <list>
+- availability: response_time_business_hours <n>, max_monthly_load_hours <n>
+- hybrid: invoicing_shape <which shape invoices>, scope_dispute_clause <which clause governs scope>
 
-<the answer / chosen option / value produced>
+## Pricing (at or above 1.3x the hourly equivalent)
+- expected_monthly_hours: <n; maximum load for availability>
+- hourly_rate: <n> <currency>
+- monthly_price: <n> = expected_monthly_hours x hourly_rate x multiple
+- multiple: <1.3 or more>
+- concession: <null, or twelve_month_minimum_term | full_term_prepaid when below 1.3>
 
-## Rationale
+## Scope
+- inclusions: <written list>
+- exclusions: <new-feature builds, emergency weekend work, third-party costs, meetings beyond the count>
+- turnaround: <n> <business_hours | business_days>
+- included_meetings_per_month: <n>
 
-<≥2 sentences; cite at least one input artefact by name>
+## Term, notice and price review
+- minimum_months: <3 or more>
+- notice_days: <30 or more, either side>
+- price_review_date: <no later than 12 months after start_date>
 
-## Inputs used
+## Billing (in advance)
+- timing: in_advance, invoice_days_before_period_start: <n>
+- payment_due: before_period_start, payment_terms_days: <n>
 
-- <input_name_1> (<source path or URL>)
-- <input_name_2> (<source path or URL>)
+## Hourly phase-out (null for a new client)
+- avg_billed_hours_last_3_months: <n>, avg_monthly_spend_last_3_months: <n>
+- cutover_date: <on or after start_date>, parallel_billing_periods: <0 or 1>
 
-## Actions
+## Capacity ledger
+- available_billable_hours_per_month: <n>
+- committed_hours_other_retainers: <n> + committed_hours_this_retainer: <n> = total_after_signing: <n, within available>
 
-- <YYYY-MM-DD> — <next_action_owner> — <next_action>
-
-<!-- Sections that do not apply: replace body with `not_applicable: <reason>`. -->
+## Outcome review (6 months after start_date)
+- scheduled_date: <YYYY-MM-DD>
+- findings: null until held; then still_active_without_renegotiation, periods (paid_hours, actual_hours), effective_hourly_rate, action <none | re_scope | rate_increase | address_usage>

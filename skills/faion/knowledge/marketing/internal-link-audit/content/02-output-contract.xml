@@ -1,116 +1,424 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Internal Link Audit Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `report` artefact this methodology produces. Validator at scripts/validate-internal-link-audit.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Internal Link Audit Output Contract" version="1.2.0" est_tokens="6750" depth="essential">
+  <summary>JSON Schema (draft-07) for the internal-link audit report: a rendered crawl inside the audit period reconciled to the sitemap and CMS counts with every gap over 5 percent explained, per-page incoming counts split into contextual and boilerplate with over-linked hubs flagged, every orphan carrying exactly one decision (rewire with source and anchor, redirect to a target, deindex), a pillar-cluster link matrix per declared cluster with structurally incomplete pillars flagged, anchor-text distributions for rewire targets with generic anchors counted, hygiene findings for links into 3xx, 4xx, 5xx, noindex, foreign-canonical and nofollow targets, a rewire plan whose every item names source, target, anchor, placement, action, owner and due date, and a Search Console baseline per rewire target with a re-measurement date at least 8 weeks after the last due date. Validator at scripts/validate-internal-link-audit.py enforces it, including the reconciliation arithmetic, the matrix-to-plan mapping, the hub and redirect exclusions and the baseline coverage.</summary>
+
+  <output-contract>
+    <required>
+      <field name="site" type="string" required="true">host audited</field>
+      <field name="audit_period" type="object" required="true">`start` and `end` dates of the audit period</field>
+      <field name="crawl" type="object" required="true">`crawler`, `crawl_date` inside the period, `javascript_rendered` true, `indexable_pages` (HTTP 200, no noindex, self-canonical), `sitemap_urls`, `cms_published_pages`, and `discrepancies[]` with `source`, `gap_pct` and an `explanation` for every gap above 5 percent (r-crawl-scope-reconciled)</field>
+      <field name="incoming_counts" type="object" required="true">`basis` contextual, `pages[]` each with `url`, `contextual_incoming` and `boilerplate_incoming`, and `over_linked_hubs[]` with `url`, `contextual_incoming`, `threshold` (r-incoming-count-excludes-boilerplate)</field>
+      <field name="orphans" type="list" required="true">each `url`, `found_via` (sitemap, analytics, crawl), `contextual_incoming` 0, and exactly one `decision`: rewire with `source_url` and `anchor_text`, redirect with `redirect_target`, or deindex (r-orphan-gets-a-decision)</field>
+      <field name="clusters" type="list" required="true">each `pillar_url`, `cluster_pages[]` with `url`, `links_to_pillar`, `pillar_links_to_it`, `cluster_to_pillar_links` (count of true), `structurally_incomplete` true when that count is below 5; every false edge has a rewire item (r-pillar-cluster-reciprocity)</field>
+      <field name="anchor_text" type="list" required="true">one entry per rewire target and top-20 page: `url`, `total_links`, `anchors[]` with `anchor`, `count`, `share` = count / total_links, `generic` (click here, read more, this article, raw URL, empty alt) (r-anchor-text-descriptive)</field>
+      <field name="hygiene_findings" type="list" required="true">each `source_url`, `current_target`, `final_url`, `issue` from redirect_3xx, client_error_4xx, server_error_5xx, noindex_target, canonical_elsewhere, nofollow (r-link-targets-final-url)</field>
+      <field name="rewire_plan" type="list" required="true">each `source_url`, `target_url` (a final indexable URL, never a hub or a redirecting URL), `anchor_text`, `placement`, `action` add / change_anchor / remove / redirect, `owner`, `due_date` (r-rewire-item-fully-specified)</field>
+      <field name="gsc_baseline" type="list" required="true">one entry per rewire target: `url`, `clicks`, `impressions`, `average_position`, `contextual_incoming`, `window_days` 28 ending at the period end (r-pre-post-search-console-baseline)</field>
+      <field name="remeasurement" type="object" required="true">`date` at least 56 days after the last rewire `due_date`, `metrics` clicks, impressions, average_position (r-pre-post-search-console-baseline)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`crawl.javascript_rendered` false, a `crawl_date` outside the audit period, or a sitemap or CMS gap above 5 percent with no discrepancy entry — partial-crawl-false-orphans</pattern>
+      <pattern id="f2">`incoming_counts.basis` other than contextual, or a page row without a separate `boilerplate_incoming` column — boilerplate-inflated-counts</pattern>
+      <pattern id="f3">an orphan with `decision` leave, keep or none, a rewire decision without `source_url` and `anchor_text`, or a redirect decision without `redirect_target` — orphan-list-without-decisions</pattern>
+      <pattern id="f4">a cluster with fewer than 5 cluster pages linking to the pillar not flagged `structurally_incomplete`, or a false edge in the matrix with no matching rewire item — cluster-on-paper-only</pattern>
+      <pattern id="f5">a generic anchor not flagged `generic`, `share` that is not count / total_links, or two or more new links to one target carrying the identical anchor — read-more-anchor-monoculture</pattern>
+      <pattern id="f6">a rewire `target_url` that appears as a `current_target` in the hygiene findings, i.e. a link added to a redirecting, erroring, noindex or foreign-canonical URL — links-into-redirects-and-nofollow</pattern>
+      <pattern id="f7">a rewire item with `placement` shorter than a sentence, no `owner`, no `due_date`, or a `target_url` listed under `over_linked_hubs` (r-rewire-item-fully-specified)</pattern>
+      <pattern id="f8">a rewire target with no `gsc_baseline` entry, a window other than 28 days, or a `remeasurement.date` earlier than 8 weeks after the last due date (r-pre-post-search-console-baseline)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/internal-link-audit.json",
   "title": "Internal Link Audit report",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "period_start",
-    "period_end",
-    "metrics",
-    "findings",
-    "deviation_log_reference"
-  ],
+  "required": ["site", "audit_period", "crawl", "incoming_counts", "orphans", "clusters", "anchor_text", "hygiene_findings", "rewire_plan", "gsc_baseline", "remeasurement"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "url": {"type": "string", "pattern": "^https?://[^ ]+$"},
+    "count": {"type": "integer", "minimum": 0},
+    "generic_anchor": {"enum": ["click here", "read more", "this article", "here", "link", ""]}
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "internal-link-audit"
+    "__faion_header__": {"type": ["object", "string"]},
+    "site": {"type": "string", "pattern": "^[a-z0-9.-]+\\.[a-z]{2,}$"},
+    "audit_period": {
+      "type": "object",
+      "required": ["start", "end"],
+      "additionalProperties": false,
+      "properties": {"start": {"$ref": "#/definitions/date"}, "end": {"$ref": "#/definitions/date"}}
     },
-    "owner": {
-      "type": "string",
-      "minLength": 1
+    "crawl": {
+      "type": "object",
+      "required": ["crawler", "crawl_date", "javascript_rendered", "indexable_pages", "sitemap_urls", "cms_published_pages", "discrepancies"],
+      "additionalProperties": false,
+      "properties": {
+        "crawler": {"type": "string", "minLength": 3},
+        "crawl_date": {"$ref": "#/definitions/date"},
+        "javascript_rendered": {"const": true},
+        "indexable_pages": {"type": "integer", "minimum": 30},
+        "sitemap_urls": {"type": "integer", "minimum": 1},
+        "cms_published_pages": {"type": "integer", "minimum": 1},
+        "discrepancies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "gap_pct", "explanation", "note"],
+            "additionalProperties": false,
+            "properties": {
+              "source": {"type": "string", "enum": ["sitemap", "cms"]},
+              "gap_pct": {"type": "number", "exclusiveMinimum": 5},
+              "explanation": {"type": "string", "enum": ["robots_blocked", "paginated", "js_rendered", "sitemap_stale", "noindexed_in_cms", "other"]},
+              "note": {"type": "string", "minLength": 10}
+            }
+          }
+        }
+      }
     },
-    "period_start": {
-      "type": "string",
-      "format": "date"
+    "incoming_counts": {
+      "type": "object",
+      "required": ["basis", "pages", "over_linked_hubs"],
+      "additionalProperties": false,
+      "properties": {
+        "basis": {"const": "contextual"},
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["url", "contextual_incoming", "boilerplate_incoming"],
+            "additionalProperties": false,
+            "properties": {
+              "url": {"$ref": "#/definitions/url"},
+              "contextual_incoming": {"$ref": "#/definitions/count"},
+              "boilerplate_incoming": {"$ref": "#/definitions/count"}
+            }
+          }
+        },
+        "over_linked_hubs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["url", "contextual_incoming", "threshold"],
+            "additionalProperties": false,
+            "properties": {
+              "url": {"$ref": "#/definitions/url"},
+              "contextual_incoming": {"$ref": "#/definitions/count"},
+              "threshold": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
     },
-    "period_end": {
-      "type": "string",
-      "format": "date"
+    "orphans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url", "found_via", "contextual_incoming", "decision"],
+        "additionalProperties": false,
+        "properties": {
+          "url": {"$ref": "#/definitions/url"},
+          "found_via": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "enum": ["sitemap", "analytics", "crawl"]}},
+          "contextual_incoming": {"const": 0},
+          "decision": {"type": "string", "enum": ["rewire", "redirect", "deindex"]},
+          "source_url": {"$ref": "#/definitions/url"},
+          "anchor_text": {"type": "string", "minLength": 3},
+          "redirect_target": {"$ref": "#/definitions/url"}
+        },
+        "allOf": [
+          {"if": {"properties": {"decision": {"const": "rewire"}}}, "then": {"required": ["source_url", "anchor_text"]}},
+          {"if": {"properties": {"decision": {"const": "redirect"}}}, "then": {"required": ["redirect_target"]}}
+        ]
+      }
     },
-    "metrics": {
+    "clusters": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "name",
-          "value"
-        ],
+        "required": ["pillar_url", "cluster_pages", "cluster_to_pillar_links", "structurally_incomplete"],
+        "additionalProperties": false,
         "properties": {
-          "name": {
-            "type": "string"
+          "pillar_url": {"$ref": "#/definitions/url"},
+          "cluster_pages": {
+            "type": "array",
+            "minItems": 5,
+            "items": {
+              "type": "object",
+              "required": ["url", "links_to_pillar", "pillar_links_to_it"],
+              "additionalProperties": false,
+              "properties": {
+                "url": {"$ref": "#/definitions/url"},
+                "links_to_pillar": {"type": "boolean"},
+                "pillar_links_to_it": {"type": "boolean"}
+              }
+            }
           },
-          "value": {
-            "type": [
-              "number",
-              "string"
-            ]
-          },
-          "unit": {
-            "type": "string"
-          }
+          "cluster_to_pillar_links": {"$ref": "#/definitions/count"},
+          "structurally_incomplete": {"type": "boolean"}
         },
-        "additionalProperties": false
+        "if": {"properties": {"cluster_to_pillar_links": {"maximum": 4}}},
+        "then": {"properties": {"structurally_incomplete": {"const": true}}},
+        "else": {"properties": {"structurally_incomplete": {"const": false}}}
       }
     },
-    "findings": {
+    "anchor_text": {
       "type": "array",
       "minItems": 1,
       "items": {
-        "type": "string",
-        "minLength": 10
+        "type": "object",
+        "required": ["url", "total_links", "anchors"],
+        "additionalProperties": false,
+        "properties": {
+          "url": {"$ref": "#/definitions/url"},
+          "total_links": {"type": "integer", "minimum": 0},
+          "anchors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["anchor", "count", "share", "generic"],
+              "additionalProperties": false,
+              "properties": {
+                "anchor": {"type": "string"},
+                "count": {"type": "integer", "minimum": 1},
+                "share": {"type": "number", "minimum": 0, "maximum": 1},
+                "generic": {"type": "boolean"}
+              },
+              "if": {"properties": {"anchor": {"anyOf": [{"$ref": "#/definitions/generic_anchor"}, {"pattern": "^https?://"}]}}},
+              "then": {"properties": {"generic": {"const": true}}}
+            }
+          }
+        }
       }
     },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
+    "hygiene_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_url", "current_target", "final_url", "issue"],
+        "additionalProperties": false,
+        "properties": {
+          "source_url": {"$ref": "#/definitions/url"},
+          "current_target": {"$ref": "#/definitions/url"},
+          "final_url": {"$ref": "#/definitions/url"},
+          "issue": {"type": "string", "enum": ["redirect_3xx", "client_error_4xx", "server_error_5xx", "noindex_target", "canonical_elsewhere", "nofollow"]}
+        }
+      }
+    },
+    "rewire_plan": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source_url", "target_url", "anchor_text", "placement", "action", "owner", "due_date"],
+        "additionalProperties": false,
+        "properties": {
+          "source_url": {"$ref": "#/definitions/url"},
+          "target_url": {"$ref": "#/definitions/url"},
+          "anchor_text": {"type": "string", "minLength": 3, "not": {"anyOf": [{"$ref": "#/definitions/generic_anchor"}, {"pattern": "^https?://"}]}},
+          "placement": {"type": "string", "minLength": 20},
+          "action": {"type": "string", "enum": ["add", "change_anchor", "remove", "redirect"]},
+          "owner": {"type": "string", "minLength": 2, "not": {"enum": ["team", "we", "us", "content team", "seo team"]}},
+          "due_date": {"$ref": "#/definitions/date"}
+        }
+      }
+    },
+    "gsc_baseline": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["url", "clicks", "impressions", "average_position", "contextual_incoming", "window_days"],
+        "additionalProperties": false,
+        "properties": {
+          "url": {"$ref": "#/definitions/url"},
+          "clicks": {"$ref": "#/definitions/count"},
+          "impressions": {"$ref": "#/definitions/count"},
+          "average_position": {"type": "number", "minimum": 1},
+          "contextual_incoming": {"$ref": "#/definitions/count"},
+          "window_days": {"const": 28}
+        }
+      }
+    },
+    "remeasurement": {
+      "type": "object",
+      "required": ["date", "metrics"],
+      "additionalProperties": false,
+      "properties": {
+        "date": {"$ref": "#/definitions/date"},
+        "metrics": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["clicks", "impressions", "average_position"]}
+        }
+      }
     }
+  }
+}
+]]></code>
+    </schema>
+
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "site": "example.com",
+  "audit_period": {"start": "2026-08-01", "end": "2026-08-31"},
+  "crawl": {
+    "crawler": "Screaming Frog SEO Spider 21",
+    "crawl_date": "2026-08-20",
+    "javascript_rendered": true,
+    "indexable_pages": 412,
+    "sitemap_urls": 430,
+    "cms_published_pages": 445,
+    "discrepancies": [
+      {"source": "cms", "gap_pct": 7.4, "explanation": "paginated", "note": "33 paginated archive pages are published in the CMS but carry noindex, so they are not indexable"}
+    ]
   },
-  "additionalProperties": false
-}
-]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
-{
-  "slug": "internal-link-audit",
-  "owner": "analytics owner",
-  "period_start": "2026-05-01",
-  "period_end": "2026-05-22",
-  "metrics": [
+  "incoming_counts": {
+    "basis": "contextual",
+    "pages": [
+      {"url": "https://example.com/guides/email-deliverability", "contextual_incoming": 21, "boilerplate_incoming": 412},
+      {"url": "https://example.com/guides/spf-records", "contextual_incoming": 6, "boilerplate_incoming": 412},
+      {"url": "https://example.com/guides/dmarc-setup", "contextual_incoming": 4, "boilerplate_incoming": 412},
+      {"url": "https://example.com/blog/warmup-schedule-2024", "contextual_incoming": 0, "boilerplate_incoming": 412},
+      {"url": "https://example.com/blog/2023-deliverability-report", "contextual_incoming": 0, "boilerplate_incoming": 412},
+      {"url": "https://example.com/blog", "contextual_incoming": 380, "boilerplate_incoming": 412}
+    ],
+    "over_linked_hubs": [
+      {"url": "https://example.com/blog", "contextual_incoming": 380, "threshold": 100}
+    ]
+  },
+  "orphans": [
+    {"url": "https://example.com/blog/warmup-schedule-2024", "found_via": ["sitemap", "analytics"], "contextual_incoming": 0, "decision": "rewire", "source_url": "https://example.com/guides/email-deliverability", "anchor_text": "a week-by-week domain warm-up schedule"},
+    {"url": "https://example.com/blog/2023-deliverability-report", "found_via": ["sitemap"], "contextual_incoming": 0, "decision": "redirect", "redirect_target": "https://example.com/blog/2026-deliverability-report"}
+  ],
+  "clusters": [
     {
-      "name": "activation_rate",
-      "value": 0.31,
-      "unit": "ratio"
+      "pillar_url": "https://example.com/guides/email-deliverability",
+      "cluster_pages": [
+        {"url": "https://example.com/guides/spf-records", "links_to_pillar": true, "pillar_links_to_it": true},
+        {"url": "https://example.com/guides/dkim-signing", "links_to_pillar": true, "pillar_links_to_it": true},
+        {"url": "https://example.com/guides/dmarc-setup", "links_to_pillar": true, "pillar_links_to_it": false},
+        {"url": "https://example.com/guides/bounce-handling", "links_to_pillar": true, "pillar_links_to_it": true},
+        {"url": "https://example.com/guides/list-hygiene", "links_to_pillar": true, "pillar_links_to_it": true},
+        {"url": "https://example.com/guides/feedback-loops", "links_to_pillar": false, "pillar_links_to_it": true}
+      ],
+      "cluster_to_pillar_links": 5,
+      "structurally_incomplete": false
     }
   ],
-  "findings": [
-    "activation rate up 4pp WoW; biggest lift from onboarding checklist v2"
+  "anchor_text": [
+    {"url": "https://example.com/guides/email-deliverability", "total_links": 21, "anchors": [
+      {"anchor": "email deliverability guide", "count": 12, "share": 0.571, "generic": false},
+      {"anchor": "read more", "count": 6, "share": 0.286, "generic": true},
+      {"anchor": "how inbox placement works", "count": 3, "share": 0.143, "generic": false}
+    ]},
+    {"url": "https://example.com/guides/dmarc-setup", "total_links": 4, "anchors": [
+      {"anchor": "setting up DMARC", "count": 4, "share": 1, "generic": false}
+    ]},
+    {"url": "https://example.com/blog/warmup-schedule-2024", "total_links": 0, "anchors": []}
   ],
-  "deviation_log_reference": "ops/deviation-log.md#L88"
+  "hygiene_findings": [
+    {"source_url": "https://example.com/guides/spf-records", "current_target": "https://example.com/blog/old-dmarc-post", "final_url": "https://example.com/guides/dmarc-setup", "issue": "redirect_3xx"},
+    {"source_url": "https://example.com/guides/list-hygiene", "current_target": "https://example.com/tools/bounce-checker", "final_url": "https://example.com/tools/bounce-checker", "issue": "nofollow"}
+  ],
+  "rewire_plan": [
+    {"source_url": "https://example.com/guides/email-deliverability", "target_url": "https://example.com/guides/dmarc-setup", "anchor_text": "configure a DMARC policy", "placement": "paragraph 4 of the Authentication section, sentence on policy enforcement", "action": "add", "owner": "Olena K.", "due_date": "2026-09-30"},
+    {"source_url": "https://example.com/guides/feedback-loops", "target_url": "https://example.com/guides/email-deliverability", "anchor_text": "the wider deliverability picture", "placement": "introduction, second sentence, where the pillar topic is first mentioned", "action": "add", "owner": "Olena K.", "due_date": "2026-09-30"},
+    {"source_url": "https://example.com/guides/email-deliverability", "target_url": "https://example.com/blog/warmup-schedule-2024", "anchor_text": "a week-by-week domain warm-up schedule", "placement": "Warm-up section, end of the first paragraph on sending volume ramps", "action": "add", "owner": "Olena K.", "due_date": "2026-09-30"},
+    {"source_url": "https://example.com/guides/spf-records", "target_url": "https://example.com/guides/dmarc-setup", "anchor_text": "setting up DMARC after SPF", "placement": "Next steps section, replace the link to the old DMARC post", "action": "change_anchor", "owner": "Olena K.", "due_date": "2026-09-30"}
+  ],
+  "gsc_baseline": [
+    {"url": "https://example.com/guides/dmarc-setup", "clicks": 410, "impressions": 18200, "average_position": 8.4, "contextual_incoming": 4, "window_days": 28},
+    {"url": "https://example.com/guides/email-deliverability", "clicks": 1930, "impressions": 61000, "average_position": 5.1, "contextual_incoming": 21, "window_days": 28},
+    {"url": "https://example.com/blog/warmup-schedule-2024", "clicks": 12, "impressions": 900, "average_position": 31.2, "contextual_incoming": 0, "window_days": 28}
+  ],
+  "remeasurement": {"date": "2026-11-30", "metrics": ["clicks", "impressions", "average_position"]}
 }
 ]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+      <note>Crawl on 2026-08-20 is inside the period; 412 vs 430 sitemap URLs is a 4.2 percent gap and needs no entry, 412 vs 445 CMS pages is 7.4 percent and is explained; the two false edges in the matrix and the rewire-decision orphan each have a plan item; no plan item targets the /blog hub or the redirecting old DMARC post; every rewire target has a baseline and the re-measurement is 61 days after the last due date.</note>
+    </example>
+
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "slug": "internal-link-audit",
-  "period_start": "2026-05-01"
+  "site": "example.com",
+  "audit_period": {"start": "2026-08-01", "end": "2026-08-31"},
+  "crawl": {
+    "crawler": "in-house",
+    "crawl_date": "2026-05-02",
+    "javascript_rendered": false,
+    "indexable_pages": 250,
+    "sitemap_urls": 430,
+    "cms_published_pages": 445,
+    "discrepancies": []
+  },
+  "incoming_counts": {
+    "basis": "total",
+    "pages": [
+      {"url": "https://example.com/guides/email-deliverability", "contextual_incoming": 433, "boilerplate_incoming": 0}
+    ],
+    "over_linked_hubs": [
+      {"url": "https://example.com/blog", "contextual_incoming": 380, "threshold": 100}
+    ]
+  },
+  "orphans": [
+    {"url": "https://example.com/blog/warmup-schedule-2024", "found_via": ["sitemap"], "contextual_incoming": 0, "decision": "leave"},
+    {"url": "https://example.com/blog/2023-deliverability-report", "found_via": ["sitemap"], "contextual_incoming": 0, "decision": "rewire"}
+  ],
+  "clusters": [
+    {
+      "pillar_url": "https://example.com/guides/email-deliverability",
+      "cluster_pages": [
+        {"url": "https://example.com/guides/spf-records", "links_to_pillar": true, "pillar_links_to_it": false},
+        {"url": "https://example.com/guides/dkim-signing", "links_to_pillar": true, "pillar_links_to_it": false},
+        {"url": "https://example.com/guides/dmarc-setup", "links_to_pillar": true, "pillar_links_to_it": false},
+        {"url": "https://example.com/guides/bounce-handling", "links_to_pillar": false, "pillar_links_to_it": false},
+        {"url": "https://example.com/guides/list-hygiene", "links_to_pillar": false, "pillar_links_to_it": false}
+      ],
+      "cluster_to_pillar_links": 3,
+      "structurally_incomplete": false
+    }
+  ],
+  "anchor_text": [
+    {"url": "https://example.com/guides/email-deliverability", "total_links": 120, "anchors": [
+      {"anchor": "read more", "count": 84, "share": 0.7, "generic": false},
+      {"anchor": "https://example.com/guides/email-deliverability", "count": 12, "share": 0.1, "generic": false}
+    ]}
+  ],
+  "hygiene_findings": [
+    {"source_url": "https://example.com/guides/spf-records", "current_target": "https://example.com/blog/old-dmarc-post", "final_url": "https://example.com/guides/dmarc-setup", "issue": "redirect_3xx"}
+  ],
+  "rewire_plan": [
+    {"source_url": "https://example.com/guides/spf-records", "target_url": "https://example.com/blog", "anchor_text": "read more", "placement": "somewhere", "action": "strengthen", "owner": "team", "due_date": "2026-09-30"},
+    {"source_url": "https://example.com/guides/dkim-signing", "target_url": "https://example.com/blog/old-dmarc-post", "anchor_text": "DMARC", "placement": "add more links to the DMARC page where it fits", "action": "add", "owner": "content team", "due_date": "2026-09-30"}
+  ],
+  "gsc_baseline": [
+    {"url": "https://example.com/guides/email-deliverability", "clicks": 1930, "impressions": 61000, "average_position": 5.1, "contextual_incoming": 433, "window_days": 90}
+  ],
+  "remeasurement": {"date": "2026-10-05", "metrics": ["clicks"]}
 }
 ]]></code>
-    <note>Missing required: owner, period_end, metrics, findings, deviation_log_reference.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+      <note>Crawl without JavaScript rendering, dated three months before the period, 250 pages against a 430-URL sitemap with no discrepancy explained; counts on the total basis with boilerplate folded into the contextual column; an orphan left as is and a rewire decision without source or anchor; three of five cluster pages link to the pillar yet the cluster is not flagged incomplete; "read more" and a raw URL not flagged generic; a plan item with action "strengthen", placement "somewhere", owner "team", anchor "read more", targeting the /blog hub, and another targeting a URL the hygiene findings show redirects; a 90-day baseline window and a re-measurement five days after the due date with one metric.</note>
+    </example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`crawl.crawl_date` lies inside `audit_period`, `javascript_rendered` is true, and every sitemap or CMS gap above 5 percent has a `discrepancies[]` entry whose `gap_pct` matches the arithmetic.</item>
+      <item>`incoming_counts.basis` is contextual and every page row carries `boilerplate_incoming` separately; hubs above the threshold are listed.</item>
+      <item>Every orphan has one of rewire, redirect, deindex; a rewire orphan names `source_url` and `anchor_text` and has a matching `rewire_plan` item.</item>
+      <item>Per cluster, `cluster_to_pillar_links` is the count of `links_to_pillar` true, `structurally_incomplete` is true below 5, and every false edge maps to a `rewire_plan` add item.</item>
+      <item>Every rewire target has an `anchor_text` entry with shares that sum from count / total_links, generic anchors flagged, and new links to one target do not share one identical anchor.</item>
+      <item>No `rewire_plan.target_url` is a `hygiene_findings.current_target` or an `over_linked_hubs.url`; every item has a person as `owner` and a `due_date`.</item>
+      <item>Every rewire target has a 28-day `gsc_baseline` row and `remeasurement.date` is at least 56 days after the last `due_date`.</item>
+    </list>
   </section>
-  <reference path="scripts/validate-internal-link-audit.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-internal-link-audit.py">Validator implementing this schema and the cross-field rules (period and reconciliation arithmetic, orphan-to-plan and matrix-to-plan mapping, anchor share arithmetic and monoculture, hub and redirect exclusions, baseline coverage and the 8-week re-measurement).</reference>
 </text>

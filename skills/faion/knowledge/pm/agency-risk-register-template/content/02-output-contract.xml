@@ -1,106 +1,296 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Agency Risk Register Template — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the artefact produced by `agency-risk-register-template`. Validator enforces required keys, owner discipline, semver, ISO date, and minimum-evidence rules.</summary>
+<text id="02-output-contract" title="Agency Risk Register Template — Output Contract" version="1.2.0" est_tokens="5650" depth="essential">
+  <summary>JSON Schema (draft-07) for the agency risk register as refreshed on a Monday: the agency's headcount, the 30-minute refresh with its three timed parts and overrun count, the concentration recompute from the trailing-90-day billing export with every client's share, at least one row in each of the six agency classes with the 8 columns (id, class, description, likelihood, impact, score, a named owner, an observable trigger) plus the class's quantified details (client share, key-person item with dated remediation, currency shares, contractor jurisdiction and test, pipeline months of coverage), a dated mitigation or a signed acceptance on every row at 15 or more, and the closed tab with close date and lesson. Validator at scripts/validate-agency-risk-register-template.py enforces it, including the Monday date, the timebox sum, score arithmetic, the 20 and 40 percent concentration rules, the coverage arithmetic and the in-week mitigation date.</summary>
 
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="agency" type="object" required="true">`name`, `headcount` 3 to 25 (06-decision-tree)</field>
+      <field name="refresh" type="object" required="true">`date` (a Monday), `minutes` {scores_update, top5_walk, action_note, total} with total at most 30, `consecutive_overruns`, `split_or_prune_required` true after two overruns, `action_note` (r-thirty-minute-monday)</field>
+      <field name="concentration" type="object" required="true">`source` billing_export, `trailing_days` 90, `recomputed_on` = refresh date, `clients[]` each `name` and `share` of trailing-90-day revenue; every client above 20 percent has a row, every client at 40 percent or more scores at least 15 (r-concentration-90d-auto-score)</field>
+      <field name="rows" type="list" required="true">at least one row per class (revenue_concentration, key_person, fx_currency, contractor_classification, pipeline_thinness, regulatory), each `id`, `class`, `description`, `likelihood` 1-5, `impact` 1-5, `score` = likelihood x impact, `owner` (a person), `trigger`, `details` for the class, and `response` (mitigation with owner and due date this week, or acceptance signed by the founder) whenever score is 15 or more (r-six-agency-risk-classes, r-eight-column-row, r-key-person-bus-factor-dated, r-cross-border-rows-quantified, r-pipeline-months-of-coverage, r-score-15-action-or-signed-acceptance)</field>
+      <field name="closed" type="list" required="true">resolved rows with `id`, `class`, `description`, `closed_on`, `lesson`; never deleted (r-closed-tab-not-delete)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a row whose `class` is not one of the six agency classes, or a class with no row — fm-01-project-rows-crowd-out</pattern>
+      <pattern id="f2">`concentration.source` other than the billing export, `trailing_days` other than 90, or `recomputed_on` not the refresh date — fm-02-concentration-estimated</pattern>
+      <pattern id="f3">a key-person row without `holder`, `remediation_owner` and a `deadline` date — fm-03-key-person-undated</pattern>
+      <pattern id="f4">a row scoring 15 or more with `response` null, a mitigation due outside the refresh week, or an acceptance without `signed_by` and `signed_on` — fm-04-silent-high-score</pattern>
+      <pattern id="f5">`owner` team, ops, everyone or empty, or a `trigger` shorter than an observable condition — fm-05-worry-without-trigger</pattern>
+      <pattern id="f6">`refresh.minutes.total` above 30, a total that is not the sum of the three parts, or two consecutive overruns without `split_or_prune_required` — fm-06-meeting-creep</pattern>
+      <pattern id="f7">a closed row without `closed_on` and `lesson` — fm-07-closed-rows-deleted</pattern>
+      <pattern id="f8">an FX row without revenue and cost shares by currency, a contractor row without jurisdiction, test and outcome, or a pipeline row whose `months_of_coverage` is not weighted pipeline over monthly cost (r-cross-border-rows-quantified, r-pipeline-months-of-coverage)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/agency-risk-register-template.json",
+  "title": "Agency risk register (Monday refresh)",
   "type": "object",
-  "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
-  ],
+  "required": ["agency", "refresh", "concentration", "rows", "closed"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "score": {"type": "integer", "minimum": 1, "maximum": 5},
+    "share": {"type": "number", "minimum": 0, "maximum": 1},
+    "person": {"type": "string", "minLength": 3, "not": {"enum": ["team", "ops", "everyone", "tbd", "the team", "management"]}},
+    "risk_class": {"type": "string", "enum": ["revenue_concentration", "key_person", "fx_currency", "contractor_classification", "pipeline_thinness", "regulatory"]},
+    "currency_shares": {"type": "object", "minProperties": 1, "propertyNames": {"pattern": "^[A-Z]{3}$"}, "additionalProperties": {"$ref": "#/definitions/share"}}
+  },
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
+    "__faion_header__": {"type": ["object", "string"]},
+    "agency": {
+      "type": "object",
+      "required": ["name", "headcount"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 2},
+        "headcount": {"type": "integer", "minimum": 3, "maximum": 25}
+      }
     },
-    "owner": {
-      "type": "string",
-      "minLength": 3
+    "refresh": {
+      "type": "object",
+      "required": ["date", "minutes", "consecutive_overruns", "split_or_prune_required", "action_note"],
+      "additionalProperties": false,
+      "properties": {
+        "date": {"$ref": "#/definitions/date"},
+        "minutes": {
+          "type": "object",
+          "required": ["scores_update", "top5_walk", "action_note", "total"],
+          "additionalProperties": false,
+          "properties": {
+            "scores_update": {"type": "integer", "minimum": 0},
+            "top5_walk": {"type": "integer", "minimum": 0},
+            "action_note": {"type": "integer", "minimum": 0},
+            "total": {"type": "integer", "minimum": 1}
+          }
+        },
+        "consecutive_overruns": {"type": "integer", "minimum": 0},
+        "split_or_prune_required": {"type": "boolean"},
+        "action_note": {"type": "string", "minLength": 20}
+      },
+      "if": {"properties": {"consecutive_overruns": {"minimum": 2}}},
+      "then": {"properties": {"split_or_prune_required": {"const": true}}}
     },
-    "decision": {
-      "type": "string",
-      "minLength": 3
+    "concentration": {
+      "type": "object",
+      "required": ["source", "trailing_days", "recomputed_on", "clients"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {"const": "billing_export"},
+        "trailing_days": {"const": 90},
+        "recomputed_on": {"$ref": "#/definitions/date"},
+        "clients": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "share"],
+            "additionalProperties": false,
+            "properties": {"name": {"type": "string", "minLength": 2}, "share": {"$ref": "#/definitions/share"}}
+          }
+        }
+      }
     },
-    "rationale": {
-      "type": "string",
-      "minLength": 30
+    "rows": {
+      "type": "array",
+      "minItems": 6,
+      "allOf": [
+        {"contains": {"properties": {"class": {"const": "revenue_concentration"}}}},
+        {"contains": {"properties": {"class": {"const": "key_person"}}}},
+        {"contains": {"properties": {"class": {"const": "fx_currency"}}}},
+        {"contains": {"properties": {"class": {"const": "contractor_classification"}}}},
+        {"contains": {"properties": {"class": {"const": "pipeline_thinness"}}}},
+        {"contains": {"properties": {"class": {"const": "regulatory"}}}}
+      ],
+      "items": {
+        "type": "object",
+        "required": ["id", "class", "description", "likelihood", "impact", "score", "owner", "trigger", "details", "response"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^R-[0-9]{2,}$"},
+          "class": {"$ref": "#/definitions/risk_class"},
+          "description": {"type": "string", "minLength": 15},
+          "likelihood": {"$ref": "#/definitions/score"},
+          "impact": {"$ref": "#/definitions/score"},
+          "score": {"type": "integer", "minimum": 1, "maximum": 25},
+          "owner": {"$ref": "#/definitions/person"},
+          "trigger": {"type": "string", "minLength": 25},
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "client": {"type": "string", "minLength": 2},
+              "share": {"$ref": "#/definitions/share"},
+              "item": {"type": "string", "minLength": 5},
+              "holder": {"$ref": "#/definitions/person"},
+              "remediation_owner": {"$ref": "#/definitions/person"},
+              "deadline": {"$ref": "#/definitions/date"},
+              "revenue_share_by_currency": {"$ref": "#/definitions/currency_shares"},
+              "cost_share_by_currency": {"$ref": "#/definitions/currency_shares"},
+              "contractors": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["name", "jurisdiction", "test", "outcome"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {"type": "string", "minLength": 2},
+                    "jurisdiction": {"type": "string", "minLength": 2},
+                    "test": {"type": "string", "minLength": 5},
+                    "outcome": {"type": "string", "enum": ["contractor", "employee_risk", "unresolved"]},
+                    "fix_due": {"$ref": "#/definitions/date"}
+                  },
+                  "if": {"properties": {"outcome": {"enum": ["employee_risk", "unresolved"]}}},
+                  "then": {"required": ["fix_due"]}
+                }
+              },
+              "weighted_pipeline": {"type": "number", "minimum": 0},
+              "monthly_cost_base": {"type": "number", "exclusiveMinimum": 0},
+              "months_of_coverage": {"type": "number", "minimum": 0},
+              "trigger_below_months": {"type": "number", "exclusiveMinimum": 0},
+              "regulation": {"type": "string", "minLength": 3}
+            }
+          },
+          "response": {
+            "anyOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "required": ["kind"],
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {"type": "string", "enum": ["mitigation", "acceptance"]},
+                  "action": {"type": "string", "minLength": 10},
+                  "owner": {"$ref": "#/definitions/person"},
+                  "due_date": {"$ref": "#/definitions/date"},
+                  "signed_by": {"$ref": "#/definitions/person"},
+                  "signed_on": {"$ref": "#/definitions/date"}
+                },
+                "allOf": [
+                  {"if": {"properties": {"kind": {"const": "mitigation"}}}, "then": {"required": ["action", "owner", "due_date"]}},
+                  {"if": {"properties": {"kind": {"const": "acceptance"}}}, "then": {"required": ["signed_by", "signed_on"]}}
+                ]
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"class": {"const": "revenue_concentration"}}}, "then": {"properties": {"details": {"required": ["client", "share"]}}}},
+          {"if": {"properties": {"class": {"const": "key_person"}}}, "then": {"properties": {"details": {"required": ["item", "holder", "remediation_owner", "deadline"]}}}},
+          {"if": {"properties": {"class": {"const": "fx_currency"}}}, "then": {"properties": {"details": {"required": ["revenue_share_by_currency", "cost_share_by_currency"]}}}},
+          {"if": {"properties": {"class": {"const": "contractor_classification"}}}, "then": {"properties": {"details": {"required": ["contractors"]}}}},
+          {"if": {"properties": {"class": {"const": "pipeline_thinness"}}}, "then": {"properties": {"details": {"required": ["weighted_pipeline", "monthly_cost_base", "months_of_coverage", "trigger_below_months"]}}}},
+          {"if": {"properties": {"class": {"const": "regulatory"}}}, "then": {"properties": {"details": {"required": ["regulation"]}}}},
+          {"if": {"properties": {"score": {"minimum": 15}}}, "then": {"properties": {"response": {"type": "object"}}}}
+        ]
+      }
     },
-    "inputs_used": {
+    "closed": {
       "type": "array",
       "items": {
-        "type": "string"
-      },
-      "minItems": 1
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+        "type": "object",
+        "required": ["id", "class", "description", "closed_on", "lesson"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^R-[0-9]{2,}$"},
+          "class": {"$ref": "#/definitions/risk_class"},
+          "description": {"type": "string", "minLength": 15},
+          "closed_on": {"$ref": "#/definitions/date"},
+          "lesson": {"type": "string", "minLength": 15}
+        }
+      }
     }
   }
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "agency-risk-register-template-2026-05-23-01",
-  "owner": "Anna Schmidt",
-  "decision": "ship the canonical artefact this client cycle",
-  "rationale": "Anchored to discovery notes (2026-05-21) and rate card; precondition checklist passed.",
-  "inputs_used": [
-    "discovery-notes-2026-05-21.md",
-    "rate-card-2026-Q2.yaml"
+  "agency": {"name": "Brightline Studio", "headcount": 6},
+  "refresh": {
+    "date": "2026-09-14",
+    "minutes": {"scores_update": 5, "top5_walk": 15, "action_note": 8, "total": 28},
+    "consecutive_overruns": 0,
+    "split_or_prune_required": false,
+    "action_note": "Client A at 47 percent: Dana sends proposals to Harbor Logistics and Vireo by Friday; AWS root hand-over to Priya scheduled for 2026-09-30; USD/EUR mismatch accepted for this quarter pending the hedging quote."
+  },
+  "concentration": {
+    "source": "billing_export",
+    "trailing_days": 90,
+    "recomputed_on": "2026-09-14",
+    "clients": [
+      {"name": "Client A", "share": 0.47},
+      {"name": "Client B", "share": 0.22},
+      {"name": "Client C", "share": 0.12},
+      {"name": "others", "share": 0.19}
+    ]
+  },
+  "rows": [
+    {"id": "R-01", "class": "revenue_concentration", "description": "Client A is 47 percent of trailing-90-day revenue", "likelihood": 4, "impact": 5, "score": 20, "owner": "Dana Kovac", "trigger": "Client A misses two invoices in a row or cancels the weekly sync", "details": {"client": "Client A", "share": 0.47}, "response": {"kind": "mitigation", "action": "send proposals to Harbor Logistics and Vireo", "owner": "Dana Kovac", "due_date": "2026-09-18"}},
+    {"id": "R-02", "class": "revenue_concentration", "description": "Client B is 22 percent of trailing-90-day revenue", "likelihood": 3, "impact": 3, "score": 9, "owner": "Dana Kovac", "trigger": "Client B retainer not renewed 30 days before its 2026-12-31 end date", "details": {"client": "Client B", "share": 0.22}, "response": null},
+    {"id": "R-03", "class": "key_person", "description": "AWS root credentials and the deploy pipeline are known only to Marko", "likelihood": 3, "impact": 4, "score": 12, "owner": "Dana Kovac", "trigger": "Marko unavailable for more than 5 working days with no backup holder", "details": {"item": "AWS root credentials and deploy pipeline", "holder": "Marko Ilic", "remediation_owner": "Priya Nair", "deadline": "2026-09-30"}, "response": null},
+    {"id": "R-04", "class": "fx_currency", "description": "60 percent of revenue billed in USD against 90 percent of costs in EUR", "likelihood": 4, "impact": 3, "score": 12, "owner": "Dana Kovac", "trigger": "EUR/USD moves more than 5 percent against the quarter's opening rate", "details": {"revenue_share_by_currency": {"USD": 0.6, "EUR": 0.4}, "cost_share_by_currency": {"EUR": 0.9, "USD": 0.1}}, "response": null},
+    {"id": "R-05", "class": "contractor_classification", "description": "One cross-border contractor on a 30-hour week for a single client", "likelihood": 2, "impact": 4, "score": 8, "owner": "Dana Kovac", "trigger": "Contractor exceeds 35 hours a week for 8 weeks or loses the right to substitute", "details": {"contractors": [{"name": "Ana Ferreira", "jurisdiction": "Portugal", "test": "control, substitution and financial risk (recibos verdes regime)", "outcome": "contractor"}]}, "response": null},
+    {"id": "R-06", "class": "pipeline_thinness", "description": "Stage-weighted pipeline covers 3.5 months of the cost base", "likelihood": 3, "impact": 4, "score": 12, "owner": "Dana Kovac", "trigger": "Weighted coverage below 3 months at any Monday refresh", "details": {"weighted_pipeline": 210000, "monthly_cost_base": 60000, "months_of_coverage": 3.5, "trigger_below_months": 3}, "response": null},
+    {"id": "R-07", "class": "regulatory", "description": "GDPR processor agreements not yet signed with two clients", "likelihood": 2, "impact": 3, "score": 6, "owner": "Priya Nair", "trigger": "A client audit request or a data incident arrives before both agreements are signed", "details": {"regulation": "GDPR Article 28 processor agreements"}, "response": null}
   ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
+  "closed": [
+    {"id": "R-00", "class": "key_person", "description": "Domain registrar account held only by the founder", "closed_on": "2026-08-31", "lesson": "Shared credentials go into the password manager on day one, not after the first scare"}
+  ]
 }
 ]]></code>
-  </example>
+      <note>2026-09-14 is a Monday and the three parts add to 28 minutes; concentration is recomputed that day from the billing export and Client A at 47 percent scores 4 x 5 = 20 with a mitigation due on Friday of the same week, while Client B at 22 percent has its own row; all six classes are present with 8 columns, a person as owner and an observable trigger; the key-person row is dated, the FX row carries shares by currency that add to 1, the contractor row names jurisdiction, test and outcome, and 210,000 over 60,000 is 3.5 months of coverage.</note>
+    </example>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "x",
-  "owner": "team",
-  "decision": "tbd",
-  "rationale": "obviously",
-  "inputs_used": [],
-  "version": "1",
-  "last_reviewed": "yesterday"
+  "agency": {"name": "Brightline Studio", "headcount": 6},
+  "refresh": {
+    "date": "2026-09-16",
+    "minutes": {"scores_update": 10, "top5_walk": 45, "action_note": 20, "total": 60},
+    "consecutive_overruns": 2,
+    "split_or_prune_required": false,
+    "action_note": "Reviewed everything, nothing new."
+  },
+  "concentration": {
+    "source": "founder_estimate",
+    "trailing_days": 365,
+    "recomputed_on": "2026-06-01",
+    "clients": [{"name": "Client A", "share": 0.47}]
+  },
+  "rows": [
+    {"id": "R-01", "class": "revenue_concentration", "description": "Client A might churn at some point", "likelihood": 4, "impact": 5, "score": 18, "owner": "team", "trigger": "if things get worse", "details": {"client": "Client A", "share": 0.3}, "response": null},
+    {"id": "R-02", "class": "key_person", "description": "We should cross-train on the deploy pipeline", "likelihood": 3, "impact": 4, "score": 12, "owner": "ops", "trigger": "someone leaves", "details": {"item": "deploy pipeline", "holder": "Marko Ilic"}, "response": null},
+    {"id": "R-03", "class": "fx_currency", "description": "Some USD exposure on a couple of clients", "likelihood": 3, "impact": 3, "score": 9, "owner": "Dana Kovac", "trigger": "the dollar moves a lot against the euro", "details": {}, "response": null},
+    {"id": "R-04", "class": "pipeline_thinness", "description": "Pipeline feels thin for the autumn", "likelihood": 3, "impact": 4, "score": 12, "owner": "Dana Kovac", "trigger": "we notice there is not enough work", "details": {"weighted_pipeline": 120000, "monthly_cost_base": 60000, "months_of_coverage": 4, "trigger_below_months": 3}, "response": null},
+    {"id": "P-17", "class": "project_scope_slip", "description": "Sprint 4 of the Client C build is two weeks late", "likelihood": 4, "impact": 2, "score": 8, "owner": "Marko Ilic", "trigger": "Sprint 5 also slips by more than a week", "details": {}, "response": null},
+    {"id": "P-18", "class": "project_vendor", "description": "Payment gateway vendor slow on the Client B integration", "likelihood": 3, "impact": 2, "score": 6, "owner": "Marko Ilic", "trigger": "Vendor misses the next scheduled delivery date too", "details": {}, "response": null}
+  ],
+  "closed": []
 }
 ]]></code>
-    <note>artefact_id too short; owner is a team not a person; decision empty; rationale defensive without citations; inputs_used empty; version not semver; last_reviewed not ISO date.</note>
-  </example>
+      <note>A Wednesday refresh of 60 minutes, two overruns without a split; concentration estimated over 365 days in June; Client A at 47 percent scoring 18 (not 4 x 5) with owner "team", trigger "if things get worse" and no response; a key-person row with no remediation owner or deadline; an FX row with no currency shares; a pipeline row whose 4 months is not 120,000 over 60,000; two project rows in classes that do not exist; no contractor or regulatory row.</note>
+    </example>
+  </output-contract>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>owner = "team" / "we" / "us" / empty</description>
-      <reason>Plural ownership = no ownership; future readers need a named human to chase.</reason>
-    </antipattern>
-    <antipattern>
-      <description>rationale that does not reference any input by name</description>
-      <reason>Post-hoc justification masquerading as evidence-based decision.</reason>
-    </antipattern>
-    <antipattern>
-      <description>inputs_used empty AND decision != "no-op"</description>
-      <reason>Output is ungrounded; the artefact cannot be falsified.</reason>
-    </antipattern>
+  <section title="Self-check checklist">
+    <list>
+      <item>`refresh.date` is a Monday, the three minute parts add to `total` and the total is at most 30; two consecutive overruns set `split_or_prune_required`.</item>
+      <item>`concentration` is the billing export over 90 days recomputed on the refresh date; every client above 20 percent has a revenue_concentration row with the same share, and every client at 40 percent or more scores at least 15.</item>
+      <item>All six classes have a row; every row has the 8 columns with `score` = likelihood x impact, a person as owner and an observable trigger; no project-level row is present.</item>
+      <item>Key-person rows carry item, holder, remediation owner and deadline; FX rows carry revenue and cost shares by currency that add to 1; contractor rows carry jurisdiction, test, outcome and a fix date when unresolved; pipeline rows carry weighted pipeline over monthly cost as months of coverage with a month threshold.</item>
+      <item>Every row at 15 or more has a mitigation due inside the refresh week or an acceptance signed by the founder with a date.</item>
+      <item>Resolved rows sit in `closed` with a close date and a lesson; nothing is deleted.</item>
+    </list>
   </section>
 
-  <reference path="scripts/validate-agency-risk-register-template.py">Validator script</reference>
-  <reference path="templates/agency-risk-register-template.json">JSON Schema template</reference>
+  <reference path="scripts/validate-agency-risk-register-template.py">Validator implementing this schema and the cross-field rules (Monday date, timebox sum and overrun, recompute date, 20 and 40 percent concentration rows, score arithmetic, currency shares, coverage arithmetic, mitigation due inside the week).</reference>
+  <reference path="templates/agency-risk-register-template.json">The same schema as a standalone file.</reference>
 </text>

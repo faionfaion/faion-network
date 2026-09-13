@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- the engagement is delivered, paid, and the client is reachable for quote/permission
-- there is at least one quantitative outcome (revenue, latency, time, cost) you can defend with evidence
-- the case study will be used as a sales asset (site, proposal pack, LinkedIn pin)
-- tier == pro or higher (gating enforced by tier-manifest)
+- The engagement is delivered and paid within the last 30 days, and the client contact is reachable for a quote and permission.
+- At least one quantitative outcome has a baseline and a final value readable from a system the freelancer can export (Stripe, server logs, GA4, calendar, P&L, ticket tracker).
+- The client will agree in writing to a named study or to an anonymised one (industry, size band, context, quoted role).
+- The study will be used as a sales asset with a discovery-call booking link that can carry a tracking parameter.
+- The freelancer can store the evidence exports and the permission message privately for as long as the study is published.
 
 ## Skip If (ANY kills it)
 
-- the client refuses both named and anonymous publication (one-line internal log only)
-- the engagement produced no measurable outcome you can stand behind
-- a SaaS-style feature-launch case study is what you actually need (different template)
+- The engagement produced no measurable outcome with a baseline: log it in one line; a study on adjectives is not written.
+- Delivery was more than 30 days ago with no draft: log as missed and add the 7-day draft task to the next delivery checklist.
+- The client has refused both the named and the anonymised version in writing: one-line internal log only.
+- What is needed is a SaaS feature-launch case study with product analytics, not a service-engagement page.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Operating-trigger event | log / calendar / ticket | upstream observability |
-| Methodology preconditions checklist | YAML | this methodology's `templates/single-page-case-study-generation.md` |
-| Named owner contact | string | team RACI / org chart |
-| Write-access to artefact store | URL | team's knowledge space |
+| Delivery record | final delivery date and paid invoice | invoicing tool |
+| Evidence exports | baseline and final values with their measurement window from Stripe, server logs, GA4, calendar, P&L or ticket tracker | the client's systems, exported and stored privately |
+| Publication permission | written agreement to the named or anonymised version | client contact, by email or message |
+| Verbatim quote | one sentence from a named contact with written permission to publish | client contact, by email or message |
+| Discovery-call link | booking URL with a UTM or tracking parameter | freelancer's site or scheduling tool |
+| `templates/single-page-case-study-generation.md.j2`, `templates/single-page-case-study-generation.json` | one-page skeleton; the contract schema | this methodology |
 
 ## Assumes Loaded
 
@@ -45,12 +49,14 @@
 | `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
 
 ## Content (load on demand)
-| File | What's inside |
-|------|---------------|
-| `content/01-core-rules.xml` | 8 rules: six slots on one page, numbers as baseline/final/delta, evidence source named and kept, verbatim quote with written permission, NDA fallback never dropped, 7-day draft / 14-day publish, outcome-first headline, single tracked CTA |
-| `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
-| `content/02-output-contract.xml` | JSON Schema the artefact must satisfy. |
-| `content/06-decision-tree.xml` | Routes observable inputs to a rule; read before drafting. |
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 8 rules: six slots on one page, numbers as baseline/final/delta, evidence source named and kept, verbatim quote with written permission, NDA fallback never dropped, 7-day draft / 14-day publish, outcome-first headline, single tracked CTA | 2550 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the case-study report: named or anonymised version, delivery, draft and publish-or-park dates in the 7- and 14-day windows, outcome-first title with a number, six slots with sentence counts, numbers as baseline, final, delta, unit, window and source system, verbatim quote with permission, anonymisation block, evidence in inputs_used, one tracked CTA, 90-day review; valid and invalid reports; 8 forbidden patterns | 4750 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with description + reason + repair | 950 |
+| `content/04-procedure.xml` | essential | 8 steps: confirm a defensible number inside the window, export and store the evidence, get the version and the quote in writing, draft the six slots within 7 days, write the outcome-first title, fit one page, add one tracked CTA, publish or park within 14 days, validate and schedule the review | 1650 |
+| `content/05-examples.xml` | recommended | Complete report for a fintech checkout-latency engagement (named version, 5 and 12 days after delivery, 62 percent headline, two sourced numbers, VP quote with email permission, 310 words, one UTM-tracked CTA, review at 90 days) with a note per value, plus a service-first write-up five months late and what the validator prints | 2000 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule; read before drafting. | 650 |
 
 ## Task Routing
 

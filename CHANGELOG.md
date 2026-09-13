@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 layer 2, batch 6: six `marketing` and two `pm`.** `growth-referral-
+  programs` and `internal-link-audit` redone from the committed state after the
+  limit kill; four slugs (`retainer-pricing-methodology`,
+  `single-channel-bet-selector`, `single-page-case-study-generation`,
+  `agency-risk-register-template`) gained a `04-procedure.xml` they never had,
+  six gained a `05-examples.xml`. `quit-day-job-trigger-contract`'s contract
+  dropped `title / owner / output_shape` — no rule names them — and kept the
+  runway arithmetic, reversal hysteresis and post-hoc flag the rules do; its
+  validator's `extra()` block encodes them and mutation probes confirm each
+  fires. Three two-column `## Content` tables converted to the four-column form
+  so a row can carry depth and a token estimate. Fifty-four of 61 whole.
+
 - **CR-011 layer 2, batch 5: five slugs that survived a limit kill.** Two
   agents died on the session limit mid-batch; the tree was triaged per slug —
   every check green, contract free of stamp keys, contract + procedure +

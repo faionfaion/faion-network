@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Retainer Pricing Methodology — Worked Example" version="1.0.0" est_tokens="1650" depth="recommended">
+  <summary>One complete retainer spec converting an hourly Django maintenance client (40-hour block at 120 EUR priced 6,240 EUR = 1.3x, one-period rollover and 150 EUR overage, written inclusions and exclusions with a 2-business-day turnaround, 6-month term, 30 days notice, price review at 11 months, invoiced 7 days ahead, cutover on the start date, 100 of 120 hours committed, review at 6 months) with a note per value, plus an "availability" retainer sold below the hourly rate and what the validator prints.</summary>
+
+  <section title="Scenario">
+    <p>A technical freelancer has billed Nordlicht GmbH hourly for a year: 38 hours and 4,560 EUR a month on average over the last three months, all maintenance of the same Django order service. The client asks for "something more predictable". The freelancer has 120 billable hours a month and two other retainers totalling 60 hours. Rate card: 120 EUR an hour.</p>
+  </section>
+
+  <section title="Resulting spec">
+    <example type="good" title="Nordlicht GmbH block-of-hours retainer">
+      <code lang="json"><![CDATA[
+{
+  "client_name": "Nordlicht GmbH",
+  "start_date": "2026-10-01",
+  "shape": {
+    "kind": "block_of_hours",
+    "block_of_hours": {"prepaid_hours_per_month": 40, "rollover": "one_period", "overage_hourly_rate": 150}
+  },
+  "pricing": {"expected_monthly_hours": 40, "hourly_rate": 120, "currency": "EUR", "monthly_price": 6240, "multiple": 1.3, "concession": null},
+  "scope": {
+    "inclusions": ["maintenance of the Django order service and its CI", "dependency and security updates", "bug fixes on existing features", "monthly performance and cost report"],
+    "exclusions": ["new feature builds beyond 4 hours of effort", "emergency weekend work", "third-party licence and hosting costs", "meetings beyond the included count"],
+    "turnaround": {"value": 2, "unit": "business_days"},
+    "included_meetings_per_month": 2
+  },
+  "term": {"minimum_months": 6, "notice_days": 30, "price_review_date": "2027-09-01"},
+  "billing": {"timing": "in_advance", "invoice_days_before_period_start": 7, "payment_due": "before_period_start", "payment_terms_days": 7},
+  "hourly_phase_out": {"avg_billed_hours_last_3_months": 38, "avg_monthly_spend_last_3_months": 4560, "cutover_date": "2026-10-01", "parallel_billing_periods": 0},
+  "capacity": {"available_billable_hours_per_month": 120, "committed_hours_other_retainers": 60, "committed_hours_this_retainer": 40, "total_after_signing": 100},
+  "outcome_review": {"scheduled_date": "2027-04-01", "findings": null}
+}
+]]></code>
+      <note>The request pattern is a steady maintenance stream, so the shape is block-of-hours with 40 prepaid hours, rollover limited to one period and a 150 EUR overage rate; "retainer" without these terms would be read as unlimited availability at a block price (r-retainer-shape-named). 40 h x 120 EUR = 4,800 EUR hourly equivalent, x 1.3 = 6,240 EUR, the three numbers the rationale must show; no concession is needed (r-rate-floor-1-3x-hourly-equivalent). Inclusions and exclusions are written, the exclusion on feature builds carries a 4-hour cut-off so the first scope dispute has an answer, and the turnaround is 2 business days (r-scope-inclusions-exclusions-and-turnaround). Six months minimum, 30 days notice for either side, and a price review on 2027-09-01, eleven months in, so rates can move without a renegotiation (r-term-notice-and-price-review). Invoiced 7 days before each period on 7-day terms, so payment lands before the work starts (r-invoiced-in-advance). The 3-month average is 38 hours and 4,560 EUR, the only numbers the client already accepts; 1.3 x 4,560 = 5,928 is cleared by 6,240; hourly billing stops on the start date with no parallel period (r-hourly-phase-out-plan). 60 + 40 = 100 of 120 available hours, so the capacity is not sold twice (r-capacity-not-oversold). The outcome review is scheduled for 2027-04-01, six months in, with findings null until it is held; at the review the hours ledger decides between none, re-scope, rate increase and address usage (r-six-month-outcome-review).</note>
+    </example>
+  </section>
+
+  <section title="Rejected spec">
+    <example type="bad" title="availability retainer sold below the hourly rate">
+      <code lang="json"><![CDATA[
+{
+  "client_name": "Nordlicht GmbH",
+  "start_date": "2026-10-01",
+  "shape": {"kind": "availability"},
+  "pricing": {"expected_monthly_hours": 40, "hourly_rate": 120, "currency": "EUR", "monthly_price": 4560, "multiple": 0.95, "concession": null},
+  "scope": {
+    "inclusions": ["whatever comes up"],
+    "exclusions": [],
+    "turnaround": {"value": 0, "unit": "asap"},
+    "included_meetings_per_month": 0
+  },
+  "term": {"minimum_months": 1, "notice_days": 0, "price_review_date": "2029-10-01"},
+  "billing": {"timing": "in_arrears", "invoice_days_before_period_start": 0, "payment_due": "net_60_after_period", "payment_terms_days": 60},
+  "hourly_phase_out": {"avg_billed_hours_last_3_months": 38, "avg_monthly_spend_last_3_months": 4560, "cutover_date": "2026-06-01", "parallel_billing_periods": 3},
+  "capacity": {"available_billable_hours_per_month": 120, "committed_hours_other_retainers": 100, "committed_hours_this_retainer": 40, "total_after_signing": 120},
+  "outcome_review": {"scheduled_date": "2028-01-01", "findings": null}
+}
+]]></code>
+      <note>What the validator prints: `shape.availability` is required for kind availability (r-retainer-shape-named); `pricing.concession` must be a string when `multiple` is below 1.3 (r-rate-floor-1-3x-hourly-equivalent); `scope.exclusions` is empty, `turnaround.value` 0 is not above 0 and unit asap is not business_hours or business_days (r-scope-inclusions-exclusions-and-turnaround); `term.minimum_months` 1 below 3, `notice_days` 0 below 30 (r-term-notice-and-price-review); `billing.timing` must be in_advance and `payment_due` before_period_start (r-invoiced-in-advance); `hourly_phase_out.parallel_billing_periods` 3 above 1 (r-hourly-phase-out-plan). Once the schema violations are fixed the cross-field checks add: 4,560 / (40 x 120) is 0.95, not shown against a concession; the price review 2029-10-01 is more than 12 months out; the cutover 2026-06-01 precedes the start; 100 + 40 = 140 is neither the reported 120 nor within the 120 available; and the outcome review 2028-01-01 is not 6 months after the start.</note>
+    </example>
+  </section>
+</text>

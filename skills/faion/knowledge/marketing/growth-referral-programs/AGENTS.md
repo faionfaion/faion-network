@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=spec`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- An NPS or willingness-to-recommend survey on active users from the last 90 days exists with its sample size and date, and the score is at least 30.
+- The product has an instrumented value event (first successful outcome, activation milestone) and the share of users reaching it is known; the prompt will fire there, not at sign-up.
+- Blended paid CAC and first-order gross margin or expected LTV are known, so a double-sided reward can be sized at or below both.
+- Sign-up and checkout expose payment instrument, device fingerprint, IP and email so self-referral can be matched, and reward fulfilment can be keyed on (referrer_id, referee_id, qualifying_event).
+- The landing page and lifecycle email infrastructure accept a referral parameter and the account-creation path can persist the referrer link server-side.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=spec` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- No NPS measurement exists or the score is below 30: measure it first; an incentive below the threshold pays detractors to send lukewarm invitations.
+- The only reward the team will fund is one-sided or releases on account creation, and they will not change it.
+- The landing page or email stack cannot carry a per-user referral parameter and attribution would rest on utm_source or the referrer's word.
+- Fewer than 500 invites and 50 referrers are available or plannable before a K-factor is demanded, and the sponsor wants a viral growth curve written into the spec anyway.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+| NPS or willingness-to-recommend survey | score, sample size, population (active users), survey date within 90 days | product analytics or survey tool |
+| Value-event reach | instrumented event name and the share of sign-ups reaching it | product analytics |
+| Unit economics | blended paid CAC, average first order, first-order gross margin or expected LTV | finance / growth model |
+| Beta or first-cycle referral counts | invites sent, referee sign-ups, active referrers, trigger-to-qualifying timestamps (at least 500 invites, 50 referrers) | referral event log |
+| Refund and chargeback windows | days | payments / finance |
+| `templates/k_factor.py`, `templates/emails.md.j2`, `templates/landing-page.md.j2`, `templates/growth-referral-programs.spec.md.j2` | K computation, lifecycle copy, landing copy, spec skeleton | this methodology |
 
 ## Assumes Loaded
 
@@ -48,11 +52,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 9 rules: NPS 30 gate, trigger at value moment, reward on qualifying event, double-sided within unit economics, self-referral fraud guard and idempotent rewards, K-factor on 500+ invites, server-side attribution, lifecycle sequence, disclosure and terms | 2500 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
-| `content/05-examples.xml` | essential | Worked end-to-end example for produces=spec | 700 |
-| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the referral-programme spec: NPS gate (active users, 90 days, at least 30), trigger event with reach, qualifying event with minimum order value stated on page and emails, double-sided incentive whose cost is at or below paid CAC and a share of margin or LTV, four-signal fraud guard with hold and idempotency tuple, K on 500+ invites and 50+ referrers as i x c with cycle time and the 1/(1-K) multiplier, server-side attribution, announcement / one reminder / two-sided confirmation, disclosure and terms; valid and invalid specs; 9 forbidden patterns | 6050 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 1150 |
+| `content/04-procedure.xml` | essential | 8 steps: measure the NPS gate, name the trigger event, define the qualifying event, size the double-sided incentive against CAC and margin, build the fraud guard, wire server-side attribution, compute K on 500 invites with k_factor.py, write lifecycle, landing page and terms and validate | 1900 |
+| `content/05-examples.xml` | recommended | Complete spec for a B2B SaaS exporting tool (NPS 42, prompt on first_successful_export, reward on a 50 USD first order, 20 + 20 USD against CAC 95 and margin 126, K 0.741 on 4,200 invites as a 3.86x multiplier, 14-day reminder, published terms) with a note per value, plus a pay-on-signup spec and what the validator prints | 2550 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 1000 |
 
 ## Task Routing
 

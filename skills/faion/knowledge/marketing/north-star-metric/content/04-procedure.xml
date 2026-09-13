@@ -1,40 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="North Star Metric Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply North Star Metric end-to-end from inputs to a validated `decision-record` artefact + human signoff.</summary>
+<text id="04-procedure" title="North Star Metric Procedure" version="1.2.0" est_tokens="1650" depth="essential">
+  <summary>Eight steps from event data to an adopted NSM record: confirm eight weeks of usage and retention data, generate and score at least three value-event candidates, choose one and place every runner-up, write the computable definition with its dashboard, run the above-versus-below cohort validation, decompose the NSM into owned input metrics, name the gaming vectors and guards, then set change control and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="confirm-event-and-retention-data">
+      <input>The warehouse or analytics tool; per-account usage events; retention or paid-conversion by account.</input>
+      <action>Confirm at least 8 weeks of per-account usage events and retention (or paid conversion) are queryable. Record `product_name` and `decided_on`.</action>
+      <output>`product_name`, `decided_on`; a list of core value events available for counting.</output>
+      <decision-gate>No queryable event and retention data: skip per 06-decision-tree.xml; instrument the core events and return with cohorts.</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="generate-and-score-candidates">
+      <input>Candidate metrics proposed by product, marketing and sales; the five criteria.</input>
+      <action>List at least three candidates in `candidates[]`, each with `counts` (value_event, revenue, signups, registered_users, pageviews, sessions, mau) and `scores` 1 to 5 on customer_value, leading_indicator_of_revenue, actionable_within_quarter, understandable_without_data_team and measurable_today; set `total` to the sum.</action>
+      <output>`candidates[]`.</output>
+      <decision-gate>Fewer than three candidates, or no candidate that counts a value event: regenerate before scoring (r-candidates-scored-against-criteria, r-nsm-counts-value-delivered).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `decision-record` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="choose-one-nsm-and-place-runner-ups">
+      <input>The scored table.</input>
+      <action>Set `chosen_nsm.name` to the highest-scoring value-event candidate (`is_highest_scoring: true`), or to another value-event candidate with `not_highest_because`. Put every other candidate in `runner_ups[]` as input_metric or rejected with a `rejection_reason`.</action>
+      <output>`chosen_nsm`, `runner_ups[]`.</output>
+      <decision-gate>A revenue, signup, pageview, session or MAU candidate as the choice, or a second NSM of any kind: rejected (r-nsm-counts-value-delivered, r-single-nsm).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-north-star-metric.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="write-the-computable-definition">
+      <input>The event schema; the account model; internal and test account markers; the dashboard tool.</input>
+      <action>Fill `definition` in `templates/nsm-definition.md.j2` and the record: `events[]`, `unit`, `window` (daily, weekly, 28_day), `threshold`, `inclusions[]`, `exclusions[]` (internal accounts, test data, free vs paid rule), and publish the number at `dashboard_url`. Have a second analyst reproduce the current value from the definition alone.</action>
+      <output>`definition`.</output>
+      <decision-gate>Two analysts return different numbers: the definition is not computable; fix the wording before validation (r-nsm-definition-computable).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="validate-against-retention">
+      <input>Accounts split by whether they cleared the threshold in the window; retention or paid conversion after the period.</input>
+      <action>Run the above-vs-below threshold cohort comparison on the product's own data and record `validation`: `cohort_size`, `period_start`, `period_end`, `outcome`, `rate_above`, `rate_below`, `delta`, `result` and `run_date`.</action>
+      <output>`validation`.</output>
+      <decision-gate>`result` no or inconclusive, or a delta that is not material: do not adopt; return to step 2 with a different candidate (r-nsm-validated-against-retention).</decision-gate>
     </step>
 
+    <step n="6" name="decompose-into-input-metrics">
+      <input>Team structure; current values of the candidate inputs.</input>
+      <action>Define three to five `input_metrics[]` along breadth, depth, frequency and efficiency, each with `owning_team`, `current_value`, `target` and `movable_within_quarter: true`; include every runner-up placed as input_metric under its own name.</action>
+      <output>`input_metrics[]`.</output>
+      <decision-gate>An input nobody owns or nobody can move within a quarter is removed from the tree (r-input-metrics-tree).</decision-gate>
+    </step>
+
+    <step n="7" name="name-gaming-vectors-and-guards">
+      <input>The definition; the teams whose bonuses or OKRs will attach to the NSM.</input>
+      <action>List in `gaming_risks.vectors[]` every way the NSM could rise without value (paid_signups, notification_spam, internal_or_bot_activity, threshold_lowering) with a `guard` (definition_exclusion, paired_quality_metric, paired_retention_metric, threshold_review_rule) and set `inflatable_by_spend_alone: false`.</action>
+      <output>`gaming_risks`.</output>
+      <decision-gate>An NSM one team can inflate with spend alone is rejected under r-nsm-counts-value-delivered (r-nsm-resists-gaming).</decision-gate>
+    </step>
+
+    <step n="8" name="set-change-control-and-validate">
+      <input>Any previous NSM record; the review calendar.</input>
+      <action>Fill `change_control`: `previous_record` (null or its reference) with `series_break_date` when one exists, and `next_review_date` at most a year after `decided_on`. Write the record with `templates/north-star-metric.adr.md.j2` and run `scripts/validate-north-star-metric.py --file` on it.</action>
+      <output>Validated decision record.</output>
+      <decision-gate>A redefinition without a linked previous record and a series-break date is a silent change and is not published (r-nsm-change-is-a-new-record).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Record validates via `scripts/validate-north-star-metric.py` with no violation, including score sums, the highest-candidate rule, the retention delta and runner-up coverage.</item>
+      <item>The current NSM value is published at `definition.dashboard_url` and reproducible by a second analyst.</item>
+      <item>Every input metric has a named owning team that has accepted its target.</item>
+    </list>
   </section>
 </text>

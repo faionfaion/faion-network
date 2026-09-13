@@ -1,106 +1,306 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Single Channel Bet Selector — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the artefact produced by `single-channel-bet-selector`. Validator enforces required keys, owner discipline, semver, ISO date, and minimum-evidence rules.</summary>
+<text id="02-output-contract" title="Single Channel Bet Selector — Output Contract" version="1.2.0" est_tokens="4650" depth="essential">
+  <summary>JSON Schema (draft-07) for the channel-bet record: a dated rubric with its storage location, the ICP sample it was read from (at least 5 paying customers or 50 qualified conversations), 3 to 6 tactic-level candidates from the Traction taxonomy each scored 1 to 5 on founder_fit, icp_density (with the observed-of-sample count) and early_traction with the total and whether it clears 12 of 15 with every axis at 3 or more, an outcome of bet or no_bet, the single 90-day bet with its weekly unit, week-4 and week-8 checkpoints and a kill criterion written on the selection day, a no-bet route when nothing clears, and a parking lot holding every other candidate with its score. Validator at scripts/validate-single-channel-bet-selector.py enforces it, including the score sums, the threshold and floor, the 90-day window, the parking-lot coverage and the kill criterion date.</summary>
 
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="selected_on" type="date" required="true">the day the rubric was scored and the bet chosen (r-written-rubric-single-page)</field>
+      <field name="rubric_location" type="string" required="true">where the dated single-page rubric lives: a repository path or a dated document URL (r-written-rubric-single-page)</field>
+      <field name="working_channel_exists" type="boolean" required="true">false; a channel already producing revenue is not re-picked (06-decision-tree)</field>
+      <field name="icp_sample" type="object" required="true">`paying_customers` and `qualified_conversations`; at least 5 customers or 50 conversations (r-icp-density-cites-sample)</field>
+      <field name="candidates" type="list" required="true">3 to 6, each `channel` at tactic level, `taxonomy_channel` from Traction's 19, `founder_fit`, `icp_density` with `icp_density_sample` {`observed`, `of`} or null (then icp_density is 1), `early_traction` with `unsolicited_inbound_count`, `total` = the three scores, `clears_bar` = total at least 12 and every axis at least 3 (r-candidate-set-from-named-list, r-three-axis-scoring, r-icp-density-cites-sample, r-threshold-12-of-15-and-per-axis-floor)</field>
+      <field name="outcome" type="string" required="true">bet when a candidate clears the bar, otherwise no_bet (r-threshold-12-of-15-and-per-axis-floor)</field>
+      <field name="bet" type="object" required="true">null on no_bet; otherwise `channel` (a clearing candidate), `start_date`, `end_date` 90 days later, `weekly_unit` {`count`, `unit`}, `checkpoints[]` at week 4 and week 8 each with `metric` and `expected`, `kill_criterion` {`week` 12, `written_on` = selected_on, `conditions[]` {`metric`, `operator`, `value`}, `action` rerun_rubric_with_result_as_early_traction, `revised` false} (r-one-channel-parking-lot, r-weekly-unit-and-checkpoints, r-precommitted-kill-criterion)</field>
+      <field name="no_bet_route" type="object" required="true">null on bet; otherwise `route` discovery or instrument_highest_scorer and `highest_scorer` (r-threshold-12-of-15-and-per-axis-floor)</field>
+      <field name="parking_lot" type="object" required="true">`channels[]` with every non-chosen candidate and its `total`; `active_work_allowed` false (r-one-channel-parking-lot)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">fewer than 3 or more than 6 candidates, or a `channel` written at category level (social, outbound, content) rather than the weekly tactic — fm-01-rubric-ratifies-a-prior-choice</pattern>
+      <pattern id="f2">a fourth axis, a weight on any axis, a score outside 1 to 5, or a `total` that is not the sum of the three (r-three-axis-scoring)</pattern>
+      <pattern id="f3">`icp_density` above 1 with `icp_density_sample` null, or an `observed` count larger than the sample (r-icp-density-cites-sample)</pattern>
+      <pattern id="f4">a bet on a candidate with `total` below 12 or any axis below 3, or `outcome` bet with no candidate clearing the bar — fm-02-high-total-low-axis</pattern>
+      <pattern id="f5">a candidate missing from `parking_lot.channels`, or `active_work_allowed` true — fm-03-parking-lot-leakage</pattern>
+      <pattern id="f6">no `weekly_unit`, checkpoints at weeks other than 4 and 8, or a checkpoint without a numeric `expected` — fm-04-ninety-days-without-telemetry</pattern>
+      <pattern id="f7">`kill_criterion.written_on` later than `selected_on`, `revised` true, a non-numeric condition, or an `action` other than re-running the rubric — fm-05-kill-criterion-moved-at-week-11</pattern>
+      <pattern id="f8">`working_channel_exists` true, or an `end_date` that is not 90 days after `start_date` — fm-06-re-picking-a-working-channel</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/single-channel-bet-selector.json",
+  "title": "Single Channel Bet Selector decision record",
   "type": "object",
-  "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
-  ],
+  "required": ["selected_on", "rubric_location", "working_channel_exists", "icp_sample", "candidates", "outcome", "bet", "no_bet_route", "parking_lot"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "score": {"type": "integer", "minimum": 1, "maximum": 5},
+    "tactic": {"type": "string", "minLength": 12, "not": {"enum": ["social", "outbound", "content", "paid", "ads", "seo", "email", "events", "community", "partnerships", "pr"]}},
+    "taxonomy_channel": {"type": "string", "enum": ["targeting_blogs", "publicity", "unconventional_pr", "search_engine_marketing", "social_and_display_ads", "offline_ads", "seo", "content_marketing", "email_marketing", "engineering_as_marketing", "viral_marketing", "business_development", "sales", "affiliate_programs", "existing_platforms", "trade_shows", "offline_events", "speaking_engagements", "community_building"]}
+  },
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 3
-    },
-    "decision": {
-      "type": "string",
-      "minLength": 3
-    },
-    "rationale": {
-      "type": "string",
-      "minLength": 30
-    },
-    "inputs_used": {
-      "type": "array",
-      "items": {
-        "type": "string"
+    "__faion_header__": {"type": ["object", "string"]},
+    "selected_on": {"$ref": "#/definitions/date"},
+    "rubric_location": {"type": "string", "minLength": 8},
+    "working_channel_exists": {"const": false},
+    "icp_sample": {
+      "type": "object",
+      "required": ["paying_customers", "qualified_conversations"],
+      "additionalProperties": false,
+      "properties": {
+        "paying_customers": {"type": "integer", "minimum": 0},
+        "qualified_conversations": {"type": "integer", "minimum": 0}
       },
-      "minItems": 1
+      "anyOf": [
+        {"properties": {"paying_customers": {"minimum": 5}}},
+        {"properties": {"qualified_conversations": {"minimum": 50}}}
+      ]
     },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["channel", "taxonomy_channel", "founder_fit", "icp_density", "icp_density_sample", "early_traction", "unsolicited_inbound_count", "total", "clears_bar"],
+        "additionalProperties": false,
+        "properties": {
+          "channel": {"$ref": "#/definitions/tactic"},
+          "taxonomy_channel": {"$ref": "#/definitions/taxonomy_channel"},
+          "founder_fit": {"$ref": "#/definitions/score"},
+          "icp_density": {"$ref": "#/definitions/score"},
+          "icp_density_sample": {
+            "anyOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "required": ["observed", "of"],
+                "additionalProperties": false,
+                "properties": {
+                  "observed": {"type": "integer", "minimum": 0},
+                  "of": {"type": "integer", "minimum": 5}
+                }
+              }
+            ]
+          },
+          "early_traction": {"$ref": "#/definitions/score"},
+          "unsolicited_inbound_count": {"type": "integer", "minimum": 0},
+          "total": {"type": "integer", "minimum": 3, "maximum": 15},
+          "clears_bar": {"type": "boolean"}
+        },
+        "if": {"properties": {"icp_density_sample": {"type": "null"}}},
+        "then": {"properties": {"icp_density": {"const": 1}}}
+      }
     },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+    "outcome": {"type": "string", "enum": ["bet", "no_bet"]},
+    "bet": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["channel", "start_date", "end_date", "weekly_unit", "checkpoints", "kill_criterion"],
+          "additionalProperties": false,
+          "properties": {
+            "channel": {"$ref": "#/definitions/tactic"},
+            "start_date": {"$ref": "#/definitions/date"},
+            "end_date": {"$ref": "#/definitions/date"},
+            "weekly_unit": {
+              "type": "object",
+              "required": ["count", "unit"],
+              "additionalProperties": false,
+              "properties": {
+                "count": {"type": "integer", "minimum": 1},
+                "unit": {"type": "string", "minLength": 5}
+              }
+            },
+            "checkpoints": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "object",
+                "required": ["week", "metric", "expected"],
+                "additionalProperties": false,
+                "properties": {
+                  "week": {"type": "integer", "enum": [4, 8]},
+                  "metric": {"type": "string", "minLength": 3},
+                  "expected": {"type": "number", "minimum": 0}
+                }
+              },
+              "allOf": [{"contains": {"properties": {"week": {"const": 4}}}}, {"contains": {"properties": {"week": {"const": 8}}}}]
+            },
+            "kill_criterion": {
+              "type": "object",
+              "required": ["week", "written_on", "conditions", "action", "revised"],
+              "additionalProperties": false,
+              "properties": {
+                "week": {"const": 12},
+                "written_on": {"$ref": "#/definitions/date"},
+                "conditions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": ["metric", "operator", "value"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "metric": {"type": "string", "minLength": 3},
+                      "operator": {"type": "string", "enum": ["<", "<="]},
+                      "value": {"type": "number", "minimum": 0}
+                    }
+                  }
+                },
+                "action": {"const": "rerun_rubric_with_result_as_early_traction"},
+                "revised": {"const": false}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "no_bet_route": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["route", "highest_scorer"],
+          "additionalProperties": false,
+          "properties": {
+            "route": {"type": "string", "enum": ["discovery", "instrument_highest_scorer"]},
+            "highest_scorer": {"$ref": "#/definitions/tactic"}
+          }
+        }
+      ]
+    },
+    "parking_lot": {
+      "type": "object",
+      "required": ["channels", "active_work_allowed"],
+      "additionalProperties": false,
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["channel", "total"],
+            "additionalProperties": false,
+            "properties": {
+              "channel": {"$ref": "#/definitions/tactic"},
+              "total": {"type": "integer", "minimum": 3, "maximum": 15}
+            }
+          }
+        },
+        "active_work_allowed": {"const": false}
+      }
     }
+  },
+  "allOf": [
+    {"if": {"properties": {"outcome": {"const": "bet"}}}, "then": {"properties": {"bet": {"type": "object"}, "no_bet_route": {"type": "null"}}}},
+    {"if": {"properties": {"outcome": {"const": "no_bet"}}}, "then": {"properties": {"bet": {"type": "null"}, "no_bet_route": {"type": "object"}}}}
+  ]
+}
+]]></code>
+    </schema>
+
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "selected_on": "2026-09-14",
+  "rubric_location": "repo:founder-ops/decisions/2026-09-14-channel-bet.md",
+  "working_channel_exists": false,
+  "icp_sample": {"paying_customers": 11, "qualified_conversations": 23},
+  "candidates": [
+    {"channel": "LinkedIn founder posts on ops-team tooling", "taxonomy_channel": "content_marketing", "founder_fit": 4, "icp_density": 4, "icp_density_sample": {"observed": 7, "of": 11}, "early_traction": 4, "unsolicited_inbound_count": 3, "total": 12, "clears_bar": true},
+    {"channel": "cold email to operations managers at 50-200 person logistics firms", "taxonomy_channel": "sales", "founder_fit": 3, "icp_density": 3, "icp_density_sample": {"observed": 4, "of": 11}, "early_traction": 2, "unsolicited_inbound_count": 0, "total": 8, "clears_bar": false},
+    {"channel": "SEO comparison pages against the two incumbent tools", "taxonomy_channel": "seo", "founder_fit": 2, "icp_density": 3, "icp_density_sample": {"observed": 3, "of": 11}, "early_traction": 1, "unsolicited_inbound_count": 0, "total": 6, "clears_bar": false},
+    {"channel": "answering questions in two ops-manager Slack communities", "taxonomy_channel": "community_building", "founder_fit": 4, "icp_density": 2, "icp_density_sample": {"observed": 2, "of": 11}, "early_traction": 2, "unsolicited_inbound_count": 1, "total": 8, "clears_bar": false}
+  ],
+  "outcome": "bet",
+  "bet": {
+    "channel": "LinkedIn founder posts on ops-team tooling",
+    "start_date": "2026-09-14",
+    "end_date": "2026-12-13",
+    "weekly_unit": {"count": 3, "unit": "LinkedIn posts of 150 to 300 words on an ops-team tooling problem"},
+    "checkpoints": [
+      {"week": 4, "metric": "profile visits per week", "expected": 400},
+      {"week": 8, "metric": "demo requests to date", "expected": 4}
+    ],
+    "kill_criterion": {
+      "week": 12,
+      "written_on": "2026-09-14",
+      "conditions": [
+        {"metric": "qualified demo requests", "operator": "<", "value": 10},
+        {"metric": "new paying customers", "operator": "<", "value": 1}
+      ],
+      "action": "rerun_rubric_with_result_as_early_traction",
+      "revised": false
+    }
+  },
+  "no_bet_route": null,
+  "parking_lot": {
+    "channels": [
+      {"channel": "cold email to operations managers at 50-200 person logistics firms", "total": 8},
+      {"channel": "SEO comparison pages against the two incumbent tools", "total": 6},
+      {"channel": "answering questions in two ops-manager Slack communities", "total": 8}
+    ],
+    "active_work_allowed": false
   }
 }
 ]]></code>
-  </section>
+      <note>Four tactic-level candidates from the Traction taxonomy; 11 paying customers clear the sample threshold; LinkedIn founder posts scores 4 + 4 + 4 = 12 with every axis at 3 or more and 7 of 11 customers observed there; the bet runs exactly 90 days with 3 posts a week, checkpoints at weeks 4 and 8, and a kill criterion written on the selection day; the three other candidates sit in the parking lot with their totals.</note>
+    </example>
 
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "single-channel-bet-selector-2026-05-23-01",
-  "owner": "Anna Schmidt",
-  "decision": "ship the canonical artefact this client cycle",
-  "rationale": "Anchored to discovery notes (2026-05-21) and rate card; precondition checklist passed.",
-  "inputs_used": [
-    "discovery-notes-2026-05-21.md",
-    "rate-card-2026-Q2.yaml"
+  "selected_on": "2026-09-14",
+  "rubric_location": "slack",
+  "working_channel_exists": false,
+  "icp_sample": {"paying_customers": 2, "qualified_conversations": 9},
+  "candidates": [
+    {"channel": "social", "taxonomy_channel": "content_marketing", "founder_fit": 5, "icp_density": 5, "icp_density_sample": null, "early_traction": 2, "unsolicited_inbound_count": 0, "total": 13, "clears_bar": true},
+    {"channel": "cold email to operations managers", "taxonomy_channel": "sales", "founder_fit": 3, "icp_density": 3, "icp_density_sample": {"observed": 1, "of": 2}, "early_traction": 2, "unsolicited_inbound_count": 0, "total": 8, "clears_bar": false}
   ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
+  "outcome": "bet",
+  "bet": {
+    "channel": "social",
+    "start_date": "2026-09-14",
+    "end_date": "2027-01-14",
+    "weekly_unit": {"count": 0, "unit": "post when inspired"},
+    "checkpoints": [
+      {"week": 12, "metric": "revenue", "expected": 5000}
+    ],
+    "kill_criterion": {
+      "week": 12,
+      "written_on": "2026-11-30",
+      "conditions": [
+        {"metric": "it feels like it is working", "operator": "<", "value": 1}
+      ],
+      "action": "keep going one more month",
+      "revised": true
+    }
+  },
+  "no_bet_route": null,
+  "parking_lot": {"channels": [], "active_work_allowed": true}
 }
 ]]></code>
-  </example>
+      <note>A rubric that lives in Slack; 2 customers and 9 conversations below both sample thresholds; two candidates, one written as the category "social" with icp_density 5 and no sample; a bet on it despite early_traction 2; a 122-day window with no countable weekly unit; one checkpoint at week 12; a kill criterion written eleven weeks in, already revised, with a non-rerun action; an empty parking lot with active work allowed.</note>
+    </example>
+  </output-contract>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
-{
-  "artefact_id": "x",
-  "owner": "team",
-  "decision": "tbd",
-  "rationale": "obviously",
-  "inputs_used": [],
-  "version": "1",
-  "last_reviewed": "yesterday"
-}
-]]></code>
-    <note>artefact_id too short; owner is a team not a person; decision empty; rationale defensive without citations; inputs_used empty; version not semver; last_reviewed not ISO date.</note>
-  </example>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>owner = "team" / "we" / "us" / empty</description>
-      <reason>Plural ownership = no ownership; future readers need a named human to chase.</reason>
-    </antipattern>
-    <antipattern>
-      <description>rationale that does not reference any input by name</description>
-      <reason>Post-hoc justification masquerading as evidence-based decision.</reason>
-    </antipattern>
-    <antipattern>
-      <description>inputs_used empty AND decision != "no-op"</description>
-      <reason>Output is ungrounded; the artefact cannot be falsified.</reason>
-    </antipattern>
+  <section title="Self-check checklist">
+    <list>
+      <item>`selected_on` and `rubric_location` are filled; `working_channel_exists` is false; `icp_sample` has at least 5 paying customers or 50 qualified conversations.</item>
+      <item>3 to 6 candidates at tactic level from the taxonomy; each `total` is founder_fit + icp_density + early_traction; `clears_bar` is true only at 12 or more with every axis at 3 or more; a null `icp_density_sample` scores 1.</item>
+      <item>`outcome` bet has a `bet` on a clearing candidate and `no_bet_route` null; `outcome` no_bet has `bet` null and a route with the highest scorer.</item>
+      <item>`bet.end_date` is 90 days after `start_date`; the weekly unit is countable; checkpoints at weeks 4 and 8 carry numbers.</item>
+      <item>`kill_criterion.written_on` equals `selected_on`, conditions are numeric, `action` re-runs the rubric, `revised` is false.</item>
+      <item>Every non-chosen candidate is in `parking_lot.channels` with its total; `active_work_allowed` is false.</item>
+    </list>
   </section>
 
-  <reference path="scripts/validate-single-channel-bet-selector.py">Validator script</reference>
-  <reference path="templates/single-channel-bet-selector.json">JSON Schema template</reference>
+  <reference path="scripts/validate-single-channel-bet-selector.py">Validator implementing this schema and the cross-field rules (score sums, threshold and floor, bet on a clearing candidate, 90-day window, checkpoint weeks, kill criterion date, parking-lot coverage, highest scorer on no bet).</reference>
+  <reference path="templates/single-channel-bet-selector.json">The same schema as a standalone file.</reference>
 </text>

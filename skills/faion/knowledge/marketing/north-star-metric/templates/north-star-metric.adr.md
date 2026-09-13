@@ -1,22 +1,59 @@
-<!-- purpose: north-star-metric decision-record template -->
-<!-- consumes: inputs named in AGENTS.md Prerequisites -->
+<!-- purpose: NSM decision record — scored candidates, one chosen value-event NSM, computable definition, cohort validation, runner-ups, input metrics tree, gaming guards, change control -->
+<!-- consumes: eight weeks of per-account usage events and retention, candidate metrics from product, marketing and sales, templates/nsm-definition.md.j2 -->
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml + content/06-decision-tree.xml -->
-<!-- token-budget-impact: ~600 tokens when loaded -->
-# North Star Metric — ADR
+<!-- token-budget-impact: ~700 tokens when loaded -->
+# North Star Metric Record — <product_name>
 
-## Context
-What is the problem? (>=30 chars)
+- decided_on: <artefact_date>
 
-## Decision
-The chosen path. (>=20 chars)
+## Candidates (at least three, scored 1 to 5 on the same five criteria)
 
-## Consequences
-- consequence 1
-- consequence 2
+| name | counts | customer_value | leading_indicator_of_revenue | actionable_within_quarter | understandable_without_data_team | measurable_today | total |
+|---|---|---|---|---|---|---|---|
+| <candidate> | <value_event, revenue, signups, registered_users, pageviews, sessions, mau> | <1-5> | <1-5> | <1-5> | <1-5> | <1-5> | <sum> |
 
-## Owner
-<name>
+## Chosen NSM (exactly one; counts a value event)
+- name: <nsm_name>
+- is_highest_scoring: <true, or false with not_highest_because>
 
-## Date
-YYYY-MM-DD
+## Definition (templates/nsm-definition.md.j2; two analysts return the same number)
+- events: <event names counted>
+- unit: <users | accounts | teams | transactions>
+- window: <daily | weekly | 28_day>
+- threshold: <n>
+- inclusions: <who counts>
+- exclusions: <internal accounts, test data, ...>
+- dashboard_url: <https://...>
+
+## Validation (above vs below the threshold, on the product's own data)
+- method: above_vs_below_threshold_cohort
+- cohort_size: <n>, period: <start> to <end>
+- outcome: <retained | converted_to_paid>
+- rate_above: <0.xx>, rate_below: <0.xx>, delta: <rate_above - rate_below>
+- result: <yes | no | inconclusive>, run_date: <YYYY-MM-DD>
+
+## Runner-ups (every other candidate)
+
+| name | disposition | rejection_reason |
+|---|---|---|
+| <candidate> | <input_metric | rejected> | <why, when rejected> |
+
+## Input metrics (three to five; each movable within a quarter)
+
+| name | dimension | owning_team | current_value | target |
+|---|---|---|---|---|
+| <input> | <breadth | depth | frequency | efficiency> | <team> | <n> | <n> |
+
+## Gaming risks
+
+| vector | guard kind | guard detail |
+|---|---|---|
+| <paid_signups, notification_spam, internal_or_bot_activity, threshold_lowering, other> | <definition_exclusion, paired_quality_metric, paired_retention_metric, threshold_review_rule> | <what stops it> |
+
+- inflatable_by_spend_alone: false
+
+## Change control
+- previous_record: <null or reference>
+- series_break_date: <date when a previous record exists>
+- next_review_date: <at most one year after decided_on>

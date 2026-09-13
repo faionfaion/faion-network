@@ -12,25 +12,29 @@
 A weekly 30-minute risk-register cadence focused on agency-level risks (not just per-project): revenue concentration by client, key-person dependency, currency exposure, contractor classification, and pipeline thinness. Outcome: a one-page register the founder/PM can refresh every Monday in under 30 minutes, with each risk owned, scored, and given a trigger that escalates it from monitored to actioned.
 
 ## Applies If
-- You run a micro-agency or consultancy with 3-25 people
-- You bill foreign currency or hire across borders (FX or classification risk)
-- You have >20% of revenue from a single client (concentration risk)
-- You have at least one annual planning cycle and want a Monday cadence in between
+
+- A micro-agency or consultancy of 3 to 25 people with a founder or PM who can hold a 30-minute slot every Monday for at least 8 weeks.
+- A billing or invoicing export can give revenue by client over the trailing 90 days, and at least one client is above 20 percent or the agency bills or hires across borders.
+- The CRM carries stage-weighted pipeline and the ledger gives revenue and costs by currency, so the pipeline and FX rows can be numbers.
+- Every risk row can be given to a named person with an observable trigger, and the founder will sign acceptances for rows at 15 or more that are not mitigated.
 
 ## Skip If
-- You are a solo freelancer with a single client (use freelancer-client-scorecard instead)
-- You are an in-house product team (use project-level risk register)
-- The agency has a dedicated CFO or COO who already runs enterprise-risk reviews
-- You cannot commit 30 min/week for at least 8 weeks (without cadence, the register decays)
+
+- A solo freelancer with a single client: use freelancer-client-scorecard instead.
+- An in-house product team: use the project-level risk register; this register holds agency classes only.
+- The agency has a CFO or COO already running enterprise-risk reviews on a cadence.
+- The 30-minute Monday slot cannot be held for 8 weeks; without the cadence the register decays into folklore.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Operating-trigger event | log / calendar / ticket | upstream observability |
-| Methodology preconditions checklist | YAML | this methodology's `templates/agency-risk-register-template.md` |
-| Named owner contact | string | team RACI / org chart |
-| Write-access to artefact store | URL | team's knowledge space |
+| Billing export | revenue by client for the trailing 90 days | invoicing or billing system, exported every Monday |
+| Pipeline export | opportunities by stage with value and stage weight; monthly cost base | CRM; finance |
+| Ledger by currency | share of revenue and share of costs per billing currency | accounting system |
+| Contractor list | each cross-border contractor with jurisdiction and the classification test applied | contracts folder; legal or accountant |
+| Credential and system inventory | single-point items with their holder | password manager, infrastructure docs |
+| `templates/agency-risk-register-template.md.j2`, `templates/agency-risk-register-template.json` | register skeleton; the contract schema | this methodology |
 
 ## Assumes Loaded
 
@@ -42,12 +46,14 @@ A weekly 30-minute risk-register cadence focused on agency-level risks (not just
 | `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
 
 ## Content (load on demand)
-| File | What's inside |
-|------|---------------|
-| `content/01-core-rules.xml` | 9 rules: six agency risk classes, 8-column rows, 90-day concentration auto-score, dated key-person remediation, quantified FX / contractor rows, pipeline months of coverage, 30-minute Monday, score-15 action or signed acceptance, closed tab never deleted |
-| `content/03-failure-modes.xml` | 7 antipatterns with description + reason + repair |
-| `content/02-output-contract.xml` | JSON Schema the artefact must satisfy. |
-| `content/06-decision-tree.xml` | Routes observable inputs to a rule; read before drafting. |
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | 9 rules: six agency risk classes, 8-column rows, 90-day concentration auto-score, dated key-person remediation, quantified FX / contractor rows, pipeline months of coverage, 30-minute Monday, score-15 action or signed acceptance, closed tab never deleted | 1950 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the Monday register: agency headcount, 30-minute refresh with timed parts and overrun rule, concentration recomputed from the 90-day billing export with every client's share, 8-column rows across the six agency classes with quantified details (client share, dated key-person remediation, currency shares, contractor jurisdiction and test, pipeline months of coverage), mitigation or signed acceptance at 15 or more, closed tab with lessons; valid and invalid registers; 8 forbidden patterns | 5650 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with description + reason + repair | 1250 |
+| `content/04-procedure.xml` | essential | 7 steps for the Monday refresh: recompute concentration from billing, update the six classes with numbers, walk the top five rows, decide every row at 15 or more, check owners and triggers, move resolved rows to the closed tab, write the action note and validate | 1550 |
+| `content/05-examples.xml` | recommended | Complete Monday register for a six-person studio (28 minutes, Client A at 47 percent scored 20 and mitigated by Friday, seven rows across six classes, one closed row) with a note per value, plus a Wednesday hour of project rows and estimates and what the validator prints | 2600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule; read before drafting. | 800 |
 
 ## Task Routing
 

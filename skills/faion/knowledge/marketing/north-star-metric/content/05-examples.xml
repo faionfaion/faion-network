@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="North Star Metric Worked Example" version="1.0.0" est_tokens="2450" depth="recommended">
+  <summary>One complete NSM decision record for a team project tool (four scored candidates, "weekly teams completing at least one project" chosen at 24 of 25, a computable definition with exclusions and a dashboard, a 4,200-team cohort retaining 0.62 above the threshold against 0.21 below, three runner-ups placed, four owned input metrics, three gaming vectors with guards, review in 360 days) with a note per value, plus an MRR-as-NSM record and what the validator prints.</summary>
+
+  <section title="Scenario">
+    <p>Trellis is a team project tool. Marketing reports signups, sales reports MRR, product reports weekly active teams, and the three disagree on whether the quarter went well. The growth lead runs the methodology on eight weeks of warehouse data: 4,200 workspaces created in May and June, with project_completed events and week-8 retention per workspace.</p>
+  </section>
+
+  <section title="Resulting record">
+    <example type="good" title="Trellis NSM record, 2026-07-20">
+      <code lang="json"><![CDATA[
+{
+  "product_name": "Trellis",
+  "decided_on": "2026-07-20",
+  "candidates": [
+    {"name": "weekly teams completing at least one project", "counts": "value_event", "scores": {"customer_value": 5, "leading_indicator_of_revenue": 5, "actionable_within_quarter": 4, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 24},
+    {"name": "weekly active teams", "counts": "mau", "scores": {"customer_value": 3, "leading_indicator_of_revenue": 3, "actionable_within_quarter": 4, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 20},
+    {"name": "weekly signups", "counts": "signups", "scores": {"customer_value": 1, "leading_indicator_of_revenue": 2, "actionable_within_quarter": 5, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 18},
+    {"name": "MRR", "counts": "revenue", "scores": {"customer_value": 2, "leading_indicator_of_revenue": 1, "actionable_within_quarter": 2, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 15}
+  ],
+  "chosen_nsm": {"name": "weekly teams completing at least one project", "is_highest_scoring": true},
+  "definition": {
+    "events": ["project_completed"],
+    "unit": "teams",
+    "window": "weekly",
+    "threshold": 1,
+    "inclusions": ["free and paid workspaces", "projects with at least two members"],
+    "exclusions": ["internal workspaces (domain trellis.example)", "test data flagged is_test", "workspaces created in the current week"],
+    "dashboard_url": "https://analytics.example.com/dashboards/nsm-weekly-completing-teams"
+  },
+  "validation": {
+    "method": "above_vs_below_threshold_cohort",
+    "cohort_size": 4200,
+    "period_start": "2026-05-01",
+    "period_end": "2026-06-30",
+    "outcome": "retained",
+    "rate_above": 0.62,
+    "rate_below": 0.21,
+    "delta": 0.41,
+    "result": "yes",
+    "run_date": "2026-07-15"
+  },
+  "runner_ups": [
+    {"name": "weekly active teams", "disposition": "input_metric"},
+    {"name": "weekly signups", "disposition": "rejected", "rejection_reason": "can be bought with acquisition spend and says nothing about value received; loses on customer value and leading indicator"},
+    {"name": "MRR", "disposition": "rejected", "rejection_reason": "lags value by months and is moved by pricing and packaging rather than by the product; kept as the outcome the NSM is validated against"}
+  ],
+  "input_metrics": [
+    {"name": "weekly active teams", "dimension": "breadth", "owning_team": "growth", "current_value": 310, "target": 400, "movable_within_quarter": true},
+    {"name": "projects completed per active team", "dimension": "depth", "owning_team": "product", "current_value": 1.8, "target": 2.5, "movable_within_quarter": true},
+    {"name": "share of teams active on 3 or more days a week", "dimension": "frequency", "owning_team": "lifecycle", "current_value": 0.44, "target": 0.55, "movable_within_quarter": true},
+    {"name": "median days from workspace creation to first completed project", "dimension": "efficiency", "owning_team": "onboarding", "current_value": 4.2, "target": 2.5, "movable_within_quarter": true}
+  ],
+  "gaming_risks": {
+    "vectors": [
+      {"vector": "notification_spam", "guard": {"kind": "paired_retention_metric", "detail": "week-8 team retention is reported next to the NSM; a rising NSM with flat retention triggers a review"}},
+      {"vector": "internal_or_bot_activity", "guard": {"kind": "definition_exclusion", "detail": "internal workspaces and is_test data are excluded in the definition; projects completed by integration bots do not count"}},
+      {"vector": "threshold_lowering", "guard": {"kind": "threshold_review_rule", "detail": "the threshold of one completed project changes only through a new decision record with a series-break date"}}
+    ],
+    "inflatable_by_spend_alone": false
+  },
+  "change_control": {"previous_record": null, "series_break_date": null, "next_review_date": "2027-07-15"}
+}
+]]></code>
+      <note>"Weekly teams completing at least one project" counts project_completed, the moment a team gets what it came for; MRR lags it by months and signups can be bought, so both lose on customer value and leading indicator (r-nsm-counts-value-delivered). Four candidates are scored on the same five criteria and every `total` is the sum of the five; the chosen one is the highest at 24 (r-candidates-scored-against-criteria). The definition names the event, the unit (teams), the weekly window, a threshold of one project, and excludes internal workspaces, is_test data and workspaces created in the current week, so two analysts querying the warehouse return the same number, published on the dashboard (r-nsm-definition-computable). The cohort of 4,200 workspaces shows week-8 retention of 0.62 for teams that completed a project in their first week against 0.21 for those that did not, delta 0.41, run on 2026-07-15 with result yes (r-nsm-validated-against-retention). Weekly active teams becomes the breadth input; signups and MRR are rejected with reasons, so there is exactly one NSM (r-single-nsm). Four inputs along breadth (growth), depth (product), frequency (lifecycle) and efficiency (onboarding), each with a current value and a target the team can move this quarter (r-input-metrics-tree). Notification spam is guarded by reporting week-8 retention next to the NSM, bot and internal activity by the definition exclusions, threshold lowering by the rule that it needs a new record; no single team can inflate it with spend (r-nsm-resists-gaming). There is no previous record, so no series break; the review is set 360 days out (r-nsm-change-is-a-new-record).</note>
+    </example>
+  </section>
+
+  <section title="Rejected record">
+    <example type="bad" title="MRR adopted as the North Star">
+      <code lang="json"><![CDATA[
+{
+  "product_name": "Trellis",
+  "decided_on": "2026-07-20",
+  "candidates": [
+    {"name": "MRR", "counts": "revenue", "scores": {"customer_value": 2, "leading_indicator_of_revenue": 1, "actionable_within_quarter": 2, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 22},
+    {"name": "weekly signups", "counts": "signups", "scores": {"customer_value": 1, "leading_indicator_of_revenue": 2, "actionable_within_quarter": 5, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 18}
+  ],
+  "chosen_nsm": {"name": "MRR", "is_highest_scoring": false},
+  "definition": {
+    "events": [],
+    "unit": "dollars",
+    "window": "monthly",
+    "threshold": 0,
+    "inclusions": [],
+    "exclusions": [],
+    "dashboard_url": "see finance"
+  },
+  "validation": {
+    "method": "correlates_with_retention",
+    "cohort_size": 0,
+    "period_start": "2026-05-01",
+    "period_end": "2026-06-30",
+    "outcome": "retained",
+    "rate_above": 0.5,
+    "rate_below": 0.5,
+    "delta": 0,
+    "result": "inconclusive",
+    "run_date": "2026-07-15"
+  },
+  "runner_ups": [
+    {"name": "weekly signups", "disposition": "secondary_nsm"}
+  ],
+  "input_metrics": [
+    {"name": "grow MRR", "dimension": "revenue", "owning_team": "everyone", "current_value": 120000, "target": 200000, "movable_within_quarter": false}
+  ],
+  "gaming_risks": {"vectors": [], "inflatable_by_spend_alone": true},
+  "change_control": {"previous_record": "nsm-2024-01", "series_break_date": null, "next_review_date": "2029-01-01"}
+}
+]]></code>
+      <note>What the validator prints: `candidates` has 2 items where 3 are required (r-candidates-scored-against-criteria); `chosen_nsm.not_highest_because` is required when `is_highest_scoring` is false; `definition.events` has 0 items, `unit` dollars and `window` monthly are outside their enums, `threshold` 0 is not above 0, `exclusions` is empty, `dashboard_url` does not match https (r-nsm-definition-computable); `validation.method` must be above_vs_below_threshold_cohort, `cohort_size` 0 below 1, `delta` 0 not above 0 (r-nsm-validated-against-retention); `runner_ups` has 1 item where 2 are required and `disposition` secondary_nsm is not input_metric or rejected (r-single-nsm); `input_metrics` has 1 item where 3 are required, `dimension` revenue is outside the enum, `movable_within_quarter` must be true (r-input-metrics-tree); `gaming_risks.vectors` is empty and `inflatable_by_spend_alone` must be false (r-nsm-resists-gaming); `series_break_date` must be a date when `previous_record` is set (r-nsm-change-is-a-new-record). Once the schema violations are fixed the cross-field checks add: MRR counts revenue, not a value event; total 22 is not the sum 15 of its scores; result inconclusive does not adopt; and 2029-01-01 is 895 days after the decision.</note>
+    </example>
+  </section>
+</text>

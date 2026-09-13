@@ -1,81 +1,313 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="North Star Metric Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `decision-record` artefact this methodology produces. Validator at scripts/validate-north-star-metric.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="North Star Metric Output Contract" version="1.2.0" est_tokens="5150" depth="essential">
+  <summary>JSON Schema (draft-07) for the NSM decision record: at least three candidates scored on the same five criteria, one chosen NSM that counts a customer value event (never revenue, signups, pageviews, sessions or undifferentiated MAU) and is the highest-scoring candidate or says why not, a computable definition (events, unit, window, threshold, inclusions, exclusions, dashboard URL), a cohort validation above versus below the threshold with size, period, both retention rates and the delta, every runner-up placed as an input metric or rejected with a reason, three to five input metrics along breadth, depth, frequency and efficiency each with an owning team, current value and target, at least one gaming vector with its guard, and change control with the previous record, the series-break date and a review date within a year. Validator at scripts/validate-north-star-metric.py enforces it, including the score sums, the highest-candidate rule, the retention delta, runner-up coverage and the review interval.</summary>
+
+  <output-contract>
+    <required>
+      <field name="product_name" type="string" required="true">product the NSM is adopted for</field>
+      <field name="decided_on" type="date" required="true">date of the decision</field>
+      <field name="candidates" type="list" required="true">3 or more, each `name`, `counts` (value_event, revenue, signups, registered_users, pageviews, sessions, mau), `scores` on customer_value, leading_indicator_of_revenue, actionable_within_quarter, understandable_without_data_team, measurable_today (1 to 5 each) and `total` = their sum (r-candidates-scored-against-criteria)</field>
+      <field name="chosen_nsm" type="object" required="true">`name` of one candidate whose `counts` is value_event, `is_highest_scoring`, and `not_highest_because` when it is not (r-nsm-counts-value-delivered, r-candidates-scored-against-criteria, r-single-nsm)</field>
+      <field name="definition" type="object" required="true">`events[]` counted, `unit` users / accounts / teams / transactions, `window` daily / weekly / 28_day, `threshold`, `inclusions[]`, `exclusions[]` (internal accounts, test data, ...), `dashboard_url` (r-nsm-definition-computable)</field>
+      <field name="validation" type="object" required="true">`method` above_vs_below_threshold_cohort, `cohort_size`, `period_start`, `period_end`, `outcome` retained or converted_to_paid, `rate_above`, `rate_below`, `delta` = rate_above - rate_below, `result` yes, `run_date` (r-nsm-validated-against-retention)</field>
+      <field name="runner_ups" type="list" required="true">every candidate that is not the chosen NSM, with `disposition` input_metric (and the same name in `input_metrics`) or rejected with `rejection_reason` (r-single-nsm)</field>
+      <field name="input_metrics" type="list" required="true">3 to 5, each `name`, `dimension` breadth / depth / frequency / efficiency, `owning_team`, `current_value`, `target`, `movable_within_quarter` true (r-input-metrics-tree)</field>
+      <field name="gaming_risks" type="list" required="true">1 or more, each `vector` (paid_signups, notification_spam, internal_or_bot_activity, threshold_lowering, other) with `guard.kind` (definition_exclusion, paired_quality_metric, paired_retention_metric, threshold_review_rule) and `guard.detail`; `inflatable_by_spend_alone` false (r-nsm-resists-gaming)</field>
+      <field name="change_control" type="object" required="true">`previous_record` null or a reference, `series_break_date` when a previous record exists, `next_review_date` at most 365 days after `decided_on` (r-nsm-change-is-a-new-record)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`chosen_nsm.name` pointing at a candidate whose `counts` is revenue, signups, registered_users, pageviews, sessions or mau — revenue-or-signups-as-nsm</pattern>
+      <pattern id="f2">a `definition` without `events`, `threshold`, `exclusions` or `dashboard_url`, or a `window` that is not daily, weekly or 28_day — uncomputable-definition</pattern>
+      <pattern id="f3">`validation.result` other than yes, missing `cohort_size`, `rate_above` or `rate_below`, or a `delta` that is not their difference — unvalidated-correlation-claim</pattern>
+      <pattern id="f4">a second NSM anywhere in the record (a secondary, a co-primary, a runner-up with no disposition), or `runner_ups` that does not cover every non-chosen candidate — two-north-stars</pattern>
+      <pattern id="f5">fewer than 3 or more than 5 `input_metrics`, an input without `owning_team`, `current_value` and `target`, or `movable_within_quarter` false — nsm-without-input-tree</pattern>
+      <pattern id="f6">`gaming_risks` empty, a vector without a guard, or `inflatable_by_spend_alone` true — gamed-nsm</pattern>
+      <pattern id="f7">fewer than 3 candidates, a candidate `total` that is not the sum of its five scores, or `is_highest_scoring` false with no `not_highest_because` (r-candidates-scored-against-criteria)</pattern>
+      <pattern id="f8">a `previous_record` with no `series_break_date`, or `next_review_date` more than a year after `decided_on` (r-nsm-change-is-a-new-record)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/north-star-metric.json",
   "title": "North Star Metric decision record",
   "type": "object",
-  "required": [
-    "slug",
-    "context",
-    "decision",
-    "consequences",
-    "owner",
-    "date"
-  ],
+  "required": ["product_name", "decided_on", "candidates", "chosen_nsm", "definition", "validation", "runner_ups", "input_metrics", "gaming_risks", "change_control"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "score": {"type": "integer", "minimum": 1, "maximum": 5},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "event_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+  },
   "properties": {
-    "slug": {
-      "type": "string",
-      "const": "north-star-metric"
+    "__faion_header__": {"type": ["object", "string"]},
+    "product_name": {"type": "string", "minLength": 2},
+    "decided_on": {"$ref": "#/definitions/date"},
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "counts", "scores", "total"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 3},
+          "counts": {"type": "string", "enum": ["value_event", "revenue", "signups", "registered_users", "pageviews", "sessions", "mau"]},
+          "scores": {
+            "type": "object",
+            "required": ["customer_value", "leading_indicator_of_revenue", "actionable_within_quarter", "understandable_without_data_team", "measurable_today"],
+            "additionalProperties": false,
+            "properties": {
+              "customer_value": {"$ref": "#/definitions/score"},
+              "leading_indicator_of_revenue": {"$ref": "#/definitions/score"},
+              "actionable_within_quarter": {"$ref": "#/definitions/score"},
+              "understandable_without_data_team": {"$ref": "#/definitions/score"},
+              "measurable_today": {"$ref": "#/definitions/score"}
+            }
+          },
+          "total": {"type": "integer", "minimum": 5, "maximum": 25}
+        }
+      }
     },
-    "context": {
-      "type": "string",
-      "minLength": 30
+    "chosen_nsm": {
+      "type": "object",
+      "required": ["name", "is_highest_scoring"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 3},
+        "is_highest_scoring": {"type": "boolean"},
+        "not_highest_because": {"type": "string", "minLength": 20}
+      },
+      "if": {"properties": {"is_highest_scoring": {"const": false}}},
+      "then": {"required": ["not_highest_because"]}
     },
-    "decision": {
-      "type": "string",
-      "minLength": 20
+    "definition": {
+      "type": "object",
+      "required": ["events", "unit", "window", "threshold", "inclusions", "exclusions", "dashboard_url"],
+      "additionalProperties": false,
+      "properties": {
+        "events": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/definitions/event_name"}},
+        "unit": {"type": "string", "enum": ["users", "accounts", "teams", "transactions"]},
+        "window": {"type": "string", "enum": ["daily", "weekly", "28_day"]},
+        "threshold": {"type": "number", "exclusiveMinimum": 0},
+        "inclusions": {"type": "array", "items": {"type": "string", "minLength": 3}},
+        "exclusions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 3}},
+        "dashboard_url": {"type": "string", "pattern": "^https?://"}
+      }
     },
-    "consequences": {
+    "validation": {
+      "type": "object",
+      "required": ["method", "cohort_size", "period_start", "period_end", "outcome", "rate_above", "rate_below", "delta", "result", "run_date"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {"const": "above_vs_below_threshold_cohort"},
+        "cohort_size": {"type": "integer", "minimum": 1},
+        "period_start": {"$ref": "#/definitions/date"},
+        "period_end": {"$ref": "#/definitions/date"},
+        "outcome": {"type": "string", "enum": ["retained", "converted_to_paid"]},
+        "rate_above": {"$ref": "#/definitions/rate"},
+        "rate_below": {"$ref": "#/definitions/rate"},
+        "delta": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "result": {"type": "string", "enum": ["yes", "no", "inconclusive"]},
+        "run_date": {"$ref": "#/definitions/date"}
+      }
+    },
+    "runner_ups": {
       "type": "array",
       "minItems": 2,
       "items": {
-        "type": "string"
+        "type": "object",
+        "required": ["name", "disposition"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 3},
+          "disposition": {"type": "string", "enum": ["input_metric", "rejected"]},
+          "rejection_reason": {"type": "string", "minLength": 20}
+        },
+        "if": {"properties": {"disposition": {"const": "rejected"}}},
+        "then": {"required": ["rejection_reason"]}
       }
     },
-    "owner": {
-      "type": "string"
+    "input_metrics": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "dimension", "owning_team", "current_value", "target", "movable_within_quarter"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 3},
+          "dimension": {"type": "string", "enum": ["breadth", "depth", "frequency", "efficiency"]},
+          "owning_team": {"type": "string", "minLength": 2},
+          "current_value": {"type": "number"},
+          "target": {"type": "number"},
+          "movable_within_quarter": {"const": true}
+        }
+      }
     },
-    "date": {
-      "type": "string",
-      "format": "date"
+    "gaming_risks": {
+      "type": "object",
+      "required": ["vectors", "inflatable_by_spend_alone"],
+      "additionalProperties": false,
+      "properties": {
+        "vectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["vector", "guard"],
+            "additionalProperties": false,
+            "properties": {
+              "vector": {"type": "string", "enum": ["paid_signups", "notification_spam", "internal_or_bot_activity", "threshold_lowering", "other"]},
+              "guard": {
+                "type": "object",
+                "required": ["kind", "detail"],
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {"type": "string", "enum": ["definition_exclusion", "paired_quality_metric", "paired_retention_metric", "threshold_review_rule"]},
+                  "detail": {"type": "string", "minLength": 10}
+                }
+              }
+            }
+          }
+        },
+        "inflatable_by_spend_alone": {"const": false}
+      }
+    },
+    "change_control": {
+      "type": "object",
+      "required": ["previous_record", "series_break_date", "next_review_date"],
+      "additionalProperties": false,
+      "properties": {
+        "previous_record": {"type": ["string", "null"], "minLength": 3},
+        "series_break_date": {"anyOf": [{"type": "null"}, {"$ref": "#/definitions/date"}]},
+        "next_review_date": {"$ref": "#/definitions/date"}
+      },
+      "if": {"properties": {"previous_record": {"type": "string"}}},
+      "then": {"properties": {"series_break_date": {"type": "string"}}}
     }
-  },
-  "additionalProperties": false
+  }
 }
 ]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "slug": "north-star-metric",
-  "context": "Team operates multiple growth experiments without a shared NSM.",
-  "decision": "Adopt weekly active teams completing >= 1 project as the NSM.",
-  "consequences": [
-    "acquisition optimizes for sticky teams",
-    "marketing campaigns measure projects-per-team"
+  "product_name": "Trellis",
+  "decided_on": "2026-07-20",
+  "candidates": [
+    {"name": "weekly teams completing at least one project", "counts": "value_event", "scores": {"customer_value": 5, "leading_indicator_of_revenue": 5, "actionable_within_quarter": 4, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 24},
+    {"name": "weekly active teams", "counts": "mau", "scores": {"customer_value": 3, "leading_indicator_of_revenue": 3, "actionable_within_quarter": 4, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 20},
+    {"name": "weekly signups", "counts": "signups", "scores": {"customer_value": 1, "leading_indicator_of_revenue": 2, "actionable_within_quarter": 5, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 18},
+    {"name": "MRR", "counts": "revenue", "scores": {"customer_value": 2, "leading_indicator_of_revenue": 1, "actionable_within_quarter": 2, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 15}
   ],
-  "owner": "head of growth",
-  "date": "2026-05-23"
+  "chosen_nsm": {"name": "weekly teams completing at least one project", "is_highest_scoring": true},
+  "definition": {
+    "events": ["project_completed"],
+    "unit": "teams",
+    "window": "weekly",
+    "threshold": 1,
+    "inclusions": ["free and paid workspaces", "projects with at least two members"],
+    "exclusions": ["internal workspaces (domain trellis.example)", "test data flagged is_test", "workspaces created in the current week"],
+    "dashboard_url": "https://analytics.example.com/dashboards/nsm-weekly-completing-teams"
+  },
+  "validation": {
+    "method": "above_vs_below_threshold_cohort",
+    "cohort_size": 4200,
+    "period_start": "2026-05-01",
+    "period_end": "2026-06-30",
+    "outcome": "retained",
+    "rate_above": 0.62,
+    "rate_below": 0.21,
+    "delta": 0.41,
+    "result": "yes",
+    "run_date": "2026-07-15"
+  },
+  "runner_ups": [
+    {"name": "weekly active teams", "disposition": "input_metric"},
+    {"name": "weekly signups", "disposition": "rejected", "rejection_reason": "can be bought with acquisition spend and says nothing about value received; loses on customer value and leading indicator"},
+    {"name": "MRR", "disposition": "rejected", "rejection_reason": "lags value by months and is moved by pricing and packaging rather than by the product; kept as the outcome the NSM is validated against"}
+  ],
+  "input_metrics": [
+    {"name": "weekly active teams", "dimension": "breadth", "owning_team": "growth", "current_value": 310, "target": 400, "movable_within_quarter": true},
+    {"name": "projects completed per active team", "dimension": "depth", "owning_team": "product", "current_value": 1.8, "target": 2.5, "movable_within_quarter": true},
+    {"name": "share of teams active on 3 or more days a week", "dimension": "frequency", "owning_team": "lifecycle", "current_value": 0.44, "target": 0.55, "movable_within_quarter": true},
+    {"name": "median days from workspace creation to first completed project", "dimension": "efficiency", "owning_team": "onboarding", "current_value": 4.2, "target": 2.5, "movable_within_quarter": true}
+  ],
+  "gaming_risks": {
+    "vectors": [
+      {"vector": "notification_spam", "guard": {"kind": "paired_retention_metric", "detail": "week-8 team retention is reported next to the NSM; a rising NSM with flat retention triggers a review"}},
+      {"vector": "internal_or_bot_activity", "guard": {"kind": "definition_exclusion", "detail": "internal workspaces and is_test data are excluded in the definition; projects completed by integration bots do not count"}},
+      {"vector": "threshold_lowering", "guard": {"kind": "threshold_review_rule", "detail": "the threshold of one completed project changes only through a new decision record with a series-break date"}}
+    ],
+    "inflatable_by_spend_alone": false
+  },
+  "change_control": {"previous_record": null, "series_break_date": null, "next_review_date": "2027-07-15"}
 }
 ]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+      <note>The chosen candidate counts project_completed per team per week, scores 24 of 25 and is the highest; every score total is the sum of its five criteria; the cohort of 4,200 teams retained at 0.62 above the threshold against 0.21 below, delta 0.41; all three runner-ups are placed; four inputs cover breadth, depth, frequency and efficiency; the review is 360 days after the decision.</note>
+    </example>
+
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "slug": "north-star-metric",
-  "context": "short"
+  "product_name": "Trellis",
+  "decided_on": "2026-07-20",
+  "candidates": [
+    {"name": "MRR", "counts": "revenue", "scores": {"customer_value": 2, "leading_indicator_of_revenue": 1, "actionable_within_quarter": 2, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 22},
+    {"name": "weekly signups", "counts": "signups", "scores": {"customer_value": 1, "leading_indicator_of_revenue": 2, "actionable_within_quarter": 5, "understandable_without_data_team": 5, "measurable_today": 5}, "total": 18}
+  ],
+  "chosen_nsm": {"name": "MRR", "is_highest_scoring": false},
+  "definition": {
+    "events": [],
+    "unit": "dollars",
+    "window": "monthly",
+    "threshold": 0,
+    "inclusions": [],
+    "exclusions": [],
+    "dashboard_url": "see finance"
+  },
+  "validation": {
+    "method": "correlates_with_retention",
+    "cohort_size": 0,
+    "period_start": "2026-05-01",
+    "period_end": "2026-06-30",
+    "outcome": "retained",
+    "rate_above": 0.5,
+    "rate_below": 0.5,
+    "delta": 0,
+    "result": "inconclusive",
+    "run_date": "2026-07-15"
+  },
+  "runner_ups": [
+    {"name": "weekly signups", "disposition": "secondary_nsm"}
+  ],
+  "input_metrics": [
+    {"name": "grow MRR", "dimension": "revenue", "owning_team": "everyone", "current_value": 120000, "target": 200000, "movable_within_quarter": false}
+  ],
+  "gaming_risks": {"vectors": [], "inflatable_by_spend_alone": true},
+  "change_control": {"previous_record": "nsm-2024-01", "series_break_date": null, "next_review_date": "2029-01-01"}
 }
 ]]></code>
-    <note>context &lt; 30 chars, decision/consequences/owner/date missing.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+      <note>Two candidates; MRR is chosen while its total 22 is not the sum of its scores and no reason is given for not being the highest; the definition counts no event in dollars over a monthly window with no threshold, no exclusions and no dashboard; the validation is not the above-vs-below cohort, has no cohort, no delta and is inconclusive; the runner-up is a secondary NSM; one input on a revenue dimension owned by everyone that nobody can move; no gaming vector and inflatable by spend; a previous record with no series-break date and a review two and a half years out.</note>
+    </example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>At least three candidates, each `total` equal to the sum of its five scores; the chosen candidate's `counts` is value_event and it is the highest total or `not_highest_because` says why.</item>
+      <item>The definition names events, unit, window, threshold, at least one exclusion and a dashboard URL; two analysts would return the same number.</item>
+      <item>`validation.delta` = `rate_above` - `rate_below`, `result` is yes, and cohort size, period and run date are stated.</item>
+      <item>Every candidate other than the chosen one appears in `runner_ups`; those placed as input_metric appear by name in `input_metrics`.</item>
+      <item>Three to five inputs, each with an owning team, current value, target and movable within a quarter.</item>
+      <item>At least one gaming vector with a guard; `inflatable_by_spend_alone` false; `next_review_date` within 365 days of `decided_on`; a previous record carries a series-break date.</item>
+    </list>
   </section>
-  <reference path="scripts/validate-north-star-metric.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-north-star-metric.py">Validator implementing this schema and the cross-field rules (score sums, chosen candidate is value_event and highest unless explained, retention delta and result yes, runner-up coverage and input placement, review within a year).</reference>
 </text>

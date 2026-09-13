@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Retainer Pricing Methodology — Procedure" version="1.0.0" est_tokens="1650" depth="essential">
+  <summary>Eight steps from a recurring-scope client to a validated retainer spec: confirm recurring scope and pick one shape, price at 1.3x the hourly equivalent, write inclusions, exclusions and turnaround, set term, notice and price review, bill in advance, plan the hourly cutover, check the capacity ledger, schedule the 6-month review and validate.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="confirm-recurring-scope-and-pick-one-shape">
+      <input>The client's request pattern over the last 3 months (tickets, deliverables, on-call asks); `templates/retainer-pricing-methodology.md.j2`.</input>
+      <action>Confirm the same scope recurs for at least 3 months ahead. Record `client_name`, `start_date` and `shape.kind` with its terms: block_of_hours (`prepaid_hours_per_month`, `rollover` none / one_period / capped with `rollover_cap_hours`, `overage_hourly_rate`), outcome_based (`deliverables_per_period[]`), availability (`response_time_business_hours`, `max_monthly_load_hours`), or hybrid (`invoicing_shape`, `scope_dispute_clause`).</action>
+      <output>`client_name`, `start_date`, `shape`.</output>
+      <decision-gate>Single bounded project: skip per 06-decision-tree.xml and price it fixed-scope; a shape without its defining terms is an hourly contract with a deposit (r-retainer-shape-named).</decision-gate>
+    </step>
+
+    <step n="2" name="price-at-the-1-3x-floor">
+      <input>Current hourly rate; expected monthly hours (the maximum monthly load for availability).</input>
+      <action>Set `pricing.expected_monthly_hours`, `hourly_rate`, `currency`, `monthly_price` and `multiple` = monthly_price / (hours x rate). Keep the multiple at or above 1.3; if the client will not pay it, shrink the block rather than the rate, or record the `concession` (twelve_month_minimum_term, full_term_prepaid) that buys a lower multiple.</action>
+      <output>`pricing`.</output>
+      <decision-gate>Multiple below 1.3 with no concession: re-price before writing scope (r-rate-floor-1-3x-hourly-equivalent).</decision-gate>
+    </step>
+
+    <step n="3" name="write-inclusions-exclusions-and-turnaround">
+      <input>The request pattern from step 1; the freelancer's working hours.</input>
+      <action>List `scope.inclusions[]`, `scope.exclusions[]` (new-feature builds, emergency weekend work, third-party costs, meetings beyond `included_meetings_per_month`) and `turnaround` in business_hours or business_days.</action>
+      <output>`scope`.</output>
+      <decision-gate>No written exclusions, or an unbounded rollover in the block-of-hours terms: not signable (r-scope-inclusions-exclusions-and-turnaround).</decision-gate>
+    </step>
+
+    <step n="4" name="set-term-notice-and-price-review">
+      <input>`start_date`; the client's budget cycle.</input>
+      <action>Record `term.minimum_months` (at least 3), `notice_days` (at least 30 for either side) and `price_review_date` no later than 12 months after the start.</action>
+      <output>`term`.</output>
+      <decision-gate>"Month-to-month, cancel any time" is rejected as a retainer (r-term-notice-and-price-review).</decision-gate>
+    </step>
+
+    <step n="5" name="bill-in-advance">
+      <input>The invoicing tool; the client's accounts-payable terms.</input>
+      <action>Record `billing.timing: in_advance`, `invoice_days_before_period_start`, `payment_due: before_period_start` and `payment_terms_days` so payment lands before the period's work begins.</action>
+      <output>`billing`.</output>
+      <decision-gate>Billing in arrears re-creates the collections problem; rejected (r-invoiced-in-advance).</decision-gate>
+    </step>
+
+    <step n="6" name="plan-the-hourly-cutover">
+      <input>The client's invoices for the last 3 months, when converting an hourly client.</input>
+      <action>Fill `hourly_phase_out` with `avg_billed_hours_last_3_months`, `avg_monthly_spend_last_3_months`, a `cutover_date` on or after `start_date` after which hourly billing for this scope stops, and `parallel_billing_periods` of at most 1. Check `monthly_price` is at or above 1.3 x the average spend. Set null for a new client.</action>
+      <output>`hourly_phase_out`.</output>
+      <decision-gate>Parallel hourly and retainer billing beyond one period, or a price below 1.3 x the average spend without a concession: fix before signing (r-hourly-phase-out-plan).</decision-gate>
+    </step>
+
+    <step n="7" name="check-the-capacity-ledger">
+      <input>All active retainers with their expected hours (maximum load for availability); available billable hours per month.</input>
+      <action>Record `capacity.available_billable_hours_per_month`, `committed_hours_other_retainers`, `committed_hours_this_retainer` (= `pricing.expected_monthly_hours`) and `total_after_signing` as their sum.</action>
+      <output>`capacity`.</output>
+      <decision-gate>Total above available hours: do not sign until another retainer ends or is re-scoped, or reduce this one's load (r-capacity-not-oversold).</decision-gate>
+    </step>
+
+    <step n="8" name="schedule-the-outcome-review-and-validate">
+      <input>`start_date`; the hours ledger once periods have run.</input>
+      <action>Set `outcome_review.scheduled_date` 6 months after the start with `findings: null`. At the review, fill `findings`: `still_active_without_renegotiation`, `periods[]` with paid and actual hours, `effective_hourly_rate`, and `action` (re_scope or rate_increase after two overrun periods, address_usage after two periods below 50 percent). Run `scripts/validate-retainer-pricing-methodology.py --file` on the spec at signing and again after the review.</action>
+      <output>Validated spec.</output>
+      <decision-gate>A review that records an overrun or under-use pattern with `action: none` is not accepted (r-six-month-outcome-review).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates via `scripts/validate-retainer-pricing-methodology.py` with no violation, including the price arithmetic, the phase-out floor, the capacity sum and the review date.</item>
+      <item>The client has countersigned the shape, scope lists, turnaround, term and advance-billing terms as written in the spec.</item>
+      <item>The 6-month review is in the calendar and the hours ledger is being kept per period.</item>
+    </list>
+  </section>
+</text>

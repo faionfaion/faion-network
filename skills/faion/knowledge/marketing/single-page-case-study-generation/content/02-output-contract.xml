@@ -1,106 +1,272 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Single Page Case Study Generation — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the artefact produced by `single-page-case-study-generation`. Validator enforces required keys, owner discipline, semver, ISO date, and minimum-evidence rules.</summary>
+<text id="02-output-contract" title="Single Page Case Study Generation — Output Contract" version="1.2.0" est_tokens="4750" depth="essential">
+  <summary>JSON Schema (draft-07) for the case-study report: a named or anonymised publication version (or a written refusal logged), delivery, draft and publish-or-park dates inside the 7-day and 14-day windows, an outcome-first title carrying the headline number, the six slots in order (problem 1-2 sentences, approach 2-3 sentences naming the stack, outcome 1 sentence, numbers as baseline, final, delta, unit, window and source system, a verbatim pull-quote with written permission, the NDA indicator), a 500-word cap with at most one chart, an anonymisation block when the client is not named, inputs_used pointing at the stored evidence and permission, exactly one tracked discovery-call CTA, and a 90-day outcome review. Validator at scripts/validate-single-page-case-study-generation.py enforces it, including the date windows, the delta arithmetic, sentence counts, evidence references and the review date.</summary>
 
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="publication_version" type="string" required="true">named, anonymised, or internal_log_only after a written refusal of both (r-nda-fallback-never-drop)</field>
+      <field name="dates" type="object" required="true">`delivery_date`, `draft_date` within 7 days of delivery, `publish_or_park_date` within 14 days, `status` published or parked with `park_reason` and `revisit_date` when parked (r-seven-day-draft-fourteen-day-publish)</field>
+      <field name="title" type="string" required="true">outcome first, with the headline number and the time frame; never the service or the freelancer first (r-outcome-first-headline)</field>
+      <field name="slots" type="object" required="true">`problem` {text, sentences 1-2}, `approach` {text, sentences 2-3, stack_or_method}, `outcome` {text, sentences 1}, `numbers[]` each {metric, baseline, final, unit, delta_pct, window, source_system, evidence_ref}, `pull_quote` {text, contact_name, contact_role, company or company_descriptor, permission_captured_in, permission_ref}, `nda_indicator` (r-six-slots-on-one-page, r-numbers-baseline-final-delta, r-evidence-source-named-and-kept, r-pull-quote-verbatim-with-written-permission)</field>
+      <field name="word_count" type="integer" required="true">whole document, at most 500 and at least the words in the slots (r-six-slots-on-one-page)</field>
+      <field name="media_count" type="integer" required="true">charts or screenshots, at most 1 (r-six-slots-on-one-page)</field>
+      <field name="anonymisation" type="object" required="true">null when named; otherwise `industry`, `size_band`, `context`, `quoted_role`, `client_consent_ref`, `identifiers_removed` true (r-nda-fallback-never-drop)</field>
+      <field name="inputs_used" type="list" required="true">stored evidence exports and the permission message, each {name, path}; every `evidence_ref` and `permission_ref` names one of them (r-evidence-source-named-and-kept)</field>
+      <field name="cta" type="object" required="true">`count` 1, `target` discovery_call, `url` with a utm or tracking parameter (r-single-cta-tracked-to-discovery-call)</field>
+      <field name="outcome_review" type="object" required="true">`due_date` 90 days after publication; `findings` null until held, then `discovery_calls_attributed` and `included_in_closed_proposal` (r-single-cta-tracked-to-discovery-call)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">a number without `baseline`, `final`, `unit` and `window`, a `delta_pct` that is not (final - baseline) / baseline, or the words significant, dramatic or huge in the outcome slot — fm-01-vague-results</pattern>
+      <pattern id="f2">a pull-quote with no `contact_role`, no `permission_ref`, or text that paraphrases ("the client was very happy") — fm-02-paraphrased-praise</pattern>
+      <pattern id="f3">`publication_version` internal_log_only without a written refusal reference, or an anonymised version with a client name or logo — fm-03-nda-means-no-study</pattern>
+      <pattern id="f4">`draft_date` more than 7 days after delivery, `publish_or_park_date` more than 14 days after, or a study started more than 30 days after delivery — fm-04-written-up-six-months-later</pattern>
+      <pattern id="f5">`word_count` above 500, `media_count` above 1, a missing slot, or sentence counts outside the slot's range — fm-05-two-page-feature-list</pattern>
+      <pattern id="f6">`cta.count` other than 1, a `url` without a tracking parameter, or an `outcome_review.due_date` that is not 90 days after publication — fm-06-untracked-asset</pattern>
+      <pattern id="f7">an `evidence_ref` or `permission_ref` that names nothing in `inputs_used` (r-evidence-source-named-and-kept)</pattern>
+      <pattern id="f8">a `title` with no number, or one that leads with the service or the freelancer (r-outcome-first-headline)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/single-page-case-study-generation.json",
+  "title": "Single Page Case Study Generation report",
   "type": "object",
-  "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
-  ],
+  "required": ["publication_version", "dates", "title", "slots", "word_count", "media_count", "anonymisation", "inputs_used", "cta", "outcome_review"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "ref": {"type": "string", "minLength": 5}
+  },
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
+    "__faion_header__": {"type": ["object", "string"]},
+    "publication_version": {"type": "string", "enum": ["named", "anonymised", "internal_log_only"]},
+    "dates": {
+      "type": "object",
+      "required": ["delivery_date", "draft_date", "publish_or_park_date", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "delivery_date": {"$ref": "#/definitions/date"},
+        "draft_date": {"$ref": "#/definitions/date"},
+        "publish_or_park_date": {"$ref": "#/definitions/date"},
+        "status": {"type": "string", "enum": ["published", "parked"]},
+        "park_reason": {"type": "string", "minLength": 10},
+        "revisit_date": {"$ref": "#/definitions/date"}
+      },
+      "if": {"properties": {"status": {"const": "parked"}}},
+      "then": {"required": ["park_reason", "revisit_date"]}
     },
-    "owner": {
+    "title": {
       "type": "string",
-      "minLength": 3
+      "minLength": 20,
+      "maxLength": 120,
+      "pattern": "[0-9]",
+      "not": {"pattern": "^(Backend|Frontend|Fullstack|Full-stack|Consulting|Development|Engineering|Design|Our |We |I |My )"}
     },
-    "decision": {
-      "type": "string",
-      "minLength": 3
+    "slots": {
+      "type": "object",
+      "required": ["problem", "approach", "outcome", "numbers", "pull_quote", "nda_indicator"],
+      "additionalProperties": false,
+      "properties": {
+        "problem": {
+          "type": "object",
+          "required": ["text", "sentences"],
+          "additionalProperties": false,
+          "properties": {"text": {"type": "string", "minLength": 30}, "sentences": {"type": "integer", "minimum": 1, "maximum": 2}}
+        },
+        "approach": {
+          "type": "object",
+          "required": ["text", "sentences", "stack_or_method"],
+          "additionalProperties": false,
+          "properties": {"text": {"type": "string", "minLength": 60}, "sentences": {"type": "integer", "minimum": 2, "maximum": 3}, "stack_or_method": {"type": "string", "minLength": 3}}
+        },
+        "outcome": {
+          "type": "object",
+          "required": ["text", "sentences"],
+          "additionalProperties": false,
+          "properties": {"text": {"type": "string", "minLength": 20, "pattern": "[0-9]", "not": {"pattern": "(?i)significant|dramatic|huge|massive"}}, "sentences": {"const": 1}}
+        },
+        "numbers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["metric", "baseline", "final", "unit", "delta_pct", "window", "source_system", "evidence_ref"],
+            "additionalProperties": false,
+            "properties": {
+              "metric": {"type": "string", "minLength": 3},
+              "baseline": {"type": "number"},
+              "final": {"type": "number"},
+              "unit": {"type": "string", "minLength": 1},
+              "delta_pct": {"type": "number"},
+              "window": {"type": "string", "minLength": 8},
+              "source_system": {"type": "string", "enum": ["stripe_export", "server_logs", "ga4_report", "calendar", "pnl", "ticket_tracker", "other_named_system"]},
+              "evidence_ref": {"$ref": "#/definitions/ref"}
+            }
+          }
+        },
+        "pull_quote": {
+          "type": "object",
+          "required": ["text", "contact_role", "permission_captured_in", "permission_ref"],
+          "additionalProperties": false,
+          "properties": {
+            "text": {"type": "string", "minLength": 20, "not": {"pattern": "(?i)the client (was|were|is) (very )?(happy|pleased|satisfied)"}},
+            "contact_name": {"type": "string", "minLength": 3},
+            "contact_role": {"type": "string", "minLength": 3},
+            "company": {"type": "string", "minLength": 2},
+            "company_descriptor": {"type": "string", "minLength": 10},
+            "permission_captured_in": {"type": "string", "enum": ["email", "message"]},
+            "permission_ref": {"$ref": "#/definitions/ref"}
+          }
+        },
+        "nda_indicator": {"type": "string", "enum": ["named", "anonymised", "full_version_on_request"]}
+      }
     },
-    "rationale": {
-      "type": "string",
-      "minLength": 30
+    "word_count": {"type": "integer", "minimum": 1, "maximum": 500},
+    "media_count": {"type": "integer", "minimum": 0, "maximum": 1},
+    "anonymisation": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["industry", "size_band", "context", "quoted_role", "client_consent_ref", "identifiers_removed"],
+          "additionalProperties": false,
+          "properties": {
+            "industry": {"type": "string", "minLength": 3},
+            "size_band": {"type": "string", "minLength": 3},
+            "context": {"type": "string", "minLength": 3},
+            "quoted_role": {"type": "string", "minLength": 3},
+            "client_consent_ref": {"$ref": "#/definitions/ref"},
+            "identifiers_removed": {"const": true}
+          }
+        }
+      ]
     },
     "inputs_used": {
       "type": "array",
+      "minItems": 2,
       "items": {
-        "type": "string"
-      },
-      "minItems": 1
+        "type": "object",
+        "required": ["name", "path"],
+        "additionalProperties": false,
+        "properties": {"name": {"$ref": "#/definitions/ref"}, "path": {"type": "string", "minLength": 5}}
+      }
     },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    "cta": {
+      "type": "object",
+      "required": ["count", "target", "url"],
+      "additionalProperties": false,
+      "properties": {
+        "count": {"const": 1},
+        "target": {"const": "discovery_call"},
+        "url": {"type": "string", "pattern": "^https?://.*(utm_|[?&]ref=|/r/)"}
+      }
     },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+    "outcome_review": {
+      "type": "object",
+      "required": ["due_date", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "due_date": {"$ref": "#/definitions/date"},
+        "findings": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["held_on", "discovery_calls_attributed", "included_in_closed_proposal"],
+              "additionalProperties": false,
+              "properties": {
+                "held_on": {"$ref": "#/definitions/date"},
+                "discovery_calls_attributed": {"type": "integer", "minimum": 0},
+                "included_in_closed_proposal": {"type": "boolean"}
+              }
+            }
+          ]
+        }
+      }
     }
-  }
+  },
+  "allOf": [
+    {"if": {"properties": {"publication_version": {"const": "named"}}}, "then": {"properties": {"anonymisation": {"type": "null"}, "slots": {"properties": {"pull_quote": {"required": ["contact_name", "company"]}, "nda_indicator": {"enum": ["named", "full_version_on_request"]}}}}}},
+    {"if": {"properties": {"publication_version": {"const": "anonymised"}}}, "then": {"properties": {"anonymisation": {"type": "object"}, "slots": {"properties": {"pull_quote": {"required": ["company_descriptor"], "not": {"required": ["contact_name"]}}, "nda_indicator": {"const": "anonymised"}}}}}}
+  ]
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "single-page-case-study-generation-2026-05-23-01",
-  "owner": "Anna Schmidt",
-  "decision": "ship the canonical artefact this client cycle",
-  "rationale": "Anchored to discovery notes (2026-05-21) and rate card; precondition checklist passed.",
+  "publication_version": "named",
+  "dates": {"delivery_date": "2026-08-28", "draft_date": "2026-09-02", "publish_or_park_date": "2026-09-09", "status": "published"},
+  "title": "How Kestrel Pay cut checkout latency 62 percent in 3 weeks",
+  "slots": {
+    "problem": {"text": "Kestrel Pay's hosted checkout took 1.5 seconds at the 95th percentile and merchants were escalating abandoned carts every week. The team had no capacity to profile it between feature releases.", "sentences": 2},
+    "approach": {"text": "Over three weeks I profiled the checkout path with OpenTelemetry traces and found two serial calls to the risk service. I collapsed them into one batched gRPC call and moved the currency lookup to a Redis cache with a 10-minute TTL. The change shipped behind a feature flag and was rolled out to 100 percent over four days.", "sentences": 3, "stack_or_method": "OpenTelemetry, gRPC batching, Redis cache, feature-flagged rollout"},
+    "outcome": {"text": "p95 checkout latency fell from 1,480 ms to 560 ms, a 62 percent reduction, within three weeks of the first trace.", "sentences": 1},
+    "numbers": [
+      {"metric": "p95 checkout latency", "baseline": 1480, "final": 560, "unit": "ms", "delta_pct": -62.2, "window": "30 days before vs 30 days after rollout", "source_system": "server_logs", "evidence_ref": "grafana-p95-export-2026-08.csv"},
+      {"metric": "checkout abandonment", "baseline": 18.4, "final": 14.1, "unit": "percent", "delta_pct": -23.4, "window": "30 days before vs 30 days after rollout", "source_system": "ga4_report", "evidence_ref": "ga4-checkout-funnel-2026-08.csv"}
+    ],
+    "pull_quote": {"text": "Checkout stopped being the thing we apologised for in every merchant call.", "contact_name": "Maria Voss", "contact_role": "VP Engineering", "company": "Kestrel Pay", "permission_captured_in": "email", "permission_ref": "permission-voss-2026-09-01.eml"},
+    "nda_indicator": "named"
+  },
+  "word_count": 310,
+  "media_count": 1,
+  "anonymisation": null,
   "inputs_used": [
-    "discovery-notes-2026-05-21.md",
-    "rate-card-2026-Q2.yaml"
+    {"name": "grafana-p95-export-2026-08.csv", "path": "evidence/kestrel-pay/grafana-p95-export-2026-08.csv"},
+    {"name": "ga4-checkout-funnel-2026-08.csv", "path": "evidence/kestrel-pay/ga4-checkout-funnel-2026-08.csv"},
+    {"name": "permission-voss-2026-09-01.eml", "path": "evidence/kestrel-pay/permission-voss-2026-09-01.eml"}
   ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
+  "cta": {"count": 1, "target": "discovery_call", "url": "https://example.com/book?utm_source=case-study&utm_campaign=kestrel-latency"},
+  "outcome_review": {"due_date": "2026-12-08", "findings": null}
 }
 ]]></code>
-  </example>
+      <note>Drafted 5 days and published 12 days after delivery; the title leads with the outcome and its number; both numbers carry baseline, final, unit, window and the system they were read from, and 560 against 1,480 is minus 62.2 percent; the quote is a verbatim sentence from a named VP with an email permission stored under inputs_used; one tracked CTA and a review due 90 days after publication.</note>
+    </example>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "x",
-  "owner": "team",
-  "decision": "tbd",
-  "rationale": "obviously",
+  "publication_version": "named",
+  "dates": {"delivery_date": "2026-03-10", "draft_date": "2026-08-28", "publish_or_park_date": "2026-09-30", "status": "published"},
+  "title": "Backend consulting for a fintech client",
+  "slots": {
+    "problem": {"text": "Checkout was slow and the client wanted it faster, so they hired me to look at it, which I did over a few weeks, and there were many things wrong.", "sentences": 4},
+    "approach": {"text": "I fixed it.", "sentences": 1, "stack_or_method": ""},
+    "outcome": {"text": "A significant improvement in checkout performance.", "sentences": 1},
+    "numbers": [
+      {"metric": "latency", "baseline": 0, "final": 0, "unit": "", "delta_pct": -60, "window": "later", "source_system": "the client told me", "evidence_ref": "n/a"}
+    ],
+    "pull_quote": {"text": "The client was very happy with the result.", "contact_role": "", "permission_captured_in": "verbal", "permission_ref": "none"},
+    "nda_indicator": "named"
+  },
+  "word_count": 900,
+  "media_count": 3,
+  "anonymisation": null,
   "inputs_used": [],
-  "version": "1",
-  "last_reviewed": "yesterday"
+  "cta": {"count": 3, "target": "contact_page", "url": "https://example.com/contact"},
+  "outcome_review": {"due_date": "2027-06-01", "findings": null}
 }
 ]]></code>
-    <note>artefact_id too short; owner is a team not a person; decision empty; rationale defensive without citations; inputs_used empty; version not semver; last_reviewed not ISO date.</note>
-  </example>
+      <note>Drafted five months after delivery; a service-first title with no number; a four-sentence problem and a one-sentence approach with no stack; "significant improvement" as the outcome; a number with no baseline, no unit, no window and no system; paraphrased praise with no contact name, no role and verbal permission; 900 words and three screenshots; no evidence stored; three CTAs to a contact page; a review nine months out.</note>
+    </example>
+  </output-contract>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>owner = "team" / "we" / "us" / empty</description>
-      <reason>Plural ownership = no ownership; future readers need a named human to chase.</reason>
-    </antipattern>
-    <antipattern>
-      <description>rationale that does not reference any input by name</description>
-      <reason>Post-hoc justification masquerading as evidence-based decision.</reason>
-    </antipattern>
-    <antipattern>
-      <description>inputs_used empty AND decision != "no-op"</description>
-      <reason>Output is ungrounded; the artefact cannot be falsified.</reason>
-    </antipattern>
+  <section title="Self-check checklist">
+    <list>
+      <item>`draft_date` is within 7 days of `delivery_date` and `publish_or_park_date` within 14; a parked study carries a reason and a revisit date.</item>
+      <item>The title leads with the outcome and carries the headline number; the six slots are present in order with the sentence counts the rule sets; `word_count` is at most 500 and covers the slot texts; at most one chart.</item>
+      <item>Every number has baseline, final, unit, window and source system, `delta_pct` = (final - baseline) / baseline x 100, and its `evidence_ref` names an entry in `inputs_used`.</item>
+      <item>The pull-quote is verbatim, from a named person (or a role and descriptor when anonymised), with `permission_ref` stored in `inputs_used`.</item>
+      <item>An anonymised version has industry, size band, context, quoted role, the client's consent reference and no identifiers; a named version has a contact name and company.</item>
+      <item>Exactly one CTA to a tracked discovery-call URL; `outcome_review.due_date` is 90 days after publication.</item>
+    </list>
   </section>
 
-  <reference path="scripts/validate-single-page-case-study-generation.py">Validator script</reference>
-  <reference path="templates/single-page-case-study-generation.json">JSON Schema template</reference>
+  <reference path="scripts/validate-single-page-case-study-generation.py">Validator implementing this schema and the cross-field rules (date windows and the 30-day cutoff, sentence counts, word count against the slots, delta arithmetic, evidence and permission references, the 90-day review date).</reference>
+  <reference path="templates/single-page-case-study-generation.json">The same schema as a standalone file.</reference>
 </text>

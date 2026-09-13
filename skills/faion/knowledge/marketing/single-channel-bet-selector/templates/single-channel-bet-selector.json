@@ -4,51 +4,478 @@
     "consumes": "filled single-channel-bet-selector artefact JSON",
     "produces": "validation result via validate-single-channel-bet-selector.py",
     "depends_on": "content/02-output-contract.xml",
-    "token_budget_impact": "~250 tokens when loaded as context"
+    "token_budget_impact": "~1300 tokens when loaded as context"
   },
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/single-channel-bet-selector.json",
+  "title": "Single Channel Bet Selector decision record",
   "type": "object",
   "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
+    "selected_on",
+    "rubric_location",
+    "working_channel_exists",
+    "icp_sample",
+    "candidates",
+    "outcome",
+    "bet",
+    "no_bet_route",
+    "parking_lot"
   ],
-  "properties": {
-    "artefact_id": {
+  "additionalProperties": false,
+  "definitions": {
+    "date": {
       "type": "string",
-      "minLength": 3
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
     },
-    "owner": {
+    "score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "tactic": {
       "type": "string",
-      "minLength": 3
+      "minLength": 12,
+      "not": {
+        "enum": [
+          "social",
+          "outbound",
+          "content",
+          "paid",
+          "ads",
+          "seo",
+          "email",
+          "events",
+          "community",
+          "partnerships",
+          "pr"
+        ]
+      }
     },
-    "decision": {
+    "taxonomy_channel": {
       "type": "string",
-      "minLength": 3
-    },
-    "rationale": {
-      "type": "string",
-      "minLength": 30
-    },
-    "inputs_used": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "minItems": 1
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+      "enum": [
+        "targeting_blogs",
+        "publicity",
+        "unconventional_pr",
+        "search_engine_marketing",
+        "social_and_display_ads",
+        "offline_ads",
+        "seo",
+        "content_marketing",
+        "email_marketing",
+        "engineering_as_marketing",
+        "viral_marketing",
+        "business_development",
+        "sales",
+        "affiliate_programs",
+        "existing_platforms",
+        "trade_shows",
+        "offline_events",
+        "speaking_engagements",
+        "community_building"
+      ]
     }
-  }
+  },
+  "properties": {
+    "__faion_header__": {
+      "type": [
+        "object",
+        "string"
+      ]
+    },
+    "selected_on": {
+      "$ref": "#/definitions/date"
+    },
+    "rubric_location": {
+      "type": "string",
+      "minLength": 8
+    },
+    "working_channel_exists": {
+      "const": false
+    },
+    "icp_sample": {
+      "type": "object",
+      "required": [
+        "paying_customers",
+        "qualified_conversations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "paying_customers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "qualified_conversations": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "paying_customers": {
+              "minimum": 5
+            }
+          }
+        },
+        {
+          "properties": {
+            "qualified_conversations": {
+              "minimum": 50
+            }
+          }
+        }
+      ]
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": [
+          "channel",
+          "taxonomy_channel",
+          "founder_fit",
+          "icp_density",
+          "icp_density_sample",
+          "early_traction",
+          "unsolicited_inbound_count",
+          "total",
+          "clears_bar"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "$ref": "#/definitions/tactic"
+          },
+          "taxonomy_channel": {
+            "$ref": "#/definitions/taxonomy_channel"
+          },
+          "founder_fit": {
+            "$ref": "#/definitions/score"
+          },
+          "icp_density": {
+            "$ref": "#/definitions/score"
+          },
+          "icp_density_sample": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "observed",
+                  "of"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "observed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "of": {
+                    "type": "integer",
+                    "minimum": 5
+                  }
+                }
+              }
+            ]
+          },
+          "early_traction": {
+            "$ref": "#/definitions/score"
+          },
+          "unsolicited_inbound_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 3,
+            "maximum": 15
+          },
+          "clears_bar": {
+            "type": "boolean"
+          }
+        },
+        "if": {
+          "properties": {
+            "icp_density_sample": {
+              "type": "null"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "icp_density": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "bet",
+        "no_bet"
+      ]
+    },
+    "bet": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "channel",
+            "start_date",
+            "end_date",
+            "weekly_unit",
+            "checkpoints",
+            "kill_criterion"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "channel": {
+              "$ref": "#/definitions/tactic"
+            },
+            "start_date": {
+              "$ref": "#/definitions/date"
+            },
+            "end_date": {
+              "$ref": "#/definitions/date"
+            },
+            "weekly_unit": {
+              "type": "object",
+              "required": [
+                "count",
+                "unit"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "unit": {
+                  "type": "string",
+                  "minLength": 5
+                }
+              }
+            },
+            "checkpoints": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "object",
+                "required": [
+                  "week",
+                  "metric",
+                  "expected"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "week": {
+                    "type": "integer",
+                    "enum": [
+                      4,
+                      8
+                    ]
+                  },
+                  "metric": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "expected": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              },
+              "allOf": [
+                {
+                  "contains": {
+                    "properties": {
+                      "week": {
+                        "const": 4
+                      }
+                    }
+                  }
+                },
+                {
+                  "contains": {
+                    "properties": {
+                      "week": {
+                        "const": 8
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "kill_criterion": {
+              "type": "object",
+              "required": [
+                "week",
+                "written_on",
+                "conditions",
+                "action",
+                "revised"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "week": {
+                  "const": 12
+                },
+                "written_on": {
+                  "$ref": "#/definitions/date"
+                },
+                "conditions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "metric",
+                      "operator",
+                      "value"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "metric": {
+                        "type": "string",
+                        "minLength": 3
+                      },
+                      "operator": {
+                        "type": "string",
+                        "enum": [
+                          "<",
+                          "<="
+                        ]
+                      },
+                      "value": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                },
+                "action": {
+                  "const": "rerun_rubric_with_result_as_early_traction"
+                },
+                "revised": {
+                  "const": false
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "no_bet_route": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "route",
+            "highest_scorer"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "type": "string",
+              "enum": [
+                "discovery",
+                "instrument_highest_scorer"
+              ]
+            },
+            "highest_scorer": {
+              "$ref": "#/definitions/tactic"
+            }
+          }
+        }
+      ]
+    },
+    "parking_lot": {
+      "type": "object",
+      "required": [
+        "channels",
+        "active_work_allowed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "channel",
+              "total"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "channel": {
+                "$ref": "#/definitions/tactic"
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 3,
+                "maximum": 15
+              }
+            }
+          }
+        },
+        "active_work_allowed": {
+          "const": false
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "bet"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bet": {
+            "type": "object"
+          },
+          "no_bet_route": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "no_bet"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bet": {
+            "type": "null"
+          },
+          "no_bet_route": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ]
 }

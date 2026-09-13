@@ -1,36 +1,69 @@
-<!-- purpose: growth-referral-programs spec template -->
-<!-- consumes: inputs named in AGENTS.md Prerequisites -->
+<!-- purpose: referral-programme spec — NPS gate, trigger event, qualifying event, double-sided incentive against CAC and margin, fraud guard, K on 500+ invites, server-side attribution, lifecycle sequence, disclosure and terms -->
+<!-- consumes: NPS survey on active users, instrumented value events, order and margin data, beta invite counts, templates/k_factor.py, templates/emails.md.j2, templates/landing-page.md.j2 -->
 <!-- produces: artefact conforming to content/02-output-contract.xml -->
 <!-- depends-on: content/01-core-rules.xml + content/06-decision-tree.xml -->
-<!-- token-budget-impact: ~600 tokens when loaded -->
-# Growth Referral Programs — Spec
+<!-- token-budget-impact: ~700 tokens when loaded -->
+# Referral Programme Spec — {{ programme_name }} ({{ product_name }})
 
-## Owner
-{{ name }}
+## NPS gate (active users, within 90 days, at least 30)
+- metric: <nps | willingness_to_recommend>
+- score: <at least 30 for nps>
+- sample_size: <n>
+- population: active_users
+- measured_on: <YYYY-MM-DD>, age_days: <at most 90>
 
-## Review deadline
-YYYY-MM-DD (within 90 days)
+## Trigger event (a value moment, never signup)
+- name: <instrumented event, e.g. first_successful_export>
+- reach_share: <share of users who reach it>
+- instrumented: true
 
-## Summary
-One paragraph describing what the produced spec covers.
+## Qualifying event (reward release)
+- kind: <first_paid_order | activation_milestone>
+- name: <event name>
+- minimum_order_value: <required for first_paid_order>
+- stated_on_landing_page: true (templates/landing-page.md.j2 FAQ)
+- stated_in_every_email: true (templates/emails.md.j2)
 
-## Sections
+## Incentive (double-sided, within unit economics)
+- referrer_reward: kind <account_credit | discount | cash | free_months>, amount <n>, currency <XXX>
+- referee_reward: kind <...>, amount <n>, currency <XXX>
+- reward_cost_per_qualified_referee: <referrer + referee amount>
+- blended_paid_cac: <n> (reward cost must be at or below)
+- margin_basis: <first_order_gross_margin | expected_ltv>, margin_basis_value <n>, max_reward_share_of_basis <0.xx>
 
-### preconditions
-Items confirmed (Applies If):
-- item 1
-- item 2
-- item 3
+## Fraud guard
+- referee_must_be_new_account, one_referral_per_email, one_referral_per_payment_instrument: true
+- self_referral_signals: payment_instrument, device_fingerprint, ip, normalised_email
+- email_normalisation: plus_addressing, dot_variants
+- reward_hold_days: <n>, reward_hold_covers: <refund_window | chargeback_window>
+- idempotency_key: referrer_id, referee_id, qualifying_event
 
-### procedure
-Step-by-step as enacted from content/04-procedure.xml.
+## K-factor (templates/k_factor.py; at least 500 invites and 50 referrers)
+- invites: <n>, active_referrers: <n>, referee_signups: <n>
+- invites_per_referrer: <invites / active_referrers>
+- conversion_per_invite: <referee_signups / invites>
+- k: <invites_per_referrer x conversion_per_invite>
+- cycle_time_days: <median trigger event to qualifying event>
+- presented_as: <cac_multiplier when k is below 1>, cac_multiplier: <1 / (1 - k)>
+- netted_of_reward_cost: true
 
-### review
-Named reviewer + signoff date.
+## Attribution (server-side)
+- per_user_code, landing_page_accepts_param, email_accepts_param: true
+- capture_methods: <url_parameter | first_party_cookie | code_at_signup>
+- persisted_server_side_at: referee_account_creation
+- utm_only: false
 
-## Deviation log reference
-[path / link to deviation log entry]
+## Lifecycle (templates/emails.md.j2)
+- announcement.send_on: <the trigger event>
+- reminder: after_days <n>, audience zero_referrals, max_sends 1
+- confirmation: send_on qualifying_event, recipients referrer, referee
+- promises_reward_before_qualifying_event: false
 
-## Signoff
-- reviewer: {{ reviewer_name }}
-- date: YYYY-MM-DD
+## Disclosure and terms
+- reward_disclosed_on_shared_content: true
+- terms_url: <https://...>
+- terms_cover: qualifying_event, reward_timing, exclusions, fraud_reversal
+
+| earnings claim | period | verified |
+|---|---|---|
+| <claim in programme copy> | <period> | true |

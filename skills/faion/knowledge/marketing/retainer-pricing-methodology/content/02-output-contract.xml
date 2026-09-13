@@ -1,106 +1,289 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Retainer Pricing Methodology — Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the artefact produced by `retainer-pricing-methodology`. Validator enforces required keys, owner discipline, semver, ISO date, and minimum-evidence rules.</summary>
+<text id="02-output-contract" title="Retainer Pricing Methodology — Output Contract" version="1.2.0" est_tokens="4850" depth="essential">
+  <summary>JSON Schema (draft-07) for the retainer spec: exactly one named shape with its defining terms (block-of-hours with rollover and overage, outcome-based with a deliverable list, availability with response time and maximum load, or a hybrid that says which shape invoices and which clause settles scope), a price shown as expected hours x hourly rate x multiple with the multiple at or above 1.3 or a named concession, written inclusions, exclusions and a turnaround, a minimum term of 3 months, 30 days notice and a price review within 12 months, invoicing in advance, a phase-out plan with the 3-month hourly average and a cutover date when converting an hourly client, a capacity ledger that stays within available hours, and a 6-month outcome review with the hours ledger and the action it forces. Validator at scripts/validate-retainer-pricing-methodology.py enforces it, including the price arithmetic, the phase-out floor, the capacity sum and the review rules.</summary>
 
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <required>
+      <field name="client_name" type="string" required="true">client the retainer is for</field>
+      <field name="start_date" type="date" required="true">first day of the first retainer period</field>
+      <field name="shape" type="object" required="true">`kind` block_of_hours, outcome_based, availability or hybrid, with `block_of_hours` (`prepaid_hours_per_month`, `rollover` none / one_period / capped with `rollover_cap_hours`, `overage_hourly_rate`), `outcome_based` (`deliverables_per_period[]`), `availability` (`response_time_business_hours`, `max_monthly_load_hours`) or `hybrid` (`invoicing_shape`, `scope_dispute_clause`) as the kind requires (r-retainer-shape-named, r-scope-inclusions-exclusions-and-turnaround)</field>
+      <field name="pricing" type="object" required="true">`expected_monthly_hours` (maximum load for availability), `hourly_rate`, `currency`, `monthly_price`, `multiple` = monthly_price / (hours x rate) at or above 1.3, or `concession` twelve_month_minimum_term / full_term_prepaid when below (r-rate-floor-1-3x-hourly-equivalent)</field>
+      <field name="scope" type="object" required="true">`inclusions[]`, `exclusions[]`, `turnaround` with `value` and `unit` business_hours or business_days, `included_meetings_per_month` (r-scope-inclusions-exclusions-and-turnaround)</field>
+      <field name="term" type="object" required="true">`minimum_months` at least 3, `notice_days` at least 30, `price_review_date` at most 12 months after `start_date` (r-term-notice-and-price-review)</field>
+      <field name="billing" type="object" required="true">`timing` in_advance, `invoice_days_before_period_start`, `payment_due` before_period_start, `payment_terms_days` (r-invoiced-in-advance)</field>
+      <field name="hourly_phase_out" type="object" required="true">null for a new client; otherwise `avg_billed_hours_last_3_months`, `avg_monthly_spend_last_3_months`, `cutover_date`, `parallel_billing_periods` at most 1; the price is at or above 1.3 x the average spend (r-hourly-phase-out-plan)</field>
+      <field name="capacity" type="object" required="true">`available_billable_hours_per_month`, `committed_hours_other_retainers`, `committed_hours_this_retainer` (= expected monthly hours), `total_after_signing` = their sum, at or below available (r-capacity-not-oversold)</field>
+      <field name="outcome_review" type="object" required="true">`scheduled_date` 6 months after `start_date`; `findings` null until held, then `still_active_without_renegotiation`, `periods[]` with `paid_hours` and `actual_hours`, `effective_hourly_rate`, `action` none / re_scope / rate_increase / address_usage as the two-period rules require (r-six-month-outcome-review)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`shape.kind` without the matching terms object, or a hybrid without `invoicing_shape` and `scope_dispute_clause` — fm-01-hourly-with-a-deposit</pattern>
+      <pattern id="f2">`pricing.multiple` below 1.3 with `concession` null, or a `multiple` that is not monthly_price / (expected_monthly_hours x hourly_rate) — fm-02-below-floor-for-predictability</pattern>
+      <pattern id="f3">`rollover` capped with no `rollover_cap_hours`, or any rollover value that lets hours accumulate indefinitely — fm-03-unbounded-rollover</pattern>
+      <pattern id="f4">`term.minimum_months` below 3, `notice_days` below 30, or `price_review_date` more than 12 months after the start — fm-04-cancel-any-time-retainer</pattern>
+      <pattern id="f5">`billing.timing` in_arrears or `payment_due` after work begins (r-invoiced-in-advance)</pattern>
+      <pattern id="f6">`hourly_phase_out.parallel_billing_periods` above 1, a `cutover_date` before `start_date`, or a `monthly_price` below 1.3 x `avg_monthly_spend_last_3_months` without a concession — fm-05-parallel-hourly-and-retainer</pattern>
+      <pattern id="f7">`capacity.total_after_signing` above `available_billable_hours_per_month`, or not equal to other plus this retainer — fm-06-capacity-sold-twice</pattern>
+      <pattern id="f8">`outcome_review.scheduled_date` not 6 months after the start, or findings where actual hours exceed paid hours in two consecutive periods with `action` none, or below 50 percent of paid in two consecutive periods without `action` address_usage (r-six-month-outcome-review)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/retainer-pricing-methodology.json",
+  "title": "Retainer Pricing Methodology spec",
   "type": "object",
-  "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
-  ],
+  "required": ["client_name", "start_date", "shape", "pricing", "scope", "term", "billing", "hourly_phase_out", "capacity", "outcome_review"],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "hours": {"type": "number", "minimum": 0},
+    "money": {"type": "number", "exclusiveMinimum": 0}
+  },
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 3
-    },
-    "decision": {
-      "type": "string",
-      "minLength": 3
-    },
-    "rationale": {
-      "type": "string",
-      "minLength": 30
-    },
-    "inputs_used": {
-      "type": "array",
-      "items": {
-        "type": "string"
+    "__faion_header__": {"type": ["object", "string"]},
+    "client_name": {"type": "string", "minLength": 2},
+    "start_date": {"$ref": "#/definitions/date"},
+    "shape": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["block_of_hours", "outcome_based", "availability", "hybrid"]},
+        "block_of_hours": {
+          "type": "object",
+          "required": ["prepaid_hours_per_month", "rollover", "overage_hourly_rate"],
+          "additionalProperties": false,
+          "properties": {
+            "prepaid_hours_per_month": {"type": "number", "exclusiveMinimum": 0},
+            "rollover": {"type": "string", "enum": ["none", "one_period", "capped"]},
+            "rollover_cap_hours": {"type": "number", "exclusiveMinimum": 0},
+            "overage_hourly_rate": {"$ref": "#/definitions/money"}
+          },
+          "if": {"properties": {"rollover": {"const": "capped"}}},
+          "then": {"required": ["rollover_cap_hours"]}
+        },
+        "outcome_based": {
+          "type": "object",
+          "required": ["deliverables_per_period"],
+          "additionalProperties": false,
+          "properties": {
+            "deliverables_per_period": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5}}
+          }
+        },
+        "availability": {
+          "type": "object",
+          "required": ["response_time_business_hours", "max_monthly_load_hours"],
+          "additionalProperties": false,
+          "properties": {
+            "response_time_business_hours": {"type": "number", "exclusiveMinimum": 0},
+            "max_monthly_load_hours": {"type": "number", "exclusiveMinimum": 0}
+          }
+        },
+        "hybrid": {
+          "type": "object",
+          "required": ["invoicing_shape", "scope_dispute_clause"],
+          "additionalProperties": false,
+          "properties": {
+            "invoicing_shape": {"type": "string", "enum": ["block_of_hours", "outcome_based", "availability"]},
+            "scope_dispute_clause": {"type": "string", "minLength": 20}
+          }
+        }
       },
-      "minItems": 1
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "block_of_hours"}}}, "then": {"required": ["block_of_hours"]}},
+        {"if": {"properties": {"kind": {"const": "outcome_based"}}}, "then": {"required": ["outcome_based"]}},
+        {"if": {"properties": {"kind": {"const": "availability"}}}, "then": {"required": ["availability"]}},
+        {"if": {"properties": {"kind": {"const": "hybrid"}}}, "then": {"required": ["hybrid"]}}
+      ]
     },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    "pricing": {
+      "type": "object",
+      "required": ["expected_monthly_hours", "hourly_rate", "currency", "monthly_price", "multiple", "concession"],
+      "additionalProperties": false,
+      "properties": {
+        "expected_monthly_hours": {"type": "number", "exclusiveMinimum": 0},
+        "hourly_rate": {"$ref": "#/definitions/money"},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "monthly_price": {"$ref": "#/definitions/money"},
+        "multiple": {"type": "number", "exclusiveMinimum": 0},
+        "concession": {"anyOf": [{"type": "null"}, {"type": "string", "enum": ["twelve_month_minimum_term", "full_term_prepaid"]}]}
+      },
+      "if": {"properties": {"multiple": {"exclusiveMaximum": 1.3}}},
+      "then": {"properties": {"concession": {"type": "string"}}}
     },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+    "scope": {
+      "type": "object",
+      "required": ["inclusions", "exclusions", "turnaround", "included_meetings_per_month"],
+      "additionalProperties": false,
+      "properties": {
+        "inclusions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5}},
+        "exclusions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 5}},
+        "turnaround": {
+          "type": "object",
+          "required": ["value", "unit"],
+          "additionalProperties": false,
+          "properties": {
+            "value": {"type": "number", "exclusiveMinimum": 0},
+            "unit": {"type": "string", "enum": ["business_hours", "business_days"]}
+          }
+        },
+        "included_meetings_per_month": {"type": "integer", "minimum": 0}
+      }
+    },
+    "term": {
+      "type": "object",
+      "required": ["minimum_months", "notice_days", "price_review_date"],
+      "additionalProperties": false,
+      "properties": {
+        "minimum_months": {"type": "integer", "minimum": 3},
+        "notice_days": {"type": "integer", "minimum": 30},
+        "price_review_date": {"$ref": "#/definitions/date"}
+      }
+    },
+    "billing": {
+      "type": "object",
+      "required": ["timing", "invoice_days_before_period_start", "payment_due", "payment_terms_days"],
+      "additionalProperties": false,
+      "properties": {
+        "timing": {"const": "in_advance"},
+        "invoice_days_before_period_start": {"type": "integer", "minimum": 0},
+        "payment_due": {"const": "before_period_start"},
+        "payment_terms_days": {"type": "integer", "minimum": 0}
+      }
+    },
+    "hourly_phase_out": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["avg_billed_hours_last_3_months", "avg_monthly_spend_last_3_months", "cutover_date", "parallel_billing_periods"],
+          "additionalProperties": false,
+          "properties": {
+            "avg_billed_hours_last_3_months": {"$ref": "#/definitions/hours"},
+            "avg_monthly_spend_last_3_months": {"$ref": "#/definitions/money"},
+            "cutover_date": {"$ref": "#/definitions/date"},
+            "parallel_billing_periods": {"type": "integer", "minimum": 0, "maximum": 1}
+          }
+        }
+      ]
+    },
+    "capacity": {
+      "type": "object",
+      "required": ["available_billable_hours_per_month", "committed_hours_other_retainers", "committed_hours_this_retainer", "total_after_signing"],
+      "additionalProperties": false,
+      "properties": {
+        "available_billable_hours_per_month": {"type": "number", "exclusiveMinimum": 0},
+        "committed_hours_other_retainers": {"$ref": "#/definitions/hours"},
+        "committed_hours_this_retainer": {"type": "number", "exclusiveMinimum": 0},
+        "total_after_signing": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "outcome_review": {
+      "type": "object",
+      "required": ["scheduled_date", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "scheduled_date": {"$ref": "#/definitions/date"},
+        "findings": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["held_on", "still_active_without_renegotiation", "periods", "effective_hourly_rate", "action"],
+              "additionalProperties": false,
+              "properties": {
+                "held_on": {"$ref": "#/definitions/date"},
+                "still_active_without_renegotiation": {"type": "boolean"},
+                "periods": {
+                  "type": "array",
+                  "minItems": 2,
+                  "items": {
+                    "type": "object",
+                    "required": ["period", "paid_hours", "actual_hours"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "period": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+                      "paid_hours": {"type": "number", "exclusiveMinimum": 0},
+                      "actual_hours": {"$ref": "#/definitions/hours"}
+                    }
+                  }
+                },
+                "effective_hourly_rate": {"$ref": "#/definitions/money"},
+                "action": {"type": "string", "enum": ["none", "re_scope", "rate_increase", "address_usage"]}
+              }
+            }
+          ]
+        }
+      }
     }
   }
 }
 ]]></code>
-  </section>
+    </schema>
 
-  <example valid="true">
-    <code lang="json"><![CDATA[
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "retainer-pricing-methodology-2026-05-23-01",
-  "owner": "Anna Schmidt",
-  "decision": "ship the canonical artefact this client cycle",
-  "rationale": "Anchored to discovery notes (2026-05-21) and rate card; precondition checklist passed.",
-  "inputs_used": [
-    "discovery-notes-2026-05-21.md",
-    "rate-card-2026-Q2.yaml"
-  ],
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23"
+  "client_name": "Nordlicht GmbH",
+  "start_date": "2026-10-01",
+  "shape": {
+    "kind": "block_of_hours",
+    "block_of_hours": {"prepaid_hours_per_month": 40, "rollover": "one_period", "overage_hourly_rate": 150}
+  },
+  "pricing": {"expected_monthly_hours": 40, "hourly_rate": 120, "currency": "EUR", "monthly_price": 6240, "multiple": 1.3, "concession": null},
+  "scope": {
+    "inclusions": ["maintenance of the Django order service and its CI", "dependency and security updates", "bug fixes on existing features", "monthly performance and cost report"],
+    "exclusions": ["new feature builds beyond 4 hours of effort", "emergency weekend work", "third-party licence and hosting costs", "meetings beyond the included count"],
+    "turnaround": {"value": 2, "unit": "business_days"},
+    "included_meetings_per_month": 2
+  },
+  "term": {"minimum_months": 6, "notice_days": 30, "price_review_date": "2027-09-01"},
+  "billing": {"timing": "in_advance", "invoice_days_before_period_start": 7, "payment_due": "before_period_start", "payment_terms_days": 7},
+  "hourly_phase_out": {"avg_billed_hours_last_3_months": 38, "avg_monthly_spend_last_3_months": 4560, "cutover_date": "2026-10-01", "parallel_billing_periods": 0},
+  "capacity": {"available_billable_hours_per_month": 120, "committed_hours_other_retainers": 60, "committed_hours_this_retainer": 40, "total_after_signing": 100},
+  "outcome_review": {"scheduled_date": "2027-04-01", "findings": null}
 }
 ]]></code>
-  </example>
+      <note>One shape with rollover limited to one period and an overage rate; 6,240 EUR = 40 h x 120 EUR x 1.3, and 1.3 x the client's 4,560 EUR three-month average is 5,928, so the price clears both floors without a concession; 60 + 40 = 100 of 120 available hours; the price review falls 11 months after the start and the outcome review 6 months after.</note>
+    </example>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "x",
-  "owner": "team",
-  "decision": "tbd",
-  "rationale": "obviously",
-  "inputs_used": [],
-  "version": "1",
-  "last_reviewed": "yesterday"
+  "client_name": "Nordlicht GmbH",
+  "start_date": "2026-10-01",
+  "shape": {"kind": "availability"},
+  "pricing": {"expected_monthly_hours": 40, "hourly_rate": 120, "currency": "EUR", "monthly_price": 4560, "multiple": 0.95, "concession": null},
+  "scope": {
+    "inclusions": ["whatever comes up"],
+    "exclusions": [],
+    "turnaround": {"value": 0, "unit": "asap"},
+    "included_meetings_per_month": 0
+  },
+  "term": {"minimum_months": 1, "notice_days": 0, "price_review_date": "2029-10-01"},
+  "billing": {"timing": "in_arrears", "invoice_days_before_period_start": 0, "payment_due": "net_60_after_period", "payment_terms_days": 60},
+  "hourly_phase_out": {"avg_billed_hours_last_3_months": 38, "avg_monthly_spend_last_3_months": 4560, "cutover_date": "2026-06-01", "parallel_billing_periods": 3},
+  "capacity": {"available_billable_hours_per_month": 120, "committed_hours_other_retainers": 100, "committed_hours_this_retainer": 40, "total_after_signing": 120},
+  "outcome_review": {"scheduled_date": "2028-01-01", "findings": null}
 }
 ]]></code>
-    <note>artefact_id too short; owner is a team not a person; decision empty; rationale defensive without citations; inputs_used empty; version not semver; last_reviewed not ISO date.</note>
-  </example>
+      <note>An availability retainer with no response time or maximum load; priced at 0.95x the hourly equivalent with no concession; no written exclusions and a turnaround of zero in a unit that is not business hours or days; one month minimum, no notice, a price review three years out; billed in arrears on net 60; a cutover before the start and three parallel periods; committed hours reported as 120 when 100 + 40 is 140 and exceeds capacity; the outcome review scheduled 15 months out.</note>
+    </example>
+  </output-contract>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>owner = "team" / "we" / "us" / empty</description>
-      <reason>Plural ownership = no ownership; future readers need a named human to chase.</reason>
-    </antipattern>
-    <antipattern>
-      <description>rationale that does not reference any input by name</description>
-      <reason>Post-hoc justification masquerading as evidence-based decision.</reason>
-    </antipattern>
-    <antipattern>
-      <description>inputs_used empty AND decision != "no-op"</description>
-      <reason>Output is ungrounded; the artefact cannot be falsified.</reason>
-    </antipattern>
+  <section title="Self-check checklist">
+    <list>
+      <item>`shape.kind` is one of the four and its terms object is present; a hybrid says which shape invoices and which clause settles scope; block-of-hours rollover is none, one period or capped.</item>
+      <item>`pricing.multiple` = `monthly_price` / (`expected_monthly_hours` x `hourly_rate`), at or above 1.3 or with a named concession; for availability the expected hours equal `max_monthly_load_hours`.</item>
+      <item>Inclusions, exclusions and a turnaround in business hours or days are written; the meeting count is stated.</item>
+      <item>Minimum term at least 3 months, notice at least 30 days, price review within 12 months of `start_date`; invoiced in advance with payment due before the period starts.</item>
+      <item>Converting an hourly client: the 3-month average is shown, `monthly_price` is at or above 1.3 x the average spend, `cutover_date` is on or after `start_date`, at most one parallel period.</item>
+      <item>`capacity.total_after_signing` = other + this retainer and is within available hours; `outcome_review.scheduled_date` is 6 months after the start, and findings force re-scope or rate increase after two overrun periods and address usage after two periods below 50 percent.</item>
+    </list>
   </section>
 
-  <reference path="scripts/validate-retainer-pricing-methodology.py">Validator script</reference>
-  <reference path="templates/retainer-pricing-methodology.json">JSON Schema template</reference>
+  <reference path="scripts/validate-retainer-pricing-methodology.py">Validator implementing this schema and the cross-field rules (price multiple arithmetic, availability hours equal to maximum load, phase-out floor and cutover, capacity sum and ceiling, price review within 12 months, review at 6 months and the two-period actions).</reference>
+  <reference path="templates/retainer-pricing-methodology.json">The same schema as a standalone file.</reference>
 </text>

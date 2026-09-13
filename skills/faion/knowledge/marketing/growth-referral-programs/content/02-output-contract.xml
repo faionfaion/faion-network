@@ -1,128 +1,392 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Growth Referral Programs Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the `spec` artefact this methodology produces. Validator at scripts/validate-growth-referral-programs.py enforces the contract.</summary>
-  <section title="Schema">
-    <code lang="json"><![CDATA[
+<text id="02-output-contract" title="Growth Referral Programs Output Contract" version="1.2.0" est_tokens="6050" depth="essential">
+  <summary>JSON Schema (draft-07) for the referral-programme spec: an NPS gate measured on active users within 90 days and at or above 30, a named instrumented trigger event with its reach, a qualifying event (paid order above a minimum or an activation milestone) stated on the landing page and in every email, a double-sided incentive whose cost per qualified referee sits at or below paid CAC and a stated share of first-order margin or LTV, a fraud guard with self-referral matching on four signals, a reward hold and the (referrer_id, referee_id, qualifying_event) idempotency tuple, a K-factor computed as invites per referrer times conversion per invite on at least 500 invites and 50 referrers with cycle time and presented as a 1/(1-K) multiplier below 1, server-side attribution from a per-user code, a lifecycle of announcement, one reminder to zero-referral users and a confirmation to both sides, and disclosure with published terms. Validator at scripts/validate-growth-referral-programs.py enforces it, including the reward arithmetic against CAC and margin, the K product and the multiplier.</summary>
+
+  <output-contract>
+    <required>
+      <field name="programme_name" type="string" required="true">name of the programme</field>
+      <field name="nps_gate" type="object" required="true">`metric` nps or willingness_to_recommend, `score` (at least 30 when the metric is nps), `sample_size`, `population` active_users, `measured_on`, `age_days` at most 90 (r-nps-gate-30-before-launch)</field>
+      <field name="trigger_event" type="object" required="true">`name` of the instrumented value event the prompt fires on (never signup or a first screen), `reach_share` of users who reach it, `instrumented` true (r-trigger-event-at-value-moment)</field>
+      <field name="qualifying_event" type="object" required="true">`kind` first_paid_order (with `minimum_order_value`) or activation_milestone, `name` of the event, `stated_on_landing_page` and `stated_in_every_email` true (r-reward-on-qualifying-event-not-signup)</field>
+      <field name="incentive" type="object" required="true">`referrer_reward` and `referee_reward` each with `kind`, `amount` above 0 and `currency`; `reward_cost_per_qualified_referee` equal to their sum, at or below `blended_paid_cac` and at or below `max_reward_share_of_basis` x `margin_basis_value` for the stated `margin_basis` (r-double-sided-incentive-within-unit-economics)</field>
+      <field name="fraud_guard" type="object" required="true">`referee_must_be_new_account`, `one_referral_per_email`, `one_referral_per_payment_instrument` true; `self_referral_signals` covering payment_instrument, device_fingerprint, ip and normalised_email; `email_normalisation` covering plus_addressing and dot_variants; `reward_hold_days` and `reward_hold_covers` refund_window or chargeback_window; `idempotency_key` exactly referrer_id, referee_id, qualifying_event (r-fraud-guard-self-referral-and-idempotent-rewards)</field>
+      <field name="k_factor" type="object" required="true">`invites` at least 500, `active_referrers` at least 50, `referee_signups`, `invites_per_referrer` = invites / active_referrers, `conversion_per_invite` = referee_signups / invites, `k` = their product, `cycle_time_days`, `presented_as` cac_multiplier whenever k is below 1 with `cac_multiplier` = 1 / (1 - k), `netted_of_reward_cost` true (r-k-factor-computed-on-500-plus-invites)</field>
+      <field name="attribution" type="object" required="true">`per_user_code`, `landing_page_accepts_param`, `email_accepts_param` true; `capture_methods` from url_parameter, first_party_cookie, code_at_signup; `persisted_server_side_at` referee_account_creation; `utm_only` false (r-referral-attribution-server-side)</field>
+      <field name="lifecycle" type="object" required="true">`announcement.send_on` equal to the trigger event; `reminder` with `after_days`, `audience` zero_referrals, `max_sends` 1; `confirmation` on qualifying_event to referrer and referee; `promises_reward_before_qualifying_event` false (r-lifecycle-sequence-trigger-reminder-confirmation)</field>
+      <field name="disclosure" type="object" required="true">`reward_disclosed_on_shared_content` true, `terms_url`, `terms_cover` with qualifying_event, reward_timing, exclusions and fraud_reversal, `earnings_claims[]` each with `claim`, `period` and `verified` true (r-incentive-disclosure-and-published-terms)</field>
+    </required>
+
+    <forbidden>
+      <pattern id="f1">`nps_gate.score` below 30 on the nps metric, or `age_days` above 90, or a population other than active users — launching on anecdote instead of a measured gate (r-nps-gate-30-before-launch)</pattern>
+      <pattern id="f2">`trigger_event.name` that is signup, account creation or a first or welcome screen — prompt-before-value-moment</pattern>
+      <pattern id="f3">`qualifying_event.name` that is signup or account creation, a first_paid_order kind without `minimum_order_value`, or the condition not stated on the landing page and in every email — reward-paid-on-signup</pattern>
+      <pattern id="f4">a reward with `amount` 0 on either side, or `reward_cost_per_qualified_referee` above `blended_paid_cac` or above the stated share of margin or LTV — reward-above-paid-cac</pattern>
+      <pattern id="f5">`self_referral_signals` missing any of the four signals, `reward_hold_days` 0, or an `idempotency_key` that is not the (referrer_id, referee_id, qualifying_event) tuple — self-referral-unchecked</pattern>
+      <pattern id="f6">`k_factor.invites` below 500 or `active_referrers` below 50, `k` not equal to invites_per_referrer x conversion_per_invite, or K below 1 presented as viral_growth — k-factor-from-a-handful-of-invites</pattern>
+      <pattern id="f7">`capture_methods` containing a utm parameter, `utm_only` true, or attribution persisted anywhere other than at referee account creation — attribution-by-utm-only</pattern>
+      <pattern id="f8">a reminder whose audience is not zero-referral users or that sends more than once, a confirmation that does not reach both sides, or any message promising a reward before the qualifying event (r-lifecycle-sequence-trigger-reminder-confirmation)</pattern>
+      <pattern id="f9">shared content without reward disclosure, `terms_cover` missing one of the four topics, or an earnings claim with `verified` false or no period (r-incentive-disclosure-and-published-terms)</pattern>
+    </forbidden>
+
+    <schema>
+      <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/growth-referral-programs.json",
-  "title": "Growth Referral Programs output",
+  "title": "Growth Referral Programs spec",
   "type": "object",
-  "required": [
-    "slug",
-    "owner",
-    "review_deadline",
-    "summary",
-    "sections",
-    "deviation_log_reference"
-  ],
-  "properties": {
-    "slug": {
-      "type": "string",
-      "const": "growth-referral-programs"
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 1
-    },
-    "review_deadline": {
-      "type": "string",
-      "format": "date"
-    },
-    "summary": {
-      "type": "string",
-      "minLength": 20,
-      "maxLength": 400
-    },
-    "sections": {
-      "type": "array",
-      "minItems": 3,
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "content"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string",
-            "minLength": 10
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "deviation_log_reference": {
-      "type": "string",
-      "minLength": 1
-    },
-    "signoff": {
+  "required": ["programme_name", "nps_gate", "trigger_event", "qualifying_event", "incentive", "fraud_guard", "k_factor", "attribution", "lifecycle", "disclosure"],
+  "additionalProperties": false,
+  "definitions": {
+    "event_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "not_signup": {"not": {"enum": ["signup", "signup_completed", "sign_up", "account_created", "account_creation", "registration_completed", "first_screen_viewed", "welcome_screen_viewed", "onboarding_started"]}},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "reward": {
       "type": "object",
-      "required": [
-        "reviewer",
-        "date"
-      ],
+      "required": ["kind", "amount", "currency"],
+      "additionalProperties": false,
       "properties": {
-        "reviewer": {
-          "type": "string"
-        },
-        "date": {
-          "type": "string",
-          "format": "date"
-        }
-      },
-      "additionalProperties": false
+        "kind": {"type": "string", "enum": ["account_credit", "discount", "cash", "free_months"]},
+        "amount": {"type": "number", "exclusiveMinimum": 0},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}
+      }
     }
   },
-  "additionalProperties": false
-}
-]]></code>
-  </section>
-  <example valid="true">
-    <code lang="json"><![CDATA[
-{
-  "slug": "growth-referral-programs",
-  "owner": "growth lead",
-  "review_deadline": "2026-06-15",
-  "summary": "Spec for Growth Referral Programs covering preconditions, procedure, output, and review gate.",
-  "sections": [
-    {
-      "name": "preconditions",
-      "content": "All Applies If items confirmed in writing."
+  "properties": {
+    "__faion_header__": {"type": ["object", "string"]},
+    "programme_name": {"type": "string", "minLength": 3},
+    "nps_gate": {
+      "type": "object",
+      "required": ["metric", "score", "sample_size", "population", "measured_on", "age_days"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {"type": "string", "enum": ["nps", "willingness_to_recommend"]},
+        "score": {"type": "number", "minimum": -100, "maximum": 100},
+        "sample_size": {"type": "integer", "minimum": 1},
+        "population": {"const": "active_users"},
+        "measured_on": {"$ref": "#/definitions/date"},
+        "age_days": {"type": "integer", "minimum": 0, "maximum": 90}
+      },
+      "if": {"properties": {"metric": {"const": "nps"}}},
+      "then": {"properties": {"score": {"minimum": 30}}}
     },
-    {
-      "name": "procedure",
-      "content": "Steps 1..n executed per content/04-procedure.xml."
+    "trigger_event": {
+      "type": "object",
+      "required": ["name", "reach_share", "instrumented"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"allOf": [{"$ref": "#/definitions/event_name"}, {"$ref": "#/definitions/not_signup"}]},
+        "reach_share": {"$ref": "#/definitions/rate"},
+        "instrumented": {"const": true}
+      }
     },
-    {
-      "name": "review",
-      "content": "Human reviewer signed off on date."
+    "qualifying_event": {
+      "type": "object",
+      "required": ["kind", "name", "stated_on_landing_page", "stated_in_every_email"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["first_paid_order", "activation_milestone"]},
+        "name": {"allOf": [{"$ref": "#/definitions/event_name"}, {"$ref": "#/definitions/not_signup"}]},
+        "minimum_order_value": {"type": "number", "exclusiveMinimum": 0},
+        "stated_on_landing_page": {"const": true},
+        "stated_in_every_email": {"const": true}
+      },
+      "if": {"properties": {"kind": {"const": "first_paid_order"}}},
+      "then": {"required": ["minimum_order_value"]}
+    },
+    "incentive": {
+      "type": "object",
+      "required": ["referrer_reward", "referee_reward", "reward_cost_per_qualified_referee", "blended_paid_cac", "margin_basis", "margin_basis_value", "max_reward_share_of_basis"],
+      "additionalProperties": false,
+      "properties": {
+        "referrer_reward": {"$ref": "#/definitions/reward"},
+        "referee_reward": {"$ref": "#/definitions/reward"},
+        "reward_cost_per_qualified_referee": {"type": "number", "exclusiveMinimum": 0},
+        "blended_paid_cac": {"type": "number", "exclusiveMinimum": 0},
+        "margin_basis": {"type": "string", "enum": ["first_order_gross_margin", "expected_ltv"]},
+        "margin_basis_value": {"type": "number", "exclusiveMinimum": 0},
+        "max_reward_share_of_basis": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+      }
+    },
+    "fraud_guard": {
+      "type": "object",
+      "required": ["referee_must_be_new_account", "one_referral_per_email", "one_referral_per_payment_instrument", "self_referral_signals", "email_normalisation", "reward_hold_days", "reward_hold_covers", "idempotency_key"],
+      "additionalProperties": false,
+      "properties": {
+        "referee_must_be_new_account": {"const": true},
+        "one_referral_per_email": {"const": true},
+        "one_referral_per_payment_instrument": {"const": true},
+        "self_referral_signals": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["payment_instrument", "device_fingerprint", "ip", "normalised_email"]},
+          "allOf": [{"contains": {"const": "payment_instrument"}}, {"contains": {"const": "device_fingerprint"}}, {"contains": {"const": "ip"}}, {"contains": {"const": "normalised_email"}}]
+        },
+        "email_normalisation": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["plus_addressing", "dot_variants"]},
+          "allOf": [{"contains": {"const": "plus_addressing"}}, {"contains": {"const": "dot_variants"}}]
+        },
+        "reward_hold_days": {"type": "integer", "minimum": 1},
+        "reward_hold_covers": {"type": "string", "enum": ["refund_window", "chargeback_window"]},
+        "idempotency_key": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["referrer_id", "referee_id", "qualifying_event"]}
+        }
+      }
+    },
+    "k_factor": {
+      "type": "object",
+      "required": ["invites", "active_referrers", "referee_signups", "invites_per_referrer", "conversion_per_invite", "k", "cycle_time_days", "presented_as", "cac_multiplier", "netted_of_reward_cost"],
+      "additionalProperties": false,
+      "properties": {
+        "invites": {"type": "integer", "minimum": 500},
+        "active_referrers": {"type": "integer", "minimum": 50},
+        "referee_signups": {"type": "integer", "minimum": 0},
+        "invites_per_referrer": {"type": "number", "minimum": 0},
+        "conversion_per_invite": {"$ref": "#/definitions/rate"},
+        "k": {"type": "number", "minimum": 0},
+        "cycle_time_days": {"type": "number", "exclusiveMinimum": 0},
+        "presented_as": {"type": "string", "enum": ["cac_multiplier", "viral_growth"]},
+        "cac_multiplier": {"type": "number", "minimum": 1},
+        "netted_of_reward_cost": {"const": true}
+      },
+      "if": {"properties": {"k": {"exclusiveMaximum": 1}}},
+      "then": {"properties": {"presented_as": {"const": "cac_multiplier"}}}
+    },
+    "attribution": {
+      "type": "object",
+      "required": ["per_user_code", "landing_page_accepts_param", "email_accepts_param", "capture_methods", "persisted_server_side_at", "utm_only"],
+      "additionalProperties": false,
+      "properties": {
+        "per_user_code": {"const": true},
+        "landing_page_accepts_param": {"const": true},
+        "email_accepts_param": {"const": true},
+        "capture_methods": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["url_parameter", "first_party_cookie", "code_at_signup"]}
+        },
+        "persisted_server_side_at": {"const": "referee_account_creation"},
+        "utm_only": {"const": false}
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "required": ["announcement", "reminder", "confirmation", "promises_reward_before_qualifying_event"],
+      "additionalProperties": false,
+      "properties": {
+        "announcement": {
+          "type": "object",
+          "required": ["send_on"],
+          "additionalProperties": false,
+          "properties": {"send_on": {"$ref": "#/definitions/event_name"}}
+        },
+        "reminder": {
+          "type": "object",
+          "required": ["after_days", "audience", "max_sends"],
+          "additionalProperties": false,
+          "properties": {
+            "after_days": {"type": "integer", "minimum": 1},
+            "audience": {"const": "zero_referrals"},
+            "max_sends": {"const": 1}
+          }
+        },
+        "confirmation": {
+          "type": "object",
+          "required": ["send_on", "recipients"],
+          "additionalProperties": false,
+          "properties": {
+            "send_on": {"const": "qualifying_event"},
+            "recipients": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "enum": ["referrer", "referee"]},
+              "allOf": [{"contains": {"const": "referrer"}}, {"contains": {"const": "referee"}}]
+            }
+          }
+        },
+        "promises_reward_before_qualifying_event": {"const": false}
+      }
+    },
+    "disclosure": {
+      "type": "object",
+      "required": ["reward_disclosed_on_shared_content", "terms_url", "terms_cover", "earnings_claims"],
+      "additionalProperties": false,
+      "properties": {
+        "reward_disclosed_on_shared_content": {"const": true},
+        "terms_url": {"type": "string", "pattern": "^https?://"},
+        "terms_cover": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": {"type": "string", "enum": ["qualifying_event", "reward_timing", "exclusions", "fraud_reversal"]}
+        },
+        "earnings_claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["claim", "period", "verified"],
+            "additionalProperties": false,
+            "properties": {
+              "claim": {"type": "string", "minLength": 5},
+              "period": {"type": "string", "minLength": 4},
+              "verified": {"const": true}
+            }
+          }
+        }
+      }
     }
-  ],
-  "deviation_log_reference": "ops/deviation-log.md#L42",
-  "signoff": {
-    "reviewer": "growth lead",
-    "date": "2026-06-10"
   }
 }
 ]]></code>
-  </example>
-  <example valid="false">
-    <code lang="json"><![CDATA[
+    </schema>
+
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "slug": "growth-referral-programs",
-  "summary": "missing required fields"
+  "programme_name": "give 20 get 20",
+  "nps_gate": {"metric": "nps", "score": 42, "sample_size": 640, "population": "active_users", "measured_on": "2026-08-14", "age_days": 30},
+  "trigger_event": {"name": "first_successful_export", "reach_share": 0.57, "instrumented": true},
+  "qualifying_event": {"kind": "first_paid_order", "name": "first_paid_order", "minimum_order_value": 50, "stated_on_landing_page": true, "stated_in_every_email": true},
+  "incentive": {
+    "referrer_reward": {"kind": "account_credit", "amount": 20, "currency": "USD"},
+    "referee_reward": {"kind": "discount", "amount": 20, "currency": "USD"},
+    "reward_cost_per_qualified_referee": 40,
+    "blended_paid_cac": 95,
+    "margin_basis": "first_order_gross_margin",
+    "margin_basis_value": 126,
+    "max_reward_share_of_basis": 0.35
+  },
+  "fraud_guard": {
+    "referee_must_be_new_account": true,
+    "one_referral_per_email": true,
+    "one_referral_per_payment_instrument": true,
+    "self_referral_signals": ["payment_instrument", "device_fingerprint", "ip", "normalised_email"],
+    "email_normalisation": ["plus_addressing", "dot_variants"],
+    "reward_hold_days": 30,
+    "reward_hold_covers": "refund_window",
+    "idempotency_key": ["referrer_id", "referee_id", "qualifying_event"]
+  },
+  "k_factor": {
+    "invites": 4200,
+    "active_referrers": 850,
+    "referee_signups": 630,
+    "invites_per_referrer": 4.94,
+    "conversion_per_invite": 0.15,
+    "k": 0.741,
+    "cycle_time_days": 9,
+    "presented_as": "cac_multiplier",
+    "cac_multiplier": 3.86,
+    "netted_of_reward_cost": true
+  },
+  "attribution": {
+    "per_user_code": true,
+    "landing_page_accepts_param": true,
+    "email_accepts_param": true,
+    "capture_methods": ["url_parameter", "first_party_cookie", "code_at_signup"],
+    "persisted_server_side_at": "referee_account_creation",
+    "utm_only": false
+  },
+  "lifecycle": {
+    "announcement": {"send_on": "first_successful_export"},
+    "reminder": {"after_days": 14, "audience": "zero_referrals", "max_sends": 1},
+    "confirmation": {"send_on": "qualifying_event", "recipients": ["referrer", "referee"]},
+    "promises_reward_before_qualifying_event": false
+  },
+  "disclosure": {
+    "reward_disclosed_on_shared_content": true,
+    "terms_url": "https://example.com/referral-terms",
+    "terms_cover": ["qualifying_event", "reward_timing", "exclusions", "fraud_reversal"],
+    "earnings_claims": [{"claim": "this month's top referrer has earned 300 USD", "period": "2026-08", "verified": true}]
+  }
 }
 ]]></code>
-    <note>Missing required: owner, review_deadline, sections, deviation_log_reference.</note>
-  </example>
-  <section title="Forbidden patterns">
-    <pattern id="f-no-owner">Artefact MUST NOT omit `owner` — orphan artefacts violate rule `named-owner`.</pattern>
-    <pattern id="f-no-schema-conform">Artefact MUST NOT include keys outside the schema — `additionalProperties: false` is binding.</pattern>
-    <pattern id="f-tbd">Artefact MUST NOT contain forbidden placeholder tokens in any string value (validator rejects them).</pattern>
+      <note>NPS 42 on 640 active users 30 days ago passes the gate; reward 20 + 20 = 40 is below paid CAC 95 and below 0.35 x 126 = 44.10; K = 4200 / 850 x 630 / 4200 = 4.94 x 0.15 = 0.741, presented as a 1 / (1 - 0.741) = 3.86 multiplier; the announcement fires on the trigger event.</note>
+    </example>
+
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "programme_name": "refer a friend",
+  "nps_gate": {"metric": "nps", "score": 22, "sample_size": 40, "population": "active_users", "measured_on": "2025-06-01", "age_days": 400},
+  "trigger_event": {"name": "signup", "reach_share": 1, "instrumented": true},
+  "qualifying_event": {"kind": "activation_milestone", "name": "account_created", "stated_on_landing_page": false, "stated_in_every_email": false},
+  "incentive": {
+    "referrer_reward": {"kind": "account_credit", "amount": 20, "currency": "USD"},
+    "referee_reward": {"kind": "discount", "amount": 0, "currency": "USD"},
+    "reward_cost_per_qualified_referee": 20,
+    "blended_paid_cac": 15,
+    "margin_basis": "first_order_gross_margin",
+    "margin_basis_value": 18,
+    "max_reward_share_of_basis": 0.5
+  },
+  "fraud_guard": {
+    "referee_must_be_new_account": false,
+    "one_referral_per_email": true,
+    "one_referral_per_payment_instrument": false,
+    "self_referral_signals": ["ip"],
+    "email_normalisation": [],
+    "reward_hold_days": 0,
+    "reward_hold_covers": "none",
+    "idempotency_key": ["referrer_id"]
+  },
+  "k_factor": {
+    "invites": 30,
+    "active_referrers": 6,
+    "referee_signups": 4,
+    "invites_per_referrer": 5,
+    "conversion_per_invite": 0.133,
+    "k": 0.9,
+    "cycle_time_days": 7,
+    "presented_as": "viral_growth",
+    "cac_multiplier": 1,
+    "netted_of_reward_cost": false
+  },
+  "attribution": {
+    "per_user_code": false,
+    "landing_page_accepts_param": true,
+    "email_accepts_param": false,
+    "capture_methods": ["utm_source"],
+    "persisted_server_side_at": "analytics_session",
+    "utm_only": true
+  },
+  "lifecycle": {
+    "announcement": {"send_on": "signup"},
+    "reminder": {"after_days": 3, "audience": "all_users", "max_sends": 4},
+    "confirmation": {"send_on": "signup", "recipients": ["referrer"]},
+    "promises_reward_before_qualifying_event": true
+  },
+  "disclosure": {
+    "reward_disclosed_on_shared_content": false,
+    "terms_url": "",
+    "terms_cover": ["reward_timing"],
+    "earnings_claims": [{"claim": "top referrer earned 300 USD", "period": "", "verified": false}]
+  }
+}
+]]></code>
+      <note>NPS 22 measured 400 days ago on 40 users; the prompt fires on signup; the reward releases on account creation and the condition is stated nowhere; the referee gets nothing and 20 per referee exceeds paid CAC 15 and 0.5 x 18; self-referral matching on ip only, no hold, an idempotency key of referrer_id alone; K from 30 invites and 6 referrers presented as viral growth; attribution by utm_source in an analytics session; a reminder to all users four times and a confirmation only to the referrer before any qualifying event; no disclosure, no terms, an unverified earnings claim.</note>
+    </example>
+  </output-contract>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>`nps_gate` is a measurement on active users at most 90 days old with a sample size, and the score is at least 30 when the metric is nps.</item>
+      <item>`trigger_event.name` is a value event with its reach recorded, and `lifecycle.announcement.send_on` is the same event.</item>
+      <item>`qualifying_event` is a paid order above `minimum_order_value` or an activation milestone, stated on the landing page and in every email; nothing pays on signup.</item>
+      <item>`reward_cost_per_qualified_referee` equals the two reward amounts added together, and is at or below `blended_paid_cac` and at or below `max_reward_share_of_basis` x `margin_basis_value`.</item>
+      <item>`fraud_guard` matches on all four self-referral signals, holds rewards through the refund or chargeback window, and fulfils on the (referrer_id, referee_id, qualifying_event) tuple.</item>
+      <item>`k_factor` rests on at least 500 invites and 50 referrers; `invites_per_referrer` = invites / active_referrers, `conversion_per_invite` = referee_signups / invites, `k` = their product, and a K below 1 is presented as `cac_multiplier` = 1 / (1 - k).</item>
+      <item>Attribution is a per-user code persisted server-side at referee account creation; `utm_only` is false.</item>
+      <item>One reminder, to zero-referral users only; confirmation to both sides on the qualifying event; terms cover all four topics and every earnings claim is verified for its period.</item>
+    </list>
   </section>
-  <reference path="scripts/validate-growth-referral-programs.py">Validator implementing this schema.</reference>
+
+  <reference path="scripts/validate-growth-referral-programs.py">Validator implementing this schema and the cross-field rules (reward sum and its ceilings against CAC and margin, K arithmetic per templates/k_factor.py, the 1/(1-K) multiplier, announcement on the trigger event).</reference>
 </text>

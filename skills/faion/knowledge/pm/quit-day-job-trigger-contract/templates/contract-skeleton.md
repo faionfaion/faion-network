@@ -1,35 +1,50 @@
 <!--
-purpose: Canonical contract sections (trigger / reversal / evidence / owner / review)
-consumes: builder's MRR + runway + named owner
+purpose: Quit-day-job contract sections — header with version and post_hoc, net MRR trigger with window, runway floor, gates, reversal clause, dated conclusion with evidence links, reviews with readings
+consumes: billing provider MRR report, runway model, customer share and churn figures
 produces: artefact conforming to content/02-output-contract.xml
 depends-on: content/01-core-rules.xml
-token-budget-impact: ~200-400 tokens when loaded as context
+token-budget-impact: ~400-600 tokens when loaded as context
 -->
-# Quit Day Job — Contract
+# Quit Day Job — Contract — <product_name>
 
-## Owner
-<name_role>
+## Header (templates/header.yaml)
+- version: 1.0.0 (bump with a reason for every parameter change; never inside a window)
+- committed_on: <artefact_date>
+- post_hoc: <false when committed before any qualifying month-end>
 
-## Trigger (numeric, dated, named)
-- Kind: threshold | event | schedule
-- Metric: {mrr_usd | runway_months | ...}
-- Threshold: <number>
-- Window: {n consecutive months above / specific date / event}
+| change_log version | date | reason |
+|---|---|---|
+| 1.0.0 | <YYYY-MM-DD> | initial contract |
 
-## Output shape
-{repo path + artefact format that this contract produces when the trigger fires}
+## Trigger (net MRR from the provider report)
+- metric: net_mrr, provider: <stripe_billing | baremetrics | chartmogul | profitwell | other_named_provider>, report_name: <the report>
+- currency: <XXX>, threshold: <n>
+- consecutive_month_ends: <3 or more; a miss restarts the count>
 
-## Conclusion
-{Statement of the action taken when the trigger fires. Specific date or window.}
+## Runway co-condition
+- min_months: <R>
+- savings: <n>, monthly_burn: <n> (burn_includes: self_employment_tax, health_insurance, business_costs, living_costs)
+- computed_on: <YYYY-MM-DD>, months: <savings / monthly_burn>
 
-### Evidence anchors
-- {link to dashboard / runway model / Stripe screenshot}
-- <link>
+## Gates (the trigger does not fire while either is exceeded)
+- max_single_customer_share: <0.xx>
+- max_gross_mrr_churn_monthly: <0.xx>
 
-## Reversal clause
-{Concrete condition that flips the decision back. Numeric + dated.}
+## Reversal clause (numeric, dated, below the trigger)
+- mrr_below: <strictly below the threshold>, consecutive_month_ends: <2 or more>
+- runway_below_months: <n>
 
-## Review cadence
-- Cadence: monthly | quarterly
-- Last run: YYYY-MM-DD
-- Next run: YYYY-MM-DD
+## Conclusion (dated action)
+- statement: <action, date rule, notice, who is informed in what order>
+- action: <resign | reduce_to_part_time>, date_rule: <e.g. effective the first of the month after the third qualifying month-end>
+- notice_period_days: <n>, inform_order: <partner, manager, customers>
+
+| evidence url | kind | covers_month_end |
+|---|---|---|
+| <provider MRR report, dated export or runway model> | <provider_mrr_report | provider_export | runway_model> | <YYYY-MM-DD> |
+
+## Reviews (cadence: monthly | quarterly; last_run_at = latest entry)
+
+| run_at | readings (month_end: net_mrr) | runway_months | top_customer_share | gross_churn_monthly | verdict | window_count |
+|---|---|---|---|---|---|---|
+| <YYYY-MM-DD> | <every month-end since the last review> | <n> | <0.xx> | <0.xx> | <not_fired | window_in_progress | fired | reversal_triggered> | <when in progress> |

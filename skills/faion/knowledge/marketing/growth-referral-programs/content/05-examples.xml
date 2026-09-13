@@ -1,24 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Growth Referral Programs Worked Example" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>End-to-end worked example walking from inputs to a signed-off `spec` artefact, including a forced skip scenario.</summary>
+<text id="05-examples" title="Growth Referral Programs Worked Example" version="1.2.0" est_tokens="2550" depth="recommended">
+  <summary>One complete referral-programme spec for a B2B SaaS exporting tool (NPS 42 on 640 active users, prompt on first_successful_export reached by 57 percent, reward on a first paid order of 50 USD or more, 20 USD credit plus 20 USD discount against paid CAC 95 and first-order margin 126, four-signal self-referral matching with a 30-day hold, K 0.741 on 4,200 invites presented as a 3.86x multiplier, per-user codes persisted at account creation, announcement, 14-day reminder and two-sided confirmation, published terms) with a note per value, plus a "refer a friend" spec that pays on signup and what the validator prints.</summary>
 
-  <section title="Happy path">
-    <example trace="happy-path">
-      <p>A small B2B SaaS commissions a growth-referral-programs spec; growth lead is named owner; review deadline 2026-06-15. The agent gathers inputs (brief + last quarter's metrics), confirms all `Applies If` items hold, applies rules, synthesises a 3-section spec, validates it (exit 0), surfaces ready_for_review, growth lead signs off.</p>
-      <p>Trace through the five-step procedure:</p>
-      <list>
-        <item>Step 1 gather-inputs: preconditions report = all true</item>
-        <item>Step 2 apply-rules: decision-tree leaf -> conclusion ref="output-contract-binding"</item>
-        <item>Step 3 synthesise-output: artefact draft produced</item>
-        <item>Step 4 validate-output: scripts/validate-growth-referral-programs.py --file draft.json -> exit 0</item>
-        <item>Step 5 human-checkpoint: reviewer signs off, artefact lands at output location</item>
-      </list>
+  <section title="Scenario">
+    <p>A B2B SaaS data tool wants a referral programme. Its NPS survey ran 30 days ago on 640 active users and scored 42. Users hit their first real outcome, a successful export, on day 3 on average; 57 percent of sign-ups get there. Paid CAC is 95 USD, the average first order is 180 USD at 70 percent gross margin (126 USD). A 6-week beta of the share link on 850 referrers produced 4,200 invites and 630 referee sign-ups. The team wants to launch with 20 USD on each side and needs to know whether that survives the economics, the fraud guard and the K projection.</p>
+  </section>
+
+  <section title="Resulting spec">
+    <example type="good" title="give 20 get 20">
+      <code lang="json"><![CDATA[
+{
+  "programme_name": "give 20 get 20",
+  "nps_gate": {"metric": "nps", "score": 42, "sample_size": 640, "population": "active_users", "measured_on": "2026-08-14", "age_days": 30},
+  "trigger_event": {"name": "first_successful_export", "reach_share": 0.57, "instrumented": true},
+  "qualifying_event": {"kind": "first_paid_order", "name": "first_paid_order", "minimum_order_value": 50, "stated_on_landing_page": true, "stated_in_every_email": true},
+  "incentive": {
+    "referrer_reward": {"kind": "account_credit", "amount": 20, "currency": "USD"},
+    "referee_reward": {"kind": "discount", "amount": 20, "currency": "USD"},
+    "reward_cost_per_qualified_referee": 40,
+    "blended_paid_cac": 95,
+    "margin_basis": "first_order_gross_margin",
+    "margin_basis_value": 126,
+    "max_reward_share_of_basis": 0.35
+  },
+  "fraud_guard": {
+    "referee_must_be_new_account": true,
+    "one_referral_per_email": true,
+    "one_referral_per_payment_instrument": true,
+    "self_referral_signals": ["payment_instrument", "device_fingerprint", "ip", "normalised_email"],
+    "email_normalisation": ["plus_addressing", "dot_variants"],
+    "reward_hold_days": 30,
+    "reward_hold_covers": "refund_window",
+    "idempotency_key": ["referrer_id", "referee_id", "qualifying_event"]
+  },
+  "k_factor": {
+    "invites": 4200,
+    "active_referrers": 850,
+    "referee_signups": 630,
+    "invites_per_referrer": 4.94,
+    "conversion_per_invite": 0.15,
+    "k": 0.741,
+    "cycle_time_days": 9,
+    "presented_as": "cac_multiplier",
+    "cac_multiplier": 3.86,
+    "netted_of_reward_cost": true
+  },
+  "attribution": {
+    "per_user_code": true,
+    "landing_page_accepts_param": true,
+    "email_accepts_param": true,
+    "capture_methods": ["url_parameter", "first_party_cookie", "code_at_signup"],
+    "persisted_server_side_at": "referee_account_creation",
+    "utm_only": false
+  },
+  "lifecycle": {
+    "announcement": {"send_on": "first_successful_export"},
+    "reminder": {"after_days": 14, "audience": "zero_referrals", "max_sends": 1},
+    "confirmation": {"send_on": "qualifying_event", "recipients": ["referrer", "referee"]},
+    "promises_reward_before_qualifying_event": false
+  },
+  "disclosure": {
+    "reward_disclosed_on_shared_content": true,
+    "terms_url": "https://example.com/referral-terms",
+    "terms_cover": ["qualifying_event", "reward_timing", "exclusions", "fraud_reversal"],
+    "earnings_claims": [{"claim": "this month's top referrer has earned 300 USD", "period": "2026-08", "verified": true}]
+  }
+}
+]]></code>
+      <note>NPS 42 on 640 active users, 30 days old, clears the gate of 30 within 90 days; a score from last year would not (r-nps-gate-30-before-launch). The prompt fires on `first_successful_export`, the first moment the user has something to recommend, and 0.57 is what makes the invites-per-user projection honest (r-trigger-event-at-value-moment). The reward releases on a first paid order of at least 50 USD, the figure the landing page FAQ states, never on account creation (r-reward-on-qualifying-event-not-signup). 20 USD credit plus 20 USD discount is 40 USD per qualified referee: below paid CAC 95 and below 0.35 x 126 = 44.10 of first-order margin, so every successful referral is cheaper than a paid one (r-double-sided-incentive-within-unit-economics). Self-referral matching covers all four signals with plus-addressing and dot variants collapsed, the reward is held 30 days for the refund window, and fulfilment is keyed on the (referrer_id, referee_id, qualifying_event) tuple so a queue retry cannot pay twice (r-fraud-guard-self-referral-and-idempotent-rewards). K uses the beta's 4,200 invites and 850 referrers, above the 500 and 50 floors: 4200 / 850 = 4.94 invites per referrer, 630 / 4200 = 0.15 conversion, K = 0.741, the same numbers `templates/k_factor.py` returns; because K is below 1 it is presented as a 1 / (1 - 0.741) = 3.86 multiplier on other acquisition, with a 9-day median cycle and reward cost netted (r-k-factor-computed-on-500-plus-invites). Every user gets a unique code; the link is captured by URL parameter, first-party cookie or a code typed at sign-up and stored on the referee account at creation, so a referee who opens on a phone and signs up on a laptop is still attributed (r-referral-attribution-server-side). The announcement goes out on the trigger event, one reminder after 14 days only to users with zero referrals, and a confirmation to both sides when the order qualifies; no message promises the reward earlier (r-lifecycle-sequence-trigger-reminder-confirmation). Shared content discloses the reward, the terms page covers all four topics, and the "300 USD" claim is verified for August 2026 (r-incentive-disclosure-and-published-terms).</note>
     </example>
   </section>
 
-  <section title="Forced skip">
-    <example trace="skip-path">
-      <p>Same team but the input brief omits the named owner field. Step 1 preconditions report flags `named-owner` rule as false. Agent returns an action=skip envelope per rule `skip-this-methodology` and yields control to the parent workflow.</p>
+  <section title="Rejected spec">
+    <example type="bad" title="refer a friend, paid on signup">
+      <code lang="json"><![CDATA[
+{
+  "programme_name": "refer a friend",
+  "nps_gate": {"metric": "nps", "score": 22, "sample_size": 40, "population": "active_users", "measured_on": "2025-06-01", "age_days": 400},
+  "trigger_event": {"name": "signup", "reach_share": 1, "instrumented": true},
+  "qualifying_event": {"kind": "activation_milestone", "name": "account_created", "stated_on_landing_page": false, "stated_in_every_email": false},
+  "incentive": {
+    "referrer_reward": {"kind": "account_credit", "amount": 20, "currency": "USD"},
+    "referee_reward": {"kind": "discount", "amount": 0, "currency": "USD"},
+    "reward_cost_per_qualified_referee": 20,
+    "blended_paid_cac": 15,
+    "margin_basis": "first_order_gross_margin",
+    "margin_basis_value": 18,
+    "max_reward_share_of_basis": 0.5
+  },
+  "fraud_guard": {
+    "referee_must_be_new_account": false,
+    "one_referral_per_email": true,
+    "one_referral_per_payment_instrument": false,
+    "self_referral_signals": ["ip"],
+    "email_normalisation": [],
+    "reward_hold_days": 0,
+    "reward_hold_covers": "none",
+    "idempotency_key": ["referrer_id"]
+  },
+  "k_factor": {
+    "invites": 30,
+    "active_referrers": 6,
+    "referee_signups": 4,
+    "invites_per_referrer": 5,
+    "conversion_per_invite": 0.133,
+    "k": 0.9,
+    "cycle_time_days": 7,
+    "presented_as": "viral_growth",
+    "cac_multiplier": 1,
+    "netted_of_reward_cost": false
+  },
+  "attribution": {
+    "per_user_code": false,
+    "landing_page_accepts_param": true,
+    "email_accepts_param": false,
+    "capture_methods": ["utm_source"],
+    "persisted_server_side_at": "analytics_session",
+    "utm_only": true
+  },
+  "lifecycle": {
+    "announcement": {"send_on": "signup"},
+    "reminder": {"after_days": 3, "audience": "all_users", "max_sends": 4},
+    "confirmation": {"send_on": "signup", "recipients": ["referrer"]},
+    "promises_reward_before_qualifying_event": true
+  },
+  "disclosure": {
+    "reward_disclosed_on_shared_content": false,
+    "terms_url": "",
+    "terms_cover": ["reward_timing"],
+    "earnings_claims": [{"claim": "top referrer earned 300 USD", "period": "", "verified": false}]
+  }
+}
+]]></code>
+      <note>What the validator prints: `nps_gate.score` 22 is below 30 and `age_days` 400 is above 90 (r-nps-gate-30-before-launch); `trigger_event.name` signup is in the forbidden list (r-trigger-event-at-value-moment); `qualifying_event.name` account_created is forbidden and the condition is stated nowhere (r-reward-on-qualifying-event-not-signup); `referee_reward.amount` 0 is not above 0 (r-double-sided-incentive-within-unit-economics); `self_referral_signals` lacks payment_instrument, device_fingerprint and normalised_email, `email_normalisation` is empty, `reward_hold_days` 0, `reward_hold_covers` none, `idempotency_key` has 1 item where 3 are required (r-fraud-guard-self-referral-and-idempotent-rewards); `invites` 30 is below 500, `active_referrers` 6 below 50, `presented_as` must be cac_multiplier for K below 1, `netted_of_reward_cost` false (r-k-factor-computed-on-500-plus-invites); `per_user_code` false, `capture_methods` utm_source not in the enum, `persisted_server_side_at` analytics_session, `utm_only` true (r-referral-attribution-server-side); `reminder.audience` all_users, `max_sends` 4, `confirmation.send_on` signup with only the referrer, `promises_reward_before_qualifying_event` true (r-lifecycle-sequence-trigger-reminder-confirmation); disclosure false, empty `terms_url`, `terms_cover` with 1 of 4 topics, an earnings claim with an empty period and `verified` false (r-incentive-disclosure-and-published-terms). Once the schema violations are fixed the cross-field checks add: 20 per referee exceeds paid CAC 15 and 0.5 x 18 = 9, K 0.9 is not 5 x 0.133, and 1 is not 1 / (1 - 0.9).</note>
     </example>
   </section>
 </text>

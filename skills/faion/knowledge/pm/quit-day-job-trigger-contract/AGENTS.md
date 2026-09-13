@@ -15,26 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- Solo SaaS builder running a $0→$4k MRR bootstrap journey.
-- Solo SaaS builder owns the artefact (or escalates ownership to a named role).
-- Team uses a version-controlled or wiki-style space where the artefact lives.
-- The trigger event is observable (alert, ticket, dashboard threshold, calendar slot).
+- A solo SaaS builder on a bootstrap toward roughly 4,000 USD MRR while employed, with a billing provider (Stripe Billing, Baremetrics, ChartMogul or equivalent) producing a net MRR report.
+- A runway model exists with liquid savings and a monthly burn that includes self-employment tax, health insurance and business costs.
+- Customer-level MRR and monthly gross MRR churn can be read from the provider, so the concentration and churn gates can be checked at each month-end.
+- No month-end reading has yet reached the intended threshold, or the builder accepts a post_hoc label and a void first window.
+- The contract can live in version control with a monthly or quarterly review the builder will actually run.
 
 ## Skip If (ANY kills it)
 
-- One-shot work with no recurrence — write a single decision doc, not a versioned artefact.
-- Builder has &lt; 3 trigger checks per year — review cadence costs more than it returns.
-- Regulated context that mandates a different shape — use the regulator's template.
-- No named owner — defer until ownership is resolved; an anonymous artefact rots.
+- No provider MRR report or no runway model: there is nothing to trigger on; instrument billing and build the runway model first.
+- The builder wants the trigger on gross cash, a single good month, or a feeling of readiness rather than net MRR over consecutive month-ends.
+- The builder will not write a reversal clause below the trigger or a runway floor; the contract would flip-flop on noise.
+- Fewer than 3 reviews a year are realistic; without readings at a cadence the contract becomes folklore.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Access to the repository / wiki hosting the contract | repo path | platform |
-| Named owner accountable for refresh + outcome review | identity | builder |
-| Runway model + MRR dashboard | artefacts | builder |
-| Defined trigger event (numeric threshold + date window) | spec | builder |
+| Provider MRR report | net MRR at each month-end from Stripe Billing, Baremetrics, ChartMogul or equivalent, with its URL or dated export | billing provider |
+| Runway model | liquid savings, monthly burn broken into living costs, self-employment tax, health insurance and business costs, with the date computed | builder's runway model file (side-project-financial-runway) |
+| Customer share and churn | top customer's share of MRR and gross MRR churn per month-end | billing provider |
+| Employment terms | notice period and the people to inform | employment contract; builder |
+| Version-controlled store | repository path where the contract and its change log live | builder's repo or wiki |
+| `templates/contract-skeleton.md.j2`, `templates/header.yaml` | contract sections; frontmatter with version, commit date and post_hoc | this methodology |
 
 ## Assumes Loaded
 
@@ -49,10 +52,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 9 rules: net MRR from provider report, 3+ consecutive month-ends, runway co-condition, reversal hysteresis, concentration and churn gates, pre-commit before threshold, provider-export evidence, dated conclusion, reviews with readings | ~1950 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 for the contract artefact + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 7 known failure modes with detector + repair | ~900 |
-| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~500 |
+| `content/01-core-rules.xml` | essential | 9 rules: net MRR from provider report, 3+ consecutive month-ends, runway co-condition, reversal hysteresis, concentration and churn gates, pre-commit before threshold, provider-export evidence, dated conclusion, reviews with readings | ~2200 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the contract: header with version, commit date, post_hoc and change log, net MRR trigger from a named provider with threshold and 3+ month-end window, runway co-condition with burn components and months, concentration and churn gates, reversal below the trigger with a 2+ month window, dated conclusion with evidence links per month-end, reviews with readings, runway, gate values and verdict; valid and invalid contracts; 8 forbidden patterns | 4450 |
+| `content/03-failure-modes.xml` | essential | 7 known failure modes with detector + repair | ~1300 |
+| `content/04-procedure.xml` | essential | 8 steps: pin the metric to the provider report, set the threshold and window, compute the runway floor, set the gates, write the reversal clause, write the dated conclusion and evidence links, commit 1.0.0 before the threshold and validate, record readings and a verdict at every review | 1650 |
+| `content/05-examples.xml` | recommended | Complete Stripe contract (4,000 USD for 3 month-ends, 12-month runway floor, gates at 20 and 5 percent, reversal at 3,000, committed in February, fired at the September review on 4,150 / 4,300 / 4,420) with a note per value, plus a post-hoc gross-cash contract and what the validator prints | 1900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | ~950 |
 
 ## Task Routing
 

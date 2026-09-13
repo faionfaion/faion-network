@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Quit Day Job Trigger Contract Procedure" version="1.0.0" est_tokens="1650" depth="essential">
+  <summary>Eight steps from a bootstrap with a billing provider to a live contract and its reviews: pin net MRR to the provider report, set the threshold and the consecutive month-end window, compute the runway floor from a burn that includes tax and insurance, set the concentration and churn gates, write the reversal clause below the trigger, write the dated conclusion with evidence links, commit version 1.0.0 before any qualifying month-end and validate, then record readings and a verdict at every review.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pin-the-metric-to-the-provider-report">
+      <input>The billing provider (Stripe Billing, Baremetrics, ChartMogul or equivalent) and its MRR report.</input>
+      <action>Record `trigger.metric: net_mrr`, `provider`, `report_name` and `currency`. The report's net MRR (recurring only, annual plans normalised, discounts and refunds deducted, one-time fees and trials excluded) is the only reading the contract accepts.</action>
+      <output>`trigger.metric`, `trigger.provider`, `trigger.report_name`, `trigger.currency`.</output>
+      <decision-gate>No provider MRR report, no runway model, or no version-controlled place for the contract: skip per 06-decision-tree.xml; a hand-kept spreadsheet is not the metric (r-mrr-definition-pinned).</decision-gate>
+    </step>
+
+    <step n="2" name="set-the-threshold-and-the-window">
+      <input>The MRR the builder needs to replace the salary after fees; the `templates/contract-skeleton.md.j2` skeleton.</input>
+      <action>Set `trigger.threshold` and `trigger.consecutive_month_ends` (at least 3). Readings are month-end snapshots; a miss restarts the count.</action>
+      <output>`trigger.threshold`, `trigger.consecutive_month_ends`.</output>
+      <decision-gate>A window below 3 month-ends fires on a launch spike; not accepted (r-consecutive-months-window).</decision-gate>
+    </step>
+
+    <step n="3" name="compute-the-runway-floor">
+      <input>The runway model: liquid savings, monthly personal burn including self-employment tax, health insurance and business costs.</input>
+      <action>Record `runway_co_condition` with `min_months` R, `savings`, `monthly_burn`, `burn_includes`, `computed_on` and `months` = savings / burn.</action>
+      <output>`runway_co_condition`.</output>
+      <decision-gate>A burn that omits tax, insurance or business costs understates the floor; the co-condition is rejected (r-runway-co-condition).</decision-gate>
+    </step>
+
+    <step n="4" name="set-the-concentration-and-churn-gates">
+      <input>Customer-level MRR and monthly gross MRR churn from the provider.</input>
+      <action>Record `gates.max_single_customer_share` and `gates.max_gross_mrr_churn_monthly` as fractions (a common shape is 0.20 and 0.05). The trigger does not fire at any month-end where a gate is exceeded.</action>
+      <output>`gates`.</output>
+      <decision-gate>Gates left at 1 are no gates; one customer can then be the MRR (r-concentration-and-churn-gate).</decision-gate>
+    </step>
+
+    <step n="5" name="write-the-reversal-clause">
+      <input>The trigger threshold and the runway floor.</input>
+      <action>Record `reversal.mrr_below` strictly lower than `trigger.threshold`, `reversal.consecutive_month_ends` at least 2, and `reversal.runway_below_months`.</action>
+      <output>`reversal`.</output>
+      <decision-gate>Reversal at or above the trigger, or a one-month window, flip-flops on noise; rejected (r-reversal-hysteresis).</decision-gate>
+    </step>
+
+    <step n="6" name="write-the-dated-conclusion-and-evidence-links">
+      <input>The employer's notice period; the people to inform; the provider report URL and the runway model path.</input>
+      <action>Write `conclusion.statement`, `action`, `date_rule` ("effective the first of the month after the third qualifying month-end"), `notice_period_days`, `inform_order[]`, and `evidence_links[]` each with `url`, `kind` (provider_mrr_report, provider_export, runway_model) and `covers_month_end`.</action>
+      <output>`conclusion`.</output>
+      <decision-gate>"Quit when ready", a link that is not the provider report or runway model, or a link with no month-end: rejected (r-conclusion-is-dated-action, r-evidence-is-provider-export).</decision-gate>
+    </step>
+
+    <step n="7" name="commit-version-1-0-0-before-the-threshold-and-validate">
+      <input>The filled contract; the repository; `templates/header.yaml`.</input>
+      <action>Set `header.version: 1.0.0`, `committed_on` today, `post_hoc` false only if no month-end reading has yet reached the threshold, and the first `change_log` entry. Run `scripts/validate-quit-day-job-trigger-contract.py --file` and commit.</action>
+      <output>Committed, validated contract.</output>
+      <decision-gate>A contract first committed after a qualifying reading carries `post_hoc: true` and its first window is void; a parameter change while a window is in progress is forbidden (r-precommit-before-threshold).</decision-gate>
+    </step>
+
+    <step n="8" name="record-readings-and-a-verdict-at-every-review">
+      <input>The provider's month-end readings since the last review; the runway model; customer share and churn.</input>
+      <action>At each `review.cadence` append an entry with `run_at`, `readings[]` (month_end, net_mrr), `runway_months`, `top_customer_share`, `gross_churn_monthly` and a `verdict` (not_fired, window_in_progress with `window_count`, fired, reversal_triggered); set `review.last_run_at` to that entry. Any parameter change goes into `change_log` with a version bump and a reason, never inside a window. Re-run the validator.</action>
+      <output>`review` with the new entry; a re-validated contract.</output>
+      <decision-gate>An entry without readings is not a review and does not move `last_run_at`; a `fired` verdict needs N consecutive qualifying month-ends with runway and gates satisfied (r-quarterly-review-records-readings).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Contract validates via `scripts/validate-quit-day-job-trigger-contract.py` with no violation, including the reversal hysteresis, runway arithmetic, post_hoc rule and verdict checks.</item>
+      <item>Version 1.0.0 is committed before the first qualifying month-end, or the header says post_hoc.</item>
+      <item>Every review since commit has an entry with readings, runway, gate values and a verdict.</item>
+    </list>
+  </section>
+</text>

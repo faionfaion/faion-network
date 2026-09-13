@@ -4,51 +4,525 @@
     "consumes": "filled retainer-pricing-methodology artefact JSON",
     "produces": "validation result via validate-retainer-pricing-methodology.py",
     "depends_on": "content/02-output-contract.xml",
-    "token_budget_impact": "~250 tokens when loaded as context"
+    "token_budget_impact": "~1200 tokens when loaded as context"
   },
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/retainer-pricing-methodology.json",
+  "title": "Retainer Pricing Methodology spec",
   "type": "object",
   "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
+    "client_name",
+    "start_date",
+    "shape",
+    "pricing",
+    "scope",
+    "term",
+    "billing",
+    "hourly_phase_out",
+    "capacity",
+    "outcome_review"
   ],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "money": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
+  },
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
+    "__faion_header__": {
+      "type": [
+        "object",
+        "string"
+      ]
     },
-    "owner": {
+    "client_name": {
       "type": "string",
-      "minLength": 3
+      "minLength": 2
     },
-    "decision": {
-      "type": "string",
-      "minLength": 3
+    "start_date": {
+      "$ref": "#/definitions/date"
     },
-    "rationale": {
-      "type": "string",
-      "minLength": 30
-    },
-    "inputs_used": {
-      "type": "array",
-      "items": {
-        "type": "string"
+    "shape": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "block_of_hours",
+            "outcome_based",
+            "availability",
+            "hybrid"
+          ]
+        },
+        "block_of_hours": {
+          "type": "object",
+          "required": [
+            "prepaid_hours_per_month",
+            "rollover",
+            "overage_hourly_rate"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "prepaid_hours_per_month": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "rollover": {
+              "type": "string",
+              "enum": [
+                "none",
+                "one_period",
+                "capped"
+              ]
+            },
+            "rollover_cap_hours": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "overage_hourly_rate": {
+              "$ref": "#/definitions/money"
+            }
+          },
+          "if": {
+            "properties": {
+              "rollover": {
+                "const": "capped"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "rollover_cap_hours"
+            ]
+          }
+        },
+        "outcome_based": {
+          "type": "object",
+          "required": [
+            "deliverables_per_period"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "deliverables_per_period": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 5
+              }
+            }
+          }
+        },
+        "availability": {
+          "type": "object",
+          "required": [
+            "response_time_business_hours",
+            "max_monthly_load_hours"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "response_time_business_hours": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "max_monthly_load_hours": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "hybrid": {
+          "type": "object",
+          "required": [
+            "invoicing_shape",
+            "scope_dispute_clause"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "invoicing_shape": {
+              "type": "string",
+              "enum": [
+                "block_of_hours",
+                "outcome_based",
+                "availability"
+              ]
+            },
+            "scope_dispute_clause": {
+              "type": "string",
+              "minLength": 20
+            }
+          }
+        }
       },
-      "minItems": 1
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "block_of_hours"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "block_of_hours"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "outcome_based"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "outcome_based"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "availability"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "availability"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "hybrid"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "hybrid"
+            ]
+          }
+        }
+      ]
     },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    "pricing": {
+      "type": "object",
+      "required": [
+        "expected_monthly_hours",
+        "hourly_rate",
+        "currency",
+        "monthly_price",
+        "multiple",
+        "concession"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expected_monthly_hours": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "hourly_rate": {
+          "$ref": "#/definitions/money"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "monthly_price": {
+          "$ref": "#/definitions/money"
+        },
+        "multiple": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "concession": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "twelve_month_minimum_term",
+                "full_term_prepaid"
+              ]
+            }
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "multiple": {
+            "exclusiveMaximum": 1.3
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "concession": {
+            "type": "string"
+          }
+        }
+      }
     },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+    "scope": {
+      "type": "object",
+      "required": [
+        "inclusions",
+        "exclusions",
+        "turnaround",
+        "included_meetings_per_month"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "inclusions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 5
+          }
+        },
+        "exclusions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 5
+          }
+        },
+        "turnaround": {
+          "type": "object",
+          "required": [
+            "value",
+            "unit"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "value": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "unit": {
+              "type": "string",
+              "enum": [
+                "business_hours",
+                "business_days"
+              ]
+            }
+          }
+        },
+        "included_meetings_per_month": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "term": {
+      "type": "object",
+      "required": [
+        "minimum_months",
+        "notice_days",
+        "price_review_date"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "minimum_months": {
+          "type": "integer",
+          "minimum": 3
+        },
+        "notice_days": {
+          "type": "integer",
+          "minimum": 30
+        },
+        "price_review_date": {
+          "$ref": "#/definitions/date"
+        }
+      }
+    },
+    "billing": {
+      "type": "object",
+      "required": [
+        "timing",
+        "invoice_days_before_period_start",
+        "payment_due",
+        "payment_terms_days"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "timing": {
+          "const": "in_advance"
+        },
+        "invoice_days_before_period_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "payment_due": {
+          "const": "before_period_start"
+        },
+        "payment_terms_days": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "hourly_phase_out": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "avg_billed_hours_last_3_months",
+            "avg_monthly_spend_last_3_months",
+            "cutover_date",
+            "parallel_billing_periods"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "avg_billed_hours_last_3_months": {
+              "$ref": "#/definitions/hours"
+            },
+            "avg_monthly_spend_last_3_months": {
+              "$ref": "#/definitions/money"
+            },
+            "cutover_date": {
+              "$ref": "#/definitions/date"
+            },
+            "parallel_billing_periods": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      ]
+    },
+    "capacity": {
+      "type": "object",
+      "required": [
+        "available_billable_hours_per_month",
+        "committed_hours_other_retainers",
+        "committed_hours_this_retainer",
+        "total_after_signing"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "available_billable_hours_per_month": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "committed_hours_other_retainers": {
+          "$ref": "#/definitions/hours"
+        },
+        "committed_hours_this_retainer": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "total_after_signing": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "outcome_review": {
+      "type": "object",
+      "required": [
+        "scheduled_date",
+        "findings"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scheduled_date": {
+          "$ref": "#/definitions/date"
+        },
+        "findings": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "held_on",
+                "still_active_without_renegotiation",
+                "periods",
+                "effective_hourly_rate",
+                "action"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "held_on": {
+                  "$ref": "#/definitions/date"
+                },
+                "still_active_without_renegotiation": {
+                  "type": "boolean"
+                },
+                "periods": {
+                  "type": "array",
+                  "minItems": 2,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "period",
+                      "paid_hours",
+                      "actual_hours"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "period": {
+                        "type": "string",
+                        "pattern": "^[0-9]{4}-[0-9]{2}$"
+                      },
+                      "paid_hours": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "actual_hours": {
+                        "$ref": "#/definitions/hours"
+                      }
+                    }
+                  }
+                },
+                "effective_hourly_rate": {
+                  "$ref": "#/definitions/money"
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "re_scope",
+                    "rate_increase",
+                    "address_usage"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   }
 }

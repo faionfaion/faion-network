@@ -1,40 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Internal Link Audit Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Internal Link Audit end-to-end from inputs to a validated `report` artefact + human signoff.</summary>
+<text id="04-procedure" title="Internal Link Audit Procedure" version="1.2.0" est_tokens="1750" depth="essential">
+  <summary>Eight steps from crawl to a validated audit report: run and reconcile a rendered crawl, split incoming counts by link position and flag hubs, decide every orphan, build the pillar-cluster matrix, tabulate anchor text, list hygiene findings, write the fully specified rewire plan, capture the Search Console baseline and the re-measurement date, then validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="run-and-reconcile-the-crawl">
+      <input>Crawler with JavaScript rendering (Screaming Frog, Sitebulb or in-house); the XML sitemap; the CMS published-page count; the audit period.</input>
+      <action>Crawl the full host inside the period; keep only HTTP 200, non-noindex, self-canonical pages as `crawl.indexable_pages`. Record `crawler`, `crawl_date`, `javascript_rendered: true`, `sitemap_urls`, `cms_published_pages`; for every gap above 5 percent add a `discrepancies[]` entry with `gap_pct` and an `explanation` (robots_blocked, paginated, js_rendered, sitemap_stale, noindexed_in_cms).</action>
+      <output>`site`, `audit_period`, `crawl`.</output>
+      <decision-gate>Fewer than 30 indexable pages or no declared cluster: skip per 06-decision-tree.xml; a gap above 5 percent without an explanation: rescope and recrawl before any analysis (r-crawl-scope-reconciled).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="split-incoming-counts-by-link-position">
+      <input>The crawler's inlinks export with link position (content vs navigation, footer, sidebar, breadcrumb).</input>
+      <action>For every indexable page count unique linking pages whose link sits in the main content as `contextual_incoming` and the rest as `boilerplate_incoming`; record `incoming_counts.basis: contextual`, at least the top 20 and every candidate rewire target in `pages[]`, and pages above the hub `threshold` in `over_linked_hubs[]`.</action>
+      <output>`incoming_counts`.</output>
+      <decision-gate>Only a total inlinks count is available: export link position first; orphans and hubs are never computed on the total (r-incoming-count-excludes-boilerplate).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `report` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="decide-every-orphan">
+      <input>Indexable pages with zero contextual incoming links, plus URLs known only from the sitemap or analytics.</input>
+      <action>List each in `orphans[]` with `found_via` and exactly one `decision`: rewire (with `source_url` and `anchor_text`, mirrored as a `rewire_plan` item), redirect (with `redirect_target`), or deindex.</action>
+      <output>`orphans[]`.</output>
+      <decision-gate>An orphan with no decision or "leave as is" is not accepted (r-orphan-gets-a-decision).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-internal-link-audit.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="build-the-pillar-cluster-matrix">
+      <input>The declared topic clusters (pillar URL plus 5 or more cluster URLs); the contextual link graph.</input>
+      <action>For each cluster record `cluster_pages[]` with `links_to_pillar` and `pillar_links_to_it`, `cluster_to_pillar_links` as the count of true, and `structurally_incomplete: true` when that count is below 5. Turn every false edge into a `rewire_plan` add item.</action>
+      <output>`clusters[]`.</output>
+      <decision-gate>A cluster that exists in the content calendar but not in the graph is reported as incomplete, never silently passed (r-pillar-cluster-reciprocity).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="tabulate-anchor-text">
+      <input>Anchor text per inlink for every rewire target and every top-20 page; image links with their alt text.</input>
+      <action>Record `anchor_text[]` per target with `total_links` and `anchors[]` (`anchor`, `count`, `share` = count / total_links, `generic` true for click here, read more, this article, raw URLs, empty alt). Draft rewire anchors that describe the target and vary in wording across new links.</action>
+      <output>`anchor_text[]`.</output>
+      <decision-gate>A generic anchor not flagged, or one identical anchor on every new link to a target: fix before the plan is issued (r-anchor-text-descriptive).</decision-gate>
     </step>
 
+    <step n="6" name="list-hygiene-findings">
+      <input>The crawler's response codes, canonical and nofollow reports.</input>
+      <action>Record every internal link into a 3xx, 4xx, 5xx, noindex, foreign-canonical or nofollow target in `hygiene_findings[]` with `source_url`, `current_target`, `final_url`, `issue`. Use only final self-canonical URLs as rewire targets.</action>
+      <output>`hygiene_findings[]`.</output>
+      <decision-gate>A rewire item pointing at a `current_target` from this list is a defect (r-link-targets-final-url).</decision-gate>
+    </step>
+
+    <step n="7" name="write-the-rewire-plan">
+      <input>Orphan decisions, false matrix edges, generic anchors to replace, hygiene findings to fix; the editor who will execute.</input>
+      <action>Write `rewire_plan[]` in `templates/internal-link-audit.report.md.j2`: each item with `source_url`, `target_url`, exact `anchor_text`, `placement` (the paragraph or section), `action` (add, change_anchor, remove, redirect), a named `owner` and `due_date`. Never target a page in `over_linked_hubs`.</action>
+      <output>`rewire_plan[]`.</output>
+      <decision-gate>"Add more links to X" or "strengthen the cluster" is rejected; every item must be pasteable into a CMS task (r-rewire-item-fully-specified).</decision-gate>
+    </step>
+
+    <step n="8" name="capture-the-search-console-baseline-and-validate">
+      <input>Google Search Console Performance report for the 28 days before the period end; the last rewire `due_date`.</input>
+      <action>For every rewire target record `gsc_baseline[]` (`clicks`, `impressions`, `average_position`, `contextual_incoming`, `window_days: 28`). Set `remeasurement.date` at least 56 days after the last due date with `metrics` clicks, impressions, average_position. Run `scripts/validate-internal-link-audit.py --file` on the report.</action>
+      <output>Validated report.</output>
+      <decision-gate>No rewire item ships before its target's baseline is captured; a re-measurement earlier than 8 weeks is not accepted (r-pre-post-search-console-baseline).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Report validates via `scripts/validate-internal-link-audit.py` with no violation, including reconciliation, matrix-to-plan mapping, hub and redirect exclusions and baseline coverage.</item>
+      <item>Every orphan has a decision, every false cluster edge and every rewire orphan has a plan item, and every plan item names a person and a date.</item>
+      <item>The re-measurement is in the calendar with the same three Search Console metrics as the baseline.</item>
+    </list>
   </section>
 </text>

@@ -4,51 +4,660 @@
     "consumes": "filled agency-risk-register-template artefact JSON",
     "produces": "validation result via validate-agency-risk-register-template.py",
     "depends_on": "content/02-output-contract.xml",
-    "token_budget_impact": "~250 tokens when loaded as context"
+    "token_budget_impact": "~1500 tokens when loaded as context"
   },
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/agency-risk-register-template.json",
+  "title": "Agency risk register (Monday refresh)",
   "type": "object",
   "required": [
-    "artefact_id",
-    "owner",
-    "decision",
-    "rationale",
-    "inputs_used",
-    "version",
-    "last_reviewed"
+    "agency",
+    "refresh",
+    "concentration",
+    "rows",
+    "closed"
   ],
+  "additionalProperties": false,
+  "definitions": {
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "share": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "person": {
+      "type": "string",
+      "minLength": 3,
+      "not": {
+        "enum": [
+          "team",
+          "ops",
+          "everyone",
+          "tbd",
+          "the team",
+          "management"
+        ]
+      }
+    },
+    "risk_class": {
+      "type": "string",
+      "enum": [
+        "revenue_concentration",
+        "key_person",
+        "fx_currency",
+        "contractor_classification",
+        "pipeline_thinness",
+        "regulatory"
+      ]
+    },
+    "currency_shares": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Z]{3}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/share"
+      }
+    }
+  },
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
+    "__faion_header__": {
+      "type": [
+        "object",
+        "string"
+      ]
     },
-    "owner": {
-      "type": "string",
-      "minLength": 3
+    "agency": {
+      "type": "object",
+      "required": [
+        "name",
+        "headcount"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "headcount": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 25
+        }
+      }
     },
-    "decision": {
-      "type": "string",
-      "minLength": 3
+    "refresh": {
+      "type": "object",
+      "required": [
+        "date",
+        "minutes",
+        "consecutive_overruns",
+        "split_or_prune_required",
+        "action_note"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "$ref": "#/definitions/date"
+        },
+        "minutes": {
+          "type": "object",
+          "required": [
+            "scores_update",
+            "top5_walk",
+            "action_note",
+            "total"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "scores_update": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "top5_walk": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "action_note": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "consecutive_overruns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "split_or_prune_required": {
+          "type": "boolean"
+        },
+        "action_note": {
+          "type": "string",
+          "minLength": 20
+        }
+      },
+      "if": {
+        "properties": {
+          "consecutive_overruns": {
+            "minimum": 2
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "split_or_prune_required": {
+            "const": true
+          }
+        }
+      }
     },
-    "rationale": {
-      "type": "string",
-      "minLength": 30
+    "concentration": {
+      "type": "object",
+      "required": [
+        "source",
+        "trailing_days",
+        "recomputed_on",
+        "clients"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "const": "billing_export"
+        },
+        "trailing_days": {
+          "const": 90
+        },
+        "recomputed_on": {
+          "$ref": "#/definitions/date"
+        },
+        "clients": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "share"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 2
+              },
+              "share": {
+                "$ref": "#/definitions/share"
+              }
+            }
+          }
+        }
+      }
     },
-    "inputs_used": {
+    "rows": {
+      "type": "array",
+      "minItems": 6,
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "class": {
+                "const": "revenue_concentration"
+              }
+            }
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "class": {
+                "const": "key_person"
+              }
+            }
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "class": {
+                "const": "fx_currency"
+              }
+            }
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "class": {
+                "const": "contractor_classification"
+              }
+            }
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "class": {
+                "const": "pipeline_thinness"
+              }
+            }
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "class": {
+                "const": "regulatory"
+              }
+            }
+          }
+        }
+      ],
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "class",
+          "description",
+          "likelihood",
+          "impact",
+          "score",
+          "owner",
+          "trigger",
+          "details",
+          "response"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R-[0-9]{2,}$"
+          },
+          "class": {
+            "$ref": "#/definitions/risk_class"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 15
+          },
+          "likelihood": {
+            "$ref": "#/definitions/score"
+          },
+          "impact": {
+            "$ref": "#/definitions/score"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25
+          },
+          "owner": {
+            "$ref": "#/definitions/person"
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 25
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "client": {
+                "type": "string",
+                "minLength": 2
+              },
+              "share": {
+                "$ref": "#/definitions/share"
+              },
+              "item": {
+                "type": "string",
+                "minLength": 5
+              },
+              "holder": {
+                "$ref": "#/definitions/person"
+              },
+              "remediation_owner": {
+                "$ref": "#/definitions/person"
+              },
+              "deadline": {
+                "$ref": "#/definitions/date"
+              },
+              "revenue_share_by_currency": {
+                "$ref": "#/definitions/currency_shares"
+              },
+              "cost_share_by_currency": {
+                "$ref": "#/definitions/currency_shares"
+              },
+              "contractors": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "jurisdiction",
+                    "test",
+                    "outcome"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 2
+                    },
+                    "jurisdiction": {
+                      "type": "string",
+                      "minLength": 2
+                    },
+                    "test": {
+                      "type": "string",
+                      "minLength": 5
+                    },
+                    "outcome": {
+                      "type": "string",
+                      "enum": [
+                        "contractor",
+                        "employee_risk",
+                        "unresolved"
+                      ]
+                    },
+                    "fix_due": {
+                      "$ref": "#/definitions/date"
+                    }
+                  },
+                  "if": {
+                    "properties": {
+                      "outcome": {
+                        "enum": [
+                          "employee_risk",
+                          "unresolved"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "fix_due"
+                    ]
+                  }
+                }
+              },
+              "weighted_pipeline": {
+                "type": "number",
+                "minimum": 0
+              },
+              "monthly_cost_base": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "months_of_coverage": {
+                "type": "number",
+                "minimum": 0
+              },
+              "trigger_below_months": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "regulation": {
+                "type": "string",
+                "minLength": 3
+              }
+            }
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "mitigation",
+                      "acceptance"
+                    ]
+                  },
+                  "action": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "owner": {
+                    "$ref": "#/definitions/person"
+                  },
+                  "due_date": {
+                    "$ref": "#/definitions/date"
+                  },
+                  "signed_by": {
+                    "$ref": "#/definitions/person"
+                  },
+                  "signed_on": {
+                    "$ref": "#/definitions/date"
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "const": "mitigation"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "action",
+                        "owner",
+                        "due_date"
+                      ]
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "kind": {
+                          "const": "acceptance"
+                        }
+                      }
+                    },
+                    "then": {
+                      "required": [
+                        "signed_by",
+                        "signed_on"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "class": {
+                  "const": "revenue_concentration"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "required": [
+                    "client",
+                    "share"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "class": {
+                  "const": "key_person"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "required": [
+                    "item",
+                    "holder",
+                    "remediation_owner",
+                    "deadline"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "class": {
+                  "const": "fx_currency"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "required": [
+                    "revenue_share_by_currency",
+                    "cost_share_by_currency"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "class": {
+                  "const": "contractor_classification"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "required": [
+                    "contractors"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "class": {
+                  "const": "pipeline_thinness"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "required": [
+                    "weighted_pipeline",
+                    "monthly_cost_base",
+                    "months_of_coverage",
+                    "trigger_below_months"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "class": {
+                  "const": "regulatory"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "details": {
+                  "required": [
+                    "regulation"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "score": {
+                  "minimum": 15
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "response": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "closed": {
       "type": "array",
       "items": {
-        "type": "string"
-      },
-      "minItems": 1
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+        "type": "object",
+        "required": [
+          "id",
+          "class",
+          "description",
+          "closed_on",
+          "lesson"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R-[0-9]{2,}$"
+          },
+          "class": {
+            "$ref": "#/definitions/risk_class"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 15
+          },
+          "closed_on": {
+            "$ref": "#/definitions/date"
+          },
+          "lesson": {
+            "type": "string",
+            "minLength": 15
+          }
+        }
+      }
     }
   }
 }

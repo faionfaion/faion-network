@@ -15,25 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The producing agent has read access to the inputs named in Prerequisites.
-- The downstream consumer expects an artefact whose shape matches `produces=report`.
-- A named human reviewer is available for signoff before any binding action.
-- The task has more than a one-shot scope — output will be re-read or extended later.
+- The site has at least 30 indexable content pages and at least one declared topic cluster (a pillar URL plus 5 or more cluster URLs).
+- A crawler with JavaScript rendering and link-position classification (Screaming Frog, Sitebulb or in-house) can crawl the full host inside the audit period.
+- The XML sitemap and the CMS published-page count are available to reconcile the crawl against.
+- Google Search Console Performance data for the site is accessible for the 28 days before the period end.
+- An editor with CMS access is named to own the rewire items and a re-measurement date at least 8 weeks out is acceptable.
 
 ## Skip If (ANY kills it)
 
-- Pre-discovery: inputs unstable, problem not named — pick a discovery methodology instead.
-- One-shot prompt task that nobody else will reuse — write a plain prompt, not a methodology call.
-- Output consumer wants a different shape than `produces=report` — pick a methodology whose contract matches.
-- Hard real-time path where the output-contract validator can't run in budget.
+- Fewer than 30 indexable pages or no declared cluster: fix links by hand while publishing and return when the site passes 30 pages.
+- The crawler cannot render JavaScript or cannot export link position, so contextual counts cannot be separated from navigation and footer links.
+- Search Console access is not available, so no pre/post baseline can be captured before the rewire ships.
+- The team wants a list of orphans and hubs without committing a named person to rewire, redirect or deindex decisions.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Brief / inputs | Markdown or JSON | requester / upstream methodology |
-| Domain context | text | parent skill `pro/marketing/growth-marketer/` |
-| Output destination | path or system | downstream owner |
+| Rendered crawl export | per-page rows: URL, status, indexability, canonical, plus inlinks with link position (content, navigation, footer, sidebar, breadcrumb) and anchor text | Screaming Frog, Sitebulb or in-house crawler, run inside the audit period |
+| XML sitemap and CMS page count | URL count from the sitemap; published-page count from the CMS | site sitemap; CMS admin |
+| Declared clusters | pillar URL plus 5 or more cluster URLs per cluster | content calendar / SEO lead |
+| Analytics-only URLs | landing pages with sessions but no crawl inlinks | GA4 or equivalent |
+| Search Console baseline | clicks, impressions, average position per URL for the 28 days before the period end | Google Search Console Performance report |
+| `templates/internal-link-audit.report.md.j2` | report skeleton with the reconciliation, matrix, anchor, plan and baseline tables | this methodology |
 
 ## Assumes Loaded
 
@@ -48,11 +52,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: crawl reconciled to sitemap, contextual counts exclude boilerplate, every orphan gets a decision, pillar-cluster reciprocity, descriptive anchors, links to final URL, fully specified rewire items, Search Console pre/post baseline | 2450 |
-| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate | 800 |
-| `content/05-examples.xml` | essential | Worked end-to-end example for produces=report | 700 |
-| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema of the audit report: rendered crawl reconciled to sitemap and CMS with gaps over 5 percent explained, contextual vs boilerplate counts and hubs, orphans with one decision each, pillar-cluster matrix with incomplete flag, anchor-text distribution with generic anchors, hygiene findings, fully specified rewire plan, 28-day Search Console baseline and an 8-week re-measurement; valid and invalid reports; 8 forbidden patterns | 6750 |
+| `content/03-failure-modes.xml` | essential | 3+ antipatterns with symptom/root-cause/fix | 950 |
+| `content/04-procedure.xml` | essential | 8 steps: run and reconcile the crawl, split counts by link position, decide every orphan, build the cluster matrix, tabulate anchor text, list hygiene findings, write the rewire plan, capture the Search Console baseline and validate | 1750 |
+| `content/05-examples.xml` | recommended | Complete report for a 412-page deliverability site (7.4 percent CMS gap explained, /blog hub, two orphan decisions, six-page cluster with two missing edges, four pasteable rewire items, three baselines, re-measurement 61 days out) with a note per value, plus a partial-crawl report and what the validator prints | 3450 |
+| `content/06-decision-tree.xml` | essential | Decision tree: observable signals -> rule from 01-core-rules.xml | 650 |
 
 ## Task Routing
 

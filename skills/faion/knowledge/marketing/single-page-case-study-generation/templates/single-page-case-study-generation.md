@@ -1,33 +1,55 @@
-<!-- purpose: canonical markdown skeleton for the Single Page Case Study Generation artefact -->
-<!-- consumes: typed inputs declared in content/02-output-contract.xml -->
+<!-- purpose: one-page service-engagement case study — outcome-first title, six slots (problem, approach, outcome, numbers, pull-quote, NDA indicator), one tracked CTA, evidence and permission references, deadlines and the 90-day review -->
+<!-- consumes: delivery date, evidence exports (Stripe, logs, GA4, calendar, P&L, tickets), the client's written permission and verbatim quote, the discovery-call booking link -->
 <!-- produces: filled artefact for validate-single-page-case-study-generation.py -->
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
-<!-- token-budget-impact: ~500 tokens when fully filled -->
+<!-- token-budget-impact: ~600 tokens when fully filled -->
 
----
-artefact_id: single-page-case-study-generation-<YYYY-MM-DD>-<NN>
-owner: <owner_full_name>
-version: 1.0.0
-last_reviewed: <YYYY-MM-DD>
----
+# <artefact_title>
 
-# Single Page Case Study Generation
+<!-- title: outcome first, headline number and time frame; client name only in the named version -->
 
-## Decision
+- publication_version: <named | anonymised | internal_log_only>
+- delivery_date: <YYYY-MM-DD>, draft_date: <within 7 days>, publish_or_park_date: <within 14 days>, status: <published | parked (park_reason, revisit_date)>
+- freelancer: <owner_full_name>
 
-<the answer / chosen option / value produced>
+## Problem (1-2 sentences)
+<the client's situation before the engagement>
 
-## Rationale
+## Approach (2-3 sentences, name the stack or method)
+<what was done, with the tools or method named>
 
-<≥2 sentences; cite at least one input artefact by name>
+## Outcome (1 sentence with the headline number)
+<baseline to final, the delta, the time frame>
 
-## Inputs used
+## Numbers (baseline, final, delta, unit, window, source)
 
-- <input_name_1> (<source path or URL>)
-- <input_name_2> (<source path or URL>)
+| metric | baseline | final | unit | delta_pct | window | source_system | evidence_ref |
+|---|---|---|---|---|---|---|---|
+| <what was measured> | <n> | <n> | <unit> | <(final - baseline) / baseline> | <before vs after period> | <stripe_export, server_logs, ga4_report, calendar, pnl, ticket_tracker> | <stored export name> |
 
-## Actions
+## Pull-quote (verbatim, written permission stored)
+> <one sentence exactly as the contact wrote it>
 
-- <YYYY-MM-DD> — <next_action_owner> — <next_action>
+- contact: <name (named version)>, <role>, <company or company descriptor>
+- permission_captured_in: <email | message>, permission_ref: <stored message name>
 
-<!-- Sections that do not apply: replace body with `not_applicable: <reason>`. -->
+## NDA indicator
+<named | anonymised | full_version_on_request>
+
+Anonymised version only: industry <...>, size_band <...>, context <...>, quoted_role <...>, client_consent_ref <stored consent>, identifiers_removed true
+
+## One page
+- word_count: <at most 500>, media_count: <at most 1>
+
+## Call to action (exactly one)
+<tracked discovery-call link with utm parameters>
+
+## Evidence kept (inputs_used)
+
+| name | path |
+|---|---|
+| <export or permission file> | <private storage path> |
+
+## Outcome review
+- due_date: <publication + 90 days>
+- findings: discovery_calls_attributed <n>, included_in_closed_proposal <true | false>

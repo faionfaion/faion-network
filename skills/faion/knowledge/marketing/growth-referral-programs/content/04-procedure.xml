@@ -1,40 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Growth Referral Programs Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five-step procedure to apply Growth Referral Programs end-to-end from inputs to a validated `spec` artefact + human signoff.</summary>
+<text id="04-procedure" title="Growth Referral Programs Procedure" version="1.2.0" est_tokens="1900" depth="essential">
+  <summary>Eight steps from the NPS gate to a validated referral-programme spec: measure NPS on active users, name the trigger event and its reach, define the qualifying event and the reward release, size the double-sided incentive against paid CAC and margin, build the fraud guard and the idempotency tuple, wire per-user codes and server-side attribution, compute K on 500 or more invites with cycle time and the 1/(1-K) multiplier, then write the lifecycle sequence, landing page and terms and validate.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="gather-inputs">
-      <input>Brief + upstream artefacts named in AGENTS.md Prerequisites table</input>
-      <action>Extract all required inputs into a structured state dict. Confirm every `Applies If` item evaluates true.</action>
-      <output>State dict; preconditions report (each item: true/false/unknown)</output>
-      <decision-gate>If any `Applies If` item is false OR any `Skip If` item is true, return an action=skip envelope and STOP per rule `skip-this-methodology`.</decision-gate>
+    <step n="1" name="measure-the-nps-gate">
+      <input>NPS or willingness-to-recommend survey results on active users from the last 90 days, with sample size and date.</input>
+      <action>Record `nps_gate` in `templates/growth-referral-programs.spec.md.j2`: `metric`, `score`, `sample_size`, `population` active_users, `measured_on`, `age_days`. If no measurement exists, run the survey before anything else.</action>
+      <output>`programme_name`, `nps_gate`.</output>
+      <decision-gate>NPS below 30, a measurement older than 90 days, or "our users love us" without a sample: stop; the programme does not launch (r-nps-gate-30-before-launch).</decision-gate>
     </step>
 
-    <step n="2" name="apply-rules">
-      <input>State dict</input>
-      <action>Apply each rule from content/01-core-rules.xml. Walk the decision tree in content/06-decision-tree.xml. Record any deviation with a one-line rationale in the deviation log.</action>
-      <output>Rule-application trace; chosen branch</output>
+    <step n="2" name="name-the-trigger-event">
+      <input>The product's instrumented activation and outcome events, with the share of users reaching each.</input>
+      <action>Pick the first event where the user has received value (first successful outcome, activation milestone, positive survey response) and record `trigger_event.name`, `reach_share` and `instrumented: true`. Never signup or the first screen.</action>
+      <output>`trigger_event`.</output>
+      <decision-gate>No instrumented value event exists: instrument one first; a prompt on signup is not accepted (r-trigger-event-at-value-moment).</decision-gate>
     </step>
 
-    <step n="3" name="synthesise-output">
-      <input>State dict + rule trace + decision-tree leaf</input>
-      <action>Author the `spec` artefact conforming to content/02-output-contract.xml. Use the matching template under templates/.</action>
-      <output>Draft artefact (JSON / Markdown / YAML per template)</output>
+    <step n="3" name="define-the-qualifying-event">
+      <input>Order data (average first order, refund window) or the activation milestone definition.</input>
+      <action>Set `qualifying_event.kind` to first_paid_order with `minimum_order_value`, or activation_milestone with the event `name`. Write the condition verbatim into `templates/landing-page.md.j2` (FAQ) and every email in `templates/emails.md.j2`; set `stated_on_landing_page` and `stated_in_every_email` to true only once the copy carries it.</action>
+      <output>`qualifying_event`.</output>
+      <decision-gate>Reward on account creation, or a condition the landing page does not state: not accepted (r-reward-on-qualifying-event-not-signup).</decision-gate>
     </step>
 
-    <step n="4" name="validate-output">
-      <input>Draft artefact</input>
-      <action>Run scripts/validate-growth-referral-programs.py --file &lt;artefact&gt;. On exit 1, fix the violations and re-validate. On repeated failure, escalate.</action>
-      <output>Validated artefact</output>
-      <decision-gate>If validation fails after 3 attempts, escalate to human; do NOT auto-publish.</decision-gate>
+    <step n="4" name="size-the-double-sided-incentive">
+      <input>Blended paid CAC; first-order gross margin or expected LTV; the reward budget.</input>
+      <action>Set `referrer_reward` and `referee_reward` (kind, amount, currency), `reward_cost_per_qualified_referee` as their sum, `blended_paid_cac`, `margin_basis`, `margin_basis_value` and `max_reward_share_of_basis`. Check cost at or below CAC and at or below share x basis.</action>
+      <output>`incentive`.</output>
+      <decision-gate>One-sided reward, or reward per qualified referee above paid CAC or above the stated share of margin or LTV: redesign the amounts before going on (r-double-sided-incentive-within-unit-economics).</decision-gate>
     </step>
 
-    <step n="5" name="human-checkpoint">
-      <input>Validated artefact</input>
-      <action>Surface `ready_for_review=true`. Wait for named human reviewer signoff per rule `human-checkpoint`. Record signoff (reviewer + date) on the artefact.</action>
-      <output>Signed-off artefact at output location named in Prerequisites</output>
+    <step n="5" name="build-the-fraud-guard">
+      <input>Account, payment and device data available at referee sign-up and checkout; the refund and chargeback windows.</input>
+      <action>Record `fraud_guard`: new-account-only, one referral per email and per payment instrument, `self_referral_signals` payment_instrument, device_fingerprint, ip, normalised_email with `email_normalisation` plus_addressing and dot_variants, `reward_hold_days` covering the refund or chargeback window, and `idempotency_key` referrer_id, referee_id, qualifying_event for reward fulfilment.</action>
+      <output>`fraud_guard`.</output>
+      <decision-gate>Any signal missing, no hold, or a fulfilment retry without the tuple: the programme does not launch (r-fraud-guard-self-referral-and-idempotent-rewards).</decision-gate>
     </step>
 
+    <step n="6" name="wire-server-side-attribution">
+      <input>The share surfaces, landing page and email infrastructure; the account-creation code path.</input>
+      <action>Issue a unique per-user code or link; confirm the landing page and emails accept the referral parameter; record `capture_methods` (url_parameter, first_party_cookie, code_at_signup) and `persisted_server_side_at: referee_account_creation`; set `utm_only: false`.</action>
+      <output>`attribution`.</output>
+      <decision-gate>The landing or email infrastructure cannot carry the parameter: skip per 06-decision-tree.xml; utm-only attribution is forbidden (r-referral-attribution-server-side).</decision-gate>
+    </step>
+
+    <step n="7" name="compute-k-on-500-invites">
+      <input>Invite, referee sign-up and referrer counts from the beta or the first cycles; trigger-to-qualifying timestamps; `templates/k_factor.py`.</input>
+      <action>With at least 500 invites and 50 active referrers, run `k_factor(invites_sent, signups_from_invites, active_referrers)` and record `invites`, `active_referrers`, `referee_signups`, `invites_per_referrer`, `conversion_per_invite`, `k`, `cycle_time_days` (median trigger event to qualifying event). For K below 1 set `presented_as: cac_multiplier` with `cac_multiplier` = 1 / (1 - k); net reward cost into the projection and set `netted_of_reward_cost: true`.</action>
+      <output>`k_factor`.</output>
+      <decision-gate>Fewer than 500 invites or 50 referrers: no K is reported; K below 1 described as viral growth is rewritten as the multiplier (r-k-factor-computed-on-500-plus-invites).</decision-gate>
+    </step>
+
+    <step n="8" name="write-lifecycle-landing-page-and-terms-and-validate">
+      <input>`templates/emails.md.j2`, `templates/landing-page.md.j2`; the legal review of programme terms.</input>
+      <action>Record `lifecycle`: `announcement.send_on` = the trigger event, `reminder` after a stated interval (the template uses 14 days) to zero_referrals only with `max_sends` 1, `confirmation` on qualifying_event to referrer and referee, `promises_reward_before_qualifying_event: false`. Record `disclosure`: reward disclosed on shared content, `terms_url`, `terms_cover` qualifying_event, reward_timing, exclusions, fraud_reversal, and every `earnings_claims[]` entry verified for its period. Run `scripts/validate-growth-referral-programs.py --file` on the spec.</action>
+      <output>Validated spec.</output>
+      <decision-gate>A reminder to users who already referred, a promise before the qualifying event, or shared content without disclosure: the sequence does not send (r-lifecycle-sequence-trigger-reminder-confirmation, r-incentive-disclosure-and-published-terms).</decision-gate>
+    </step>
+
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Spec validates via `scripts/validate-growth-referral-programs.py` with no violation, including the reward ceilings, the K arithmetic and the announcement-on-trigger check.</item>
+      <item>The landing page FAQ and every email state the qualifying condition verbatim; the terms page is published at `disclosure.terms_url`.</item>
+      <item>A named reviewer has signed off on the reward amounts and the fraud guard before the programme, the reward release or the lifecycle sequence goes live.</item>
+    </list>
   </section>
 </text>
