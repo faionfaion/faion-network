@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="test-fixtures Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for test-fixtures. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Test Fixtures Core Rules" version="2.0.0" est_tokens="2050" depth="essential">
+  <summary>9 testable rules every test-fixtures application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r-function-scope-default" testable="true" depth="essential">
+      <statement>Every fixture MUST be `scope="function"` unless it yields an object no test can mutate (a database engine, a compiled schema, a read-only config). Widening to `module` or `session` requires a `pytest --durations=20` run showing the fixture in the top 20 and a comment on the fixture naming why the yielded object is immutable.</statement>
+      <rationale source="pytest documentation, 'Fixture scopes'">"Passes alone, fails in the suite" is almost always a `module` or `session` fixture whose object one test mutated and a later test inherited. Function scope makes every test start from the same state; the cost of rebuilding is measured, not assumed, and only fixtures that measurably hurt earn a wider scope.</rationale>
     </rule>
+
+    <rule id="r-yield-cleanup" testable="true" depth="essential">
+      <statement>A fixture that acquires a resource (connection, temp file, server process, patched attribute) MUST release it in the code after `yield` or via `request.addfinalizer`, never in a separate "cleanup" fixture, an `atexit` hook or by relying on garbage collection. Teardown MUST be idempotent: running it twice, or after a failed setup, raises nothing.</statement>
+      <rationale source="pytest documentation, 'Teardown/Cleanup (AKA Fixture finalization)'">pytest runs the code after `yield` whether the test passed or failed, so the leak-free path is the default path. A non-idempotent teardown turns a failing test into two exceptions, the second masking the one you needed to read.</rationale>
+    </rule>
+
+    <rule id="r-db-savepoint-rollback" testable="true" depth="essential">
+      <statement>Database tests MUST run inside a transaction or savepoint opened by a function-scoped fixture and rolled back after `yield`. Per-test `DROP`/`CREATE`, per-test `TRUNCATE`, and any `commit()` whose rows outlive the test are forbidden. The engine or connection may be session-scoped; the session or transaction never is.</statement>
+      <rationale source="SQLAlchemy documentation, 'Joining a Session into an External Transaction (such as for test suites)'; Django documentation, `TestCase` transaction wrapping">Rollback is the cheapest isolation available and the only one that is complete: rows written by the test vanish along with sequence side effects the test never knew about. Schema rebuilds cost seconds per test; truncation misses what you forgot to list; a committed row is the leak that turns up as an unrelated unique-constraint failure three suites later.</rationale>
+    </rule>
+
+    <rule id="r-keyword-only-factories" testable="true" depth="essential">
+      <statement>Factory functions MUST declare keyword-only parameters (`def make_user(*, email=None, role="member")`) with an explicit default for every field, and MUST return the built object rather than persisting it as a side effect unless the name says so (`create_user` persists, `make_user` does not). A test overrides only the fields it asserts on.</statement>
+      <rationale source="PEP 3102 (keyword-only arguments); factory_boy documentation">Positional factories break every caller when a field is inserted; keyword-only factories let a signature grow without touching 200 tests. Explicit defaults make the factory the single place where "a normal user" is defined, which is what lets a reviewer read `make_user(role="admin")` and know exactly what differs from normal.</rationale>
+    </rule>
+
+    <rule id="r-sequenced-determinism" testable="true" depth="essential">
+      <statement>Any factory field that can appear in an assertion, a snapshot, a sort key or a unique constraint MUST come from a per-run sequence (`f"user-{next(counter)}@example.com"`) or a generator seeded once per run. Unseeded `faker`, `random`, `uuid4()` and `datetime.now()` in fixture defaults are forbidden; `Faker.seed()` or `pytest-randomly`'s reseeding MUST be in place before `faker` is used at all.</statement>
+      <rationale source="Faker documentation, `Faker.seed()`; pytest-randomly documentation">A snapshot that contains `alice.morgan@example.org` on Monday and `bob.lee@example.net` on Tuesday fails on Tuesday for no reason anyone can act on. Sequences also give stable ordering, so `ORDER BY email` returns the same rows each run and the test asserting "first result" stops flaking.</rationale>
+    </rule>
+
+    <rule id="r-conftest-layering" testable="true" depth="essential">
+      <statement>Fixtures MUST live in the `conftest.py` nearest to the tests that use them; the root `conftest.py` holds only fixtures used by more than one test package. ORM-, HTTP-client- or backend-specific fixtures go in their own module or a plugin registered via `pytest_plugins`, and fixtures MUST NOT be imported across test modules with `from tests.foo import some_fixture`.</statement>
+      <rationale source="pytest documentation, 'conftest.py: sharing fixtures across multiple files'">pytest discovers fixtures by directory, so an import is both unnecessary and a trap: the imported name shadows the discovered one and the wrong fixture silently wins. Keeping the SQLAlchemy `db_session` in its own module is what makes the async migration a one-file change instead of a suite-wide rewrite.</rationale>
+    </rule>
+
+    <rule id="r-no-autouse-io" testable="true" depth="essential">
+      <statement>`autouse=True` is allowed only for fixtures that perform no I/O and touch no shared resource (setting an env var, freezing time, resetting a module-level registry). Any fixture that opens a database, a socket, a file or a subprocess MUST be requested explicitly by name in the test signature.</statement>
+      <rationale source="pytest documentation, 'Autouse fixtures (fixtures you don't have to request)'">An autouse database fixture runs for every test in its scope, including the pure-function tests that never touch the database; the suite's wall time doubles and nobody can see why in a test signature. Explicit requests are also the only record of which tests actually need the resource.</rationale>
+    </rule>
+
+    <rule id="r-order-independence-gate" testable="true" depth="essential">
+      <statement>Before merging a new fixture and before widening any fixture's scope, the suite MUST pass `pytest -p randomly` with at least three different `--randomly-seed` values (the `fixture-pollution-check.sh` template). A failure that reproduces under one seed and not another is a fixture-state defect and MUST be fixed, never marked flaky or retried.</statement>
+      <rationale source="pytest-randomly documentation">Order dependency is invisible in the default deterministic order because the polluting test happens to run first. Random ordering is the cheapest detector there is, and the seed makes the failure reproducible, which is what separates "fixture leaks state" from "flaky".</rationale>
+    </rule>
+
+    <rule id="r-xdist-per-worker-state" testable="true" depth="essential">
+      <statement>When the suite runs under `pytest-xdist`, every `session`-scoped fixture MUST be written as per-worker: it either builds a worker-private resource (a database named with the `worker_id` fixture, a temp dir under `tmp_path_factory`) or guards a genuinely shared build with a file lock as in the pytest-xdist "execute only once" recipe. Fixtures MUST NOT assume a session-scoped object is shared across processes.</statement>
+      <rationale source="pytest-xdist documentation, 'Making session-scoped fixtures execute only once'">`scope="session"` means once per process, and xdist is many processes. A session fixture that creates `test_db` runs eight times in parallel, seven of them colliding on the same name; a fixture that caches "already seeded" in a module global seeds eight times. The worker id is the only thing that tells the fixtures apart.</rationale>
+    </rule>
+
   </section>
 </text>

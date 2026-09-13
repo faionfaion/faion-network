@@ -1,13 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Test Fixtures Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Test Fixtures Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Decides between inline literal, factory function and full fixture from what the setup block does, then picks the fixture discipline the resource needs. Every conclusion references a rule id from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-applies">Do ALL Applies-If conditions hold AND NO Skip-If condition triggers?</root-question>
-    <branch when="applies_if == true AND skip_if == false">
-      <conclusion ref="r1" verdict="apply the methodology; produce the artefact and validate it."/>
+    <root-question id="q-repeated">Does the same setup shape (User, Order, Product, ...) appear at three or more sites, or does one test file's setup exceed roughly a third of its code?</root-question>
+
+    <branch when="q-repeated == false">
+      <conclusion ref="skip-this-methodology" verdict="inline literal: one or two literal objects in the test are clearer than a factory; revisit at the third copy."/>
     </branch>
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to the correct methodology or skip."/>
+
+    <branch when="q-repeated == true">
+      <question id="q-resource">Does the setup acquire something that must be released (database session, temp file, server process, monkeypatched attribute)?</question>
+
+      <branch when="q-resource == false">
+        <question id="q-asserted-fields">Do tests assert on, sort by or snapshot any of the generated fields?</question>
+
+        <branch when="q-asserted-fields == true">
+          <conclusion ref="r-sequenced-determinism" verdict="factory function with keyword-only overrides and sequenced values for every asserted field; no unseeded faker."/>
+        </branch>
+
+        <branch when="q-asserted-fields == false">
+          <conclusion ref="r-keyword-only-factories" verdict="factory function with keyword-only parameters and explicit defaults; faker acceptable for unasserted fields."/>
+        </branch>
+      </branch>
+
+      <branch when="q-resource == true">
+        <question id="q-database">Is the resource a database session or transaction?</question>
+
+        <branch when="q-database == true">
+          <conclusion ref="r-db-savepoint-rollback" verdict="function-scoped session fixture inside a transaction or savepoint rolled back after yield; engine may be session-scoped."/>
+        </branch>
+
+        <branch when="q-database == false">
+          <conclusion ref="r-yield-cleanup" verdict="function-scoped yield fixture with idempotent teardown after yield; widen scope only after a durations profile."/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="q-repeated == true AND parallel_runner == 'xdist'">
+      <conclusion ref="r-xdist-per-worker-state" verdict="every session-scoped fixture is per-worker: name resources with worker_id or guard with a file lock."/>
     </branch>
   </decision-tree>
 </text>

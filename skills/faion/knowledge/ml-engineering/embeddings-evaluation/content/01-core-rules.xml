@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="embeddings-evaluation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for embeddings-evaluation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Embedding Quality Evaluation and Benchmarking Core Rules" version="2.0.0" est_tokens="2250" depth="essential">
+  <summary>9 testable rules every embedding quality evaluation MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r-golden-set-min-50" testable="true" depth="essential">
+      <statement>The golden set MUST contain at least 50 query-passage relevance triples (target 50 to 500), every query MUST have at least one passage graded relevant, and the report MUST state the exact count and the grading scale (binary or graded 0-3). An evaluation run on fewer than 50 queries is not reported as a ranking.</statement>
+      <rationale source="Sakai, 'Laboratory Experiments in Information Retrieval' (Springer, 2018), topic set size design; TREC evaluation practice">With 20 queries a single lucky hit moves Recall@10 by five points, which is larger than the gap between most candidate models. Below 50 queries the confidence intervals of any two reasonable models overlap and the "winner" is whichever one the noise favoured that day.</rationale>
     </rule>
+
+    <rule id="r-real-queries-not-synthetic" testable="true" depth="essential">
+      <statement>Golden-set queries MUST come from real usage logs or be written by domain SMEs. LLM-generated query-passage pairs may only augment the set, MUST carry `source: synthetic` on each row, and MUST be reported in a separate table; the headline ranking and the deployment recommendation rest on real queries only.</statement>
+      <rationale source="Thakur et al., 'BEIR: A Heterogeneous Benchmark for Zero-shot Evaluation of Information Retrieval Models' (NeurIPS 2021); widely established practice in IR evaluation">Synthetic queries are paraphrases of the passage they were generated from, so lexical and embedding models both find them easily and recall inflates. Real queries have typos, missing context, jargon and ambiguity; that gap is exactly the thing the evaluation is supposed to measure, and a synthetic set hides it.</rationale>
+    </rule>
+
+    <rule id="r-annotation-agreement" testable="true" depth="essential">
+      <statement>When relevance grades are produced by annotators (human or LLM-assisted), at least 10% of the queries MUST be graded independently by two annotators and inter-annotator agreement (Cohen's kappa) MUST be reported. Kappa below 0.6 blocks the evaluation: rewrite the grading guideline and re-annotate before computing any metric.</statement>
+      <rationale source="Landis and Koch (1977) agreement scale; TREC assessor-agreement studies; widely established practice in IR evaluation">If two annotators disagree on what "relevant" means, the metric is measuring the annotators, not the models. A model that agrees with annotator A and disagrees with annotator B is not better or worse; it is unmeasured. Kappa is the cheap check that the golden set means something before it is used to spend money.</rationale>
+    </rule>
+
+    <rule id="r-three-metrics-minimum" testable="true" depth="essential">
+      <statement>The report MUST show Recall@K, MRR@10 and nDCG@10 for every candidate, in one ranked table per metric. K for Recall@K MUST equal the top-k the production retriever actually returns to the downstream consumer (the reranker or the LLM context), and the report MUST name it. Ranking candidates on a single metric is forbidden.</statement>
+      <rationale source="Manning, Raghavan and Schutze, 'Introduction to Information Retrieval' (2008), chapter 8; Muennighoff et al., 'MTEB: Massive Text Embedding Benchmark' (2023), nDCG@10 as retrieval headline">The three metrics answer different product questions: recall says whether the answer is in the candidate set at all, MRR says how far down the first good hit sits, nDCG says whether the graded-best passages sit above merely-relevant ones. A model can win recall@50 and lose MRR@10 badly; a RAG pipeline that feeds the top 5 to the LLM cares about the second number, and a single-metric table hides that trade-off.</rationale>
+    </rule>
+
+    <rule id="r-holdout-20" testable="true" depth="essential">
+      <statement>20% of the golden set, sampled by query, MUST be held out before any tuning decision is made (chunk size, query rewriting prompt, reranker threshold, similarity cutoff, fine-tuning). The headline numbers and the recommendation MUST be computed on the hold-out only, and no hold-out passage id or query MUST appear in any fine-tuning or few-shot data.</statement>
+      <rationale source="widely established practice in machine learning evaluation (train / validation / test separation)">Every tuning choice made while looking at a metric fits that metric. Chunk size chosen to maximise nDCG on the full golden set has already seen the test, and the reported number is an upper bound nobody will see in production. The hold-out is the only number that predicts what users get.</rationale>
+    </rule>
+
+    <rule id="r-identical-harness" testable="true" depth="essential">
+      <statement>All candidates MUST be evaluated on identical corpus chunks, identical query preprocessing, identical top-k, and the similarity function the model vendor specifies (cosine or dot product, with normalisation applied where the vendor requires it). The report MUST record each model's exact identifier and version, its max input length, and how many corpus chunks exceeded it and were truncated.</statement>
+      <rationale source="vendor documentation for each embedding model; Muennighoff et al., 'MTEB' (2023) on evaluation setup">A model benchmarked on 256-token chunks against another on 1024-token chunks is a chunking comparison, not a model comparison. Silent truncation is the common version of this: the model with the shorter context loses the tail of every long passage and scores lower for a reason that has nothing to do with embedding quality.</rationale>
+    </rule>
+
+    <rule id="r-significance-gate" testable="true" depth="essential">
+      <statement>A winner MUST NOT be declared from point estimates. The report MUST carry a 95% confidence interval per model on the primary metric, obtained by bootstrap resampling of queries (at least 1000 resamples), and a paired significance test over per-query scores (paired t-test or Wilcoxon signed-rank) between the top two. The offline winner ships only if its interval does not overlap the runner-up's and p is below 0.05; otherwise the tree escalates to a live A/B.</statement>
+      <rationale source="Smucker, Allan and Carterette, 'A Comparison of Statistical Significance Tests for Information Retrieval Evaluation' (CIKM 2007); Sakai (2018)">On a 100-query set, 0.8 nDCG points is inside the noise for most model pairs. Shipping on that gap means paying for a migration, re-indexing the corpus and retraining the team on a difference that a re-run of the same evaluation could reverse. The paired test uses per-query differences and is far more sensitive than comparing two means, which is why it is the one required here.</rationale>
+    </rule>
+
+    <rule id="r-quality-floor-before-cost" testable="true" depth="essential">
+      <statement>The report MUST state a quality floor on the primary metric before any cost or latency figure is considered, then recommend the cheapest candidate above the floor. Cost per million tokens and p95 embedding latency MUST be reported alongside quality for every candidate, but a candidate below the floor MUST NOT be recommended on price, and a ranking by cost alone is forbidden.</statement>
+      <rationale source="widely established practice in retrieval product evaluation">A model ten times cheaper with 20 points less recall means one in five questions gets no relevant context; the support tickets and user drop-off cost more than the embedding bill saved. Fixing the floor first turns the decision into "cheapest acceptable" instead of "cheapest".</rationale>
+    </rule>
+
+    <rule id="r-stale-by-date" testable="true" depth="essential">
+      <statement>The report MUST carry `evaluated_at`, the exact model identifiers evaluated (provider model id plus revision or checksum for open weights), the golden-set version, and a `stale_by` date no later than 90 days after `evaluated_at`. The evaluation MUST be re-run at `stale_by`, and immediately when any candidate's model id is deprecated or a new candidate is added.</statement>
+      <rationale source="embedding model provider deprecation and release practice; quarterly re-evaluation stated in this methodology's scope">Providers release and retire embedding models on a cadence of months; a recommendation with no expiry becomes the default forever, and the team keeps paying for a model that a cheaper or better one replaced two quarters ago. A dated report with exact ids is also the only way to reproduce the numbers when someone questions them.</rationale>
+    </rule>
+
   </section>
 </text>

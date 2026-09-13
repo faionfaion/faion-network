@@ -1,17 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="embeddings-evaluation Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for embeddings-evaluation as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="embeddings-evaluation Failure Modes" version="2.0.0" est_tokens="1100" depth="essential">
+  <summary>6 antipatterns specific to embeddings-evaluation. Each has a description, an observable detector and a concrete repair.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using synthetic benchmarks (LLM-generated query-document pairs) as the primary evaluation signal.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Synthetic queries match model training distributions and produce inflated recall numbers. Real user queries contain typos, ambiguity, and domain jargon that synthetic queries omit. Always validate with real queries.</repair>
+    <failure-mode id="fm-synthetic-golden-set" severity="high">
+      <description>LLM-generated query-document pairs are the primary evaluation signal; recall numbers are inflated because the queries paraphrase the passages they were generated from.</description>
+      <detector>Golden-set rows lack a `source` field or every row reads `synthetic`; Recall@10 above 0.95 for every candidate; queries contain no typos, abbreviations or domain jargon; no usage-log export in the prerequisites.</detector>
+      <repair>Rebuild the set from real queries (logs or SME-written); keep synthetic rows only as a flagged, separately reported augmentation. Rule r-real-queries-not-synthetic.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Comparing models only on latency and cost, skipping quality measurement.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A 10x cheaper model with 20% lower recall can cost more in business terms (missed results, user drop-off) than the savings. Always measure quality first, then optimize within the quality constraint.</repair>
+    <failure-mode id="fm-cost-only-comparison" severity="medium">
+      <description>Candidates are compared only on price per million tokens and latency; quality is never measured, or is measured after the cheapest model has already been chosen.</description>
+      <detector>The report has a cost table and no metric table, or the recommendation names a model that is not the top on any quality metric without stating a quality floor.</detector>
+      <repair>State the quality floor first, measure Recall@K / MRR@10 / nDCG@10 for every candidate, then choose the cheapest model above the floor. Rule r-quality-floor-before-cost.</repair>
+    </failure-mode>
+    <failure-mode id="fm-tiny-golden-set" severity="high">
+      <description>The golden set has 10 to 30 queries; every model's confidence interval overlaps every other's and the ranking changes between runs.</description>
+      <detector>Reported query count below 50; bootstrap CI width on nDCG@10 wider than the gap between first and last place; the ranking flips when one query is removed.</detector>
+      <repair>Grow the set to at least 50 real queries (target 50 to 500) before reporting a ranking; until then report "insufficient data", not a winner. Rule r-golden-set-min-50.</repair>
+    </failure-mode>
+    <failure-mode id="fm-single-metric-ranking" severity="medium">
+      <description>Models are ranked on one metric, usually Recall@50 or cosine similarity to a "correct" passage, and the model that wins it loses badly on the top-5 ordering the RAG pipeline actually consumes.</description>
+      <detector>The report has one metric table; K in Recall@K does not match the production retriever's top-k; MRR or nDCG is absent.</detector>
+      <repair>Report all three metrics with K equal to production top-k, one ranked table each, and read the trade-off explicitly. Rule r-three-metrics-minimum.</repair>
+    </failure-mode>
+    <failure-mode id="fm-train-on-test" severity="high">
+      <description>Chunk size, query-rewriting prompt or a fine-tuned embedder was tuned while watching the same golden set the headline numbers are computed on; the reported score is an upper bound production never reaches.</description>
+      <detector>No hold-out split is named in the report; fine-tuning data contains golden-set passage ids; offline nDCG is far above what production click-through implies after deployment.</detector>
+      <repair>Hold out 20% of queries before any tuning, compute headline numbers on the hold-out only, and audit fine-tuning data against hold-out ids. Rule r-holdout-20.</repair>
+    </failure-mode>
+    <failure-mode id="fm-no-significance-test" severity="high">
+      <description>A winner is declared from point estimates that differ by under a point; the re-index and migration cost is spent on a gap a re-run could reverse.</description>
+      <detector>The report shows means without confidence intervals; no bootstrap or paired test is mentioned; the gap between the top two is under 1.5 points on the primary metric and the recommendation still names a winner.</detector>
+      <repair>Bootstrap 95% CIs over queries, paired test between the top two; if not separated, escalate to a live A/B with click-through telemetry instead of shipping. Rule r-significance-gate.</repair>
     </failure-mode>
   </section>
 </text>

@@ -1,47 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="test-fixtures Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for test-fixtures as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="test-fixtures Failure Modes" version="2.0.0" est_tokens="1300" depth="essential">
+  <summary>7 antipatterns specific to test-fixtures. Each has a description, an observable detector and a concrete repair.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>`scope="module"` fixtures with mutable state cause cross-test pollution. Symptom: tests pass alone, fail in suite.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Default to `function` scope until perf forces wider. Always profile before widening scope.</repair>
+    <failure-mode id="fm-scope-leakage" severity="high">
+      <description>`scope="module"` or `scope="session"` fixtures yield mutable state; one test mutates it, later tests inherit it. Symptom: tests pass alone, fail in suite.</description>
+      <detector>`pytest tests/test_x.py::test_y` passes while the full run fails; `fixture-pollution-check.sh` fails under some seeds and not others; a fixture with wider scope yields a list, dict, ORM session or model instance.</detector>
+      <repair>Return to `scope="function"`; profile with `pytest --durations=20` before widening again, and widen only fixtures whose object is immutable. Rules r-function-scope-default, r-order-independence-gate.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>A `yield`-style fixture's cleanup runs in `finally`; if the test panics during teardown, cleanup raises a second exception that masks the original.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Test the teardown path separately if cleanup is complex. Keep cleanup minimal and idempotent.</repair>
+    <failure-mode id="fm-teardown-coupling" severity="medium">
+      <description>Teardown code is not idempotent, or two fixtures share a resource and depend on finalizer order, so a failing test raises a second exception from cleanup that masks the original, or cleanup of one fixture breaks the other.</description>
+      <detector>Traceback shows "During handling of the above exception, another exception occurred" originating after `yield`; a fixture's teardown references an object owned by another fixture; the suite passes only when fixture parameters are listed in one specific order.</detector>
+      <repair>Make each fixture release only what it acquired, guard teardown so a second run is a no-op, and use `request.addfinalizer` when one fixture must register cleanup for another. Rule r-yield-cleanup.</repair>
     </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>`make_user()` defaults change → 200 tests' implicit assumptions silently change.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pin defaults in a single source of truth and force keyword-only overrides. Use git blame to find callers before changing factory signatures.</repair>
+    <failure-mode id="fm-factory-default-drift" severity="medium">
+      <description>`make_user()` defaults change and the implicit assumptions of 200 tests change with them; failures appear in tests that never mention the changed field.</description>
+      <detector>A factory diff touches a default value and the CI failure set includes tests that do not pass that field; a factory has positional parameters; two modules define their own `make_user`.</detector>
+      <repair>One factory per entity, keyword-only parameters, explicit defaults; grep callers before changing a default and pass the old value explicitly where a test depended on it. Rule r-keyword-only-factories.</repair>
     </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>`db_session` fixture tied to SQLAlchemy → moving to async breaks every fixture transitively.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Keep ORM-specific fixtures in separate conftest files. Use abstract database fixtures where possible.</repair>
+    <failure-mode id="fm-orm-coupled-conftest" severity="medium">
+      <description>`db_session` lives in the root `conftest.py` and is imported or requested everywhere, so switching SQLAlchemy sync to async, or swapping the ORM, breaks every fixture transitively.</description>
+      <detector>Root `conftest.py` imports `sqlalchemy` / `django.db` directly; test modules import fixtures with `from tests.conftest import ...`; more than one conftest defines a `db_session`.</detector>
+      <repair>Move ORM-specific fixtures to their own module registered via `pytest_plugins`; keep the root conftest to cross-package fixtures only. Rule r-conftest-layering.</repair>
     </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>pytest's autouse fixtures evaluated per-test; fixture cost balloons. Mark expensive fixtures `scope="session"` only when truly read-only.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Profile with `pytest --durations=20`. Only widen scope after confirmation of immutability.</repair>
+    <failure-mode id="fm-autouse-cost" severity="medium">
+      <description>`autouse=True` on a database or network fixture runs it for every test, including pure-function tests; wall time balloons and no test signature explains why.</description>
+      <detector>`pytest --durations=20` lists a fixture setup for tests that do not name it; total suite time scales with test count rather than with the number of DB tests.</detector>
+      <repair>Remove `autouse` from any fixture doing I/O; request it by name where needed. Rule r-no-autouse-io.</repair>
     </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>`faker.email()` produces different values each run → snapshot tests flake. Seed faker once per run (`Faker.seed(42)`).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use sequenced determinism for snapshot-critical fields. Faker is acceptable for non-critical fields only.</repair>
+    <failure-mode id="fm-unseeded-faker" severity="medium">
+      <description>`faker.email()`, `random.choice()` or `datetime.now()` in a factory default produces a different value each run; snapshot and ordering assertions flake.</description>
+      <detector>A snapshot diff shows only generated values changing; the same test alternates pass/fail with no code change; `Faker.seed()` or `pytest-randomly` is absent from the suite.</detector>
+      <repair>Use a per-run sequence for any asserted field; seed faker once; keep faker for fields no assertion reads. Rule r-sequenced-determinism.</repair>
     </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Pytest reverses fixture finalizers; cross-fixture dependencies that share resources need explicit ordering or `request.addfinalizer`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Keep fixtures independent. If order matters, it's a sign the fixtures are too coupled.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>pytest-xdist: Module-scope fixtures rebuild per worker; agents assume "session" means cross-process.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fixtures don't share state across workers. Use a dedicated database fixture for cross-worker state.</repair>
+    <failure-mode id="fm-xdist-shared-session" severity="high">
+      <description>Under `pytest-xdist` a `session`-scoped fixture is assumed to run once for the whole run; in reality it runs once per worker, and workers collide on the same database name or seed the same rows in parallel.</description>
+      <detector>Failures appear only with `-n auto`; errors are duplicate-key, "database already exists" or "already seeded" checks stored in module globals; the fixture never reads `worker_id`.</detector>
+      <repair>Name worker-private resources with `worker_id`, or guard a shared build with the file-lock recipe from the pytest-xdist docs. Rule r-xdist-per-worker-state.</repair>
     </failure-mode>
   </section>
 </text>

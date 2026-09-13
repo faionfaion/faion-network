@@ -35,9 +35,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Rules for filling a template: no placeholder survives, no non-standard sections, frontmatter complete | ~800 |
+| `content/01-core-rules.xml` | essential | 9 rules: template fidelity (no placeholder survives, heading set fixed), plan from approved design, acyclic dependency graph, token estimates with buffer, task traceability, backlog RICE/MoSCoW, confidence-check verdict, feature folder unique, roadmap milestones and change log | ~800 |
 | `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | 10 antipatterns: leftover placeholders, one-pass generation without review gates, tasks written without design, freetext dependency graphs, optimistic token estimates, calendar-quarter roadmaps | ~1100 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: leftover placeholders, one-pass generation, tasks without design, feature folder collision, missing traceability, optimistic token estimates, freetext dependency graph, calendar-quarter roadmap | ~1100 |
 
 ## Task Routing
 

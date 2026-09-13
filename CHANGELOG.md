@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Four documents whose only rule was "TBD — author at least one rule", and
+  the gate that now refuses that sentence.** `ai-agents/subagent-as-context-
+  firewall`, `dev/test-fixtures`, `ml-engineering/embeddings-evaluation` and
+  `sdd/templates` each shipped one rule reading *"TBD — v1 source contained no
+  testable rules. Author at least one rule for this methodology."* The
+  rules-say-something gate passed all four: the sentence is longer than 40
+  characters. Each now has 8-9 subject rules, real failure modes and (where the
+  slug carries a tree) a tree routing to them — `embeddings-evaluation` a
+  50-item golden set, a significance gate and a 20% holdout (BEIR, NeurIPS
+  2021; Smucker et al., CIKM 2007); `test-fixtures` function-scope defaults,
+  savepoint rollback and per-worker state under xdist. Two templates fixed to
+  match their contracts, and `sdd/templates/new-feature.sh` no longer overwrites
+  an existing `spec.md`.
+
+  The gate's `stub` class now also matches a statement that *announces* itself
+  as one — "Stub rule for conclusion", "TBD", "TODO", "fill per artefact" —
+  whatever its length. Re-measured with it: 2,514 methodologies, **0** with no
+  subject-bearing rule. The 40-character test alone had let 133 through.
+
 - **Stub rules, batch 6 of 6: thirteen slugs, 28 stubs → 28 rules — and the
   phrase "Stub rule for conclusion" no longer appears in the corpus.** Six
   `dev` documents (`code-review`, `css-in-js`, `django-coding-standards`,

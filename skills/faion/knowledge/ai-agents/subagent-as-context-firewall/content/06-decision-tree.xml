@@ -1,13 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Subagent As Context Firewall Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Subagent As Context Firewall Decision Tree" version="2.0.0" est_tokens="600" depth="essential">
+  <summary>Picks the firewall shape from three observables: how heavy the reading is, whether any input is attacker-controlled, and whether the work splits into independent branches. Every conclusion references a rule id from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-applies">Do ALL Applies-If conditions hold AND NO Skip-If condition triggers?</root-question>
-    <branch when="applies_if == true AND skip_if == false">
-      <conclusion ref="r1" verdict="apply the methodology; produce the artefact and validate it."/>
+    <root-question id="q-heavy">Does producing the answer require more than two tool calls or file reads, a location not known in advance, or reading a document from an untrusted source?</root-question>
+
+    <branch when="q-heavy == false">
+      <conclusion ref="skip-this-methodology" verdict="one or two direct reads cost less than a subagent round-trip; read in the parent."/>
     </branch>
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to the correct methodology or skip."/>
+
+    <branch when="q-heavy == true">
+      <question id="q-untrusted">Is any input attacker-controlled (fetched web page, user upload, inbound email, third-party document, external tool result)?</question>
+
+      <branch when="q-untrusted == true">
+        <conclusion ref="r-untrusted-input-wrapped" verdict="sandbox subagent: no tools beyond reading the input, fixed extraction schema, source named as untrusted; raw text never reaches the parent."/>
+      </branch>
+
+      <branch when="q-untrusted == false">
+        <question id="q-parallel">Does the work split into independent branches that do not need each other's findings?</question>
+
+        <branch when="q-parallel == true">
+          <conclusion ref="r-fresh-window-per-invocation" verdict="parallel firewalled fan-out via asyncio.gather; each subagent gets its own window and returns its own contract; parent gathers contracts only."/>
+        </branch>
+
+        <branch when="q-parallel == false">
+          <question id="q-contract">Is a closed Pydantic / JSON-Schema contract with summary, refs, confidence, next_actions defined and enforced with max_tokens?</question>
+
+          <branch when="q-contract == true">
+            <conclusion ref="run-the-checklist" verdict="single subagent with the slim contract; parent consumes the contract and pulls refs on demand."/>
+          </branch>
+
+          <branch when="q-contract == false">
+            <conclusion ref="r-slim-contract-mandatory" verdict="define the contract first; a free-form subagent is not a firewall."/>
+          </branch>
+        </branch>
+      </branch>
     </branch>
   </decision-tree>
 </text>

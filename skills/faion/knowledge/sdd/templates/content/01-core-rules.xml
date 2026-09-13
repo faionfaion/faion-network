@@ -1,11 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="templates Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for templates. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="SDD Document Templates Core Rules" version="2.0.0" est_tokens="2350" depth="essential">
+  <summary>9 testable rules every SDD template fill MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r-template-fidelity" testable="true" depth="essential">
+      <statement>A filled artefact MUST contain no surviving placeholder (`{...}` brace tokens, `&lt;snake_case&gt;` angle tokens, `YYYY-MM-DD`, `{X}%`, skeleton ids such as `BL-{NNN}` or `TASK_00N` with no task behind them) and MUST keep exactly the template's heading set in the template's order: no heading added, renamed or dropped. Check with `grep -nE '\{[a-zA-Z_ ]+\}|&lt;[a-z_0-9]+&gt;|YYYY-MM-DD'` before committing; content that fits no section goes into the template's Notes or Risks section, never under a new heading.</statement>
+      <rationale source="this methodology's templates and vars schemas; widely established practice for structured LLM output">Downstream agents parse these files by heading and field name: an executor that looks for `## Acceptance Criteria` and finds `## Acceptance criteria and notes` executes nothing, and a `**Created:** YYYY-MM-DD` that survives in a backlog item sorts to the top of every date query forever. The vars schema is `additionalProperties: false` for the same reason; the heading set is the schema of the Markdown.</rationale>
     </rule>
+
+    <rule id="r-plan-from-approved-design" testable="true" depth="essential">
+      <statement>An implementation plan MUST be filled only from a `design.md` whose Status is Approved, and its `**Design:**` field MUST link to that file. Spec, design, plan and task files MUST be produced in separate turns with a review gate between each; writing the plan in the same turn as the design, or generating tasks before the plan is Approved, is forbidden.</statement>
+      <rationale source="this methodology's failure record (one-pass generation, tasks written without design); ISO/IEC/IEEE 29148 on staged requirements review">A plan written against an unreviewed design inherits every design error and multiplies it by the task count; the error is then found in implementation, where fixing it means rewriting tasks. Separate turns also stop the silent truncation that hits the last file when an agent writes four documents in one response.</rationale>
+    </rule>
+
+    <rule id="r-dependency-graph-acyclic" testable="true" depth="essential">
+      <statement>The Dependency Graph section MUST be a list of `TASK_a -&gt; TASK_b` edges, one per line, MUST be the exact union of the Task Summary's Depends On and Enables columns, and MUST be acyclic. Every Execution Wave MUST contain only tasks whose dependencies all sit in earlier waves, and every wave MUST end with a named checkpoint criterion. Free-text prose in the Dependency Graph section is forbidden.</statement>
+      <rationale source="topological ordering of a DAG (Kahn's algorithm), standard computer-science result; this methodology's failure record (free-text graphs, undetected cycles)">A graph written as prose cannot be checked, and agents do not detect cycles on their own: `TASK_003` depends on `TASK_005` which depends on `TASK_003` reads fine as a sentence and deadlocks a pool executor. Edges that match the table can be validated by a ten-line script; waves that respect the edges are what make parallel execution safe.</rationale>
+    </rule>
+
+    <rule id="r-token-estimates-with-buffer" testable="true" depth="essential">
+      <statement>Each task's `Est. Tokens` MUST be derived from the byte size of the files the task reads plus writes, at roughly 4 bytes per token, plus a 20k-token buffer for any task that reads existing code. The Overview total MUST equal the sum of the Task Summary rows, and an estimate revised after execution MUST be recorded in the plan's version bump, not silently overwritten.</statement>
+      <rationale source="the widely used 4-characters-per-token heuristic (OpenAI tokenizer documentation); this methodology's failure record (estimates optimistic by 30-50%)">Estimates typed from intuition run 30 to 50 percent under actuals because they count the output and forget the reading: loading a 20k-token module before touching it is the budget, not the edit. A task that runs out of context halfway through a multi-file change leaves the tree half-migrated, which is worse than not starting.</rationale>
+    </rule>
+
+    <rule id="r-task-traceability" testable="true" depth="essential">
+      <statement>Every task in the plan MUST carry acceptance-criterion ids of the form `AC-&lt;task&gt;.&lt;n&gt;`, and the FR/AD Coverage table MUST map every `FR-nnn` in `spec.md` to at least one task and every task to at least one `AD-n` in `design.md`. Every generated `task.md` MUST name the plan row and the AD it implements. An FR with no task, or a task with no FR, is a plan defect that blocks approval.</statement>
+      <rationale source="ISO/IEC/IEEE 29148 requirements traceability; this methodology's failure record (executors losing context without traceability)">The coverage table is the only place a reviewer can see that FR-004 was forgotten before ten tasks are done. An executor agent that opens a task with no link back to the design has no way to know which decision it is implementing and will re-decide it, usually differently.</rationale>
+    </rule>
+
+    <rule id="r-backlog-rice-moscow" testable="true" depth="essential">
+      <statement>A backlog item MUST have all four RICE factors filled from the template's scales (Reach 1-10, Impact 0.25 / 0.5 / 1 / 2 / 3, Confidence 50 / 80 / 100 percent, Effort in person-months), the Score computed as (Reach x Impact x Confidence) / Effort with the arithmetic shown, exactly one MoSCoW box checked, and at least two acceptance criteria. Both `Requires` and `Blocks` MUST name existing `BL-nnn` ids or read `none`.</statement>
+      <rationale source="Sean McBride, 'RICE: Simple prioritization for product managers' (Intercom, 2016); DSDM MoSCoW prioritisation (Dai Clegg, 1994)">RICE only ranks items against each other if every item used the same scales; a Reach of "lots" or a Confidence of 95 percent that is not on the scale silently breaks the ordering. Two MoSCoW boxes checked means the item was never prioritised, and a dependency on a `BL-` id that does not exist is a dependency nobody will ever resolve.</rationale>
+    </rule>
+
+    <rule id="r-confidence-check-verdict" testable="true" depth="essential">
+      <statement>In a confidence check the Weight column MUST sum to 100 percent, every row MUST carry Evidence that is a fact or a named gap rather than a restatement of the check, and the Score MUST be computed from the weights of the Pass rows with the treatment of Warn rows stated. The Verdict MUST be exactly one of Proceed, Clarify, Stop; Proceed requires zero Fail rows, and Clarify or Stop requires at least one entry under Questions to Answer First.</statement>
+      <rationale source="this methodology's confidence-check template; widely established practice for phase-gate reviews">A gate whose weights sum to 130 percent, or whose Evidence column repeats the question, produces a number that means nothing and a Proceed that nobody can defend when the phase fails. A Stop with no questions attached is a stop with no way out, so the next session re-runs the same check and stops again.</rationale>
+    </rule>
+
+    <rule id="r-feature-folder-unique" testable="true" depth="essential">
+      <statement>A feature scaffold (`new-feature.sh` or any equivalent) MUST refuse to run when the target folder already exists, MUST allocate a feature number by listing existing folders under `.aidocs/` and taking the highest plus one, and MUST NOT overwrite an existing `spec.md` or `implementation-plan.md`. Agents MUST list `.aidocs/` before creating a feature folder.</statement>
+      <rationale source="this methodology's failure record (feature-024-starter-kits silent overwrite)">Agents do not check for an existing folder unless told to; `mkdir -p` plus a heredoc succeeds on an existing directory and replaces a reviewed spec with a blank skeleton, and nothing in the exit status says so. A guard at the top of the script is the entire fix.</rationale>
+    </rule>
+
+    <rule id="r-roadmap-milestones-and-changelog" testable="true" depth="essential">
+      <statement>Every Now and Next entry in a roadmap MUST be a named milestone with a target month and a status (Now) or confidence (Next); Later entries are themes without dates. The Not Planned table MUST have at least one row with a reason, and every edit MUST add a dated Change Log row. Milestones are labelled by name, never by calendar quarter alone.</statement>
+      <rationale source="Now / Next / Later roadmap format (Janna Bastow, ProdPad); this methodology's failure record (calendar-quarter drift on long-lived projects)">A roadmap keyed on "Q3" is wrong the day Q3 ends and nobody notices for a month; a milestone named "search v2, target July" is checkable. The Not Planned table is what stops the same feature being re-proposed every quarter, and the change log is the only record of why a target moved.</rationale>
+    </rule>
+
   </section>
 </text>

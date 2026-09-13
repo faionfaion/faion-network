@@ -45,9 +45,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: slim contract mandatory, refs over content, fresh window per invoke, untrusted-input wrapping, parent never sees raw subagent thinking | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: slim contract mandatory, summary token cap, refs over content, fresh window per invocation, untrusted-input wrapping, structured failure, no unslimmed passthrough, parent never sees thinking | ~900 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the slim subagent return: summary ≤200 tokens, refs[], confidence, next_actions[] | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: leaky summary (pastes evidence), no contract (free-form), parent re-reads same files, untrusted input bypassing subagent, nested firewall stack | ~700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: leaky summary, unslimmed passthrough, subagent for one file, shared-context siblings, swallowed failure, untrusted input in parent | ~700 |
 | `content/06-decision-tree.xml` | essential | Picks subagent shape from heaviness × trust × parallelism | ~500 |
 
 ## Task Routing

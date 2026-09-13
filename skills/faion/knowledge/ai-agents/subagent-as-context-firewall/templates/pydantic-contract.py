@@ -10,5 +10,5 @@ from typing import Literal
 class SubagentReport(BaseModel):
     summary: str = Field(description="3-5 sentences. What you found, what matters.")
     refs: list[str] = Field(description="paths/URLs/IDs the parent should re-load.")
-    follow_up_questions: list[str] = Field(default_factory=list)
+    next_actions: list[str] = Field(default_factory=list, description="what the parent should do next; empty if nothing.")
     confidence: Literal["high", "medium", "low"]

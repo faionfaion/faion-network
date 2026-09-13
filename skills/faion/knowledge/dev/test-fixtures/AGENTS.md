@@ -45,9 +45,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: function scope default, yield cleanup, keyword-only factories, sequenced determinism, conftest layering | ~1100 |
+| `content/01-core-rules.xml` | essential | 9 rules: function scope default, yield cleanup, DB savepoint rollback, keyword-only factories, sequenced determinism, conftest layering, no autouse I/O, order-independence gate, xdist per-worker state | ~1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the fixture/factory module spec + valid/invalid examples | ~900 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns: scope leakage, faker non-determinism, factory drift, autouse cost, cleanup-order, parallel runner assumptions | ~1100 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: scope leakage, teardown coupling, factory default drift, ORM-coupled conftest, autouse cost, unseeded faker, xdist shared session | ~1100 |
 | `content/06-decision-tree.xml` | essential | Decide: inline literal vs factory vs full fixture | ~400 |
 
 ## Task Routing

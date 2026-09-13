@@ -1,13 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Embeddings Evaluation Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion referencing a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Embeddings Evaluation Decision Tree" version="2.0.0" est_tokens="650" depth="essential">
+  <summary>Blocks on golden-set size and provenance, then decides whether the offline winner is statistically separated enough to ship or must go to a live A/B. Every conclusion references a rule id from 01-core-rules.xml.</summary>
   <decision-tree>
-    <root-question id="q-applies">Do ALL Applies-If conditions hold AND NO Skip-If condition triggers?</root-question>
-    <branch when="applies_if == true AND skip_if == false">
-      <conclusion ref="r1" verdict="apply the methodology; produce the artefact and validate it."/>
+    <root-question id="q-golden-set">Does the golden set hold at least 50 query-passage triples, each query with at least one relevant passage graded?</root-question>
+
+    <branch when="q-golden-set == false">
+      <conclusion ref="skip-this-methodology" verdict="do not rank models yet; build the golden set from usage logs or SME annotation first, then return."/>
     </branch>
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to the correct methodology or skip."/>
+
+    <branch when="q-golden-set == true">
+      <question id="q-real-queries">Do the headline queries come from real usage logs or SME authorship, with any synthetic rows flagged and reported separately?</question>
+
+      <branch when="q-real-queries == false">
+        <conclusion ref="r-real-queries-not-synthetic" verdict="replace or flag the synthetic queries; a ranking on synthetic queries measures paraphrase recall, not retrieval quality."/>
+      </branch>
+
+      <branch when="q-real-queries == true">
+        <question id="q-separated">On the 20% hold-out, does the top candidate's bootstrap 95% CI on the primary metric clear the runner-up's, with a paired test p below 0.05?</question>
+
+        <branch when="q-separated == true">
+          <conclusion ref="r-stale-by-date" verdict="ship the offline winner; record evaluated_at, exact model ids, golden-set version and a stale_by date within 90 days."/>
+        </branch>
+
+        <branch when="q-separated == false">
+          <conclusion ref="r-significance-gate" verdict="escalate to a live A/B of the top two with click-through or citation-accuracy telemetry; do not ship on point estimates."/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="q-golden-set == true AND holdout_split == false">
+      <conclusion ref="r-holdout-20" verdict="split 20% of queries out before any chunking, prompt or fine-tuning decision; headline numbers come from the hold-out only."/>
+    </branch>
+
+    <branch when="q-golden-set == true AND annotator_kappa &lt; 0.6">
+      <conclusion ref="r-annotation-agreement" verdict="rewrite the grading guideline and re-annotate; the metric is measuring annotator disagreement, not the models."/>
     </branch>
   </decision-tree>
 </text>

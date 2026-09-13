@@ -12,7 +12,8 @@ This validator is the classifier that found them, turned into a gate:
 
 * A rule statement that appears verbatim (normalised) in **10 or more distinct
   slugs** is cross-document FILLER — it cannot be about any one subject.
-* A statement under 40 characters is a STUB.
+* A statement under 40 characters, or one that announces itself as a stub
+  ("Stub rule for conclusion…", "TBD", "fill per artefact"), is a STUB.
 * A statement that only restates the envelope's Applies If / Skip If (the
   `preconditions` / `must be skipped` / `action=skip` family) and is shared
   by 3+ slugs is a universal SKIP-GATE.
@@ -51,6 +52,14 @@ SKIP_WORDS = re.compile(
 
 FILLER_SLUGS = 10   # a statement shared by this many slugs is about none of them
 STUB_CHARS = 40
+# A statement that SAYS it is a stub is one, whatever its length. 129 rules in 57
+# slugs read "Stub rule for conclusion 'r-default-high' referenced from
+# 06-decision-tree.xml. Replace with the real testable rule…" — written by a
+# script so a tree leaf would resolve — and every one passed this gate because
+# it is longer than 40 characters. Found by the dedupe pass on 2026-09-13.
+STUB_PHRASES = re.compile(
+    r"stub rule for conclusion|replace with the real testable rule|\bTBD\b|\bTODO\b|fill per artefact",
+    re.I)
 STAMP_LIST = os.path.join(REPO_ROOT, "scripts", "rules-stamp-list.txt")
 
 
@@ -114,7 +123,7 @@ def frequency(docs: dict[str, list[tuple[str, str]]]) -> dict[str, set[str]]:
 def classify(text: str, slug_name: str, table: dict[str, set[str]], stamps: set[str] = frozenset()) -> str:
     key = _key(text)
     shared = len(table.get(key, ()))
-    if len(text) < STUB_CHARS:
+    if len(text) < STUB_CHARS or STUB_PHRASES.search(text):
         return "stub"
     if shared >= FILLER_SLUGS or key in stamps:
         return "filler"

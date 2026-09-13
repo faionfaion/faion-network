@@ -1,62 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="templates Failure Modes" version="1.1.0" est_tokens="1250" depth="essential">
-  <summary>Ten antipatterns for SDD template use, merged from the former `templates` and `templates-planning` pair (CR-006). Detector clauses still read TBD where the v1 source had none.</summary>
+<text id="03-failure-modes" title="templates Failure Modes" version="2.0.0" est_tokens="1500" depth="essential">
+  <summary>8 antipatterns specific to SDD template use, consolidated from the former `templates` and `templates-planning` pair (CR-006). Each has a description, an observable detector and a concrete repair.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Generating all documents in one pass without waiting for review gates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Design errors compound if not caught early. Testing gaps don't surface until implementation. Reviews gate quality; skipping them trades short-term speed for long-term cost.</repair>
+    <failure-mode id="fm-leftover-placeholders" severity="high">
+      <description>`{placeholder}` or `&lt;angle_token&gt;` text survives in a filled artefact, usually in metadata fields such as `**Created:** YYYY-MM-DD` or `Project: {project-name}`.</description>
+      <detector>`grep -nE '\{[a-zA-Z_ ]+\}|&lt;[a-z_0-9]+&gt;|YYYY-MM-DD' &lt;file&gt;` returns any line outside a fenced code block; a heading set differs from the template's.</detector>
+      <repair>Run the grep before every commit of a filled artefact; fill or delete each hit; restore the template heading set. Rule r-template-fidelity.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Task.md files generated without reading design.md; task scopes are mis-sized or misaligned.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Task generation requires design context. Agents without design create tasks that violate architecture or miss dependencies.</repair>
+    <failure-mode id="fm-one-pass-generation" severity="high">
+      <description>Spec, design, plan and tasks are generated in one turn without review gates; design errors compound into every task, and the last files in the turn are silently truncated as the context fills.</description>
+      <detector>Several SDD files share one commit or one agent turn; `implementation-plan.md` links a `design.md` whose Status is still Draft; a later file ends mid-table or mid-sentence.</detector>
+      <repair>One artefact per turn, review gate between each, plan only from an Approved design; check the tail of every file written. Rule r-plan-from-approved-design.</repair>
     </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Feature folder naming collisions (feature-024-starter-kits) causing silent overwrites.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents don't detect existing folders by default. Always check .aidocs/ before creating new feature folders.</repair>
+    <failure-mode id="fm-tasks-without-design" severity="high">
+      <description>Task files are generated without reading `design.md`; scopes are mis-sized, architecture decisions are re-made per task, and executor reports do not match the task template because the task file itself deviated.</description>
+      <detector>A task names no AD id; the task's Files table lists paths absent from the design's project structure; the executor's report sections do not match the task file's headings.</detector>
+      <repair>Generate tasks from the Approved plan only, each naming its plan row and AD; review every task against the template before execution. Rules r-plan-from-approved-design, r-task-traceability.</repair>
     </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agents skip the traceability check: tasks don't reference implementation-plan rows, rows don't reference design decisions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without traceability, executor agents lose context. Always verify that each task.md references the implementation-plan row and design AD.</repair>
+    <failure-mode id="fm-feature-folder-collision" severity="high">
+      <description>A scaffold reuses an existing feature number or slug (`feature-024-starter-kits`) and overwrites a reviewed spec with a blank skeleton; nothing in the exit status says so.</description>
+      <detector>`git diff` on `.aidocs/` shows a filled `spec.md` replaced by template text; two features share a number; the scaffold script has no existence check before `mkdir -p`.</detector>
+      <repair>Guard the scaffold with an exists check, allocate the number from the highest existing folder plus one, list `.aidocs/` before creating. Rule r-feature-folder-unique.</repair>
     </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Token budget estimates in implementation-plan become stale after context is loaded.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reading 20k-token codebase evaporates budget fast. Add 20k buffer for agents reading large existing code.</repair>
+    <failure-mode id="fm-missing-traceability" severity="medium">
+      <description>Tasks do not reference implementation-plan rows, plan rows do not reference design decisions, and the FR/AD Coverage table leaves FRs with no task; executor agents lose the context of what decision they are implementing.</description>
+      <detector>An `FR-nnn` in `spec.md` is absent from the coverage table; a task row has an empty AD column; a `task.md` has no plan-row reference.</detector>
+      <repair>Complete the coverage table both ways before approval; add plan-row and AD references to every task. Rule r-task-traceability.</repair>
     </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Agents writing multiple files in one turn silently truncate later files when approaching context limits.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Generate documents in separate turns or verify file sizes before merging. Monitor agent output for truncation patterns.</repair>
+    <failure-mode id="fm-optimistic-token-estimates" severity="medium">
+      <description>`Est. Tokens` figures are typed from intuition and run 30 to 50 percent under actuals because they count the edit and forget the reading; a task that loads a 20k-token module before touching it exhausts its budget mid-change.</description>
+      <detector>Estimates are round numbers with no file sizes behind them; the Overview total does not equal the sum of rows; a task that reads existing code has no 20k buffer; execution logs show context exhaustion.</detector>
+      <repair>Derive each estimate from file bytes at roughly 4 per token plus a 20k reading buffer; make the total the sum of rows; revise with a version bump after execution. Rule r-token-estimates-with-buffer.</repair>
     </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Leaving {placeholder} text in non-obvious fields after template fill (e.g., "Project: {project-name}").</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents filling templates miss placeholder fields in metadata; run grep for '{' in generated docs before committing.</repair>
+    <failure-mode id="fm-freetext-dependency-graph" severity="high">
+      <description>The Dependency Graph section is prose, disagrees with the Depends On / Enables columns, or contains a cycle that no agent detected; a parallel executor deadlocks or runs tasks out of order.</description>
+      <detector>The section contains lines that are not `TASK_a -&gt; TASK_b`; an edge appears in the table and not the graph or vice versa; a wave contains a task whose dependency sits in the same or a later wave.</detector>
+      <repair>Rewrite the graph as edges equal to the table, run a topological sort, and rebuild the waves from it with a checkpoint after each. Rule r-dependency-graph-acyclic.</repair>
     </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>The Implementation Plan template's Dependency Graph section is frequently left as freetext; agents do not auto-detect circular deps.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Validate the dependency graph manually before approving the plan.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Execution reports written by faion-sdd-executor-agent may not match the TASK_*.md template structure if the task file deviates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Strict template adherence in task files prevents this; review all created tasks against the template.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>"Est. tokens" fields in implementation plan tables are often optimistic by 30–50% in practice.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Add a review pass that stress-tests estimates against actual file sizes before committing to the plan.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>The Roadmap template uses "Now / Next / Later" quarters; for long-lived projects this drifts.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Prefer milestone labels over calendar quarters for long-lived projects.</repair>
+    <failure-mode id="fm-calendar-quarter-roadmap" severity="low">
+      <description>Roadmap entries are keyed on calendar quarters ("Q3 work") rather than named milestones; on a long-lived project the labels drift and the roadmap is wrong the day the quarter ends without anyone noticing.</description>
+      <detector>Now / Next entries have no milestone name or target month; the Change Log has no rows after the first; the Not Planned table is empty.</detector>
+      <repair>Name each milestone, give it a target month and status or confidence, keep Later as undated themes, log every change. Rule r-roadmap-milestones-and-changelog.</repair>
     </failure-mode>
   </section>
 </text>

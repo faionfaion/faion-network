@@ -48,9 +48,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: golden-set size ≥50, three metrics minimum, statistical-significance gate, hold-out 20%, quarterly re-eval | 900 |
+| `content/01-core-rules.xml` | essential | 9 rules: golden-set size ≥50, real queries not synthetic, annotator agreement, three metrics minimum, hold-out 20%, identical harness, significance gate, quality floor before cost, stale-by date | 900 |
 | `content/02-output-contract.xml` | essential | Schema for the eval report: per-model metric table, winner, confidence interval, stale-by date | 800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: tiny golden set, single metric, train-on-test contamination, no significance test | 700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: synthetic golden set, cost-only comparison, tiny golden set, single-metric ranking, train-on-test, no significance test | 700 |
 | `content/06-decision-tree.xml` | essential | When to escalate to live A/B vs ship offline-winner | 500 |
 
 ## Task Routing

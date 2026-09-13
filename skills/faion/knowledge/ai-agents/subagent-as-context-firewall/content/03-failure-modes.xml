@@ -1,32 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="subagent-as-context-firewall Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for subagent-as-context-firewall as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="subagent-as-context-firewall Failure Modes" version="2.0.0" est_tokens="1100" depth="essential">
+  <summary>6 antipatterns specific to subagent-as-context-firewall. Each has a description, an observable detector and a concrete repair.</summary>
 
   <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Subagent returns 50K tokens of everything it found</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hard cap output at 500 tokens; force the schema to be summary plus refs only</repair>
+    <failure-mode id="fm-leaky-summary" severity="high">
+      <description>Subagent returns 50K tokens of everything it found: file bodies, quoted paragraphs, full diffs, inside the `summary` field or an extra free-form field.</description>
+      <detector>Returned contract exceeds 500 tokens, or contains code fences / multi-line quotes, or the contract model has a string field without a length validator. Parent context grows by more than 1K per subagent call.</detector>
+      <repair>Close the contract to `summary`, `refs`, `confidence`, `next_actions`; set `max_tokens` on the call and a length validator on `summary`; move evidence to `refs`. Rules r-slim-contract-mandatory, r-summary-token-cap, r-refs-over-content.</repair>
     </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Parent re-passes the subagent output to ANOTHER subagent without slimming</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each subagent boundary should slim, not preserve, the previous content</repair>
+    <failure-mode id="fm-unslimmed-passthrough" severity="medium">
+      <description>Parent re-passes one subagent's output to another subagent, or into its own next turn, without slimming: raw transcripts are concatenated and forwarded.</description>
+      <detector>A subagent prompt contains another subagent's tool results or transcript verbatim; the gather step's input size equals the sum of the subagents' internal reading rather than the sum of their contracts.</detector>
+      <repair>Forward the contract object or its `refs` only; each boundary slims. Rule r-no-unslimmed-passthrough.</repair>
     </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Spawn a subagent for a 1-file question</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Diminishing returns; subagent overhead greater than main reading the file</repair>
+    <failure-mode id="fm-subagent-for-one-file" severity="low">
+      <description>A subagent is spawned for a question one direct file read would answer: the overhead (system prompt, contract, round-trip) costs more than the reading.</description>
+      <detector>The task brief names a single known file or a single tool call, no untrusted input, and the subagent finishes in one or two tool calls.</detector>
+      <repair>Read the file directly in the parent. Reserve the firewall for many reads, unknown locations or untrusted input; the decision tree's first question is this threshold.</repair>
     </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Multiple subagents share state via shared context</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Defeats firewall use shared FILES instead</repair>
+    <failure-mode id="fm-shared-context-siblings" severity="high">
+      <description>Multiple subagents share state through a shared conversation or a copied parent transcript, so one sibling's reading lands in all of them.</description>
+      <detector>The subagent invocation passes the parent's message history or another subagent's messages as input; parallel subagents' token usage is correlated instead of independent.</detector>
+      <repair>Fresh window per invocation with only brief + contract + tool list; coordinate through files on disk. Rule r-fresh-window-per-invocation.</repair>
     </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Subagent crashes or timeouts swallow the parent question</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always return some result with confidence: low rather than nothing</repair>
+    <failure-mode id="fm-swallowed-failure" severity="medium">
+      <description>Subagent crash or timeout swallows the parent's question: the parent receives an exception, `None` or an empty string and proceeds as if nothing was asked.</description>
+      <detector>Parent code has no `except` around the subagent call, or the exception handler returns `None`; logs show a subagent timeout with no corresponding low-confidence report.</detector>
+      <repair>Always return a contract with `confidence: "low"`, a summary naming the failure and a retry suggestion in `next_actions`. Rule r-structured-failure.</repair>
+    </failure-mode>
+    <failure-mode id="fm-untrusted-input-in-parent" severity="high">
+      <description>Attacker-controlled text (web page, upload, email) is read directly in the parent, or in a subagent that still has shell, write or network tools.</description>
+      <detector>A fetch / read of external content appears in the parent transcript; or the sandbox subagent's tool list includes anything beyond reading its input; or the extraction schema has a free-text field that echoes the source.</detector>
+      <repair>Route the input through a no-tool subagent with a fixed extraction schema whose system prompt names the source as untrusted; parent treats the fields as data. Rule r-untrusted-input-wrapped.</repair>
     </failure-mode>
   </section>
 </text>

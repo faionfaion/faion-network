@@ -11,6 +11,11 @@
 SLUG=${1:?Usage: new-feature.sh feature-slug [.aidocs]}
 DIR=${2:-.aidocs}/backlog/$SLUG
 
+if [ -e "$DIR" ]; then
+  echo "Refusing: $DIR already exists (would overwrite spec.md / implementation-plan.md)" >&2
+  exit 1
+fi
+
 mkdir -p "$DIR"/{todo,in-progress,done}
 
 cat > "$DIR/spec.md" << 'EOF'
