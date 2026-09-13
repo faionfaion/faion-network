@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for max_turns range (5-10 retrieval, 15-20 coding), catch + recovery, no-500-bubble. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rule r1 for max_turns range (5-10 retrieval, 15-20 coding), catch + recovery, no-500-bubble, plus the three tree-branch rules (r-advanced, r-default-high, r-default-low) fixing cap, recovery model and logging per agent kind and per-turn cost. | ~1100 |
 | `content/02-output-contract.xml` | essential | circuit-breaker-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | No cap, cap too high, no catch, recovery uses same expensive model. | ~700 |
 | `content/04-procedure.xml` | recommended | 5-step wiring procedure. | ~800 |

@@ -42,7 +42,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for stdio vs streamable HTTP, deprecation of SSE, OAuth 2.1 mandate. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules r1-r3 for stdio vs streamable HTTP, deprecation of SSE, OAuth 2.1 mandate, plus the three tree-branch rules (r-advanced, r-default-high, r-default-low) fixing transport, auth scheme and resumable streams per tenancy. | ~1300 |
 | `content/02-output-contract.xml` | essential | transport-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Stdio over network, SSE for new builds, HTTP without OAuth, resumable disabled. | ~700 |
 | `content/04-procedure.xml` | recommended | 5-step selection procedure. | ~800 |

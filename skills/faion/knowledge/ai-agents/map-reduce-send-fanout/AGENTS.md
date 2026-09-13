@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for concurrency cap (≤20), idempotency, atomic super-step, reducer choice. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rule r1 for concurrency cap (≤20), idempotency, atomic super-step, reducer choice, plus the three tree-branch rules (r-advanced, r-default-high, r-default-low) fixing cap, waves and shared-sink handling per tier. | ~1100 |
 | `content/02-output-contract.xml` | essential | fanout-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | No cap, non-idempotent branch, hidden shared state, partial-success swallowed. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step design procedure. | ~800 |

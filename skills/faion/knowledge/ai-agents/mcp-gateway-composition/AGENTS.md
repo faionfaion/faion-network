@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for composition patterns, auth centralisation, namespace collision, tool-list trim. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules r1-r2 for composition patterns and the 5-server / 25-tool thresholds, plus the three tree-branch rules (r-advanced, r-default-high, r-default-low) fixing pattern, curation, namespacing and auth per server count. | ~1200 |
 | `content/02-output-contract.xml` | essential | gateway-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Tool list still >25 after gateway, namespace collision, gateway-of-gateways loop, auth bypass. | ~700 |
 | `content/04-procedure.xml` | recommended | 6-step design procedure. | ~800 |

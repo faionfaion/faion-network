@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for the three-question test, when to choose each primitive. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules r1-r11 for the three-question test and each primitive, plus the three tree-branch rules (r-advanced, r-default-high, r-default-low) fixing Prompt+Tool, Tool, and Resource/Prompt outcomes. | ~2000 |
 | `content/02-output-contract.xml` | essential | primitive-classification spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Resource as Tool, Tool as Prompt, Prompt with side-effect. | ~700 |
 | `content/04-procedure.xml` | recommended | 5-step classification procedure. | ~800 |

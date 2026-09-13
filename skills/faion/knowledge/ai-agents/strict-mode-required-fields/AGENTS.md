@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: required-everything, additionalProperties:false, nullable-not-optional, CI assertion, ConfigDict(extra="forbid") | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules: required-everything, additionalProperties:false, nullable-not-optional, CI assertion, ConfigDict(extra="forbid"), plus the three tree-branch encodings (fm-01 sentinel rewrite, fm-02 non-nullable money + refusal, fm-05 metadata-bag split or drop-strict) | ~1500 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the strict-mode audit report: model path, violations, fix patches | ~700 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns: empty-string sentinel, missing required, missing additionalProperties, nullable int-money, metadata-bag-in-strict | ~700 |
 | `content/04-procedure.xml` | medium | Migrate Pydantic to strict: scan → add `extra="forbid"` → convert Optional[X] to `X | None` → assert → ship | ~800 |

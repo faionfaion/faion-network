@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | Rules for manifest shape, preview size, fetch policy, retention TTL. | ~1000 |
+| `content/01-core-rules.xml` | essential | Rules r1-r4 for manifest shape, preview size, fetch policy, plus the three tree-branch rules (r-advanced, r-default-high, r-default-low) fixing store backend, TTL and reaper per tier. | ~1300 |
 | `content/02-output-contract.xml` | essential | protocol-spec schema + examples. | ~800 |
 | `content/03-failure-modes.xml` | essential | Manifest leak (full body in preview), unbounded retention, stale execution_id, fetch before preview. | ~700 |
 | `content/04-procedure.xml` | recommended | 5-step wiring procedure. | ~800 |

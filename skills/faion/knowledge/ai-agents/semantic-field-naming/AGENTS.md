@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules: specific names, units in name, bool direction, enum semantics, English-only, ≥2 tokens, no `_value`/`_data` suffixes | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules: specific names, units in name, bool direction, enum semantics, English-only, ≥2 tokens, no `_value`/`_data` suffixes, non-English token translation with `validation_alias` (fm-03-mixed-language) | ~1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the rename rubric output: per-field `old`, `new`, `reason`, `category` | ~700 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns: redundant suffixes, generic alphabet fields, mixed language, single-letter, plural mismatch, empty-string sentinel | ~700 |
 | `content/05-examples.xml` | essential | Worked examples: Instructor 90-point swing, currency confusion, boolean direction, neromedia pipeline, enum semantics | ~800 |

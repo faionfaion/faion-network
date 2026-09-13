@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Stub rules, batch 4 of 6: the MCP and fan-out family, 23 stubs → 23
+  rules.** `mcp-transport-stdio-vs-http`'s tree had a branch that contradicted
+  the slug's own r3 (an unconditional OAuth 2.1 mandate for Streamable HTTP);
+  the new rule keeps OAuth as the default and admits an API key only for
+  first-party clients on a private network, recording the alternative it
+  rejected. Four more tree-versus-document disagreements are named in the
+  rationales rather than resolved silently (`manifest-then-fetch` branches on
+  store backend while its envelope says sensitivity; `map-reduce-send-fanout`'s
+  envelope rejects shared state that its tree routes to a rule). Thirty-four
+  of 57 done.
+
 - **Stub rules, batch 3 of 6: the LlamaIndex family and `llm-judge-rubric-
   evidence-first`, 24 stubs → 24 rules.** Every tree here used the same
   auto-generated `driver == 'high' / 'advanced'` branch with no threshold
