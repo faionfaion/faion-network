@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 14 testable rules: runner, fixtures, factories, db marker, force_authenticate, boundary mocks, test settings module, conftest placement, network-block fixture, arrange/act/assert, parametrize, transactional_db for on_commit, read-conftest-first, strict-markers lint | ~2200 |
+| `content/01-core-rules.xml` | essential | 17 testable rules: runner, fixtures, factories, db marker, force_authenticate, boundary mocks, test settings module, conftest placement, network-block fixture, arrange/act/assert, parametrize, transactional_db for on_commit, read-conftest-first, strict-markers lint, plus the three decision-tree resolutions (explicit trigger, bounded output, evidence-anchored skip) | ~2100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | 10 antipatterns with reason, incl. LLM-specific ones (internal-call assertions, shared class state, inline fixture recreation, --reuse-db in CI, patching the wrong import path) | ~850 |
 | `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |

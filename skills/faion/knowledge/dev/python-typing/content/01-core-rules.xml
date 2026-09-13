@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
-<text id="01-core-rules" title="python-typing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>Seven testable rules for adding type annotations on Python 3.10+ (preferably 3.12+) with mypy strict + pyright + ruff UP/ANN/TCH.</summary>
+<text id="01-core-rules" title="python-typing Core Rules" version="1.2.0" est_tokens="1550" depth="essential">
+  <summary>Eleven testable rules for adding type annotations on Python 3.10+ (preferably 3.12+) with mypy strict + pyright + ruff UP/ANN/TCH.</summary>
 
   <section title="Built-in generics and unions (PEP 585 + PEP 604)">
     <rule id="r1-builtin-generics" testable="true" depth="essential">
@@ -11,7 +11,7 @@
       <statement>Use `X | None` for nullable types and `X | Y` for unions. Never use `Optional[X]` or `Union[X, Y]` in new code on Python 3.10+. Enforce via ruff UP007.</statement>
       <rationale source="PEP 604">PEP 604 pipe syntax reads as English "X or None"; `Optional[X]` hides nullability behind a name.</rationale>
     </rule>
-  <rule id="fm-04-cast-as-silencer" testable="true" depth="essential"><statement>Stub rule for conclusion 'fm-04-cast-as-silencer' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="fm-06-runtime-checkable-on-hot-path" testable="true" depth="essential"><statement>Stub rule for conclusion 'fm-06-runtime-checkable-on-hot-path' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule></section>
+  </section>
 
   <section title="PEP 695 type parameter syntax (Python 3.12+)">
     <rule id="r3-pep-695" testable="true" depth="essential">
@@ -29,6 +29,10 @@
       <statement>Use `Protocol` (PEP 544) for structural duck-typing contracts. Reserve ABC inheritance for class hierarchies that genuinely need `super()` call chains. Add `@runtime_checkable` only when the Protocol is used in `isinstance()` at runtime — never on hot paths.</statement>
       <rationale source="PEP 544">Protocol obeys the Open/Closed principle without import coupling. `@runtime_checkable` performs structural-presence checks per call; the overhead is measurable on middleware-tight loops.</rationale>
     </rule>
+    <rule id="fm-06-runtime-checkable-on-hot-path" testable="true" depth="essential">
+      <statement>When a structural contract needs `isinstance()` dispatch on a hot path - per-request middleware or a loop body executed once per item, the two settings the failure mode names - the `Protocol` MUST NOT be decorated `@runtime_checkable`. The code MUST either drop the runtime check and dispatch on the statically typed parameter, or move the contract to a nominal `ABC` (inheritance or `ABC.register`) so `isinstance()` is an MRO lookup; a check kept for the ABC MUST be hoisted out of the loop or done once at registration. `@runtime_checkable` remains allowed only on the infrequent-dispatch branch of the tree.</statement>
+      <rationale source="Python typing docs - typing.runtime_checkable; PEP 544">A runtime-checkable Protocol `isinstance()` inspects every declared member by name on each call and still verifies no signatures, so the hot path pays introspection for a weaker guarantee than a nominal check. The exact cost differs between CPython versions (3.12 changed the lookup mechanism); check the notes for your version rather than assuming it is free.</rationale>
+    </rule>
   </section>
 
   <section title="Type-checker discipline">
@@ -40,6 +44,10 @@
     <rule id="r7-scoped-ignores" testable="true" depth="essential">
       <statement>Never write a bare `# type: ignore`. Always pin a rule code: `# type: ignore[attr-defined]`. Always add a justification comment after it. Enable `warn_unused_ignores = true` so stale ignores fail CI when their underlying issue is fixed. Never use `cast(T, x)` to silence a checker when an `isinstance` / `assert` narrowing guard would work — `cast()` makes no runtime assertion.</statement>
       <rationale source="mypy 1.x release notes">Bare ignores silence all errors on the line, including future unrelated ones. `cast()` is a lie to the checker — if the actual type differs, the bug propagates silently. Narrowing guards are both a type assertion and a runtime safety check.</rationale>
+    </rule>
+    <rule id="fm-04-cast-as-silencer" testable="true" depth="essential">
+      <statement>When a mypy error is to be silenced and the value's runtime type can be established by a guard - `isinstance()`, `x is not None`, a `match` arm, or a `TypeIs` / `TypeGuard` function - the fix MUST be that guard placed before the first use so the error disappears by narrowing, and the line MUST carry neither `cast()` nor `# type: ignore[...]`. A guard on a production path MUST raise a typed exception (`TypeError`, `ValueError`) rather than rely on `assert`, which `python -O` strips. Each such fix counts as zero toward the Step 4 gate of five scoped ignores per module.</statement>
+      <rationale source="Python docs - typing narrowing and the assert statement; PEP 742 (TypeIs)">`cast()` and a scoped ignore both make the checker agree without making the program safer; a narrowing guard is the one fix that is simultaneously type evidence and a runtime check. `assert` looks like a guard but is removed under `-O`, so the runtime half silently disappears in exactly the deployments that optimise.</rationale>
     </rule>
   </section>
 

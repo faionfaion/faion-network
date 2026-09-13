@@ -41,7 +41,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules specific to documentation | ~1000 |
+| `content/01-core-rules.xml` | essential | Testable rules specific to documentation | ~1150 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
 | `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |

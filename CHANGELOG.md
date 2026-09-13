@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Stub rules, batch 6 of 6: thirteen slugs, 28 stubs → 28 rules — and the
+  phrase "Stub rule for conclusion" no longer appears in the corpus.** Six
+  `dev` documents (`code-review`, `css-in-js`, `django-coding-standards`,
+  `django-pytest`, `django-quality`, `documentation`) had the same generic
+  three-leaf tree (preconditions / producible / skip); each leaf is now the
+  subject's own reading of it — which trigger, which required field must be
+  computed rather than typed, which missing prerequisite blocks, which Skip-If
+  case routes where. `python-typing`'s two stubs became rules on `cast` as a
+  silencer and `runtime_checkable` on hot paths (PEP 742, PEP 544). Over the
+  six batches: **129 stubs in 57 slugs → 0**, every replacement anchored to a
+  number or distinction its own document already stated, seven tree-versus-
+  document disagreements named rather than silently resolved.
+
 - **Stub rules, batch 5 of 6: two `ai-core`, six `backend/django-pytest-*`,
   two `dev`, 24 stubs → 21 rules.** Three stubs in the pytest family
   (`r2-register-in-conftest`, `r3-mute-signals`, `r2-scope`) were verbatim

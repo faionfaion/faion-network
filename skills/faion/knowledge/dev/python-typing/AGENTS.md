@@ -45,7 +45,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules: PEP 585 generics, PEP 604 unions, PEP 695 syntax, strict mypy config, scoped `type: ignore`, no-`cast()`-as-silencer, django-stubs wiring | ~1100 |
+| `content/01-core-rules.xml` | essential | 11 testable rules: PEP 585 generics, PEP 604 unions, PEP 695 syntax, TypedDict boundaries, Protocol over ABC, strict mypy config, scoped `type: ignore`, narrowing guard over `cast()` (fm-04), no `@runtime_checkable` on hot paths (fm-06), django-stubs wiring, ruff ANN/TCH/UP | ~1550 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the produced annotated-module report: file paths, error count before/after, `Any` count, deltas | ~700 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns: Any-as-shortcut, dict-of-Any payloads, bare ignore, cast-as-silencer, mixed Optional/pipe styles, @runtime_checkable on hot paths | ~900 |
 | `content/04-procedure.xml` | medium | Step-by-step migration: baseline scan → fix UP/ANN → add stubs → strict per-module → CI gate | ~700 |

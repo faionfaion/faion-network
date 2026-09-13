@@ -33,7 +33,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale and source | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale and source, including the tree's skip branch | ~600 |
 | `content/02-output-contract.xml` | essential | JSON-schema output shape + valid/invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | ~800 |
 | `content/04-procedure.xml` | medium | 5-step procedure with input/action/output per step | ~900 |
