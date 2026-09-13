@@ -43,7 +43,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules specific to code-coverage | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 testable rules: branch not line, diff-cover 90 on new code, stop at 80-90, coverage.xml artifact, mutation on critical, plus tree branch rules r1-explicit-trigger / r2-bounded-output / r3-evidence-anchored | ~1300 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
 | `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |

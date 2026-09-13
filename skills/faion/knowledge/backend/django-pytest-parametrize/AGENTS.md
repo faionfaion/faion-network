@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 4 testable rules: parametrize semantics, three-tuple matrix, refactor threshold, fixture switching via getfixturevalue | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: parametrize semantics, three-tuple matrix, refactor threshold, fixture switching via getfixturevalue, plus tree branch rules r1-parametrize / r3-refactor-threshold | ~1300 |
 | `content/02-output-contract.xml` | essential | JSON schema for the parametrize spec | ~700 |
 | `content/03-failure-modes.xml` | essential | 3 antipatterns: huge parameter lists, model-instance params, generic IDs | ~700 |
 | `content/06-decision-tree.xml` | essential | Per group of tests: refactor or keep? matrix shape? | ~200 |

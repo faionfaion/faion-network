@@ -45,7 +45,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 8 testable rules: db marker, scope rules, API clients, composition, conftest hierarchy, test settings, xdist, tests/ layout | ~1400 |
+| `content/01-core-rules.xml` | essential | 9 testable rules: db marker, scope rules, API clients, composition, conftest hierarchy, test settings, xdist, tests/ layout, per-fixture db_fixture resolution (r1-db-marker) | ~1700 |
 | `content/02-output-contract.xml` | essential | JSON schema for the fixtures spec | ~900 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns: db-vs-transactional confusion, mutable session-scope, xdist racing, override_settings drift, MEDIA_ROOT pollution | ~900 |
 | `content/04-procedure.xml` | medium | 5 steps: declare fixtures → scope → settings → xdist → validate | ~600 |

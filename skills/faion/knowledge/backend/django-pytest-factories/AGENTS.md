@@ -45,7 +45,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 3 testable rules: DjangoModelFactory + SubFactory + Faker, register-in-conftest, mute_signals scope | ~900 |
+| `content/01-core-rules.xml` | essential | 4 testable rules: DjangoModelFactory + SubFactory + Faker, register-in-conftest, mute_signals scope, skip_postgeneration_save gate (r1-djangomodelfactory) | ~850 |
 | `content/02-output-contract.xml` | essential | JSON schema for the factories spec | ~800 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: manual override, Faker literal assertion, bulk_create skipping signals, missing skip_postgeneration_save | ~800 |
 | `content/04-procedure.xml` | medium | 5 steps: enumerate models → declare factories → SubFactory graph → register → mute_signals scope | ~600 |

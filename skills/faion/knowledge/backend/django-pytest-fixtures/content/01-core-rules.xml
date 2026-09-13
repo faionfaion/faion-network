@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
-<text id="01-core-rules" title="django-pytest-fixtures Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-pytest-fixtures. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-pytest-fixtures Core Rules" version="1.1.0" est_tokens="1700" depth="essential">
+  <summary>9 testable rules for django-pytest-fixtures: db marker, scope, API clients, composition, conftest hierarchy, test settings, xdist, tests/ layout, and the per-fixture db_fixture resolution the decision tree routes to.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -35,5 +35,9 @@
       <statement>Organize tests as: tests/conftest.py (root fixtures), tests/factories/ (Factory Boy classes), tests/fixtures/ (complex composed fixtures), tests/unit/ (unit tests, no DB), tests/integration/ (DB + API), tests/e2e/ (end-to-end). Each subdirectory MAY have its own conftest.py for directory-specific fixtures.</statement>
       <rationale source="v1-source">This structure scales from small projects to monorepos. Unit tests run fastest (no DB). Integration tests share factories. conftest inheritance (root → unit/ → module) manages fixture scope cleanly. Developers know immediately where a test belongs and what setup it requires.</rationale>
     </rule>
-  <rule id="r1-db-marker" testable="true" depth="essential"><statement>Stub rule for conclusion 'r1-db-marker' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r2-scope" testable="true" depth="essential"><statement>Stub rule for conclusion 'r2-scope' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule></section>
+    <rule id="r1-db-marker" testable="true" depth="essential">
+      <statement>Every fixtures[] entry in the spec MUST carry exactly one db_fixture value resolved by the q-needs-db path: "none" when no consuming test touches the database (the fixture MUST NOT request db or transactional_db and its tests carry no @pytest.mark.django_db); "transactional_db" when any consuming test asserts on transaction.on_commit, a post_save/post_delete signal, or select_for_update; "db" otherwise. A fixture with db_fixture="db" whose consuming test registers transaction.on_commit or uses select_for_update is rejected by scripts/validate-django-pytest-fixtures.py, and db_fixture="transactional_db" MUST be justified by naming the on_commit hook, signal or lock the test asserts.</statement>
+      <rationale source="pytest-django documentation, 'Database access' (db, transactional_db, django_db marker); Django docs, transaction.on_commit">pytest-django's db fixture wraps the test in a savepoint that is rolled back, so on_commit callbacks never run and select_for_update never contends; a test that asserts on either passes or fails on the accident of the wrapping transaction. transactional_db flushes every table after the test, which is the slow path, so it is reserved for tests that name the semantics they need; the "none" value keeps pure-unit fixtures out of the database session entirely and is what lets tests/unit/ run without a database.</rationale>
+    </rule>
+  </section>
 </text>

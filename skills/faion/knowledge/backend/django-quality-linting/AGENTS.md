@@ -46,7 +46,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 4 testable rules: ruff config, mypy + django-stubs config, pre-commit hooks under 10s, CI gate set + coverage ≥ 80% | ~1200 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: ruff config, mypy + django-stubs config, pre-commit hooks under 10s, CI gate set + coverage ≥ 80%, plus per-gate routing rules r3-pre-commit / r4-ci-gates | ~1300 |
 | `content/02-output-contract.xml` | essential | JSON schema for the quality stack spec | ~900 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns: bare ignore, day-one strict, missing settings_module, T20 without ignore, MegaLinter in hooks | ~900 |
 | `content/04-procedure.xml` | medium | 5 steps: ruff → mypy → pre-commit → CI → validate | ~600 |

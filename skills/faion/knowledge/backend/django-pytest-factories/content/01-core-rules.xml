@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
-<text id="01-core-rules" title="django-pytest-factories Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-pytest-factories. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="django-pytest-factories Core Rules" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>4 testable rules for django-pytest-factories: factory shape, conftest registration, mute_signals scope, and the skip_postgeneration_save gate the decision tree routes to.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -15,5 +15,9 @@
       <statement>Use factory.django.mute_signals(post_save) as a decorator on factory classes or test functions when the factory creates a model that triggers email sending, Celery task enqueuing, or other side effects via post_save signals. Verify the side effect in separate, dedicated tests that specifically test the signal handler.</statement>
       <rationale source="v1-source">Unmuted signals make unrelated tests fail when the email backend or Celery queue is not configured for them. Muting signals in the factory keeps test scope focused. Separate signal tests verify the handler independently of factory-creation tests.</rationale>
     </rule>
-  <rule id="r1-djangomodelfactory" testable="true" depth="essential"><statement>Stub rule for conclusion 'r1-djangomodelfactory' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r2-register-in-conftest" testable="true" depth="essential"><statement>Stub rule for conclusion 'r2-register-in-conftest' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r3-mute-signals" testable="true" depth="essential"><statement>Stub rule for conclusion 'r3-mute-signals' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule></section>
+    <rule id="r1-djangomodelfactory" testable="true" depth="essential">
+      <statement>When a factory's model has no external-effect post_save handlers but the factory declares at least one @factory.post_generation hook (M2M add, set_password, file attach), the spec entry MUST set skip_postgeneration_save=true and the factory's Meta MUST carry skip_postgeneration_save = True. Each hook MUST call instance.save() itself, and only when it changed a persisted field; a hook that only touches a related manager (M2M .add/.set) MUST NOT save. A spec entry with post_generation non-empty and skip_postgeneration_save=false is rejected by scripts/validate-django-pytest-factories.py.</statement>
+      <rationale source="factory_boy 3.3 changelog and DjangoModelFactory reference; Django 4.2 release notes">factory_boy 3.3 deprecated the implicit save that ran after every post_generation hook and made skip_postgeneration_save the supported way to opt out; without it every create() issues a second UPDATE, which is the fm-4 symptom of fixture setup at roughly twice normal cost in pytest --durations. Moving the save into the hook keeps the M2M and password cases correct while the plain create() path stays at one INSERT.</rationale>
+    </rule>
+  </section>
 </text>

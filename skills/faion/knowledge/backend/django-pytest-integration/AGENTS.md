@@ -46,7 +46,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 6 testable rules: per-endpoint security matrix, service-layer direct tests, permission combinations, transactional_db cases, Postgres in CI, one concept per test | ~1300 |
+| `content/01-core-rules.xml` | essential | 9 testable rules: per-endpoint security matrix, service-layer direct tests, permission combinations, transactional_db cases, Postgres in CI, one concept per test, plus tree branch rules r1-endpoint-matrix / r3-permission-combos / r4-transactional-db | ~1850 |
 | `content/02-output-contract.xml` | essential | JSON schema for the integration tests spec | ~1000 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: 200-only assert, view-tested service logic, missing permission combo, SQLite CI | ~800 |
 | `content/04-procedure.xml` | deep | 6 steps: matrix → service tests → permission combos → transactional_db → CI → coverage | ~700 |

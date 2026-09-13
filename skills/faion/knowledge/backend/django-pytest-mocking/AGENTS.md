@@ -44,7 +44,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 4 testable rules: import-site patch, responses for HTTP, freezegun for time, Celery .delay() vs eager | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 testable rules: import-site patch, responses for HTTP, freezegun for time, Celery .delay() vs eager, plus per-boundary spec rules r1-import-site-patch / r2-responses / r3-freezegun / r4-celery | ~1950 |
 | `content/02-output-contract.xml` | essential | JSON schema for the mocking spec | ~800 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns: definition-site patch, ORM mock, sleep mock, module-level datetime.now, missing call assert | ~800 |
 | `content/04-procedure.xml` | medium | 5 steps: enumerate boundaries → pick technique → assertion contract → no-mock list → validate | ~600 |

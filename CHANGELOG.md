@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Stub rules, batch 5 of 6: two `ai-core`, six `backend/django-pytest-*`,
+  two `dev`, 24 stubs → 21 rules.** Three stubs in the pytest family
+  (`r2-register-in-conftest`, `r3-mute-signals`, `r2-scope`) were verbatim
+  duplicates of rules already in the file; their tree leaves now point at the
+  real rule and the stubs are gone. `django-pytest-mocking`'s four stubs became
+  the four library rules the tree always implied (where to patch, `responses`,
+  `freezegun`, Celery eager mode). One tree-versus-procedure disagreement named
+  (`django-quality-linting`: `pip-audit` on push or CI-only; the rule follows
+  the tree). Forty-four of 57 done.
+
 - **Stub rules, batch 4 of 6: the MCP and fan-out family, 23 stubs → 23
   rules.** `mcp-transport-stdio-vs-http`'s tree had a branch that contradicted
   the slug's own r3 (an unconditional OAuth 2.1 mandate for Streamable HTTP);
