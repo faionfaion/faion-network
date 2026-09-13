@@ -15,24 +15,31 @@
 
 ## Applies If (ALL must hold)
 
-- The triggering case shows up in the user's workload at least once per cycle.
-- A named consumer (human reviewer or downstream agent) exists for the output.
-- An auditable source-of-truth is available for the inputs this methodology requires.
-- Operator has authority to act on the artefact (write access, sign-off rights).
+- 100% of production traffic has been served by the new path for at least one full weekly traffic cycle since a recorded cutover date.
+- A reconciliation job can compare legacy and new stores (counts plus per-record checksum or field diff) and a request counter exists, or can be added, on the legacy read path.
+- The migration's feature flags, shims, alerts, dashboards and infrastructure can be enumerated from the flag service, the codebase and the cloud inventory.
+- Backup tooling can snapshot the legacy data, and code search plus the query log can be scanned across every repository in the organisation.
+- A named human will read the snapshot URL and the scan result before any DROP or decommission runs.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Cutover is not complete or has run for less than a weekly cycle; cleanup now deletes the rollback path.
+- The legacy store is the contractual system of record for a retention period that has not elapsed; schedule the cleanup for after it, do not drop early.
+- No reconciliation can be run (the two stores are not comparable) and no read counter can be added; the write and read paths cannot be safely retired.
+- The migration is being rolled back rather than completed.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Trigger event / brief | markdown / ticket | team owner |
-| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
-| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
+| Cutover deploy record (first day at 100% on the new path) and the team's delivery cycle | deploy log + sprint calendar | release engineering |
+| Reconciliation report: counts and per-record checksum or field diff, legacy vs new, per day | report URL | data engineering |
+| Request counter on the legacy read path with caller labels, and the batch / month-end calendar | metric name + dashboard | observability |
+| Flag service export listing every migration flag key | flag service | platform |
+| Shim inventory: adapters, aliases, proxies, translators, redirects with known consumers | list from code review | owning team |
+| Backup tooling and the snapshot's retention policy; code search across all repositories; slow-query or audit log | tool access | platform / DBA |
+| Docs, runbooks, ADRs and diagrams, searchable by component name | repository | docs owners |
+| Alert rules, dashboards, SLOs, synthetic checks and the cloud inventory tagged with the legacy service, with monthly cost | monitoring config + cloud billing export | SRE / FinOps |
 
 ## Assumes Loaded
 
@@ -47,9 +54,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: dual-write retired after parity, read path deleted at zero traffic, flags removed from code, shims with expiry, schema drop after backup + scan, docs/runbooks refreshed, alerts + infra decommissioned, cleanup deadline | 2150 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema: cutover and parity window (>= 7 days, weekly cycle), deadline within one cycle (<= 30 days), reconciliation with zero mismatches for 7+ days and write removed by code deletion, read counter at zero 7+ days across the batch window, flags with key deleted and branches collapsed, shims deleted or dated with a named consumer, snapshot with retention and zero-hit cross-repo and query-log scan before a separate DROP, docs at zero hits outside the archive, alerts retargeted or deleted, infrastructure decommissioned with cost or running with reason and end date, deferred items with ticket and owner, human-executed drop; valid + invalid examples, forbidden patterns | ~5250 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | 1350 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
+| `content/04-procedure.xml` | essential | 9 steps in safe order: fix cutover and deadline, reconcile and delete the legacy write, count reads to zero and delete the read path, delete every flag, list and date shims, snapshot and scan before the separate DROP, refresh docs, retarget alerts and decommission infra, record deferrals and hand to the reviewer | ~1850 |
+| `content/05-examples.xml` | recommended | Complete cleanup checklist for an orders schema migration (three flags, one dated shim, snapshot and 41-repo scan, EUR 432/month removed, one deferred item), a note per non-obvious value, and a bad checklist with the validator output | ~2900 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 850 |
 
 ## Task Routing

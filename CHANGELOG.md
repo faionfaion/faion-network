@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 layer 2, batch 3: eleven more — `ai-core`, three `comms`, seven
+  `dev`.** These carried the corpus's other stamp (`artefact_id / version /
+  last_reviewed / decision / inputs_used / rationale / owner`). Now
+  `hipaa-phi-data-flow-design`'s contract is PHI elements, processors with a
+  BAA flag, encryption and audit-retention fields; `latency-budget-allocation`
+  is six fields whose arithmetic the rules state; `ios-signing-and-provisioning`
+  is eleven named signing assets. `junior-next-pr-checklist-template` gained
+  the procedure it never had. Every validator rewritten (the generator refused
+  all eleven), templates and their `.vars.schema.json` realigned and
+  regenerated through the tool's pure generators. Thirty of 61 whole.
+
 - **CR-011 layer 2, batch 2: the two BA packs and eight `dev` documents.**
   `govtech-foia-ba-pack` now has a 15-field contract (record classes, retention
   schedule, statutory clock, exemption citations), `healthtech-fhir-ba-pack` a

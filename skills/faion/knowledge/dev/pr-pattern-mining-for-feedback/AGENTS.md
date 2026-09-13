@@ -15,24 +15,29 @@
 
 ## Applies If (ALL must hold)
 
-- The triggering case shows up in the user's workload at least once per cycle.
-- A named consumer (human reviewer or downstream agent) exists for the output.
-- An auditable source-of-truth is available for the inputs this methodology requires.
-- Operator has authority to act on the artefact (write access, sign-off rights).
+- Merged PRs and their review comments for the window can be fetched by one reproducible query (`gh api graphql`, `gh pr list --search`, or the GitLab equivalent) and the window holds at least 20 merged PRs and 100 review comments.
+- Review comments carry author, URL and resolution history, so distinct reviewers and review round-trips can be counted.
+- A formatter and linter exist for the language, so formatter-coverable comments can be identified and excluded.
+- The scope (team or a named mentee) is agreed with the report owner before mining starts.
+- A named owner will check the cited comment URLs and the scope declaration before the report is shared.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- The window holds fewer than 20 merged PRs or 100 review comments; record observations only, widen the window or wait a cycle.
+- Review comments are not retrievable with URLs (reviews happen in chat or meetings); nothing can be cited.
+- The request is for per-author rankings under a team scope; that is a leaderboard, not feedback.
+- The language has no formatter or linter and reviewers are still doing formatting by hand; fix the tooling first, then mine.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Trigger event / brief | markdown / ticket | team owner |
-| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
-| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
+| Merged PRs and review comments in the window with author, URL, body and resolution | GraphQL or REST export from the stated query | GitHub / GitLab API |
+| Review round-trip counts per comment thread, or the team's severity labels (issue / suggestion / nitpick) | thread metadata or label convention | PR platform |
+| Formatter and linter rule catalogue for the language (ruff, eslint, prettier, gofmt, rustfmt) | rule ids | tool documentation |
+| CI configuration and PR template | repository files | repository |
+| Previous report for the same scope and query, with its baselines | prior report JSON | report store |
+| Scope agreement: team, or mentee handle with consent and evaluation use stated | note from the owner | report owner |
 
 ## Assumes Loaded
 
@@ -47,10 +52,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: corpus + query stated, recurrence threshold, patterns as code behaviour, ranked by frequency x cost, formatter comments excluded, enforcement channel per rule, scope declared + consented, baseline + remeasure | 2050 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema: team / mentee scope with no author leaderboard, corpus with window, counts, query and the 20 PR / 100 comment gate, patterns as code behaviour with before and after, 3 PRs and 2 reviewers with 3+ comment URLs, count x cost ranking with at most 5 top patterns, one automation-gap item, suggested rules with an enforcement channel and reasons, baseline and re-measure per pattern, ineffective after two cycles, owner check before sharing; valid + invalid examples, forbidden patterns | ~4850 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns with detector + repair | 1200 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
-| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
+| `content/04-procedure.xml` | essential | 8 steps: declare scope, fetch the corpus with a stated query and apply the sample gate, strip formatter-coverable comments, cluster by behaviour and apply recurrence, phrase with before and after, rank by count x cost and cut to five, attach an enforcement channel, set baselines and hand to the owner | ~1700 |
+| `content/05-examples.xml` | recommended | Complete team report from 64 PRs and 412 comments (three top patterns with lint, checkbox and CI channels; 38 formatter comments as one ruff change), a note per non-obvious value, and a bad report with the validator output | ~2800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 800 |
 
 ## Task Routing

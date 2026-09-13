@@ -15,24 +15,31 @@
 
 ## Applies If (ALL must hold)
 
-- The triggering case shows up in the user's workload at least once per cycle.
-- A named consumer (human reviewer or downstream agent) exists for the output.
-- An auditable source-of-truth is available for the inputs this methodology requires.
-- Operator has authority to act on the artefact (write access, sign-off rights).
+- The target is exactly one major version above the framework version deployed today (or the path has been split into one inventory per major step).
+- The vendor publishes release notes or an upgrade guide for every minor between current and target.
+- The full test suite runs green on the current version and the framework has a switch to elevate deprecation warnings to errors.
+- The dependency manifest and each framework-dependent package's release notes are reachable.
+- Deployed language, database and runtime versions are known for every environment.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- The bump is minor or patch (`major_gap` = 0); run the suite with warnings enabled and proceed without an inventory.
+- No test suite exists to run with deprecation warnings as errors; write the characterisation tests first, the inventory has nothing to count.
+- The framework is being replaced rather than upgraded; that is a migration plan, not an upgrade inventory.
+- The vendor has no release notes for the target (unreleased or unsupported version); nothing can be cited.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Trigger event / brief | markdown / ticket | team owner |
-| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
-| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
+| Framework version deployed in every environment and the target version | version strings per environment | deployment config / lockfile |
+| Vendor release notes for every minor between current and target, and the upgrade guide | URLs | vendor documentation site |
+| CI run of the full suite on the current version with deprecation warnings elevated to errors | CI log URL | CI |
+| Dependency manifest with every framework-dependent package and version | lockfile (`requirements.txt`, `package-lock.json`, `Gemfile.lock`, `pom.xml`) | repository |
+| Release notes of each framework-dependent package stating its compatible framework versions | URLs | package repositories |
+| Codemod tooling for the ecosystem and its documentation on partial or experimental transforms | tool docs | `django-upgrade`, `react-codemod`, `ng update`, `rector`, OpenRewrite, `pyupgrade` |
+| Language, database, Node / JVM and base-image versions per environment | version strings | infrastructure inventory |
+| Map of which modules serve production requests and which run jobs | code ownership doc or routing table | team |
 
 ## Assumes Loaded
 
@@ -47,10 +54,10 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: one major per inventory, vendor-cited map, deprecation warnings as errors, call-site counts, codemod classification, dependent-package compatibility, runtime prerequisites, two-axis risk | 2050 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema for one major step: major_gap = 1, deprecation run with warnings as errors, release notes covered, breaking changes with vendor citation, reproducible call-site count, codemod / manual with dry run, two-axis risk and characterisation tests, dependent packages with blockers and plans, runtime prerequisites per environment, review state with no agent-opened branch; valid + invalid examples, forbidden patterns | ~5300 |
 | `content/03-failure-modes.xml` | essential | 7 antipatterns with detector + repair | 900 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
-| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
+| `content/04-procedure.xml` | essential | 8 steps: fix the single major step, deprecation run as errors, map from vendor release notes, reproducible call-site counts, codemod dry run, dependent packages and runtime prerequisites with blockers, two-axis risk and characterisation tests, hand to the human reviewer | ~1850 |
+| `content/05-examples.xml` | recommended | Complete Django 4.2 to 5.0 inventory with three changes, a blocker plugin and a characterisation test, a note per non-obvious value, and a bad 3.2 to 5.0 inventory with the validator output | ~2750 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing

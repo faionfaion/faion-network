@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Junior Next Pr Checklist Template Procedure" version="1.1.0" est_tokens="1450" depth="essential">
+  <summary>Seven steps from a completed review to a checklist the junior pastes into their next PR: reconcile the previous checklist (retire, escalate, carry), harvest candidate items from review comments with permalinks, phrase each as a yes/no check, route machine-checkable items to lint, cite the standard and set severity with one blocker, cut to 3 to 7 with a deferred list, then hand the draft to the mentor who confirms it before the junior receives it. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="reconcile-the-previous-checklist">
+      <input>The previous checklist as pasted in the just-reviewed PR's description; its tick state.</input>
+      <action>Record `previous_checklist_url`. For each previous item: ticked on this PR and the one before it, move to `retired` with `consecutive_prs_ticked`; unmet for the third time, move to `pairing_sessions` with a date; unmet once or twice, carry it forward with `status = carried` and `carried_count`; ticked once, keep it as `carried` (r-carry-forward-and-retire).</action>
+      <output>`retired[]`, `pairing_sessions[]`, carried entries in `items[]`.</output>
+      <decision-gate>The previous checklist was not pasted or the ticks were not the junior's: the review is sent back before code is read (r-junior-self-ticks-before-review); this procedure resumes after the junior ticks.</decision-gate>
+    </step>
+    <step n="2" name="harvest-candidates-with-permalinks">
+      <input>Every review comment and diff-line comment on `source_pr.url`.</input>
+      <action>For each substantive comment (not a nit a formatter would catch) create a candidate with its permalink into the PR. A candidate with no comment behind it is dropped, however good the advice (r-item-traces-to-review-comment).</action>
+      <output>Candidate list, each with `origin_permalink`.</output>
+    </step>
+    <step n="3" name="phrase-each-as-a-yes-no-check">
+      <input>Candidate list.</input>
+      <action>Rewrite each candidate as a check a reviewer answers yes or no on the next PR ("every new public function has a docstring"). Remove trait phrasing: "be more careful", "think about", "try to", "cleaner code" (r-item-is-verifiable-on-next-pr).</action>
+      <output>`items[].check`.</output>
+      <decision-gate>A candidate that cannot be phrased as an observable check on the next PR is not a checklist item; it is a conversation, and is noted for the 1:1 instead.</decision-gate>
+    </step>
+    <step n="4" name="route-machine-checkable-items-to-lint">
+      <input>Each check; the repository's linter, formatter, type-checker and CI configuration.</input>
+      <action>Where a rule can enforce the check, set `lint.machine_enforceable`, name the `rule` and file the `automation_ticket` or PR that enables it; the item stays for at most one PR after the automation lands (r-machine-checkable-items-become-lint).</action>
+      <output>`items[].lint`.</output>
+    </step>
+    <step n="5" name="cite-the-standard-and-set-severity">
+      <input>The team's style guide, ADRs and CONTRIBUTING.md.</input>
+      <action>For each item cite the section, ADR or anchor it enforces; with no written standard label it `preference:&lt;mentor-handle&gt;`. Order by severity and label `blocking` or `should`; at most one item is `blocking`, and a preference can never be (r-item-cites-team-standard, r-severity-ordered-one-blocker).</action>
+      <output>`items[].standard`, `items[].severity`, `blocking_item_count`.</output>
+      <decision-gate>Two candidates compete for `blocking`: the one with the written standard wins; the other becomes `should`.</decision-gate>
+    </step>
+    <step n="6" name="cut-to-three-to-seven-and-defer-the-rest">
+      <input>Ordered items from step 5.</input>
+      <action>Keep 3 to 7 items, highest severity first; move the remaining candidates with their permalinks to `deferred`, to be promoted only when an item is retired (r-three-to-seven-items). Fill `templates/output.md.j2` in the form the junior will paste.</action>
+      <output>`items[]` (3 to 7), `deferred[]`, `posting` with `ticks_authored_by = junior`.</output>
+    </step>
+    <step n="7" name="hand-the-draft-to-the-mentor">
+      <input>The complete draft; `scripts/validate-junior-next-pr-checklist-template.py`.</input>
+      <action>Validate with `--file`, set `review.status = ready_for_mentor_review`. The mentor confirms every permalink and severity label and records the date; only then does the mentor, not the agent, hand the checklist to the junior (human checkpoint in `03-failure-modes.xml`).</action>
+      <output>`review` with `handed_to_junior_by_agent = false`; validator exit 0.</output>
+      <decision-gate>Mentor has not confirmed: the checklist is not given to the junior and the next PR is not gated on it.</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>3 to 7 items, each with a permalink into the source PR, phrased as a yes/no check, citing a standard or labelled as a preference.</item>
+      <item>At most one `blocking` item, never a preference; machine-enforceable items name their rule and ticket.</item>
+      <item>Retired, carried and pairing-session items reconciled against the previous checklist; deferred candidates kept with permalinks.</item>
+      <item>Posting rule recorded: the junior pastes and ticks, the mentor verifies; the mentor has confirmed before the junior receives it.</item>
+    </list>
+  </section>
+</text>

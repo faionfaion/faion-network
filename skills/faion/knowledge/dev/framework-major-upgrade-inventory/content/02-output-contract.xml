@@ -1,57 +1,329 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Framework Major Upgrade Inventory Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Framework Major Upgrade Inventory artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Framework Major Upgrade Inventory Output Contract" version="1.2.0" est_tokens="5300" depth="essential">
+  <summary>Draft-07 JSON Schema for the inventory of one major-version step: the framework and its single-major gap, the deprecation-warnings-as-errors run, every breaking change with vendor citation, reproducible call-site count, codemod or manual classification and two-axis risk score, the dependent-package compatibility table with blockers, runtime prerequisites per environment, and the review state the human checkpoint reads. Validator: `scripts/validate-framework-major-upgrade-inventory.py`.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/framework-major-upgrade-inventory.json",
+  "title": "Framework major-upgrade inventory (one major step)",
+  "type": "object",
+  "required": ["repository", "framework", "deprecation_run", "release_notes_covered", "breaking_changes", "unverified", "dependent_packages", "runtime_prerequisites", "review"],
+  "additionalProperties": false,
+  "properties": {
+    "repository": {"type": "string", "minLength": 3},
+    "framework": {
+      "type": "object",
+      "required": ["name", "current_version", "target_version", "current_major", "target_major", "major_gap", "upgrade_guide_url"],
+      "properties": {
+        "name": {"type": "string", "minLength": 2},
+        "current_version": {"type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?"},
+        "target_version": {"type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?"},
+        "current_major": {"type": "integer", "minimum": 0},
+        "target_major": {"type": "integer", "minimum": 1},
+        "major_gap": {"const": 1},
+        "step_index": {"type": "integer", "minimum": 1},
+        "steps_total": {"type": "integer", "minimum": 1},
+        "upgrade_guide_url": {"type": "string", "pattern": "^https?://"}
+      }
+    },
+    "deprecation_run": {
+      "type": "object",
+      "required": ["command", "ran_on_version", "log_url", "distinct_warnings", "every_warning_has_an_entry"],
+      "properties": {
+        "command": {"type": "string", "minLength": 5},
+        "ran_on_version": {"type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?"},
+        "log_url": {"type": "string", "minLength": 5},
+        "distinct_warnings": {"type": "integer", "minimum": 0},
+        "every_warning_has_an_entry": {"const": true}
+      }
+    },
+    "release_notes_covered": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["version", "url"],
+        "properties": {
+          "version": {"type": "string", "pattern": "^\\d+\\.\\d+"},
+          "url": {"type": "string", "pattern": "^https?://"}
+        }
+      }
+    },
+    "breaking_changes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "vendor_citation", "call_sites", "status", "classification", "risk"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^bc-[a-z0-9-]+$"},
+          "title": {"type": "string", "minLength": 5},
+          "vendor_citation": {
+            "type": "object",
+            "required": ["url", "version"],
+            "properties": {
+              "url": {"type": "string", "pattern": "^https?://"},
+              "version": {"type": "string", "pattern": "^\\d+\\.\\d+"}
+            }
+          },
+          "from_deprecation_run": {"type": "boolean"},
+          "call_sites": {
+            "type": "object",
+            "required": ["count", "search_kind", "search_pattern", "search_link"],
+            "properties": {
+              "count": {"type": "integer", "minimum": 0},
+              "search_kind": {"type": "string", "enum": ["grep", "ripgrep", "ast_query", "codemod_dry_run", "deprecation_run"]},
+              "search_pattern": {"type": "string", "minLength": 2},
+              "search_link": {"type": "string", "minLength": 3}
+            }
+          },
+          "status": {"type": "string", "enum": ["affected", "not_affected"]},
+          "classification": {"type": "string", "enum": ["codemod", "manual"]},
+          "codemod": {
+            "type": "object",
+            "required": ["tool", "command", "dry_run_diff_lines", "documented_as_partial_or_experimental"],
+            "properties": {
+              "tool": {"type": "string", "minLength": 2},
+              "command": {"type": "string", "minLength": 5},
+              "dry_run_diff_lines": {"type": "integer", "minimum": 0},
+              "documented_as_partial_or_experimental": {"const": false}
+            }
+          },
+          "risk": {
+            "type": "object",
+            "required": ["runs_in", "blast_radius", "detectability"],
+            "properties": {
+              "runs_in": {"type": "string", "enum": ["production_requests", "jobs", "both", "neither"]},
+              "blast_radius": {"type": "integer", "minimum": 0},
+              "detectability": {"type": "string", "enum": ["compile_time", "runtime_with_test", "runtime_no_test"]},
+              "characterisation_test": {"type": "string", "minLength": 3}
+            },
+            "if": {"properties": {"detectability": {"const": "runtime_no_test"}}},
+            "then": {"required": ["characterisation_test"]}
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"status": {"const": "not_affected"}}}, "then": {"properties": {"call_sites": {"properties": {"count": {"const": 0}}}}}},
+          {"if": {"properties": {"call_sites": {"properties": {"count": {"const": 0}}, "required": ["count"]}}}, "then": {"properties": {"status": {"const": "not_affected"}}}},
+          {"if": {"properties": {"classification": {"const": "codemod"}}}, "then": {"required": ["codemod"]}}
+        ]
+      }
+    },
+    "unverified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["suspected_change", "search_tried"],
+        "properties": {
+          "suspected_change": {"type": "string", "minLength": 5},
+          "search_tried": {"type": "string", "minLength": 5}
+        }
+      }
+    },
+    "dependent_packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "current_version", "earliest_compatible_version", "compatible_release_available", "release_notes_url", "blocker"],
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "current_version": {"type": "string", "minLength": 1},
+          "earliest_compatible_version": {"type": "string", "minLength": 1},
+          "compatible_release_available": {"type": "boolean"},
+          "release_notes_url": {"type": "string", "pattern": "^https?://"},
+          "blocker": {"type": "boolean"},
+          "plan": {"type": "string", "enum": ["fork", "replace", "remove", "wait_for_release"]},
+          "plan_detail": {"type": "string", "minLength": 5}
+        },
+        "allOf": [
+          {"if": {"properties": {"compatible_release_available": {"const": false}}}, "then": {"properties": {"blocker": {"const": true}}}},
+          {"if": {"properties": {"blocker": {"const": true}}}, "then": {"required": ["plan", "plan_detail"]}}
+        ]
+      }
+    },
+    "runtime_prerequisites": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "target_minimum", "source_url", "environments", "blocker"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["language", "database", "node", "jvm", "os_or_base_image", "other"]},
+          "name": {"type": "string"},
+          "target_minimum": {"type": "string", "minLength": 1},
+          "source_url": {"type": "string", "pattern": "^https?://"},
+          "environments": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["name", "current", "meets_minimum"],
+              "properties": {
+                "name": {"type": "string", "minLength": 2},
+                "current": {"type": "string", "minLength": 1},
+                "meets_minimum": {"type": "boolean"}
+              }
+            }
+          },
+          "blocker": {"type": "boolean"},
+          "upgrade_plan": {"type": "string", "minLength": 5}
+        },
+        "if": {"properties": {"blocker": {"const": true}}},
+        "then": {"required": ["upgrade_plan"]}
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["status", "upgrade_branch_opened_by_agent"],
+      "properties": {
+        "status": {"type": "string", "enum": ["draft", "ready_for_review", "approved"]},
+        "reviewer": {"type": "string", "minLength": 3},
+        "approved_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "upgrade_branch_opened_by_agent": {"const": false}
+      },
+      "if": {"properties": {"status": {"const": "approved"}}},
+      "then": {"required": ["reviewer", "approved_on"]}
+    }
+  }
+}
+]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: `target_major - current_major` is 1 and, for a multi-major path, `step_index` follows the vendor's documented order (r-fmui-one-major-step-per-inventory); `release_notes_covered` lists every minor between current and target (r-fmui-breaking-change-cited-to-vendor); `deprecation_run.ran_on_version` equals `framework.current_version` and `distinct_warnings` entries all appear in `breaking_changes` with `from_deprecation_run = true` (r-fmui-deprecation-warnings-as-errors); `risk.blast_radius` equals `call_sites.count` weighted by `runs_in` (r-fmui-risk-scored-on-two-axes); any `environments[].meets_minimum = false` implies `blocker = true` (r-fmui-runtime-prerequisites-listed); blocker entries head the risk matrix in the rendered report (r-fmui-dependent-package-compatibility).</note>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "repository": "github.com/acme/billing-api",
+  "framework": {"name": "Django", "current_version": "4.2.11", "target_version": "5.0.6", "current_major": 4, "target_major": 5, "major_gap": 1, "step_index": 1, "steps_total": 1, "upgrade_guide_url": "https://docs.djangoproject.com/en/5.0/howto/upgrade-version/"},
+  "deprecation_run": {"command": "python -W error::DeprecationWarning -W error::PendingDeprecationWarning -m pytest", "ran_on_version": "4.2.11", "log_url": "https://ci.acme.example/billing-api/runs/48211", "distinct_warnings": 3, "every_warning_has_an_entry": true},
+  "release_notes_covered": [
+    {"version": "5.0", "url": "https://docs.djangoproject.com/en/5.0/releases/5.0/"}
+  ],
+  "breaking_changes": [
+    {
+      "id": "bc-form-rendering-div",
+      "title": "Default form template changed to div-based rendering",
+      "vendor_citation": {"url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#forms", "version": "5.0"},
+      "from_deprecation_run": false,
+      "call_sites": {"count": 14, "search_kind": "ripgrep", "search_pattern": "as_table\\(\\)|\\{\\{ *form *\\}\\}", "search_link": "https://github.com/acme/billing-api/blob/main/docs/upgrade/5.0/searches.md#forms"},
+      "status": "affected",
+      "classification": "manual",
+      "risk": {"runs_in": "production_requests", "blast_radius": 28, "detectability": "runtime_no_test", "characterisation_test": "tests/characterisation/test_form_rendering_snapshots.py"}
+    },
+    {
+      "id": "bc-uslugify-usc-removed",
+      "title": "django.utils.text.unescape_string_literal and USE_L10N removed",
+      "vendor_citation": {"url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#features-removed-in-5-0", "version": "5.0"},
+      "from_deprecation_run": true,
+      "call_sites": {"count": 2, "search_kind": "deprecation_run", "search_pattern": "RemovedInDjango50Warning: The USE_L10N setting is deprecated", "search_link": "https://ci.acme.example/billing-api/runs/48211#L212"},
+      "status": "affected",
+      "classification": "codemod",
+      "codemod": {"tool": "django-upgrade", "command": "django-upgrade --target-version 5.0 $(git ls-files '*.py')", "dry_run_diff_lines": 6, "documented_as_partial_or_experimental": false},
+      "risk": {"runs_in": "both", "blast_radius": 4, "detectability": "compile_time"}
+    },
+    {
+      "id": "bc-index-together-removed",
+      "title": "Meta.index_together removed in favour of Meta.indexes",
+      "vendor_citation": {"url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#features-removed-in-5-0", "version": "5.0"},
+      "from_deprecation_run": true,
+      "call_sites": {"count": 0, "search_kind": "ripgrep", "search_pattern": "index_together", "search_link": "https://github.com/acme/billing-api/blob/main/docs/upgrade/5.0/searches.md#index-together"},
+      "status": "not_affected",
+      "classification": "manual",
+      "risk": {"runs_in": "neither", "blast_radius": 0, "detectability": "compile_time"}
+    }
+  ],
+  "unverified": [
+    {"suspected_change": "Admin changelist row colouring in dark mode looks different on 5.0 in a screenshot from a colleague", "search_tried": "release notes 5.0 admin section and the django/django changelog grep 'changelist' -- no entry found"}
+  ],
+  "dependent_packages": [
+    {"name": "djangorestframework", "current_version": "3.14.0", "earliest_compatible_version": "3.15.0", "compatible_release_available": true, "release_notes_url": "https://www.django-rest-framework.org/community/release-notes/", "blocker": false},
+    {"name": "django-polymorphic", "current_version": "3.1.0", "earliest_compatible_version": "none", "compatible_release_available": false, "release_notes_url": "https://github.com/jazzband/django-polymorphic/releases", "blocker": true, "plan": "replace", "plan_detail": "Replace the two polymorphic models with explicit multi-table inheritance; spike estimated in docs/upgrade/5.0/polymorphic.md"}
+  ],
+  "runtime_prerequisites": [
+    {"kind": "language", "name": "Python", "target_minimum": "3.10", "source_url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#python-compatibility", "environments": [{"name": "production", "current": "3.11.9", "meets_minimum": true}, {"name": "staging", "current": "3.11.9", "meets_minimum": true}, {"name": "ci", "current": "3.11.9", "meets_minimum": true}], "blocker": false},
+    {"kind": "database", "name": "PostgreSQL", "target_minimum": "12", "source_url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#dropped-support-for-postgresql-11", "environments": [{"name": "production", "current": "15.6", "meets_minimum": true}, {"name": "staging", "current": "15.6", "meets_minimum": true}], "blocker": false}
+  ],
+  "review": {"status": "ready_for_review", "reviewer": "kim@acme.example", "upgrade_branch_opened_by_agent": false}
+}
+]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "repository": "github.com/acme/billing-api",
+  "framework": {"name": "Django", "current_version": "3.2.25", "target_version": "5.0.6", "current_major": 3, "target_major": 5, "major_gap": 2, "upgrade_guide_url": "https://docs.djangoproject.com/en/5.0/howto/upgrade-version/"},
+  "deprecation_run": {"command": "pytest", "ran_on_version": "3.2.25", "log_url": "https://ci.acme.example/billing-api/runs/48000", "distinct_warnings": 0, "every_warning_has_an_entry": false},
+  "release_notes_covered": [],
+  "breaking_changes": [
+    {
+      "id": "bc-form-rendering-div",
+      "title": "Default form template changed to div-based rendering",
+      "vendor_citation": {"url": "https://someblog.example/django-5-gotchas", "version": "5.0"},
+      "call_sites": {"count": 0, "search_kind": "grep", "search_pattern": "as_table", "search_link": "n/a"},
+      "status": "affected",
+      "classification": "codemod",
+      "risk": {"runs_in": "production_requests", "blast_radius": 28, "detectability": "runtime_no_test"}
+    }
+  ],
+  "unverified": [],
+  "dependent_packages": [
+    {"name": "django-polymorphic", "current_version": "3.1.0", "earliest_compatible_version": "none", "compatible_release_available": false, "release_notes_url": "https://github.com/jazzband/django-polymorphic/releases", "blocker": false}
+  ],
+  "runtime_prerequisites": [
+    {"kind": "language", "name": "Python", "target_minimum": "3.10", "source_url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#python-compatibility", "environments": [{"name": "production", "current": "3.8.18", "meets_minimum": false}], "blocker": true}
+  ],
+  "review": {"status": "approved", "upgrade_branch_opened_by_agent": true}
+}
+]]></code>
+      <note>Subject violations: a two-major jump in one inventory (r-fmui-one-major-step-per-inventory); no release notes covered and a change cited to a blog (r-fmui-breaking-change-cited-to-vendor); a plain `pytest` run with warnings not elevated and warnings without entries (r-fmui-deprecation-warnings-as-errors); status `affected` with zero call sites (r-fmui-call-site-count-per-change); `codemod` classification with no tool or dry run (r-fmui-codemod-coverage-classified); a package with no compatible release not marked blocker (r-fmui-dependent-package-compatibility); a Python prerequisite that production fails with no upgrade plan (r-fmui-runtime-prerequisites-listed); a runtime-with-no-test change with no characterisation test (r-fmui-risk-scored-on-two-axes); and an inventory self-approved by the agent that also opened the branch.</note>
+    </example>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <forbidden-patterns>
+    <antipattern id="fm-skipped-majors">
+      <description>`framework.major_gap` other than 1, or `step_index` out of the vendor's documented order.</description>
+      <reason>r-fmui-one-major-step-per-inventory: intermediate shims and codemods never apply and failures cannot be bisected.</reason>
+    </antipattern>
+    <antipattern id="fm-map-from-memory">
+      <description>A `vendor_citation.url` that is not the vendor's release notes, upgrade guide or changelog; a minor between current and target absent from `release_notes_covered`; a suspected break listed as a change instead of under `unverified`.</description>
+      <reason>r-fmui-breaking-change-cited-to-vendor: the only complete list of breaks is the vendor's.</reason>
+    </antipattern>
+    <antipattern id="fm-no-deprecation-run">
+      <description>`deprecation_run.command` without warnings elevated to errors, `ran_on_version` not the current version, or a distinct warning with no `breaking_changes` entry.</description>
+      <reason>r-fmui-deprecation-warnings-as-errors: the current version already knows most of what the next one removes.</reason>
+    </antipattern>
+    <antipattern id="fm-count-without-search">
+      <description>A `call_sites.count` with no `search_pattern` and `search_link`, or an entry omitted because it had zero hits instead of recorded as `not_affected`.</description>
+      <reason>r-fmui-call-site-count-per-change: "we probably don't use that" is how two days become three weeks.</reason>
+    </antipattern>
+    <antipattern id="fm-codemod-trusted-blind">
+      <description>`classification = codemod` with no `codemod` block, no `dry_run_diff_lines`, or `documented_as_partial_or_experimental` true.</description>
+      <reason>r-fmui-codemod-coverage-classified: an experimental transform leaves 10 percent compiling and wrong.</reason>
+    </antipattern>
+    <antipattern id="fm-plugin-blocker-found-late">
+      <description>A framework-dependent package missing from `dependent_packages`, or `compatible_release_available = false` with `blocker = false` or no plan.</description>
+      <reason>r-fmui-dependent-package-compatibility: the unmaintained plugin is what stalls the branch on day three.</reason>
+    </antipattern>
+    <antipattern id="fm-runtime-floor-surprise">
+      <description>`runtime_prerequisites` missing an environment, or an environment below the minimum with `blocker = false` or no `upgrade_plan`.</description>
+      <reason>r-fmui-runtime-prerequisites-listed: one upgrade silently becomes two in the wrong order.</reason>
+    </antipattern>
+    <antipattern id="fm-risk-by-gut">
+      <description>A `risk` without both `blast_radius` and `detectability`, or `runtime_no_test` without a linked `characterisation_test`.</description>
+      <reason>r-fmui-risk-scored-on-two-axes: the budget goes where the tests are missing.</reason>
+    </antipattern>
+    <antipattern id="fm-self-approved">
+      <description>`review.status = approved` with no named `reviewer` and `approved_on`, or `upgrade_branch_opened_by_agent = true`.</description>
+      <reason>Human checkpoint in `03-failure-modes.xml`: opening and merging the branch are binding actions a named human approves.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-framework-major-upgrade-inventory.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/output.md.j2">Inventory report skeleton with the same sections and field names.</reference>
 </text>

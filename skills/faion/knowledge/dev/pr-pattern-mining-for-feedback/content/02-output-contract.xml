@@ -1,43 +1,237 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="PR Pattern Mining For Feedback — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="PR Pattern Mining For Feedback Output Contract" version="1.2.0" est_tokens="4850" depth="essential">
+  <summary>Draft-07 JSON Schema for the feedback report: the corpus with its window, counts and exact query (and the insufficient-sample gate at 20 PRs / 100 comments), the declared team or mentee scope, at most five top patterns each phrased as a code behaviour with before and after, recurrence across 3 PRs and 2 reviewers with at least 3 comment URLs, a frequency x cost score, a baseline and a re-measure date, the single automation-gap item for formatter-coverable comments, suggested rules with an enforcement channel, and the owner's check before sharing. Validator: `scripts/validate-pr-pattern-mining-for-feedback.py`.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pr-pattern-mining-for-feedback.json",
+  "title": "PR pattern-mining feedback report",
+  "type": "object",
+  "required": ["scope", "corpus", "ranking_basis", "top_patterns", "appendix_patterns", "single_occurrence", "automation_gap", "suggested_rules", "notes", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "pattern": {
+      "type": "object",
+      "required": ["id", "behaviour", "before_example", "after_example", "distinct_prs", "distinct_reviewers", "comment_urls", "count", "cost", "score", "baseline_count", "remeasure_date", "formatter_coverable"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^p[0-9]+$"},
+        "behaviour": {"type": "string", "minLength": 20, "pattern": "^(?!.*\\b(careless|lazy|sloppy|does not think|lacks rigou?r)\\b).*$"},
+        "before_example": {"type": "string", "minLength": 5},
+        "after_example": {"type": "string", "minLength": 5},
+        "distinct_prs": {"type": "integer", "minimum": 3},
+        "distinct_reviewers": {"type": "integer", "minimum": 1},
+        "comment_urls": {"type": "array", "minItems": 3, "items": {"type": "string", "pattern": "^https?://.+#(discussion_r|issuecomment-|note_)[0-9]+"}},
+        "count": {"type": "integer", "minimum": 3},
+        "cost": {"type": "number", "minimum": 0},
+        "score": {"type": "number", "minimum": 0},
+        "baseline_count": {"type": "integer", "minimum": 0},
+        "remeasure_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "delta_vs_previous": {"type": "integer"},
+        "formatter_coverable": {"const": false}
+      },
+      "anyOf": [
+        {"properties": {"distinct_reviewers": {"minimum": 2}}},
+        {"properties": {"distinct_reviewers": {"const": 1}, "distinct_prs": {"minimum": 5}}}
+      ]
+    }
+  },
+  "properties": {
+    "scope": {
+      "type": "object",
+      "required": ["kind", "per_author_counts_listed"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["team", "mentee"]},
+        "mentee_handle": {"type": "string", "minLength": 2},
+        "mentee_is_primary_reader": {"type": "boolean"},
+        "feeds_performance_evaluation": {"type": "boolean"},
+        "per_author_counts_listed": {"type": "boolean"}
+      },
+      "if": {"properties": {"kind": {"const": "mentee"}}},
+      "then": {"required": ["mentee_handle", "mentee_is_primary_reader", "feeds_performance_evaluation"], "properties": {"mentee_is_primary_reader": {"const": true}}},
+      "else": {"properties": {"per_author_counts_listed": {"const": false}}}
+    },
+    "corpus": {
+      "type": "object",
+      "required": ["repositories", "window_start", "window_end", "merged_prs", "review_comments", "query", "sufficient_sample"],
+      "properties": {
+        "repositories": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 3}},
+        "window_start": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "window_end": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "merged_prs": {"type": "integer", "minimum": 0},
+        "review_comments": {"type": "integer", "minimum": 0},
+        "query": {"type": "string", "minLength": 10},
+        "sufficient_sample": {"type": "boolean"}
+      },
+      "if": {"properties": {"sufficient_sample": {"const": true}}},
+      "then": {"properties": {"merged_prs": {"minimum": 20}, "review_comments": {"minimum": 100}}}
+    },
+    "previous_report_url": {"type": "string", "pattern": "^https?://"},
+    "ranking_basis": {"type": "string", "enum": ["review_round_trips", "label_severity"]},
+    "top_patterns": {"type": "array", "maxItems": 5, "items": {"$ref": "#/definitions/pattern"}},
+    "appendix_patterns": {"type": "array", "items": {"$ref": "#/definitions/pattern"}},
+    "single_occurrence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["behaviour", "comment_urls"],
+        "properties": {
+          "behaviour": {"type": "string", "minLength": 10},
+          "comment_urls": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^https?://"}}
+        }
+      }
+    },
+    "automation_gap": {
+      "type": "object",
+      "required": ["comments_excluded"],
+      "properties": {
+        "comments_excluded": {"type": "integer", "minimum": 0},
+        "tool": {"type": "string", "minLength": 2},
+        "config_change": {"type": "string", "minLength": 3}
+      },
+      "if": {"properties": {"comments_excluded": {"minimum": 1}}},
+      "then": {"required": ["tool", "config_change"]}
+    },
+    "suggested_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pattern_id", "rule", "channel", "status", "cycles_without_drop"],
+        "properties": {
+          "pattern_id": {"type": "string", "pattern": "^p[0-9]+$"},
+          "rule": {"type": "string", "minLength": 15},
+          "channel": {"type": "string", "enum": ["linter_or_formatter_rule", "ci_check_or_test", "pr_template_checkbox", "written_guideline"]},
+          "channel_id": {"type": "string", "minLength": 2},
+          "why_not_earlier_channels": {"type": "string", "minLength": 10},
+          "status": {"type": "string", "enum": ["new", "active", "ineffective", "withdrawn"]},
+          "cycles_without_drop": {"type": "integer", "minimum": 0}
+        },
+        "allOf": [
+          {"if": {"properties": {"channel": {"enum": ["linter_or_formatter_rule", "ci_check_or_test"]}}}, "then": {"required": ["channel_id"]}},
+          {"if": {"properties": {"channel": {"enum": ["ci_check_or_test", "pr_template_checkbox", "written_guideline"]}}}, "then": {"required": ["why_not_earlier_channels"]}},
+          {"if": {"properties": {"cycles_without_drop": {"minimum": 2}}}, "then": {"properties": {"status": {"enum": ["ineffective", "withdrawn"]}}}}
+        ]
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["observation"],
+        "properties": {
+          "observation": {"type": "string", "minLength": 10},
+          "pattern_id": {"type": "string"}
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["status", "shared_by_agent"],
+      "properties": {
+        "status": {"type": "string", "enum": ["draft", "ready_for_owner_check", "checked_and_shared"]},
+        "owner": {"type": "string", "minLength": 2},
+        "owner_checked_urls_and_scope_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "shared_by_agent": {"const": false}
+      },
+      "if": {"properties": {"status": {"const": "checked_and_shared"}}},
+      "then": {"required": ["owner", "owner_checked_urls_and_scope_on"]}
+    }
+  },
+  "if": {"properties": {"corpus": {"properties": {"sufficient_sample": {"const": false}}, "required": ["sufficient_sample"]}}},
+  "then": {"properties": {"top_patterns": {"maxItems": 0}, "suggested_rules": {"maxItems": 0}}}
+}
+]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: `corpus.sufficient_sample` is true exactly when `merged_prs >= 20` and `review_comments >= 100` (r-corpus-window-and-query-stated); `top_patterns` are the five highest `score` values where `score = count x cost` on the stated `ranking_basis`, and everything below them is in `appendix_patterns` (r-ranked-by-frequency-times-cost); every `suggested_rules[].pattern_id` names a `top_patterns` entry, and a suggestion with no channel lives in `notes` (r-suggested-rule-names-enforcement-channel); when `previous_report_url` is set, every top pattern carries `delta_vs_previous` computed with the same `query` (r-baseline-and-remeasure-per-pattern); `automation_gap.comments_excluded` equals the number of formatter-coverable comments removed from all pattern counts (r-formatter-covered-comments-excluded).</note>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "scope": {"kind": "team", "per_author_counts_listed": false},
+  "corpus": {"repositories": ["acme/billing-api", "acme/billing-worker"], "window_start": "2026-04-01", "window_end": "2026-06-30", "merged_prs": 64, "review_comments": 412, "query": "gh api graphql -f query='{ repository(owner:\"acme\", name:\"billing-api\") { pullRequests(states:MERGED, first:100, orderBy:{field:UPDATED_AT, direction:DESC}) { nodes { number mergedAt reviewThreads(first:100) { nodes { comments(first:50) { nodes { author { login } body url } } } } } } } }' (both repos, filtered to mergedAt in window)", "sufficient_sample": true},
+  "ranking_basis": "review_round_trips",
+  "top_patterns": [
+    {"id": "p1", "behaviour": "HTTP client call without a timeout: `requests.get(url)` blocks the worker indefinitely when the upstream hangs", "before_example": "resp = requests.get(url)", "after_example": "resp = requests.get(url, timeout=(3, 10))", "distinct_prs": 11, "distinct_reviewers": 4, "comment_urls": ["https://github.com/acme/billing-api/pull/402#discussion_r1890011", "https://github.com/acme/billing-api/pull/417#discussion_r1890877", "https://github.com/acme/billing-worker/pull/88#discussion_r1891204"], "count": 14, "cost": 2.1, "score": 29.4, "baseline_count": 14, "remeasure_date": "2026-09-30", "formatter_coverable": false},
+    {"id": "p2", "behaviour": "Test asserts only the HTTP status code; the response body and the side effect (row written, event published) are not asserted", "before_example": "assert resp.status_code == 200", "after_example": "assert resp.status_code == 200\nassert resp.json()[\"invoice_id\"] == invoice.id\nassert Invoice.objects.filter(id=invoice.id, status=\"sent\").exists()", "distinct_prs": 7, "distinct_reviewers": 3, "comment_urls": ["https://github.com/acme/billing-api/pull/399#discussion_r1889120", "https://github.com/acme/billing-api/pull/408#discussion_r1890340", "https://github.com/acme/billing-api/pull/421#discussion_r1891560"], "count": 9, "cost": 1.8, "score": 16.2, "baseline_count": 9, "remeasure_date": "2026-09-30", "formatter_coverable": false},
+    {"id": "p3", "behaviour": "N+1 query in list endpoints: related rows loaded per item inside the serializer loop", "before_example": "for inv in Invoice.objects.all(): inv.customer.name", "after_example": "for inv in Invoice.objects.select_related(\"customer\"): inv.customer.name", "distinct_prs": 5, "distinct_reviewers": 2, "comment_urls": ["https://github.com/acme/billing-api/pull/404#discussion_r1890205", "https://github.com/acme/billing-api/pull/411#discussion_r1890733", "https://github.com/acme/billing-api/pull/425#discussion_r1891902"], "count": 6, "cost": 2.5, "score": 15.0, "baseline_count": 6, "remeasure_date": "2026-09-30", "formatter_coverable": false}
+  ],
+  "appendix_patterns": [],
+  "single_occurrence": [
+    {"behaviour": "Retry loop without jitter on the payment-provider client", "comment_urls": ["https://github.com/acme/billing-worker/pull/91#discussion_r1891330"]}
+  ],
+  "automation_gap": {"comments_excluded": 38, "tool": "ruff", "config_change": "enable I001 (isort) and Q000 (quotes) in pyproject.toml [tool.ruff.lint] select; run ruff format in pre-commit"},
+  "suggested_rules": [
+    {"pattern_id": "p1", "rule": "Every requests call passes an explicit timeout", "channel": "linter_or_formatter_rule", "channel_id": "flake8-bandit S113 (request-without-timeout) via ruff S113", "status": "new", "cycles_without_drop": 0},
+    {"pattern_id": "p2", "rule": "Endpoint tests assert body and side effect, not only status", "channel": "pr_template_checkbox", "why_not_earlier_channels": "No linter can judge assertion sufficiency; a CI check on assertion count would be gamed; the checkbox puts the question in front of the author at the moment it matters", "status": "new", "cycles_without_drop": 0},
+    {"pattern_id": "p3", "rule": "List endpoints use select_related or prefetch_related for every relation the serializer touches", "channel": "ci_check_or_test", "channel_id": "django-test-plus assertNumQueries on every list endpoint test", "why_not_earlier_channels": "No static rule can see the serializer's relation access; a query-count assertion in CI catches the regression on the exact endpoint", "status": "new", "cycles_without_drop": 0}
+  ],
+  "notes": [
+    {"observation": "Reviewers ask for ADR links on schema changes in 4 PRs; no channel yet, revisit when the ADR template lands", "pattern_id": "p4"}
+  ],
+  "review": {"status": "ready_for_owner_check", "owner": "eng-manager@acme.example", "shared_by_agent": false}
+}
+]]></code>
+    </example>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "scope": {"kind": "team", "per_author_counts_listed": true},
+  "corpus": {"repositories": ["acme/billing-api"], "window_start": "2026-06-20", "window_end": "2026-06-30", "merged_prs": 9, "review_comments": 41, "query": "looked through recent PRs", "sufficient_sample": true},
+  "ranking_basis": "review_round_trips",
+  "top_patterns": [
+    {"id": "p1", "behaviour": "Authors are careless about error handling", "before_example": "n/a", "after_example": "n/a", "distinct_prs": 2, "distinct_reviewers": 1, "comment_urls": ["https://github.com/acme/billing-api/pull/430#discussion_r1892001"], "count": 2, "cost": 1, "score": 2, "baseline_count": 2, "remeasure_date": "2026-09-30", "formatter_coverable": false},
+    {"id": "p2", "behaviour": "Imports are not sorted and quotes are inconsistent across the diff", "before_example": "import os\nimport sys\nimport json", "after_example": "import json\nimport os\nimport sys", "distinct_prs": 12, "distinct_reviewers": 3, "comment_urls": ["https://github.com/acme/billing-api/pull/402#discussion_r1890011", "https://github.com/acme/billing-api/pull/417#discussion_r1890877", "https://github.com/acme/billing-api/pull/421#discussion_r1891560"], "count": 38, "cost": 0.3, "score": 11.4, "baseline_count": 38, "remeasure_date": "2026-09-30", "formatter_coverable": true}
+  ],
+  "appendix_patterns": [],
+  "single_occurrence": [],
+  "automation_gap": {"comments_excluded": 0},
+  "suggested_rules": [
+    {"pattern_id": "p1", "rule": "Be more careful about error handling", "channel": "written_guideline", "status": "active", "cycles_without_drop": 3}
+  ],
+  "notes": [],
+  "review": {"status": "checked_and_shared", "shared_by_agent": true}
+}
+]]></code>
+      <note>Subject violations: nine PRs and 41 comments from a ten-day window declared sufficient, fetched by no reproducible query (r-corpus-window-and-query-stated); a trait-phrased pattern with two PRs, one reviewer and one URL (r-pattern-phrased-as-code-behaviour, r-pattern-requires-recurrence); an import-order pattern in the top list instead of one automation-gap item (r-formatter-covered-comments-excluded); a guideline rule with no reason the earlier channels do not apply, still active after three cycles without a drop (r-suggested-rule-names-enforcement-channel, r-baseline-and-remeasure-per-pattern); per-author counts in a team-scoped report (r-per-person-scope-declared-and-consented); and a report shared by the agent with no owner check.</note>
+    </example>
   </section>
+
+  <forbidden-patterns>
+    <antipattern id="fm-anecdote-reported-as-pattern">
+      <description>A top or appendix pattern with fewer than 3 `distinct_prs`, fewer than 2 `distinct_reviewers` (or 1 reviewer under 5 PRs), or fewer than 3 `comment_urls`; a corpus under 20 PRs or 100 comments with `sufficient_sample` true or with any suggested rule.</description>
+      <reason>r-pattern-requires-recurrence, r-corpus-window-and-query-stated: three comments from one bad week are a bad week.</reason>
+    </antipattern>
+    <antipattern id="fm-trait-labelling">
+      <description>A `behaviour` naming an attitude or a person (careless, lazy, does not think, lacks rigour), or a pattern without `before_example` and `after_example`.</description>
+      <reason>r-pattern-phrased-as-code-behaviour: feedback about the person changes morale, not the code.</reason>
+    </antipattern>
+    <antipattern id="fm-whitespace-dominates">
+      <description>A pattern with `formatter_coverable` true anywhere in `top_patterns`, or formatter-coverable comments counted instead of collapsed into `automation_gap` with a tool and config change; `ranking_basis` missing.</description>
+      <reason>r-formatter-covered-comments-excluded, r-ranked-by-frequency-times-cost: raw count promotes whatever is easiest to comment on.</reason>
+    </antipattern>
+    <antipattern id="fm-rule-without-enforcement">
+      <description>A suggested rule with no `channel`, a linter or CI channel without `channel_id`, a later channel without `why_not_earlier_channels`, or a channel-less suggestion outside `notes`.</description>
+      <reason>r-suggested-rule-names-enforcement-channel: a guideline in a wiki is enforced by whoever remembers it.</reason>
+    </antipattern>
+    <antipattern id="fm-author-leaderboard">
+      <description>`per_author_counts_listed` true under `team` scope, or a `mentee` scope where the mentee is not the primary reader or the evaluation use is unstated.</description>
+      <reason>r-per-person-scope-declared-and-consented: a leaderboard turns reviewers into people whose comments count against colleagues.</reason>
+    </antipattern>
+    <antipattern id="fm-no-remeasure">
+      <description>A top pattern without `baseline_count` and `remeasure_date`; a report with `previous_report_url` and no `delta_vs_previous`; a rule with `cycles_without_drop` of 2 or more still `new` or `active`.</description>
+      <reason>r-baseline-and-remeasure-per-pattern: a rule that produced no drop is noise in the style guide.</reason>
+    </antipattern>
+    <antipattern id="fm-agent-shared-report">
+      <description>`review.shared_by_agent` true, or `checked_and_shared` with no owner and check date.</description>
+      <reason>Human checkpoint in `03-failure-modes.xml`: the report owner checks the cited URLs and the scope before the report is shared.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-pr-pattern-mining-for-feedback.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/output.md.j2">Feedback report skeleton with the same sections and field names.</reference>
 </text>

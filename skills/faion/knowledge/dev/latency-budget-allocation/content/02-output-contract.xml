@@ -1,57 +1,270 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Latency Budget Allocation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Latency Budget Allocation artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Latency Budget Allocation Output Contract" version="1.2.0" est_tokens="4900" depth="essential">
+  <summary>Draft-07 JSON Schema for the allocation: the user-facing SLO as percentile, threshold, measurement point and window; the composition model verified against the end-to-end histogram rather than by adding percentiles; every hop with its caller-side histogram, owner, budget beside measured p95, bucket boundary at the threshold, timeout and retry worst case, deadline propagation, fan-out N and mitigation; the unallocated reserve; and the executable CI gate on percentiles with a stated request count and failure action. Validator: `scripts/validate-latency-budget-allocation.py`.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/latency-budget-allocation.json",
+  "title": "Latency budget allocation",
+  "type": "object",
+  "required": ["slo", "composition", "hops", "reserve_ms", "ci_gate", "review"],
+  "additionalProperties": false,
+  "properties": {
+    "slo": {
+      "type": "object",
+      "required": ["name", "metric", "percentile", "threshold_ms", "measurement_point", "window_days", "budget_measurement_point_matches"],
+      "properties": {
+        "name": {"type": "string", "minLength": 3},
+        "metric": {"type": "string", "minLength": 3},
+        "percentile": {"type": "string", "enum": ["p90", "p95", "p99", "p999"]},
+        "threshold_ms": {"type": "integer", "exclusiveMinimum": 0},
+        "measurement_point": {"type": "string", "enum": ["client", "edge", "load_balancer", "server"]},
+        "window_days": {"type": "integer", "minimum": 1},
+        "budget_measurement_point_matches": {"type": "boolean"},
+        "difference_hop_id": {"type": "string", "pattern": "^hop-[a-z0-9-]+$"}
+      },
+      "if": {"properties": {"budget_measurement_point_matches": {"const": false}}},
+      "then": {"required": ["difference_hop_id"]}
+    },
+    "composition": {
+      "type": "object",
+      "required": ["model", "sum_of_hop_budgets_ms", "percentiles_added_as_proof", "verified_against"],
+      "properties": {
+        "model": {"type": "string", "enum": ["sequential_sum_plus_headroom", "critical_path_with_parallel_stages"]},
+        "sum_of_hop_budgets_ms": {"type": "integer", "minimum": 0},
+        "percentiles_added_as_proof": {"const": false},
+        "verified_against": {
+          "type": "object",
+          "required": ["end_to_end_histogram", "measured_percentile_ms", "window_days", "request_count"],
+          "properties": {
+            "end_to_end_histogram": {"type": "string", "minLength": 3},
+            "measured_percentile_ms": {"type": "integer", "minimum": 0},
+            "window_days": {"type": "integer", "minimum": 1},
+            "request_count": {"type": "integer", "minimum": 1000}
+          }
+        }
+      }
+    },
+    "hops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "service", "owner_team", "metric", "measured_side", "budget_ms", "measured_p95_ms", "reconciliation", "bucket_boundary_within_10pct_of_budget", "timeout_and_retry", "deadline_propagated"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^hop-[a-z0-9-]+$"},
+          "service": {"type": "string", "minLength": 2},
+          "owner_team": {"type": "string", "minLength": 2},
+          "metric": {
+            "type": "object",
+            "required": ["histogram", "labels"],
+            "properties": {
+              "histogram": {"type": "string", "minLength": 3},
+              "labels": {"type": "object"}
+            }
+          },
+          "measured_side": {"const": "caller"},
+          "budget_ms": {"type": "integer", "exclusiveMinimum": 0},
+          "measured_p95_ms": {"type": "integer", "minimum": 0},
+          "reconciliation": {"type": "string", "enum": ["within_budget", "underwater", "slack_over_2x"]},
+          "improvement_ticket": {"type": "string", "minLength": 3},
+          "improvement_owner": {"type": "string", "minLength": 2},
+          "slack_justification": {"type": "string", "minLength": 10},
+          "bucket_boundary_within_10pct_of_budget": {"type": "boolean"},
+          "bucket_change_task": {"type": "string", "minLength": 3},
+          "timeout_and_retry": {
+            "type": "object",
+            "required": ["timeout_ms", "max_attempts", "backoff_ms", "worst_case_ms", "worst_case_within_budget"],
+            "properties": {
+              "timeout_ms": {"type": "integer", "exclusiveMinimum": 0},
+              "max_attempts": {"type": "integer", "minimum": 1, "maximum": 5},
+              "backoff_ms": {"type": "integer", "minimum": 0},
+              "worst_case_ms": {"type": "integer", "exclusiveMinimum": 0},
+              "worst_case_within_budget": {"const": true}
+            }
+          },
+          "deadline_propagated": {"const": true},
+          "fan_out": {
+            "type": "object",
+            "required": ["n", "stage_percentile", "child_percentile", "mitigation"],
+            "properties": {
+              "n": {"type": "integer", "minimum": 2},
+              "stage_percentile": {"type": "string", "enum": ["p90", "p95", "p99", "p999"]},
+              "child_percentile": {"type": "string", "enum": ["p99", "p999", "p9999"]},
+              "mitigation": {"type": "string", "enum": ["tighter_child_budget", "hedged_requests", "partial_results_after_deadline"]}
+            }
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"reconciliation": {"const": "underwater"}}}, "then": {"required": ["improvement_ticket", "improvement_owner"]}},
+          {"if": {"properties": {"reconciliation": {"const": "slack_over_2x"}}}, "then": {"required": ["slack_justification"]}},
+          {"if": {"properties": {"bucket_boundary_within_10pct_of_budget": {"const": false}}}, "then": {"required": ["bucket_change_task"]}}
+        ]
+      }
+    },
+    "reserve_ms": {"type": "integer", "minimum": 0},
+    "ci_gate": {
+      "type": "object",
+      "required": ["command", "environment", "min_requests_per_run", "statistic", "thresholds", "on_failure", "blocking_enabled_by_agent"],
+      "properties": {
+        "command": {"type": "string", "minLength": 5},
+        "environment": {"type": "string", "minLength": 3},
+        "min_requests_per_run": {"type": "integer", "minimum": 200},
+        "statistic": {"type": "string", "enum": ["percentile"]},
+        "thresholds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["hop_id", "percentile", "threshold_ms"],
+            "properties": {
+              "hop_id": {"type": "string", "pattern": "^(hop-[a-z0-9-]+|end-to-end)$"},
+              "percentile": {"type": "string", "enum": ["p90", "p95", "p99", "p999"]},
+              "threshold_ms": {"type": "integer", "exclusiveMinimum": 0}
+            }
+          }
+        },
+        "on_failure": {"type": "string", "enum": ["block_merge", "warn"]},
+        "warn_owner": {"type": "string", "minLength": 2},
+        "blocking_enabled_by_agent": {"const": false}
+      },
+      "if": {"properties": {"on_failure": {"const": "warn"}}},
+      "then": {"required": ["warn_owner"]}
+    },
+    "review": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"type": "string", "enum": ["draft", "ready_for_review", "approved"]},
+        "reviewer": {"type": "string", "minLength": 2},
+        "approved_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+      },
+      "if": {"properties": {"status": {"const": "approved"}}},
+      "then": {"required": ["reviewer", "approved_on"]}
+    }
+  }
+}
+]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: `composition.sum_of_hop_budgets_ms + reserve_ms` equals `slo.threshold_ms`, and `sum_of_hop_budgets_ms` equals the sum of `hops[].budget_ms` on the critical path (r-percentiles-do-not-add, r-budget-reconciled-with-measured-p95); `reconciliation` is `underwater` exactly when `measured_p95_ms > budget_ms` and `slack_over_2x` when `budget_ms > 2 x measured_p95_ms`; `timeout_and_retry.worst_case_ms` equals `timeout_ms x max_attempts + backoff` and is at most `budget_ms` (r-timeouts-and-retries-fit-the-hop); every `ci_gate.thresholds[].hop_id` names a hop, and a `fan_out` stage's `child_percentile` is stricter than its `stage_percentile` (r-fan-out-tightens-child-percentile); `ci_gate.command` can be run from the artefact alone (r-ci-gate-spec-is-executable).</note>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "slo": {"name": "checkout p95 at the edge", "metric": "checkout_request_duration_seconds", "percentile": "p95", "threshold_ms": 800, "measurement_point": "edge", "window_days": 28, "budget_measurement_point_matches": true},
+  "composition": {
+    "model": "critical_path_with_parallel_stages",
+    "sum_of_hop_budgets_ms": 700,
+    "percentiles_added_as_proof": false,
+    "verified_against": {"end_to_end_histogram": "checkout_request_duration_seconds{point=\"edge\"}", "measured_percentile_ms": 742, "window_days": 28, "request_count": 4180000}
+  },
+  "hops": [
+    {"id": "hop-edge-to-gateway", "service": "cdn + api-gateway", "owner_team": "platform", "metric": {"histogram": "gateway_upstream_duration_seconds", "labels": {"route": "/checkout"}}, "measured_side": "caller", "budget_ms": 80, "measured_p95_ms": 61, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 80, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 80, "worst_case_within_budget": true}, "deadline_propagated": true},
+    {"id": "hop-checkout-svc", "service": "checkout-service", "owner_team": "checkout", "metric": {"histogram": "http_client_duration_seconds", "labels": {"caller": "api-gateway", "callee": "checkout-service"}}, "measured_side": "caller", "budget_ms": 120, "measured_p95_ms": 98, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 100, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 100, "worst_case_within_budget": true}, "deadline_propagated": true},
+    {"id": "hop-inventory-fanout", "service": "inventory-shards", "owner_team": "inventory", "metric": {"histogram": "grpc_client_duration_seconds", "labels": {"caller": "checkout-service", "callee": "inventory-shard"}}, "measured_side": "caller", "budget_ms": 250, "measured_p95_ms": 212, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 110, "max_attempts": 2, "backoff_ms": 10, "worst_case_ms": 230, "worst_case_within_budget": true}, "deadline_propagated": true,
+     "fan_out": {"n": 12, "stage_percentile": "p95", "child_percentile": "p999", "mitigation": "hedged_requests"}},
+    {"id": "hop-pricing", "service": "pricing-service", "owner_team": "pricing", "metric": {"histogram": "http_client_duration_seconds", "labels": {"caller": "checkout-service", "callee": "pricing-service"}}, "measured_side": "caller", "budget_ms": 150, "measured_p95_ms": 176, "reconciliation": "underwater", "improvement_ticket": "https://jira.acme.example/browse/PRICE-812", "improvement_owner": "pricing", "bucket_boundary_within_10pct_of_budget": false, "bucket_change_task": "https://jira.acme.example/browse/OBS-301 add 0.15s bucket",
+     "timeout_and_retry": {"timeout_ms": 140, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 140, "worst_case_within_budget": true}, "deadline_propagated": true},
+    {"id": "hop-payment-auth", "service": "payment-gateway (external)", "owner_team": "payments", "metric": {"histogram": "http_client_duration_seconds", "labels": {"caller": "checkout-service", "callee": "psp"}}, "measured_side": "caller", "budget_ms": 100, "measured_p95_ms": 38, "reconciliation": "slack_over_2x", "slack_justification": "PSP contract allows 250 ms p95 on peak days; 100 ms is the floor we can defend without a second provider", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 90, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 90, "worst_case_within_budget": true}, "deadline_propagated": true}
+  ],
+  "reserve_ms": 100,
+  "ci_gate": {
+    "command": "k6 run --vus 40 --duration 3m perf/checkout.js --out json=perf/out.json && perf/check-thresholds.py perf/out.json budget.json",
+    "environment": "perf-staging (same instance sizes as production, seeded dataset perf-2026-06)",
+    "min_requests_per_run": 5000,
+    "statistic": "percentile",
+    "thresholds": [
+      {"hop_id": "end-to-end", "percentile": "p95", "threshold_ms": 800},
+      {"hop_id": "hop-checkout-svc", "percentile": "p95", "threshold_ms": 120},
+      {"hop_id": "hop-inventory-fanout", "percentile": "p95", "threshold_ms": 250},
+      {"hop_id": "hop-pricing", "percentile": "p95", "threshold_ms": 150}
+    ],
+    "on_failure": "block_merge",
+    "blocking_enabled_by_agent": false
+  },
+  "review": {"status": "ready_for_review", "reviewer": "checkout-lead@acme.example"}
+}
+]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "slo": {"name": "checkout p95", "metric": "checkout_request_duration_seconds", "percentile": "p95", "threshold_ms": 800, "measurement_point": "client", "window_days": 28, "budget_measurement_point_matches": false},
+  "composition": {
+    "model": "sequential_sum_plus_headroom",
+    "sum_of_hop_budgets_ms": 800,
+    "percentiles_added_as_proof": true,
+    "verified_against": {"end_to_end_histogram": "none", "measured_percentile_ms": 0, "window_days": 1, "request_count": 50}
+  },
+  "hops": [
+    {"id": "hop-inventory-fanout", "service": "inventory-shards", "owner_team": "inventory", "metric": {"histogram": "grpc_server_duration_seconds", "labels": {}}, "measured_side": "server", "budget_ms": 250, "measured_p95_ms": 212, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": false,
+     "timeout_and_retry": {"timeout_ms": 500, "max_attempts": 3, "backoff_ms": 100, "worst_case_ms": 1700, "worst_case_within_budget": false}, "deadline_propagated": false,
+     "fan_out": {"n": 12, "stage_percentile": "p95", "child_percentile": "p95", "mitigation": "tighter_child_budget"}},
+    {"id": "hop-pricing", "service": "pricing-service", "owner_team": "pricing", "metric": {"histogram": "http_client_duration_seconds", "labels": {"callee": "pricing-service"}}, "measured_side": "caller", "budget_ms": 150, "measured_p95_ms": 176, "reconciliation": "underwater", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 140, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 140, "worst_case_within_budget": true}, "deadline_propagated": true}
+  ],
+  "reserve_ms": 0,
+  "ci_gate": {
+    "command": "run the perf tests",
+    "environment": "someone's laptop",
+    "min_requests_per_run": 50,
+    "statistic": "mean",
+    "thresholds": [{"hop_id": "end-to-end", "percentile": "p95", "threshold_ms": 800}],
+    "on_failure": "warn",
+    "blocking_enabled_by_agent": true
+  },
+  "review": {"status": "approved"}
+}
+]]></code>
+      <note>Subject violations: a client-measured SLO with no hop for the edge difference (r-total-budget-is-user-facing-slo); percentiles summed as proof, verified against nothing over 50 requests (r-percentiles-do-not-add); a fan-out stage of 12 with the child at the same percentile (r-fan-out-tightens-child-percentile); server-side measurement (r-every-hop-named-and-measured); a 500 ms timeout with three retries on a 250 ms hop and no deadline propagation (r-timeouts-and-retries-fit-the-hop); no bucket at the threshold and no task to add one (r-histogram-buckets-at-budget-thresholds); an underwater pricing hop with no improvement ticket (r-budget-reconciled-with-measured-p95); a mean-gated CI check on 50 requests from a laptop with no owner for the warning (r-ci-gate-spec-is-executable); and a blocking gate enabled and approved by the agent.</note>
+    </example>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <forbidden-patterns>
+    <antipattern id="fm-01-adding-percentiles">
+      <description>`composition.percentiles_added_as_proof` true, or `verified_against` missing an end-to-end histogram with at least 1,000 requests over the SLO window.</description>
+      <reason>r-percentiles-do-not-add: the sum of p95s is neither the p95 of the sum nor a bound on it.</reason>
+    </antipattern>
+    <antipattern id="fm-02-fan-out-ignored">
+      <description>A stage with parallel calls and no `fan_out`, or `child_percentile` not stricter than `stage_percentile`, or no `mitigation`.</description>
+      <reason>r-fan-out-tightens-child-percentile: with 100 backends at 1% slow, 63% of requests hit a slow one.</reason>
+    </antipattern>
+    <antipattern id="fm-03-mean-gated-ci">
+      <description>`ci_gate.statistic` anything but `percentile`, `min_requests_per_run` below 200, a `command` that cannot be re-run from the artefact, or `warn` with no `warn_owner`.</description>
+      <reason>r-ci-gate-spec-is-executable: a p95 from 50 requests is two or three samples.</reason>
+    </antipattern>
+    <antipattern id="fm-04-buckets-miss-the-threshold">
+      <description>`bucket_boundary_within_10pct_of_budget` false with no `bucket_change_task`.</description>
+      <reason>r-histogram-buckets-at-budget-thresholds: the reported p95 is interpolation, not measurement.</reason>
+    </antipattern>
+    <antipattern id="fm-05-retries-blow-the-hop">
+      <description>`worst_case_ms` above `budget_ms`, `worst_case_within_budget` false, `max_attempts` uncapped, or `deadline_propagated` false.</description>
+      <reason>r-timeouts-and-retries-fit-the-hop: a 300 ms hop with a 500 ms timeout and three retries is a 1.5 s hop on the day the p95 measures.</reason>
+    </antipattern>
+    <antipattern id="fm-06-wish-list-budget">
+      <description>`reconciliation = underwater` without `improvement_ticket` and `improvement_owner`, `slack_over_2x` without `slack_justification`, or headroom absorbed into hops instead of `reserve_ms`.</description>
+      <reason>r-budget-reconciled-with-measured-p95: an allocation that ignores today's numbers is a wish list.</reason>
+    </antipattern>
+    <antipattern id="fm-07-wrong-measurement-point">
+      <description>`budget_measurement_point_matches` false with no `difference_hop_id`, or a hop with `measured_side` other than `caller`.</description>
+      <reason>r-total-budget-is-user-facing-slo, r-every-hop-named-and-measured: DNS, TLS and CDN time belong to nobody.</reason>
+    </antipattern>
+    <antipattern id="fm-agent-enabled-blocking-gate">
+      <description>`ci_gate.blocking_enabled_by_agent` true, or `review.status = approved` with no `reviewer` and `approved_on`.</description>
+      <reason>Human checkpoint in `03-failure-modes.xml`: the owning team's reviewer approves thresholds before a gate blocks merges.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-latency-budget-allocation.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/output.md.j2">Allocation skeleton with the same sections and field names.</reference>
 </text>

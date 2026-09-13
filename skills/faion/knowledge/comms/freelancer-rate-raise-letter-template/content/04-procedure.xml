@@ -1,40 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Freelancer Rate Raise Letter Template Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply the Freelancer Rate Raise Letter Template methodology end-to-end.</summary>
+<text id="04-procedure" title="Freelancer Rate Raise Letter Template Procedure" version="1.3.0" est_tokens="1800" depth="essential">
+  <summary>Eight steps from the contract clause to a written acknowledgement: pin the inputs, classify churn risk and cover concentration, set one number and the effective date, pull the value deltas, list in-flight work, write and tone-check the letter with the concession held back, schedule the T+7 follow-up, and apply the new rate only on written acknowledgement. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
   <section title="Procedure">
-
-    <step n="1" name="check-preconditions">
-      <input>The "Applies If" + "Skip If" checklist from AGENTS.md.</input>
-      <action>Verify every Applies-If item holds AND no Skip-If item triggers. Stop if any check fails.</action>
-      <output>Boolean: methodology applies / does not apply.</output>
-      <decision-gate>If preconditions fail, emit a skip-record and STOP.</decision-gate>
+    <step n="1" name="pin-the-inputs">
+      <input>The retainer contract (rate-change notice clause, billing cycle); the engagement log since the current rate was set; trailing-12-month revenue by client; the client's in-flight SOWs, quotes and prepaid periods.</input>
+      <action>Record each source in `inputs_used` with a stable path. Read `contract_notice_days` from the clause, the billing cycle from the invoicing history, and the date of the last rate change for this client (r-justify-with-value-delta-not-cpi, r-grace-period-at-least-30-days).</action>
+      <output>`client`, `inputs_used`.</output>
+      <decision-gate>Contract clause or engagement log unreachable: do not draft; a letter without the clause is unenforceable and without the log is a CPI note.</decision-gate>
     </step>
-
-    <step n="2" name="gather-inputs">
-      <input>Source-of-truth references named in Prerequisites.</input>
-      <action>Read each input, attach its path/URL to the working artefact. Refuse to proceed if any input is unreachable.</action>
-      <output>`inputs_used` list with name + source pairs.</output>
+    <step n="2" name="classify-churn-risk-and-cover-concentration">
+      <input>Revenue by client; the client's realistic alternatives; most recent feedback or NPS; payment behaviour; renewal date.</input>
+      <action>Classify the client stay / negotiate / churn and write the evidence for each factor. Compute `revenue_share_pct_t12m`. If the class is churn and the share exceeds 30%, write the `replacement_revenue_plan` with named pipeline, expected close dates and monthly value before anything else happens (r-churn-risk-classified-before-send).</action>
+      <output>`churn_risk` complete.</output>
+      <decision-gate>Churn above 30% of revenue with no plan: defer the raise; the letter is not drafted until the plan exists.</decision-gate>
     </step>
-
-    <step n="3" name="apply-rules">
-      <input>Inputs gathered + the rules from content/01-core-rules.xml.</input>
-      <action>Walk each rule; record per-rule pass/fail; for each fail capture the violating snippet.</action>
-      <output>Per-rule conformance record.</output>
-      <decision-gate>If any HARD rule fails, repair the artefact or escalate; do not return a partially-conformant output.</decision-gate>
+    <step n="3" name="set-one-number-and-the-effective-date">
+      <input>Current rate; target rate; `contract_notice_days`; billing cycle; letter date.</input>
+      <action>State the new rate as one number with currency and unit, the current rate in the same unit and `change_pct`. Set `effective_date` at the longest of 30 days, one full billing cycle and the contract notice period after `letter_date`; record `days_to_effective` and `billing_cycles_to_effective`. If a raise already happened in the last 12 months, either document the material scope change or stop (r-single-new-rate-stated, r-grace-period-at-least-30-days).</action>
+      <output>`rate`, `schedule`.</output>
     </step>
-
-    <step n="4" name="produce-artefact">
-      <input>Rule-conformant inputs.</input>
-      <action>Fill the template under `templates/` according to the schema in content/02-output-contract.xml.</action>
-      <output>spec artefact draft.</output>
+    <step n="4" name="pull-the-value-deltas">
+      <input>Engagement log from step 1.</input>
+      <action>Extract at least one measurable delta delivered since the current rate was set: a named deliverable, a metric moved with before and after, scope or responsibility added, a capability the client now depends on. Each cites the `inputs_used` entry it comes from. Inflation or costs may appear as `cpi_or_costs_mentioned` but never as the sole justification (r-justify-with-value-delta-not-cpi).</action>
+      <output>`justification.value_deltas[]`, `justification.cpi_or_costs_is_sole_justification = false`.</output>
+      <decision-gate>No delta in the log: the raise has no case this quarter; stop and revisit at the next review.</decision-gate>
     </step>
-
-    <step n="5" name="validate-and-handover">
-      <input>Draft artefact + validator script.</input>
-      <action>Run `scripts/validate-freelancer-rate-raise-letter-template.py --file &lt;path&gt;`. Fix any reported violations. Send the validated artefact to the named owner.</action>
-      <output>Owner-signed artefact registered with the consumer.</output>
+    <step n="5" name="list-in-flight-work">
+      <input>Signed SOWs, accepted quotes, prepaid retainer periods.</input>
+      <action>List every item in flight with its reference and kind, each marked as completing at the current rate; the new rate applies only to work agreed after the effective date (r-signed-work-honoured-at-old-rate).</action>
+      <output>`inflight_work[]`.</output>
     </step>
+    <step n="6" name="write-the-letter-and-hold-the-concession">
+      <input>Steps 3-5; `templates/freelancer-rate-raise-letter-template.md.j2`; the banned-phrase list in r-business-notice-tone-no-apology.</input>
+      <action>Write under 250 words in the business-notice shape: open with the value delivered, state the change (one number, old and new, percentage), state what is protected, close with the effective date and the follow-up date. Scan for the banned phrases and any personal-cost narrative; strip every discount, alternative rate or "let me know if this is difficult". Record exactly one prepared concession in the artefact, for the follow-up only (r-business-notice-tone-no-apology, r-no-concession-in-the-letter).</action>
+      <output>`letter` with `word_count`, `banned_phrases_found = []`, `concession_in_letter = false`; `prepared_concession`.</output>
+      <decision-gate>Any banned phrase, more than 250 words, or a concession in the text: rewrite before sending.</decision-gate>
+    </step>
+    <step n="7" name="schedule-the-t-plus-7-follow-up-and-send">
+      <input>`letter_date`; the prepared concession.</input>
+      <action>Set `follow_up.date = letter_date + 7` and write one concrete path per response state: confirmed (send updated retainer terms for signature), no reply (short reminder restating the effective date), push-back (offer the single prepared concession or a scope call). Validate with `scripts/validate-freelancer-rate-raise-letter-template.py --file`, then send the letter (r-follow-up-at-t-plus-7-with-path).</action>
+      <output>`follow_up`; the sent letter; validator exit 0.</output>
+    </step>
+    <step n="8" name="record-acknowledgement-before-applying-the-rate">
+      <input>The client's written reply, or its absence, at the follow-up date.</input>
+      <action>Run the follow-up path for the observed state. Record `acknowledgement.received_in_writing`, `received_on` and `response_state`. Set `new_rate_applied = true` only after a written confirmation; silence never applies the rate (r-follow-up-at-t-plus-7-with-path).</action>
+      <output>`acknowledgement` complete; invoicing switched to the new rate from the effective date once acknowledged.</output>
+      <decision-gate>No written acknowledgement by the effective date: keep invoicing at the current rate and escalate to a call; do not invoice the new rate on silence.</decision-gate>
+    </step>
+  </section>
 
+  <section title="Exit criteria">
+    <list>
+      <item>One rate, one effective date at least 30 days, one billing cycle and the contract notice period out; at most one raise per 12 months unless a scope change is documented.</item>
+      <item>At least one value delta cited from `inputs_used`; in-flight work listed and protected.</item>
+      <item>Letter under 250 words, no banned phrases, no concession; one prepared concession held for T+7.</item>
+      <item>Churn class recorded with evidence; replacement plan present where the client is over 30% and classified churn.</item>
+      <item>New rate applied only after `acknowledgement.received_in_writing` is true.</item>
+    </list>
   </section>
 </text>

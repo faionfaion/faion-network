@@ -1,24 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Framework Major Upgrade Inventory Worked Example" version="1.1.0" est_tokens="900" depth="reference">
-  <summary>One full worked example of the report artefact end-to-end. Use as a calibration anchor when drafting new instances.</summary>
+<text id="05-examples" title="Framework Major Upgrade Inventory Worked Examples" version="1.3.0" est_tokens="2750" depth="recommended">
+  <summary>One complete inventory for a Django 4.2 to 5.0 step on a billing API, with a note on every non-obvious value, and one bad inventory (a 3.2 to 5.0 jump built from a blog post) showing what the validator and the reviewer reject.</summary>
 
-  <section title="Example trace">
-    <example>
-      <context>A canonical framework-major-upgrade-inventory instance drafted from a triggering brief and a constraint list. Inputs cited, decision recorded, validator green, owner signed off without rework.</context>
-      <inputs>
-        <input name="primary input">See `templates/_smoke-test.md` for the filled-in artefact.</input>
-      </inputs>
-      <output>The artefact produced by the procedure in `content/04-procedure.xml`, conforming to the schema in `content/02-output-contract.xml`.</output>
-      <evaluation>
-        <criterion>All required fields populated.</criterion>
-        <criterion>No forbidden pattern matches.</criterion>
-        <criterion>Owner is a named human or role-with-rotation.</criterion>
-        <criterion>Version + last_reviewed present and current.</criterion>
-      </evaluation>
+  <section title="Scenario">
+    <p>Acme's billing API runs Django 4.2.11 on Python 3.11 and PostgreSQL 15. The team wants Django 5.0 before 4.2 leaves extended support. The suite has 1,900 tests; form rendering is covered only by view-level assertions on status codes. Two third-party packages depend on Django: Django REST framework and django-polymorphic.</p>
+  </section>
+
+  <section title="Good inventory">
+    <example type="good" title="Django 4.2 to 5.0, one step">
+      <code lang="json"><![CDATA[
+{
+  "repository": "github.com/acme/billing-api",
+  "framework": {"name": "Django", "current_version": "4.2.11", "target_version": "5.0.6", "current_major": 4, "target_major": 5, "major_gap": 1, "step_index": 1, "steps_total": 1, "upgrade_guide_url": "https://docs.djangoproject.com/en/5.0/howto/upgrade-version/"},
+  "deprecation_run": {"command": "python -W error::DeprecationWarning -W error::PendingDeprecationWarning -m pytest", "ran_on_version": "4.2.11", "log_url": "https://ci.acme.example/billing-api/runs/48211", "distinct_warnings": 3, "every_warning_has_an_entry": true},
+  "release_notes_covered": [
+    {"version": "5.0", "url": "https://docs.djangoproject.com/en/5.0/releases/5.0/"}
+  ],
+  "breaking_changes": [
+    {
+      "id": "bc-form-rendering-div",
+      "title": "Default form template changed to div-based rendering",
+      "vendor_citation": {"url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#forms", "version": "5.0"},
+      "from_deprecation_run": false,
+      "call_sites": {"count": 14, "search_kind": "ripgrep", "search_pattern": "as_table\\(\\)|\\{\\{ *form *\\}\\}", "search_link": "https://github.com/acme/billing-api/blob/main/docs/upgrade/5.0/searches.md#forms"},
+      "status": "affected",
+      "classification": "manual",
+      "risk": {"runs_in": "production_requests", "blast_radius": 28, "detectability": "runtime_no_test", "characterisation_test": "tests/characterisation/test_form_rendering_snapshots.py"}
+    },
+    {
+      "id": "bc-uslugify-usc-removed",
+      "title": "django.utils.text.unescape_string_literal and USE_L10N removed",
+      "vendor_citation": {"url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#features-removed-in-5-0", "version": "5.0"},
+      "from_deprecation_run": true,
+      "call_sites": {"count": 2, "search_kind": "deprecation_run", "search_pattern": "RemovedInDjango50Warning: The USE_L10N setting is deprecated", "search_link": "https://ci.acme.example/billing-api/runs/48211#L212"},
+      "status": "affected",
+      "classification": "codemod",
+      "codemod": {"tool": "django-upgrade", "command": "django-upgrade --target-version 5.0 $(git ls-files '*.py')", "dry_run_diff_lines": 6, "documented_as_partial_or_experimental": false},
+      "risk": {"runs_in": "both", "blast_radius": 4, "detectability": "compile_time"}
+    },
+    {
+      "id": "bc-index-together-removed",
+      "title": "Meta.index_together removed in favour of Meta.indexes",
+      "vendor_citation": {"url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#features-removed-in-5-0", "version": "5.0"},
+      "from_deprecation_run": true,
+      "call_sites": {"count": 0, "search_kind": "ripgrep", "search_pattern": "index_together", "search_link": "https://github.com/acme/billing-api/blob/main/docs/upgrade/5.0/searches.md#index-together"},
+      "status": "not_affected",
+      "classification": "manual",
+      "risk": {"runs_in": "neither", "blast_radius": 0, "detectability": "compile_time"}
+    }
+  ],
+  "unverified": [
+    {"suspected_change": "Admin changelist row colouring in dark mode looks different on 5.0 in a screenshot from a colleague", "search_tried": "release notes 5.0 admin section and the django/django changelog grep 'changelist' -- no entry found"}
+  ],
+  "dependent_packages": [
+    {"name": "djangorestframework", "current_version": "3.14.0", "earliest_compatible_version": "3.15.0", "compatible_release_available": true, "release_notes_url": "https://www.django-rest-framework.org/community/release-notes/", "blocker": false},
+    {"name": "django-polymorphic", "current_version": "3.1.0", "earliest_compatible_version": "none", "compatible_release_available": false, "release_notes_url": "https://github.com/jazzband/django-polymorphic/releases", "blocker": true, "plan": "replace", "plan_detail": "Replace the two polymorphic models with explicit multi-table inheritance; spike estimated in docs/upgrade/5.0/polymorphic.md"}
+  ],
+  "runtime_prerequisites": [
+    {"kind": "language", "name": "Python", "target_minimum": "3.10", "source_url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#python-compatibility", "environments": [{"name": "production", "current": "3.11.9", "meets_minimum": true}, {"name": "staging", "current": "3.11.9", "meets_minimum": true}, {"name": "ci", "current": "3.11.9", "meets_minimum": true}], "blocker": false},
+    {"kind": "database", "name": "PostgreSQL", "target_minimum": "12", "source_url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#dropped-support-for-postgresql-11", "environments": [{"name": "production", "current": "15.6", "meets_minimum": true}, {"name": "staging", "current": "15.6", "meets_minimum": true}], "blocker": false}
+  ],
+  "review": {"status": "ready_for_review", "reviewer": "kim@acme.example", "upgrade_branch_opened_by_agent": false}
+}
+]]></code>
+      <note>`major_gap` is 1 and 4.2 is the last 4.x minor, so `release_notes_covered` holds only the 5.0 notes; a 4.0 to 5.0 path would list 4.1 and 4.2 too (r-fmui-one-major-step-per-inventory, r-fmui-breaking-change-cited-to-vendor).</note>
+      <note>The deprecation run on 4.2.11 with `-W error` produced 3 distinct warnings; two of them are entries here with `from_deprecation_run = true` and counts read from the log, the third was a duplicate of `bc-uslugify-usc-removed` from a second module (r-fmui-deprecation-warnings-as-errors).</note>
+      <note>`bc-form-rendering-div` did not fire as a warning because a changed default template is not a deprecation; it came from the release notes. Its 14 call sites run in production requests, so `blast_radius` is 28 (count x 2), and since only status codes are tested it is `runtime_no_test` with a snapshot characterisation test linked (r-fmui-call-site-count-per-change, r-fmui-risk-scored-on-two-axes).</note>
+      <note>`django-upgrade` is a complete, documented transform for the `USE_L10N` removal, so the entry is `codemod` with a 6-line dry-run diff; the form rendering change has no transform and is `manual` (r-fmui-codemod-coverage-classified).</note>
+      <note>`bc-index-together-removed` stays in the inventory as `not_affected` with the ripgrep pattern that proved zero hits; next year's 5.0 to 5.1 inventory starts from that (r-fmui-call-site-count-per-change).</note>
+      <note>django-polymorphic has no 5.0-compatible release, so it is a blocker with a `replace` plan and a linked spike; it heads the rendered risk matrix above every breaking change (r-fmui-dependent-package-compatibility).</note>
+      <note>Both runtime prerequisites are met in every environment, so neither is a blocker; they are listed anyway so the reviewer can see the check was made (r-fmui-runtime-prerequisites-listed).</note>
+      <note>`review.status` is `ready_for_review` with Kim named; the agent did not open the branch. Approval, `approved_on` and the branch are Kim's (human checkpoint).</note>
     </example>
   </section>
 
-  <section title="Notes">
-    <p>The smoke-test template (`templates/_smoke-test.md`) holds the canonical filled-in version. Treat it as the answer key during calibration.</p>
+  <section title="Bad inventory">
+    <example type="bad" title="What the validator and the reviewer reject">
+      <code lang="json"><![CDATA[
+{
+  "repository": "github.com/acme/billing-api",
+  "framework": {"name": "Django", "current_version": "3.2.25", "target_version": "5.0.6", "current_major": 3, "target_major": 5, "major_gap": 2, "upgrade_guide_url": "https://docs.djangoproject.com/en/5.0/howto/upgrade-version/"},
+  "deprecation_run": {"command": "pytest", "ran_on_version": "3.2.25", "log_url": "https://ci.acme.example/billing-api/runs/48000", "distinct_warnings": 0, "every_warning_has_an_entry": false},
+  "release_notes_covered": [],
+  "breaking_changes": [
+    {
+      "id": "bc-form-rendering-div",
+      "title": "Default form template changed to div-based rendering",
+      "vendor_citation": {"url": "https://someblog.example/django-5-gotchas", "version": "5.0"},
+      "call_sites": {"count": 0, "search_kind": "grep", "search_pattern": "as_table", "search_link": "n/a"},
+      "status": "affected",
+      "classification": "codemod",
+      "risk": {"runs_in": "production_requests", "blast_radius": 28, "detectability": "runtime_no_test"}
+    }
+  ],
+  "unverified": [],
+  "dependent_packages": [
+    {"name": "django-polymorphic", "current_version": "3.1.0", "earliest_compatible_version": "none", "compatible_release_available": false, "release_notes_url": "https://github.com/jazzband/django-polymorphic/releases", "blocker": false}
+  ],
+  "runtime_prerequisites": [
+    {"kind": "language", "name": "Python", "target_minimum": "3.10", "source_url": "https://docs.djangoproject.com/en/5.0/releases/5.0/#python-compatibility", "environments": [{"name": "production", "current": "3.8.18", "meets_minimum": false}], "blocker": true}
+  ],
+  "review": {"status": "approved", "upgrade_branch_opened_by_agent": true}
+}
+]]></code>
+      <note>Validator output: `$.framework.major_gap: must equal 1, got 2`, `$.deprecation_run.every_warning_has_an_entry: must equal True, got False`, `$.release_notes_covered: 0 items, minItems=1`, `$.breaking_changes[0].risk.characterisation_test: missing required field`, `$.breaking_changes[0].status: must equal 'not_affected', got 'affected'`, `$.breaking_changes[0].codemod: missing required field`, `$.dependent_packages[0].blocker: must equal True, got False`, `$.runtime_prerequisites[0].upgrade_plan: missing required field`, `$.review.upgrade_branch_opened_by_agent: must equal False, got True`, `$.review.reviewer: missing required field`, `$.review.approved_on: missing required field`.</note>
+      <note>What the reviewer sees beyond the validator: the citation is a blog post, not the Django release notes, so the map is from memory by another name (r-fmui-breaking-change-cited-to-vendor); `pytest` without `-W error` is not a deprecation run (r-fmui-deprecation-warnings-as-errors); `blast_radius` 28 with zero call sites is a number typed in, not computed (r-fmui-risk-scored-on-two-axes); production on Python 3.8 makes the language upgrade a separate project that has to precede this one (r-fmui-runtime-prerequisites-listed).</note>
+    </example>
   </section>
 </text>

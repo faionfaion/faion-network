@@ -15,24 +15,26 @@
 
 ## Applies If (ALL must hold)
 
-- The triggering case shows up in the user's workload at least once per cycle.
-- A named consumer (human reviewer or downstream agent) exists for the output.
-- An auditable source-of-truth is available for the inputs this methodology requires.
-- Operator has authority to act on the artefact (write access, sign-off rights).
+- A PR review by a named mentor of a junior author has just completed with at least one substantive comment (not only nits a formatter would catch).
+- Review comments and diff lines have permalinks the checklist can point at (GitHub, GitLab or equivalent).
+- The team has a written style guide, ADRs or CONTRIBUTING.md to cite, or the mentor is willing to label uncited items as preferences.
+- The junior will author their next PR within the same review loop, so the checklist can be pasted and ticked there.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- The review left only formatting or import-order comments; those go into lint and CI config, not a checklist.
+- No previous or next PR from this author is expected (one-off contributor); a checklist has no next review to be carried to.
+- The mentor is not available to confirm permalinks and severity; an unconfirmed AI draft must not be handed to the junior.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Trigger event / brief | markdown / ticket | team owner |
-| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
-| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
+| The completed review: every comment and diff-line comment with its permalink | PR review thread | GitHub / GitLab PR |
+| The previous checklist and its tick state | Markdown block in the just-reviewed PR description | previous PR |
+| Team standards: style guide sections, ADR ids, CONTRIBUTING.md anchors | repository docs | repository |
+| Linter, formatter, type-checker and CI configuration | config files | repository |
+| Mentor and junior handles | team roster | mentor |
 
 ## Assumes Loaded
 
@@ -47,9 +49,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: item traces to review comment, 3 to 7 items, verifiable on next PR, lintable items become lint, cites team standard, one blocker, carry-forward and retire, junior self-ticks | 1550 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema: 3-7 items each with a review-comment permalink, yes/no phrasing (trait words rejected), blocking / should with at most one blocker, standard citation or preference label, lint rule and ticket where machine-enforceable, new / carried (max 2) / done status, retired and pairing-session lists, deferred candidates, junior-ticks-first posting, mentor confirmation before handover; valid + invalid examples, forbidden patterns | ~3700 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 1050 |
+| `content/04-procedure.xml` | essential | 7 steps: reconcile the previous checklist, harvest candidates with permalinks, phrase as yes/no checks, route machine-checkable items to lint, cite the standard and set one blocker, cut to 3-7 with a deferred list, hand the draft to the mentor | ~1450 |
+| `content/05-examples.xml` | recommended | Complete checklist from a nine-comment review (four items, one blocker, one deferred, one retired, one routed to mypy), the Markdown the junior pastes, a note per non-obvious value, and a bad checklist with the validator output | ~2400 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 700 |
 
 ## Task Routing
 

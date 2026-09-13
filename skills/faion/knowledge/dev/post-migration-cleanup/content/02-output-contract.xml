@@ -1,43 +1,297 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Post Migration Cleanup — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
+<text id="02-output-contract" title="Post Migration Cleanup Output Contract" version="1.2.0" est_tokens="5250" depth="essential">
+  <summary>Draft-07 JSON Schema for the cleanup checklist: cutover date and parity window, the reconciliation report behind the legacy-write deletion, the zero-traffic counter behind the read-path deletion, every migration flag with its removal PR, every shim with consumers and a date or counter, the snapshot and zero-hit reference scan before the schema drop, the docs search before and after, every alert and dashboard retargeted or deleted, every legacy resource decommissioned with its cost, and per-item tickets for anything past the deadline. Validator: `scripts/validate-post-migration-cleanup.py`.</summary>
 
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/post-migration-cleanup.json",
+  "title": "Post-migration cleanup checklist",
+  "type": "object",
+  "required": ["migration", "dual_write", "legacy_read_path", "flags", "shims", "schema_drop", "docs", "observability", "infrastructure", "deferred_items", "review"],
+  "additionalProperties": false,
+  "properties": {
+    "migration": {
+      "type": "object",
+      "required": ["name", "legacy_component", "new_component", "cutover_date", "parity_window", "delivery_cycle_days", "cleanup_deadline"],
+      "properties": {
+        "name": {"type": "string", "minLength": 3},
+        "legacy_component": {"type": "string", "minLength": 2},
+        "new_component": {"type": "string", "minLength": 2},
+        "cutover_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "parity_window": {
+          "type": "object",
+          "required": ["start", "end", "days", "includes_full_weekly_cycle"],
+          "properties": {
+            "start": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            "end": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            "days": {"type": "integer", "minimum": 7},
+            "includes_full_weekly_cycle": {"const": true}
+          }
+        },
+        "delivery_cycle_days": {"type": "integer", "minimum": 1, "maximum": 30},
+        "cleanup_deadline": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+      }
+    },
+    "dual_write": {
+      "type": "object",
+      "required": ["reconciliation_report_url", "consecutive_days_zero_mismatch", "mismatches", "legacy_write_removed_by", "deletion_pr_url"],
+      "properties": {
+        "reconciliation_report_url": {"type": "string", "pattern": "^https?://"},
+        "consecutive_days_zero_mismatch": {"type": "integer", "minimum": 7},
+        "mismatches": {"const": 0},
+        "legacy_write_removed_by": {"const": "code_deletion"},
+        "deletion_pr_url": {"type": "string", "pattern": "^https?://"}
+      }
+    },
+    "legacy_read_path": {
+      "type": "object",
+      "required": ["counter_name", "zero_for_days", "includes_batch_window", "evidence_url", "deletion_pr_url"],
+      "properties": {
+        "counter_name": {"type": "string", "minLength": 3},
+        "zero_for_days": {"type": "integer", "minimum": 7},
+        "includes_batch_window": {"const": true},
+        "evidence_url": {"type": "string", "pattern": "^https?://"},
+        "deletion_pr_url": {"type": "string", "pattern": "^https?://"}
+      }
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "removal_pr_url", "key_deleted_from_flag_service", "branches_collapsed"],
+        "properties": {
+          "key": {"type": "string", "minLength": 2},
+          "removal_pr_url": {"type": "string", "pattern": "^https?://"},
+          "key_deleted_from_flag_service": {"const": true},
+          "branches_collapsed": {"const": true}
+        }
+      }
+    },
+    "shims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "consumers", "disposition"],
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "kind": {"type": "string", "enum": ["adapter", "column_alias", "endpoint_proxy", "event_schema_translator", "redirect", "other"]},
+          "consumers": {"type": "array", "items": {"type": "string", "minLength": 2}},
+          "disposition": {"type": "string", "enum": ["deleted_in_this_cleanup", "retained"]},
+          "deletion_pr_url": {"type": "string", "pattern": "^https?://"},
+          "removal_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+          "consumer_counter": {"type": "string", "minLength": 3}
+        },
+        "allOf": [
+          {"if": {"properties": {"disposition": {"const": "retained"}}}, "then": {"properties": {"consumers": {"minItems": 1}}, "anyOf": [{"required": ["removal_date"]}, {"required": ["consumer_counter"]}]}},
+          {"if": {"properties": {"disposition": {"const": "deleted_in_this_cleanup"}}}, "then": {"required": ["deletion_pr_url"]}}
+        ]
+      }
+    },
+    "schema_drop": {
+      "type": "object",
+      "required": ["objects", "separate_change_from_code_deletion", "snapshot", "reference_scan"],
+      "properties": {
+        "objects": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}},
+        "separate_change_from_code_deletion": {"const": true},
+        "snapshot": {
+          "type": "object",
+          "required": ["url", "retention_until"],
+          "properties": {
+            "url": {"type": "string", "minLength": 5},
+            "retention_until": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+          }
+        },
+        "reference_scan": {
+          "type": "object",
+          "required": ["command", "repositories_scanned", "query_log_searched", "hits"],
+          "properties": {
+            "command": {"type": "string", "minLength": 5},
+            "repositories_scanned": {"type": "integer", "minimum": 1},
+            "query_log_searched": {"const": true},
+            "hits": {"const": 0}
+          }
+        },
+        "drop_change_url": {"type": "string", "pattern": "^https?://"}
+      }
+    },
+    "docs": {
+      "type": "object",
+      "required": ["search_command", "hits_before", "hits_after_outside_archive", "archive_location"],
+      "properties": {
+        "search_command": {"type": "string", "minLength": 5},
+        "hits_before": {"type": "integer", "minimum": 0},
+        "hits_after_outside_archive": {"const": 0},
+        "archive_location": {"type": "string", "minLength": 2}
+      }
+    },
+    "observability": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "kind", "disposition", "target_or_change_url"],
+        "properties": {
+          "name": {"type": "string", "minLength": 2},
+          "kind": {"type": "string", "enum": ["alert", "dashboard", "slo", "synthetic_check"]},
+          "disposition": {"type": "string", "enum": ["retargeted", "deleted"]},
+          "target_or_change_url": {"type": "string", "minLength": 3}
+        }
+      }
+    },
+    "infrastructure": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["resource", "kind", "still_running", "monthly_cost_removed"],
+        "properties": {
+          "resource": {"type": "string", "minLength": 2},
+          "kind": {"type": "string", "enum": ["instance", "database", "queue", "dns_record", "iam_role", "service_account", "secret", "bucket", "other"]},
+          "decommission_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+          "monthly_cost_removed": {"type": "number", "minimum": 0},
+          "still_running": {"type": "boolean"},
+          "reason": {"type": "string", "minLength": 10},
+          "end_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+        },
+        "if": {"properties": {"still_running": {"const": true}}},
+        "then": {"required": ["reason", "end_date"]},
+        "else": {"required": ["decommission_date"]}
+      }
+    },
+    "deferred_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["item", "ticket_url", "owner"],
+        "properties": {
+          "item": {"type": "string", "minLength": 3},
+          "ticket_url": {"type": "string", "pattern": "^https?://"},
+          "owner": {"type": "string", "minLength": 2}
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["status", "drop_or_decommission_executed_by_agent"],
+      "properties": {
+        "status": {"type": "string", "enum": ["draft", "ready_for_review", "approved"]},
+        "reviewer": {"type": "string", "minLength": 2},
+        "reviewer_read_snapshot_and_scan_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "drop_or_decommission_executed_by_agent": {"const": false}
+      },
+      "if": {"properties": {"status": {"const": "approved"}}},
+      "then": {"required": ["reviewer", "reviewer_read_snapshot_and_scan_on"]}
+    }
+  }
+}
+]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: `parity_window` starts on or after `cutover_date` and `cleanup_deadline` is at most `delivery_cycle_days` after `parity_window.end` (r-cleanup-deadline-from-cutover); `snapshot.retention_until` is on or after the checklist's next review date (r-legacy-schema-dropped-after-backup-and-reference-scan); every flag key introduced for the migration appears in `flags`, every shim in `shims`, every alert, dashboard, SLO and synthetic check on the legacy path in `observability`, and every legacy resource in `infrastructure`; any item not deleted by the deadline appears in `deferred_items` (r-migration-flags-removed-from-code, r-compat-shims-listed-with-expiry, r-alerts-dashboards-and-infra-decommissioned).</note>
   </section>
 
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "migration": {"name": "orders-service: orders_v1 schema to orders_v2", "legacy_component": "orders_v1 (Postgres schema + /v1/orders endpoint)", "new_component": "orders_v2 schema + /v2/orders", "cutover_date": "2026-04-01", "parity_window": {"start": "2026-04-03", "end": "2026-04-10", "days": 8, "includes_full_weekly_cycle": true}, "delivery_cycle_days": 14, "cleanup_deadline": "2026-04-24"},
+  "dual_write": {"reconciliation_report_url": "https://reports.acme.example/orders-reconciliation/2026-04-03_2026-04-10", "consecutive_days_zero_mismatch": 8, "mismatches": 0, "legacy_write_removed_by": "code_deletion", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8812"},
+  "legacy_read_path": {"counter_name": "orders_v1_reads_total", "zero_for_days": 9, "includes_batch_window": true, "evidence_url": "https://grafana.acme.example/d/orders/v1-reads?from=2026-04-03&to=2026-04-12", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8820"},
+  "flags": [
+    {"key": "orders.dual_write", "removal_pr_url": "https://github.com/acme/orders-service/pull/8812", "key_deleted_from_flag_service": true, "branches_collapsed": true},
+    {"key": "orders.read_from_v2", "removal_pr_url": "https://github.com/acme/orders-service/pull/8820", "key_deleted_from_flag_service": true, "branches_collapsed": true},
+    {"key": "orders.v2_shadow_compare", "removal_pr_url": "https://github.com/acme/orders-service/pull/8821", "key_deleted_from_flag_service": true, "branches_collapsed": true}
+  ],
+  "shims": [
+    {"name": "/v1/orders -> /v2/orders proxy", "kind": "endpoint_proxy", "consumers": ["mobile-app <= 4.12 (2.1% of sessions)"], "disposition": "retained", "removal_date": "2026-07-01", "consumer_counter": "orders_v1_proxy_requests_total{client=\"mobile\"}"},
+    {"name": "orders.customer_ref column alias", "kind": "column_alias", "consumers": [], "disposition": "deleted_in_this_cleanup", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8824"}
+  ],
+  "schema_drop": {"objects": ["schema orders_v1", "index orders_v1_customer_idx"], "separate_change_from_code_deletion": true, "snapshot": {"url": "s3://acme-backups/orders_v1-2026-04-12.dump", "retention_until": "2026-10-01"}, "reference_scan": {"command": "gh search code 'orders_v1' --owner acme; grep -c orders_v1 /var/log/postgresql/slow.log", "repositories_scanned": 41, "query_log_searched": true, "hits": 0}, "drop_change_url": "https://github.com/acme/orders-service/pull/8830"},
+  "docs": {"search_command": "grep -ril 'orders_v1\\|/v1/orders' docs/ runbooks/ adr/", "hits_before": 14, "hits_after_outside_archive": 0, "archive_location": "docs/archive/orders-v1/"},
+  "observability": [
+    {"name": "OrdersV1WriteErrors", "kind": "alert", "disposition": "deleted", "target_or_change_url": "https://github.com/acme/monitoring/pull/2210"},
+    {"name": "Orders overview", "kind": "dashboard", "disposition": "retargeted", "target_or_change_url": "orders_v2_* metrics, https://github.com/acme/monitoring/pull/2211"},
+    {"name": "orders-latency-slo", "kind": "slo", "disposition": "retargeted", "target_or_change_url": "http_request_duration_seconds{route=\"/v2/orders\"}"}
+  ],
+  "infrastructure": [
+    {"resource": "orders-v1-reader replica (RDS)", "kind": "database", "decommission_date": "2026-04-15", "monthly_cost_removed": 420, "still_running": false},
+    {"resource": "orders-v1-sync SQS queue", "kind": "queue", "decommission_date": "2026-04-14", "monthly_cost_removed": 12, "still_running": false},
+    {"resource": "iam role orders-v1-writer", "kind": "iam_role", "decommission_date": "2026-04-14", "monthly_cost_removed": 0, "still_running": false},
+    {"resource": "orders-v1.internal DNS record", "kind": "dns_record", "monthly_cost_removed": 0, "still_running": true, "reason": "mobile-app <= 4.12 resolves it for the proxy shim until the shim's removal date", "end_date": "2026-07-01"}
+  ],
+  "deferred_items": [
+    {"item": "delete /v1/orders proxy shim and orders-v1.internal DNS record", "ticket_url": "https://jira.acme.example/browse/ORD-1188", "owner": "dana@acme.example"}
+  ],
+  "review": {"status": "ready_for_review", "reviewer": "kim@acme.example", "drop_or_decommission_executed_by_agent": false}
+}
+]]></code>
+    </example>
   </section>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "migration": {"name": "orders-service: orders_v1 schema to orders_v2", "legacy_component": "orders_v1", "new_component": "orders_v2", "cutover_date": "2026-04-01", "parity_window": {"start": "2026-04-01", "end": "2026-04-03", "days": 2, "includes_full_weekly_cycle": false}, "delivery_cycle_days": 90, "cleanup_deadline": "2026-12-31"},
+  "dual_write": {"reconciliation_report_url": "https://reports.acme.example/orders-reconciliation/2026-04-01_2026-04-03", "consecutive_days_zero_mismatch": 2, "mismatches": 17, "legacy_write_removed_by": "flag_set_false", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8812"},
+  "legacy_read_path": {"counter_name": "none", "zero_for_days": 0, "includes_batch_window": false, "evidence_url": "https://grafana.acme.example/d/orders", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8820"},
+  "flags": [
+    {"key": "orders.dual_write", "removal_pr_url": "https://github.com/acme/orders-service/pull/8812", "key_deleted_from_flag_service": false, "branches_collapsed": false}
+  ],
+  "shims": [
+    {"name": "/v1/orders -> /v2/orders proxy", "kind": "endpoint_proxy", "consumers": [], "disposition": "retained"}
+  ],
+  "schema_drop": {"objects": ["schema orders_v1"], "separate_change_from_code_deletion": false, "snapshot": {"url": "none", "retention_until": "2026-04-03"}, "reference_scan": {"command": "grep orders_v1 src/", "repositories_scanned": 1, "query_log_searched": false, "hits": 3}, "drop_change_url": "https://github.com/acme/orders-service/pull/8812"},
+  "docs": {"search_command": "grep -ril orders_v1 docs/", "hits_before": 14, "hits_after_outside_archive": 9, "archive_location": "docs/archive/"},
+  "observability": [],
+  "infrastructure": [
+    {"resource": "orders-v1-reader replica (RDS)", "kind": "database", "monthly_cost_removed": 0, "still_running": true}
+  ],
+  "deferred_items": [],
+  "review": {"status": "approved", "drop_or_decommission_executed_by_agent": true}
+}
+]]></code>
+      <note>Subject violations: a two-day parity window with 17 mismatches and the legacy write merely flagged off (r-dual-write-retired-after-parity); a read path deleted with no counter and no zero window (r-legacy-read-path-deleted-at-zero-traffic); a flag frozen rather than deleted (r-migration-flags-removed-from-code); a retained shim with no consumer, date or counter (r-compat-shims-listed-with-expiry); a DROP in the same PR as the code deletion with no snapshot and a three-hit scan over one repository (r-legacy-schema-dropped-after-backup-and-reference-scan); nine stale doc hits outside the archive (r-docs-and-runbooks-refreshed); a replica still running with no reason or end date and no alert inventory (r-alerts-dashboards-and-infra-decommissioned); a 90-day cycle and a deadline eight months out (r-cleanup-deadline-from-cutover); and a drop executed and approved by the agent.</note>
+    </example>
   </section>
+
+  <forbidden-patterns>
+    <antipattern id="fm-dual-write-never-retired">
+      <description>`dual_write.mismatches` above 0, `consecutive_days_zero_mismatch` below 7, `legacy_write_removed_by` anything but `code_deletion`, or no `reconciliation_report_url`.</description>
+      <reason>r-dual-write-retired-after-parity: cutting the safety net before a real week of traffic turns divergence into data loss.</reason>
+    </antipattern>
+    <antipattern id="fm-read-path-deleted-on-belief">
+      <description>`legacy_read_path.zero_for_days` below 7, `includes_batch_window` false, or a `counter_name` that is not a real metric or route count.</description>
+      <reason>r-legacy-read-path-deleted-at-zero-traffic: "nobody uses it" is a belief until a counter says so.</reason>
+    </antipattern>
+    <antipattern id="fm-flag-frozen-true">
+      <description>A flag with `key_deleted_from_flag_service` false or `branches_collapsed` false, or a migration flag absent from `flags`.</description>
+      <reason>r-migration-flags-removed-from-code: a flag that is always true is a dormant branch waiting to be flipped.</reason>
+    </antipattern>
+    <antipattern id="fm-shim-with-unknown-consumers">
+      <description>A `retained` shim with an empty `consumers` list or with neither `removal_date` nor `consumer_counter`; a shim with no consumers not deleted in this cleanup.</description>
+      <reason>r-compat-shims-listed-with-expiry: the undated shim is still there five years later.</reason>
+    </antipattern>
+    <antipattern id="fm-schema-dropped-without-backup">
+      <description>`separate_change_from_code_deletion` false, no `snapshot.url` with a retention date, `reference_scan.hits` above 0, or `query_log_searched` false.</description>
+      <reason>r-legacy-schema-dropped-after-backup-and-reference-scan: a DROP cannot be rolled back by a redeploy.</reason>
+    </antipattern>
+    <antipattern id="fm-runbook-points-at-dead-system">
+      <description>`docs.hits_after_outside_archive` above 0 or no `search_command` recorded.</description>
+      <reason>r-docs-and-runbooks-refreshed: stale runbooks are the incident procedure being wrong when it is used.</reason>
+    </antipattern>
+    <antipattern id="fm-zombie-infra-and-alerts">
+      <description>A legacy alert, dashboard, SLO or synthetic check absent from `observability`; a resource with `still_running` true and no `reason` and `end_date`; no `monthly_cost_removed`.</description>
+      <reason>r-alerts-dashboards-and-infra-decommissioned: idle infrastructure keeps its credentials and its unpatched OS.</reason>
+    </antipattern>
+    <antipattern id="fm-no-deadline-no-owner">
+      <description>`delivery_cycle_days` above 30, a `cleanup_deadline` beyond one cycle after the parity window, or an undone item missing from `deferred_items` with a ticket and owner.</description>
+      <reason>r-cleanup-deadline-from-cutover: the team disperses within weeks and the half-migrated system becomes permanent.</reason>
+    </antipattern>
+    <antipattern id="fm-agent-executed-drop">
+      <description>`drop_or_decommission_executed_by_agent` true, or `approved` with no reviewer having read the snapshot and scan.</description>
+      <reason>Human checkpoint in `03-failure-modes.xml`: a named human reads the snapshot URL and the scan result before any DROP runs.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-post-migration-cleanup.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/output.md.j2">Cleanup checklist skeleton with the same sections and field names.</reference>
 </text>

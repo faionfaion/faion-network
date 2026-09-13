@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Post Migration Cleanup Worked Examples" version="1.1.0" est_tokens="2900" depth="recommended">
+  <summary>One complete cleanup checklist for an orders-service schema migration (three flags deleted, one shim retained with a date and counter, snapshot and 41-repository scan before the drop, EUR 432 a month of infrastructure removed, one deferred item with a ticket), with a note on every non-obvious value, and one bad checklist (two-day parity, flag frozen, DROP in the code PR, no snapshot) showing what the validator and the reviewer reject.</summary>
+
+  <section title="Scenario">
+    <p>orders-service moved from the `orders_v1` Postgres schema and `/v1/orders` endpoint to `orders_v2` and `/v2/orders`. Cutover to 100% traffic happened on 2026-04-01. The team runs two-week sprints. The mobile app below version 4.12 (2.1% of sessions) still calls `/v1/orders`, which a proxy shim forwards to v2. A reconciliation job compares the two schemas nightly.</p>
+  </section>
+
+  <section title="Good checklist">
+    <example type="good" title="orders_v1 to orders_v2 cleanup">
+      <code lang="json"><![CDATA[
+{
+  "migration": {"name": "orders-service: orders_v1 schema to orders_v2", "legacy_component": "orders_v1 (Postgres schema + /v1/orders endpoint)", "new_component": "orders_v2 schema + /v2/orders", "cutover_date": "2026-04-01", "parity_window": {"start": "2026-04-03", "end": "2026-04-10", "days": 8, "includes_full_weekly_cycle": true}, "delivery_cycle_days": 14, "cleanup_deadline": "2026-04-24"},
+  "dual_write": {"reconciliation_report_url": "https://reports.acme.example/orders-reconciliation/2026-04-03_2026-04-10", "consecutive_days_zero_mismatch": 8, "mismatches": 0, "legacy_write_removed_by": "code_deletion", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8812"},
+  "legacy_read_path": {"counter_name": "orders_v1_reads_total", "zero_for_days": 9, "includes_batch_window": true, "evidence_url": "https://grafana.acme.example/d/orders/v1-reads?from=2026-04-03&to=2026-04-12", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8820"},
+  "flags": [
+    {"key": "orders.dual_write", "removal_pr_url": "https://github.com/acme/orders-service/pull/8812", "key_deleted_from_flag_service": true, "branches_collapsed": true},
+    {"key": "orders.read_from_v2", "removal_pr_url": "https://github.com/acme/orders-service/pull/8820", "key_deleted_from_flag_service": true, "branches_collapsed": true},
+    {"key": "orders.v2_shadow_compare", "removal_pr_url": "https://github.com/acme/orders-service/pull/8821", "key_deleted_from_flag_service": true, "branches_collapsed": true}
+  ],
+  "shims": [
+    {"name": "/v1/orders -> /v2/orders proxy", "kind": "endpoint_proxy", "consumers": ["mobile-app <= 4.12 (2.1% of sessions)"], "disposition": "retained", "removal_date": "2026-07-01", "consumer_counter": "orders_v1_proxy_requests_total{client=\"mobile\"}"},
+    {"name": "orders.customer_ref column alias", "kind": "column_alias", "consumers": [], "disposition": "deleted_in_this_cleanup", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8824"}
+  ],
+  "schema_drop": {"objects": ["schema orders_v1", "index orders_v1_customer_idx"], "separate_change_from_code_deletion": true, "snapshot": {"url": "s3://acme-backups/orders_v1-2026-04-12.dump", "retention_until": "2026-10-01"}, "reference_scan": {"command": "gh search code 'orders_v1' --owner acme; grep -c orders_v1 /var/log/postgresql/slow.log", "repositories_scanned": 41, "query_log_searched": true, "hits": 0}, "drop_change_url": "https://github.com/acme/orders-service/pull/8830"},
+  "docs": {"search_command": "grep -ril 'orders_v1\\|/v1/orders' docs/ runbooks/ adr/", "hits_before": 14, "hits_after_outside_archive": 0, "archive_location": "docs/archive/orders-v1/"},
+  "observability": [
+    {"name": "OrdersV1WriteErrors", "kind": "alert", "disposition": "deleted", "target_or_change_url": "https://github.com/acme/monitoring/pull/2210"},
+    {"name": "Orders overview", "kind": "dashboard", "disposition": "retargeted", "target_or_change_url": "orders_v2_* metrics, https://github.com/acme/monitoring/pull/2211"},
+    {"name": "orders-latency-slo", "kind": "slo", "disposition": "retargeted", "target_or_change_url": "http_request_duration_seconds{route=\"/v2/orders\"}"}
+  ],
+  "infrastructure": [
+    {"resource": "orders-v1-reader replica (RDS)", "kind": "database", "decommission_date": "2026-04-15", "monthly_cost_removed": 420, "still_running": false},
+    {"resource": "orders-v1-sync SQS queue", "kind": "queue", "decommission_date": "2026-04-14", "monthly_cost_removed": 12, "still_running": false},
+    {"resource": "iam role orders-v1-writer", "kind": "iam_role", "decommission_date": "2026-04-14", "monthly_cost_removed": 0, "still_running": false},
+    {"resource": "orders-v1.internal DNS record", "kind": "dns_record", "monthly_cost_removed": 0, "still_running": true, "reason": "mobile-app <= 4.12 resolves it for the proxy shim until the shim's removal date", "end_date": "2026-07-01"}
+  ],
+  "deferred_items": [
+    {"item": "delete /v1/orders proxy shim and orders-v1.internal DNS record", "ticket_url": "https://jira.acme.example/browse/ORD-1188", "owner": "dana@acme.example"}
+  ],
+  "review": {"status": "ready_for_review", "reviewer": "kim@acme.example", "drop_or_decommission_executed_by_agent": false}
+}
+]]></code>
+      <note>The parity window starts two days after cutover and runs eight days so that it contains a Sunday night, when the invoicing batch runs; `cleanup_deadline` is 14 days (one sprint) after the window closes (r-cleanup-deadline-from-cutover, r-dual-write-retired-after-parity).</note>
+      <note>The legacy write is gone by PR #8812, which also deletes the `orders.dual_write` key: the flag and the branch it guarded disappear in the same change, and the reconciliation report it cites shows zero mismatches on all eight days (r-dual-write-retired-after-parity, r-migration-flags-removed-from-code).</note>
+      <note>`orders_v1_reads_total` read zero for nine days including the month-start batch on 2026-04-01 to 04-03; the Grafana link is the evidence, and the read code went in a separate PR from the write deletion so each can be bisected (r-legacy-read-path-deleted-at-zero-traffic).</note>
+      <note>The proxy shim is `retained` because 2.1% of sessions are an old mobile build: it has a named consumer, a removal date and a counter labelled by client. The column alias had no consumer and no counter, so it was deleted in this cleanup rather than deferred (r-compat-shims-listed-with-expiry).</note>
+      <note>The DROP is PR #8830, separate from #8812 and #8820; the dump's retention date is after the next quarterly review, and the scan ran across 41 repositories via code search plus the slow-query log with zero hits (r-legacy-schema-dropped-after-backup-and-reference-scan).</note>
+      <note>The DNS record is the one resource still running, with the shim as the reason and the shim's removal date as its end date; EUR 432 a month is recorded as removed. The alert on v1 write errors is deleted, not muted, so it cannot page on a missing metric (r-alerts-dashboards-and-infra-decommissioned).</note>
+      <note>The one undone item is in `deferred_items` with a ticket and Dana's name; the checklist waits for Kim to read the snapshot URL and the scan result before #8830 merges (r-cleanup-deadline-from-cutover, human checkpoint).</note>
+    </example>
+  </section>
+
+  <section title="Bad checklist">
+    <example type="bad" title="What the validator and the reviewer reject">
+      <code lang="json"><![CDATA[
+{
+  "migration": {"name": "orders-service: orders_v1 schema to orders_v2", "legacy_component": "orders_v1", "new_component": "orders_v2", "cutover_date": "2026-04-01", "parity_window": {"start": "2026-04-01", "end": "2026-04-03", "days": 2, "includes_full_weekly_cycle": false}, "delivery_cycle_days": 90, "cleanup_deadline": "2026-12-31"},
+  "dual_write": {"reconciliation_report_url": "https://reports.acme.example/orders-reconciliation/2026-04-01_2026-04-03", "consecutive_days_zero_mismatch": 2, "mismatches": 17, "legacy_write_removed_by": "flag_set_false", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8812"},
+  "legacy_read_path": {"counter_name": "none", "zero_for_days": 0, "includes_batch_window": false, "evidence_url": "https://grafana.acme.example/d/orders", "deletion_pr_url": "https://github.com/acme/orders-service/pull/8820"},
+  "flags": [
+    {"key": "orders.dual_write", "removal_pr_url": "https://github.com/acme/orders-service/pull/8812", "key_deleted_from_flag_service": false, "branches_collapsed": false}
+  ],
+  "shims": [
+    {"name": "/v1/orders -> /v2/orders proxy", "kind": "endpoint_proxy", "consumers": [], "disposition": "retained"}
+  ],
+  "schema_drop": {"objects": ["schema orders_v1"], "separate_change_from_code_deletion": false, "snapshot": {"url": "none", "retention_until": "2026-04-03"}, "reference_scan": {"command": "grep orders_v1 src/", "repositories_scanned": 1, "query_log_searched": false, "hits": 3}, "drop_change_url": "https://github.com/acme/orders-service/pull/8812"},
+  "docs": {"search_command": "grep -ril orders_v1 docs/", "hits_before": 14, "hits_after_outside_archive": 9, "archive_location": "docs/archive/"},
+  "observability": [],
+  "infrastructure": [
+    {"resource": "orders-v1-reader replica (RDS)", "kind": "database", "monthly_cost_removed": 0, "still_running": true}
+  ],
+  "deferred_items": [],
+  "review": {"status": "approved", "drop_or_decommission_executed_by_agent": true}
+}
+]]></code>
+      <note>Validator output: `$.migration.parity_window.days: 2 violates minimum=7`, `$.migration.parity_window.includes_full_weekly_cycle: must equal True, got False`, `$.migration.delivery_cycle_days: 90 violates maximum=30`, `$.dual_write.consecutive_days_zero_mismatch: 2 violates minimum=7`, `$.dual_write.mismatches: must equal 0, got 17`, `$.dual_write.legacy_write_removed_by: must equal 'code_deletion', got 'flag_set_false'`, `$.legacy_read_path.zero_for_days: 0 violates minimum=7`, `$.legacy_read_path.includes_batch_window: must equal True, got False`, `$.flags[0].key_deleted_from_flag_service: must equal True, got False`, `$.flags[0].branches_collapsed: must equal True, got False`, `$.shims[0].consumers: 0 items, minItems=1`, `$.shims[0]: matches none of anyOf`, `$.schema_drop.separate_change_from_code_deletion: must equal True, got False`, `$.schema_drop.snapshot.url: length 4 below minLength=5`, `$.schema_drop.reference_scan.query_log_searched: must equal True, got False`, `$.schema_drop.reference_scan.hits: must equal 0, got 3`, `$.docs.hits_after_outside_archive: must equal 0, got 9`, `$.infrastructure[0].reason: missing required field`, `$.infrastructure[0].end_date: missing required field`, `$.review.drop_or_decommission_executed_by_agent: must equal False, got True`, `$.review.reviewer: missing required field`, `$.review.reviewer_read_snapshot_and_scan_on: missing required field`.</note>
+      <note>What the reviewer sees beyond the validator: the DROP is in the same PR as the code deletion (#8812), so a rollback of the code cannot restore the data (r-legacy-schema-dropped-after-backup-and-reference-scan); `orders.read_from_v2` and `orders.v2_shadow_compare` are not listed at all, so two flags survive unaccounted (r-migration-flags-removed-from-code); an empty `observability` list for a service with a known write-error alert means that alert will page on a metric that no longer exists (r-alerts-dashboards-and-infra-decommissioned).</note>
+    </example>
+  </section>
+</text>

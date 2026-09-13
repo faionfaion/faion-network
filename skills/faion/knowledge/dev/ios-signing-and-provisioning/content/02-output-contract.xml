@@ -1,57 +1,293 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ios Signing And Provisioning Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ios Signing And Provisioning artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Ios Signing And Provisioning Output Contract" version="1.2.0" est_tokens="4850" depth="essential">
+  <summary>Draft-07 JSON Schema for the signing document: the app and the account that owns it, the secret store and its readers, every certificate, provisioning profile, App Store Connect API key and APNs credential with identifier, expiry and storage location, the per-build-config `aps-environment` to APNs host map, the rotation calendar with 30-day lead and a named person, the revocation runbook with per-type impact, and the review state before any binding action. Validator: `scripts/validate-ios-signing-and-provisioning.py`.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ios-signing-and-provisioning.json",
+  "title": "iOS signing and provisioning document",
+  "type": "object",
+  "required": ["app", "secret_store", "private_keys_outside_secret_store", "certificates", "profiles", "asc_api_keys", "push", "build_configs", "rotation_calendar", "revocation_runbook", "review"],
+  "additionalProperties": false,
+  "properties": {
+    "app": {
+      "type": "object",
+      "required": ["name", "bundle_id", "built_for_client", "owning_account", "owning_team_id"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "bundle_id": {"type": "string", "pattern": "^[A-Za-z0-9.-]+\\.[A-Za-z0-9-]+$"},
+        "built_for_client": {"type": "boolean"},
+        "owning_account": {"type": "string", "enum": ["client", "agency", "own"]},
+        "owning_team_id": {"type": "string", "pattern": "^[A-Z0-9]{10}$"},
+        "agency_role_on_client_account": {"type": "string", "enum": ["Admin", "App Manager", "Developer", "Marketing", "Customer Support"]},
+        "transfer_plan": {"type": "string", "minLength": 10}
+      },
+      "if": {"properties": {"built_for_client": {"const": true}}},
+      "then": {
+        "anyOf": [
+          {"properties": {"owning_account": {"const": "client"}}, "required": ["agency_role_on_client_account"]},
+          {"properties": {"owning_account": {"const": "agency"}}, "required": ["transfer_plan"]}
+        ]
+      }
+    },
+    "secret_store": {
+      "type": "object",
+      "required": ["kind", "location", "readers"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["ci_secrets", "fastlane_match", "password_manager"]},
+        "location": {"type": "string", "minLength": 3},
+        "readers": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 2}}
+      }
+    },
+    "private_keys_outside_secret_store": {"const": false},
+    "certificates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "identifier", "expiry", "storage_location", "shared_by_team"],
+        "properties": {
+          "type": {"type": "string", "enum": ["development", "distribution", "apns"]},
+          "identifier": {"type": "string", "minLength": 4},
+          "expiry": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+          "storage_location": {"type": "string", "minLength": 3},
+          "shared_by_team": {"type": "boolean"},
+          "per_developer_reason": {"type": "string", "minLength": 10}
+        },
+        "if": {"properties": {"type": {"const": "distribution"}, "shared_by_team": {"const": false}}},
+        "then": {"required": ["per_developer_reason"]}
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "bundle_id", "type", "uuid", "expiry", "storage_location"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "bundle_id": {"type": "string", "minLength": 3},
+          "type": {"type": "string", "enum": ["development", "ad_hoc", "app_store", "enterprise"]},
+          "uuid": {"type": "string", "minLength": 8},
+          "expiry": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+          "storage_location": {"type": "string", "minLength": 3}
+        }
+      }
+    },
+    "asc_api_keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key_id", "issuer_id", "role", "used_by", "p8_storage_location", "p8_stored_at_issue"],
+        "properties": {
+          "key_id": {"type": "string", "pattern": "^[A-Z0-9]{10}$"},
+          "issuer_id": {"type": "string", "minLength": 8},
+          "role": {"type": "string", "enum": ["Developer", "App Manager"]},
+          "used_by": {"type": "string", "minLength": 2},
+          "p8_storage_location": {"type": "string", "minLength": 3},
+          "p8_stored_at_issue": {"const": true}
+        }
+      }
+    },
+    "push": {
+      "type": "object",
+      "required": ["auth"],
+      "properties": {
+        "auth": {"type": "string", "enum": ["token_key", "certificate"]},
+        "key_id": {"type": "string", "pattern": "^[A-Z0-9]{10}$"},
+        "team_id": {"type": "string", "pattern": "^[A-Z0-9]{10}$"},
+        "p8_storage_location": {"type": "string", "minLength": 3},
+        "certificate_constraint": {"type": "string", "minLength": 10},
+        "certificate_expiry": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+      },
+      "allOf": [
+        {"if": {"properties": {"auth": {"const": "token_key"}}}, "then": {"required": ["key_id", "team_id", "p8_storage_location"]}},
+        {"if": {"properties": {"auth": {"const": "certificate"}}}, "then": {"required": ["certificate_constraint", "certificate_expiry"]}}
+      ]
+    },
+    "build_configs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "aps_environment", "apns_host"],
+        "properties": {
+          "name": {"type": "string", "enum": ["debug", "testflight", "app_store", "ad_hoc", "enterprise"]},
+          "aps_environment": {"type": "string", "enum": ["development", "production"]},
+          "apns_host": {"type": "string", "enum": ["api.sandbox.push.apple.com", "api.push.apple.com"]}
+        },
+        "allOf": [
+          {"if": {"properties": {"aps_environment": {"const": "development"}}}, "then": {"properties": {"apns_host": {"const": "api.sandbox.push.apple.com"}}}},
+          {"if": {"properties": {"aps_environment": {"const": "production"}}}, "then": {"properties": {"apns_host": {"const": "api.push.apple.com"}}}}
+        ]
+      }
+    },
+    "rotation_calendar": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["asset", "expiry", "rotate_by", "lead_days", "owner"],
+        "properties": {
+          "asset": {"type": "string", "minLength": 4},
+          "expiry": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+          "rotate_by": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+          "lead_days": {"type": "integer", "minimum": 30},
+          "owner": {"type": "string", "minLength": 3}
+        }
+      }
+    },
+    "revocation_runbook": {
+      "type": "object",
+      "required": ["who_may_revoke", "impact", "regeneration_order", "verified_against"],
+      "properties": {
+        "who_may_revoke": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 3}},
+        "impact": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["certificate_type", "installed_builds", "pipelines_broken"],
+            "properties": {
+              "certificate_type": {"type": "string", "enum": ["development", "distribution_app_store", "distribution_ad_hoc", "distribution_enterprise", "apns"]},
+              "installed_builds": {"type": "string", "enum": ["keep_launching", "stop_launching", "not_applicable"]},
+              "pipelines_broken": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "regeneration_order": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 3}},
+        "verified_against": {"type": "string", "pattern": "^https://developer\\.apple\\.com/"}
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["status", "binding_action_performed_by_agent"],
+      "properties": {
+        "status": {"type": "string", "enum": ["draft", "ready_for_review", "approved"]},
+        "reviewer": {"type": "string", "minLength": 3},
+        "approved_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "binding_action_performed_by_agent": {"const": false}
+      },
+      "if": {"properties": {"status": {"const": "approved"}}},
+      "then": {"required": ["reviewer", "approved_on"]}
+    }
+  }
+}
+]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: every certificate, profile, ASC key and APNs certificate has a `rotation_calendar` entry whose `rotate_by` is at least 30 days before its `expiry`, read from the portal (r-rotation-calendar-with-lead-time); every `storage_location` and `p8_storage_location` names the `secret_store`, not a laptop or a chat (r-private-keys-in-secret-store-only, r-asc-api-key-least-privilege); one `asc_api_keys` entry per pipeline or vendor (r-asc-api-key-least-privilege); `revocation_runbook.impact` has an entry for every certificate type in `certificates` and `profiles` (r-revocation-impact-documented); `owning_team_id` is the client's Team ID when `built_for_client` (r-client-account-owns-the-app).</note>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "app": {"name": "Northwind Field", "bundle_id": "com.northwind.field", "built_for_client": true, "owning_account": "client", "owning_team_id": "A1B2C3D4E5", "agency_role_on_client_account": "App Manager"},
+  "secret_store": {"kind": "fastlane_match", "location": "git@github.com:northwind/ios-certificates.git (match, encrypted)", "readers": ["ci:github-actions/northwind-field", "maria@agency.example", "release-lead@northwind.example"]},
+  "private_keys_outside_secret_store": false,
+  "certificates": [
+    {"type": "distribution", "identifier": "Apple Distribution: Northwind Ltd (A1B2C3D4E5), serial 6F3A9C2E", "expiry": "2027-02-14", "storage_location": "match: certs/distribution/6F3A9C2E.p12", "shared_by_team": true},
+    {"type": "development", "identifier": "Apple Development: CI (A1B2C3D4E5), serial 1D8B44A0", "expiry": "2027-02-14", "storage_location": "match: certs/development/1D8B44A0.p12", "shared_by_team": true}
+  ],
+  "profiles": [
+    {"name": "match AppStore com.northwind.field", "bundle_id": "com.northwind.field", "type": "app_store", "uuid": "c4d1a2e6-7f3b-4a9c-9d2e-0b1f5a6c7d8e", "expiry": "2027-02-14", "storage_location": "match: profiles/appstore/"},
+    {"name": "match Development com.northwind.field", "bundle_id": "com.northwind.field", "type": "development", "uuid": "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d", "expiry": "2027-02-14", "storage_location": "match: profiles/development/"}
+  ],
+  "asc_api_keys": [
+    {"key_id": "K7M2P9Q4RS", "issuer_id": "69a6de8e-1234-47e3-e053-5b8c7c11a4d1", "role": "App Manager", "used_by": "github-actions/northwind-field upload-testflight", "p8_storage_location": "GitHub Actions secret ASC_KEY_P8 (org: northwind)", "p8_stored_at_issue": true}
+  ],
+  "push": {"auth": "token_key", "key_id": "T3N8V5W2XY", "team_id": "A1B2C3D4E5", "p8_storage_location": "backend vault: secret/apns/northwind-field.p8"},
+  "build_configs": [
+    {"name": "debug", "aps_environment": "development", "apns_host": "api.sandbox.push.apple.com"},
+    {"name": "testflight", "aps_environment": "production", "apns_host": "api.push.apple.com"},
+    {"name": "app_store", "aps_environment": "production", "apns_host": "api.push.apple.com"}
+  ],
+  "rotation_calendar": [
+    {"asset": "Apple Distribution serial 6F3A9C2E", "expiry": "2027-02-14", "rotate_by": "2027-01-10", "lead_days": 35, "owner": "maria@agency.example"},
+    {"asset": "Apple Development serial 1D8B44A0", "expiry": "2027-02-14", "rotate_by": "2027-01-10", "lead_days": 35, "owner": "maria@agency.example"},
+    {"asset": "profile c4d1a2e6 (App Store)", "expiry": "2027-02-14", "rotate_by": "2027-01-10", "lead_days": 35, "owner": "maria@agency.example"},
+    {"asset": "profile 9a8b7c6d (Development)", "expiry": "2027-02-14", "rotate_by": "2027-01-10", "lead_days": 35, "owner": "maria@agency.example"}
+  ],
+  "revocation_runbook": {
+    "who_may_revoke": ["release-lead@northwind.example", "maria@agency.example"],
+    "impact": [
+      {"certificate_type": "distribution_app_store", "installed_builds": "keep_launching", "pipelines_broken": ["github-actions/northwind-field release"]},
+      {"certificate_type": "development", "installed_builds": "stop_launching", "pipelines_broken": ["github-actions/northwind-field pr-build"]},
+      {"certificate_type": "apns", "installed_builds": "not_applicable", "pipelines_broken": ["backend push sender"]}
+    ],
+    "regeneration_order": ["revoke in the portal", "fastlane match nuke <type> then match <type>", "regenerate profiles for the bundle id", "rotate CI secrets", "run a TestFlight build and a push smoke test"],
+    "verified_against": "https://developer.apple.com/help/account/certificates/revoke-a-certificate/"
+  },
+  "review": {"status": "ready_for_review", "reviewer": "release-lead@northwind.example", "binding_action_performed_by_agent": false}
+}
+]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "app": {"name": "Northwind Field", "bundle_id": "com.northwind.field", "built_for_client": true, "owning_account": "agency", "owning_team_id": "Z9Y8X7W6V5"},
+  "secret_store": {"kind": "password_manager", "location": "1Password vault iOS", "readers": ["maria@agency.example"]},
+  "private_keys_outside_secret_store": true,
+  "certificates": [
+    {"type": "distribution", "identifier": "Apple Distribution: Agency (Z9Y8X7W6V5), serial 0AAA1111", "expiry": "2026-09-20", "storage_location": "repo: ios/certs/dist.p12", "shared_by_team": false},
+    {"type": "distribution", "identifier": "Apple Distribution: Agency (Z9Y8X7W6V5), serial 0BBB2222", "expiry": "2026-11-02", "storage_location": "Slack thread #ios-release", "shared_by_team": false}
+  ],
+  "profiles": [
+    {"name": "Northwind AppStore", "bundle_id": "com.northwind.field", "type": "app_store", "uuid": "c4d1a2e6-7f3b-4a9c-9d2e-0b1f5a6c7d8e", "expiry": "2026-09-20", "storage_location": "ask Maria"}
+  ],
+  "asc_api_keys": [
+    {"key_id": "K7M2P9Q4RS", "issuer_id": "69a6de8e-1234-47e3-e053-5b8c7c11a4d1", "role": "Admin", "used_by": "all pipelines and the analytics vendor", "p8_storage_location": "Maria's laptop", "p8_stored_at_issue": false}
+  ],
+  "push": {"auth": "certificate"},
+  "build_configs": [
+    {"name": "testflight", "aps_environment": "production", "apns_host": "api.sandbox.push.apple.com"}
+  ],
+  "rotation_calendar": [
+    {"asset": "Apple Distribution serial 0AAA1111", "expiry": "2026-09-20", "rotate_by": "2026-09-18", "lead_days": 2, "owner": "someone on the team"}
+  ],
+  "revocation_runbook": {"who_may_revoke": ["anyone in Xcode"], "impact": [], "regeneration_order": [], "verified_against": "https://someblog.example/ios-signing"},
+  "review": {"status": "approved", "binding_action_performed_by_agent": true}
+}
+]]></code>
+      <note>Subject violations: a client app created under the agency's Team ID with no transfer plan (r-client-account-owns-the-app); two per-developer distribution certificates, one in the repo and one in a Slack thread, with `private_keys_outside_secret_store` true (r-private-keys-in-secret-store-only); an Admin-role ASC key shared by every pipeline and a vendor with its `.p8` on a laptop (r-asc-api-key-least-privilege); certificate-based push with no constraint and no expiry (r-apns-token-key-over-cert); a TestFlight build signed for production pointing at the sandbox host (r-push-environment-per-build-config); a rotation entry with 2 days' lead and no named person (r-rotation-calendar-with-lead-time); a revocation runbook with no per-type impact verified against a blog (r-revocation-impact-documented); and an approval with a binding action performed by the agent.</note>
+    </example>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <forbidden-patterns>
+    <antipattern id="fm-01-expired-profile-at-submission">
+      <description>A certificate or profile with no `rotation_calendar` entry, `lead_days` below 30, `rotate_by` inside 30 days of `expiry`, or an entry without a named `owner`.</description>
+      <reason>r-rotation-calendar-with-lead-time: a certificate that expires on Saturday fails on the hotfix build.</reason>
+    </antipattern>
+    <antipattern id="fm-02-p8-downloaded-once-and-lost">
+      <description>An ASC key with `p8_stored_at_issue` false, a `p8_storage_location` that is a person's machine or blank, a `role` of Admin or Account Holder, or one key shared by several pipelines or vendors.</description>
+      <reason>r-asc-api-key-least-privilege: Apple allows the `.p8` to be downloaded once.</reason>
+    </antipattern>
+    <antipattern id="fm-03-revoke-and-request-in-xcode">
+      <description>More than one distribution certificate without `per_developer_reason`, `private_keys_outside_secret_store` true, `who_may_revoke` open to anyone, or `impact` missing a certificate type in use.</description>
+      <reason>r-private-keys-in-secret-store-only, r-revocation-impact-documented: one revoke kills every ad-hoc and enterprise build in the field.</reason>
+    </antipattern>
+    <antipattern id="fm-04-sandbox-push-in-production">
+      <description>A build configuration missing from `build_configs`, or an `aps_environment` whose `apns_host` disagrees with it.</description>
+      <reason>r-push-environment-per-build-config: every push returns BadDeviceToken while the app looks fine.</reason>
+    </antipattern>
+    <antipattern id="fm-05-apns-certificate-rot">
+      <description>`push.auth = certificate` without `certificate_constraint` and `certificate_expiry`, or with no matching `rotation_calendar` entry.</description>
+      <reason>r-apns-token-key-over-cert: an APNs certificate dies after a year, usually on a weekend.</reason>
+    </antipattern>
+    <antipattern id="fm-06-app-under-the-agency-account">
+      <description>`built_for_client` true with `owning_account = agency` and no `transfer_plan`, or `owning_team_id` that is not the client's.</description>
+      <reason>r-client-account-owns-the-app: the app becomes a hostage the day the contract ends.</reason>
+    </antipattern>
+    <antipattern id="fm-agent-performed-binding-action">
+      <description>`review.status = approved` with no `reviewer` and `approved_on`, or `binding_action_performed_by_agent` true.</description>
+      <reason>Human checkpoint in `03-failure-modes.xml`: revocation, rotation, transfer and submission are approved by a named human.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-ios-signing-and-provisioning.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/output.md.j2">Signing document skeleton with the same sections and field names.</reference>
 </text>

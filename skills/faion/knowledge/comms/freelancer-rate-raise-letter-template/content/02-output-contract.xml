@@ -1,116 +1,281 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Freelancer Rate Raise Letter Template Spec Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) that pins the shape of a valid spec artefact. Subagents validate against this before returning.</summary>
+<text id="02-output-contract" title="Freelancer Rate Raise Letter Template Output Contract" version="1.3.0" est_tokens="4200" depth="essential">
+  <summary>Draft-07 JSON Schema for the rate-raise artefact: one new rate with the current rate and percentage, an effective date at least 30 days and one billing cycle out, value deltas cited from `inputs_used`, in-flight work protected, the letter's tone checks, the churn-risk class with its evidence and replacement plan, the single prepared concession, the T+7 follow-up paths and the written acknowledgement gate. Validator: `scripts/validate-freelancer-rate-raise-letter-template.py`.</summary>
 
-  <section title="Schema (JSON Schema draft-07)">
+  <section title="JSON Schema (draft-07)">
     <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/freelancer-rate-raise-letter-template.json",
+  "title": "Retainer rate-raise letter artefact",
   "type": "object",
-  "required": [
-    "artefact_id",
-    "owner",
-    "version",
-    "last_reviewed",
-    "decision",
-    "rationale",
-    "inputs_used"
-  ],
+  "required": ["client", "inputs_used", "rate", "schedule", "justification", "inflight_work", "letter", "prepared_concession", "churn_risk", "follow_up", "acknowledgement"],
+  "additionalProperties": false,
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
-    },
-    "owner": {
-      "type": "string",
-      "minLength": 3
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
-    },
-    "decision": {
-      "type": "string",
-      "minLength": 5
-    },
-    "rationale": {
-      "type": "string",
-      "minLength": 20
+    "client": {
+      "type": "object",
+      "required": ["name", "contact_email", "contract_notice_days"],
+      "properties": {
+        "name": {"type": "string", "minLength": 2},
+        "contact_email": {"type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$"},
+        "contract_notice_days": {"type": "integer", "minimum": 0},
+        "renewal_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+      }
     },
     "inputs_used": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 2,
       "items": {
         "type": "object",
-        "required": [
-          "name",
-          "source"
-        ],
+        "required": ["name", "source"],
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "source": {
-            "type": "string"
-          }
+          "name": {"type": "string", "minLength": 3},
+          "source": {"type": "string", "minLength": 3}
         }
       }
     },
-    "milestones": {
+    "rate": {
+      "type": "object",
+      "required": ["currency", "unit", "current", "new", "change_pct", "is_range_or_open"],
+      "properties": {
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "unit": {"type": "string", "enum": ["per_hour", "per_day", "per_month_retainer"]},
+        "current": {"type": "number", "exclusiveMinimum": 0},
+        "new": {"type": "number", "exclusiveMinimum": 0},
+        "change_pct": {"type": "number"},
+        "is_range_or_open": {"const": false}
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "required": ["letter_date", "effective_date", "days_to_effective", "billing_cycles_to_effective", "raises_in_last_12_months"],
+      "properties": {
+        "letter_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "effective_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "days_to_effective": {"type": "integer", "minimum": 30},
+        "billing_cycles_to_effective": {"type": "integer", "minimum": 1},
+        "raises_in_last_12_months": {"type": "integer", "minimum": 0},
+        "scope_change_documented_at": {"type": "string", "minLength": 3}
+      },
+      "if": {"properties": {"raises_in_last_12_months": {"minimum": 1}}},
+      "then": {"required": ["scope_change_documented_at"]}
+    },
+    "justification": {
+      "type": "object",
+      "required": ["value_deltas", "cpi_or_costs_is_sole_justification"],
+      "properties": {
+        "value_deltas": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "statement", "input_name"],
+            "properties": {
+              "kind": {"type": "string", "enum": ["deliverable", "metric_moved", "scope_added", "capability_depended_on"]},
+              "statement": {"type": "string", "minLength": 15},
+              "input_name": {"type": "string", "minLength": 3}
+            }
+          }
+        },
+        "cpi_or_costs_mentioned": {"type": "boolean"},
+        "cpi_or_costs_is_sole_justification": {"const": false}
+      }
+    },
+    "inflight_work": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "required": ["reference", "kind", "completes_at_current_rate"],
+        "properties": {
+          "reference": {"type": "string", "minLength": 2},
+          "kind": {"type": "string", "enum": ["signed_sow", "accepted_quote", "prepaid_retainer_period"]},
+          "completes_at_current_rate": {"const": true}
+        }
       }
+    },
+    "letter": {
+      "type": "object",
+      "required": ["word_count", "opens_with_value_delivered", "states_protected_work", "closes_with_effective_and_follow_up_dates", "banned_phrases_found", "personal_cost_narrative", "concession_in_letter"],
+      "properties": {
+        "word_count": {"type": "integer", "minimum": 1, "maximum": 250},
+        "opens_with_value_delivered": {"const": true},
+        "states_protected_work": {"const": true},
+        "closes_with_effective_and_follow_up_dates": {"const": true},
+        "banned_phrases_found": {"type": "array", "maxItems": 0, "items": {"type": "string"}},
+        "personal_cost_narrative": {"const": false},
+        "concession_in_letter": {"const": false}
+      }
+    },
+    "prepared_concession": {
+      "type": "object",
+      "required": ["description", "use_only_in_follow_up"],
+      "properties": {
+        "description": {"type": "string", "minLength": 15},
+        "use_only_in_follow_up": {"const": true}
+      }
+    },
+    "churn_risk": {
+      "type": "object",
+      "required": ["class", "revenue_share_pct_t12m", "alternatives", "recent_feedback", "payment_behaviour"],
+      "properties": {
+        "class": {"type": "string", "enum": ["stay", "negotiate", "churn"]},
+        "revenue_share_pct_t12m": {"type": "number", "minimum": 0, "maximum": 100},
+        "alternatives": {"type": "string", "minLength": 10},
+        "recent_feedback": {"type": "string", "minLength": 5},
+        "payment_behaviour": {"type": "string", "minLength": 5},
+        "replacement_revenue_plan": {
+          "type": "object",
+          "required": ["pipeline"],
+          "properties": {
+            "pipeline": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["name", "expected_close_date", "monthly_value"],
+                "properties": {
+                  "name": {"type": "string", "minLength": 2},
+                  "expected_close_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+                  "monthly_value": {"type": "number", "exclusiveMinimum": 0}
+                }
+              }
+            }
+          }
+        }
+      },
+      "if": {"properties": {"class": {"const": "churn"}, "revenue_share_pct_t12m": {"exclusiveMinimum": 30}}},
+      "then": {"required": ["replacement_revenue_plan"]}
+    },
+    "follow_up": {
+      "type": "object",
+      "required": ["date", "days_after_letter", "path_if_confirmed", "path_if_no_reply", "path_if_push_back"],
+      "properties": {
+        "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "days_after_letter": {"const": 7},
+        "path_if_confirmed": {"type": "string", "minLength": 10},
+        "path_if_no_reply": {"type": "string", "minLength": 10},
+        "path_if_push_back": {"type": "string", "minLength": 10}
+      }
+    },
+    "acknowledgement": {
+      "type": "object",
+      "required": ["received_in_writing", "new_rate_applied"],
+      "properties": {
+        "received_in_writing": {"type": "boolean"},
+        "received_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "response_state": {"type": "string", "enum": ["confirmed", "no_reply", "push_back"]},
+        "new_rate_applied": {"type": "boolean"}
+      },
+      "if": {"properties": {"new_rate_applied": {"const": true}}},
+      "then": {"properties": {"received_in_writing": {"const": true}}, "required": ["received_on"]}
     }
   }
 }
 ]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: `schedule.days_to_effective` is at least `client.contract_notice_days` and `effective_date - letter_date` (r-grace-period-at-least-30-days); every `value_deltas[].input_name` names an entry of `inputs_used` (r-justify-with-value-delta-not-cpi); `rate.change_pct` equals `(new - current) / current x 100` (r-single-new-rate-stated); `inflight_work` lists every signed SOW, quote and prepaid period, not a sample (r-signed-work-honoured-at-old-rate); `follow_up.date` is `letter_date + 7` (r-follow-up-at-t-plus-7-with-path); the `banned_phrases_found` scan was run against the letter text with the list in r-business-notice-tone-no-apology.</note>
   </section>
 
-  <example valid="true">
-    <code lang="json"><![CDATA[
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "freelancer-rate-raise-letter-template-acme-2026-05-23",
-  "owner": "Ruslan Faion <ruslan@faion.net>",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "decision": "Approve scope-clause A-07 against discovery interview from 2026-04-15.",
-  "rationale": "Maria Lopes (VP Ops) confirmed in the 2026-04-15 interview at 00:12:30 that v1 ships single-currency only; the pricing assumes that constraint per A-07.",
+  "client": {"name": "Acme Analytics Ltd", "contact_email": "dana@acme.example", "contract_notice_days": 30, "renewal_date": "2026-12-31"},
   "inputs_used": [
-    {
-      "name": "interview-2026-04-15",
-      "source": "interviews/2026-04-15-vp-ops.md"
-    },
-    {
-      "name": "pricing-worksheet",
-      "source": "pricing/v1.xlsx"
-    }
-  ]
+    {"name": "retainer-msa-2025", "source": "contracts/acme/msa-2025.pdf#clause-9.3"},
+    {"name": "engagement-log-q1-q2", "source": "engagements/acme/2026-log.md"},
+    {"name": "revenue-t12m", "source": "finance/revenue-2025-07-to-2026-06.xlsx"}
+  ],
+  "rate": {"currency": "EUR", "unit": "per_month_retainer", "current": 6000, "new": 6720, "change_pct": 12, "is_range_or_open": false},
+  "schedule": {"letter_date": "2026-07-01", "effective_date": "2026-09-01", "days_to_effective": 62, "billing_cycles_to_effective": 2, "raises_in_last_12_months": 0},
+  "justification": {
+    "value_deltas": [
+      {"kind": "capability_depended_on", "statement": "Since March 2026 I own the release pipeline Acme previously paid an agency EUR 2,400 per month for", "input_name": "engagement-log-q1-q2"},
+      {"kind": "metric_moved", "statement": "Deploy lead time fell from 9 days to 1 day between March and June 2026", "input_name": "engagement-log-q1-q2"}
+    ],
+    "cpi_or_costs_mentioned": false,
+    "cpi_or_costs_is_sole_justification": false
+  },
+  "inflight_work": [
+    {"reference": "SOW-2026-03 data-warehouse migration", "kind": "signed_sow", "completes_at_current_rate": true},
+    {"reference": "Retainer period July-August 2026 (prepaid)", "kind": "prepaid_retainer_period", "completes_at_current_rate": true}
+  ],
+  "letter": {"word_count": 196, "opens_with_value_delivered": true, "states_protected_work": true, "closes_with_effective_and_follow_up_dates": true, "banned_phrases_found": [], "personal_cost_narrative": false, "concession_in_letter": false},
+  "prepared_concession": {"description": "Current rate held until 2026-12-31 against a prepaid six-month retainer invoiced in September", "use_only_in_follow_up": true},
+  "churn_risk": {
+    "class": "negotiate",
+    "revenue_share_pct_t12m": 18,
+    "alternatives": "Could re-engage the agency at roughly 2x my retainer, or hire a platform engineer with a 3-month lead",
+    "recent_feedback": "Q2 review: 'the pipeline work changed how we ship'; NPS 9",
+    "payment_behaviour": "Every retainer invoice paid within net 15 across 14 months"
+  },
+  "follow_up": {
+    "date": "2026-07-08",
+    "days_after_letter": 7,
+    "path_if_confirmed": "Send the updated retainer schedule (clause 9.3 variation) for e-signature",
+    "path_if_no_reply": "Two-line reminder restating the 2026-09-01 effective date and asking for written confirmation",
+    "path_if_push_back": "Offer the prepared concession once; if declined, propose a 30-minute scope call"
+  },
+  "acknowledgement": {"received_in_writing": true, "received_on": "2026-07-06", "response_state": "confirmed", "new_rate_applied": false}
 }
 ]]></code>
-  </example>
+    </example>
+  </section>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "decision": "We will figure it out.",
-  "rationale": "obviously this is right",
-  "inputs_used": []
+  "client": {"name": "Acme Analytics Ltd", "contact_email": "dana@acme.example", "contract_notice_days": 30},
+  "inputs_used": [
+    {"name": "retainer-msa-2025", "source": "contracts/acme/msa-2025.pdf#clause-9.3"},
+    {"name": "cpi-eurostat-2026-05", "source": "https://ec.europa.eu/eurostat"}
+  ],
+  "rate": {"currency": "EUR", "unit": "per_month_retainer", "current": 6000, "new": 6600, "change_pct": 10, "is_range_or_open": true},
+  "schedule": {"letter_date": "2026-07-01", "effective_date": "2026-07-01", "days_to_effective": 0, "billing_cycles_to_effective": 0, "raises_in_last_12_months": 1},
+  "justification": {"value_deltas": [], "cpi_or_costs_mentioned": true, "cpi_or_costs_is_sole_justification": true},
+  "inflight_work": [],
+  "letter": {"word_count": 410, "opens_with_value_delivered": false, "states_protected_work": false, "closes_with_effective_and_follow_up_dates": false, "banned_phrases_found": ["unfortunately", "I hope this is okay"], "personal_cost_narrative": true, "concession_in_letter": true},
+  "prepared_concession": {"description": "If the new rate is a problem I can keep the old one for now", "use_only_in_follow_up": false},
+  "churn_risk": {"class": "churn", "revenue_share_pct_t12m": 42, "alternatives": "Unknown, never asked", "recent_feedback": "none on file", "payment_behaviour": "usually late"},
+  "follow_up": {"date": "2026-08-15", "days_after_letter": 45, "path_if_confirmed": "Invoice at the new rate", "path_if_no_reply": "Invoice at the new rate", "path_if_push_back": "See what they say"},
+  "acknowledgement": {"received_in_writing": false, "new_rate_applied": true}
 }
 ]]></code>
-    <note>Owner is plural pronoun, required fields missing or empty.</note>
-  </example>
+      <note>Subject violations: effective immediately with a second raise this year and no documented scope change (r-grace-period-at-least-30-days); CPI as the sole justification with no value delta (r-justify-with-value-delta-not-cpi); a range instead of one number (r-single-new-rate-stated); no in-flight work protected; a 410-word letter with apology phrases, a personal-cost story and a concession inside it (r-business-notice-tone-no-apology, r-no-concession-in-the-letter); a 42%-of-revenue client classified churn with no replacement plan (r-churn-risk-classified-before-send); follow-up at day 45 and the new rate applied on silence (r-follow-up-at-t-plus-7-with-path).</note>
+    </example>
+  </section>
 
-  <forbidden>
-    <pattern id="owner-plural">`owner` is plural pronoun (`team`, `we`, `us`) or empty string</pattern>
-    <pattern id="rationale-no-citation">`rationale` does not cite any entry from `inputs_used`</pattern>
-    <pattern id="inputs-empty">`inputs_used` is empty AND decision is not 'no-op'</pattern>
-  </forbidden>
+  <forbidden-patterns>
+    <antipattern id="effective-immediately">
+      <description>`days_to_effective` below 30, `billing_cycles_to_effective` 0, an effective date inside the contract notice period, or a second raise in 12 months without `scope_change_documented_at`.</description>
+      <reason>r-grace-period-at-least-30-days: a raise with no runway is an ultimatum to the client's budget.</reason>
+    </antipattern>
+    <antipattern id="cpi-as-the-reason">
+      <description>`value_deltas` empty, a delta whose `input_name` is not in `inputs_used`, or `cpi_or_costs_is_sole_justification` true.</description>
+      <reason>r-justify-with-value-delta-not-cpi: an inflation note tells procurement the freelancer is a cost line to cap.</reason>
+    </antipattern>
+    <antipattern id="range-instead-of-number">
+      <description>`rate.is_range_or_open` true, or `rate.new` / `rate.current` / `rate.change_pct` missing or inconsistent.</description>
+      <reason>r-single-new-rate-stated: the client anchors on the bottom of any range.</reason>
+    </antipattern>
+    <antipattern id="discount-in-the-same-letter">
+      <description>`letter.concession_in_letter` true, or `prepared_concession.use_only_in_follow_up` false.</description>
+      <reason>r-no-concession-in-the-letter: the fallback becomes the real price.</reason>
+    </antipattern>
+    <antipattern id="top-client-raised-without-a-plan">
+      <description>`churn_risk.class` missing, or `churn` with `revenue_share_pct_t12m` above 30 and no `replacement_revenue_plan.pipeline`.</description>
+      <reason>r-churn-risk-classified-before-send: the classification is the stake of the bet.</reason>
+    </antipattern>
+    <antipattern id="silence-treated-as-consent">
+      <description>`follow_up.days_after_letter` not 7, a path left generic, or `acknowledgement.new_rate_applied` true while `received_in_writing` is false.</description>
+      <reason>r-follow-up-at-t-plus-7-with-path: silence produces a disputed invoice.</reason>
+    </antipattern>
+    <antipattern id="apologetic-register">
+      <description>`letter.word_count` above 250, any entry in `banned_phrases_found`, `personal_cost_narrative` true, or the letter not opening with value delivered.</description>
+      <reason>r-business-notice-tone-no-apology: an apologetic letter asks permission the freelancer does not need.</reason>
+    </antipattern>
+  </forbidden-patterns>
 
-  <reference path="scripts/validate-freelancer-rate-raise-letter-template.py">Stdlib-only validator implementing this schema.</reference>
+  <reference path="scripts/validate-freelancer-rate-raise-letter-template.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/freelancer-rate-raise-letter-template.md.j2">Letter and artefact skeleton with the same sections and field names.</reference>
 </text>

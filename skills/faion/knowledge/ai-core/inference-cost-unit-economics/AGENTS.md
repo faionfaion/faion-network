@@ -15,24 +15,30 @@
 
 ## Applies If (ALL must hold)
 
-- AI feature has paying users or a path to revenue and gross-margin matters
-- feature uses LLM calls + retrieval + tools whose costs vary per invocation
-- the team can attribute cost to feature and feature to revenue (or to value proxy)
+- Every feature in scope emits an observable success event (ticket resolved, suggestion accepted, purchase completed) that can be counted per window.
+- Every LLM call is logged with the provider `usage` object, the model id, the feature id, the attempt number and the outcome it served.
+- Retrieval (embedding + vector store) and tool/API spend can be attributed to the feature, not only to the account.
+- Finance can supply, per feature, attributed revenue, an allocation rule with its key, or a value proxy someone will sign.
+- At least 7 days of production traffic exist for the window.
 
 ## Skip If (ANY kills it)
 
-- feature is internal-tooling only with no revenue model — track cost but skip the unit-economics framing
-- feature is one-shot research, not a recurring product surface — use ad-hoc cost report instead
-- billing data is not yet attributable to features — fix attribution first
+- Token counts are estimated from characters or sampled and extrapolated; the report figures would be inadmissible until logging is fixed.
+- No feature has a success definition; only calls and sessions are countable, so there is no outcome to divide by.
+- Feature is internal tooling with no revenue model or value proxy; track raw cost, do not compute margin.
+- Feature is one-shot research with no recurring traffic; an ad-hoc cost report is enough.
+- Fewer than 7 days of production traffic; the distribution and the tail cannot be read yet.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Per-call cost decomposition (tokens in/out + retrieval + tool) | logging | platform |
-| Feature attribution (calls → feature) | telemetry | ml-engineering |
-| Revenue or value-proxy attribution per feature | analytics | product |
-| Outcome definition per feature (success metric) | product spec | product |
+| Per-call usage log: provider `usage` object, model id, feature id, attempt number, outcome id | JSONL or warehouse table from the LLM gateway | platform / ml-engineering |
+| Provider price sheet: model id with dated snapshot, input/output/cached price per 1M, sheet date + URL, discount kind and % | table or the pricing page captured on the report date | finance / platform |
+| Success definition and outcome count per feature | product spec + the event or table it is counted from | product |
+| Retrieval and tool spend per feature (embedding calls, vector queries, external APIs) | vendor invoices joined to feature id | platform |
+| Revenue attribution per feature: attributed revenue, allocation rule with key, or value proxy with derivation | finance sheet | product finance |
+| Target gross margin per feature and the alerting pipeline the spend alert is wired into | finance target + observability config | product finance / SRE |
 
 ## Assumes Loaded
 
@@ -47,11 +53,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: cost per successful outcome, four-component decomposition, provider usage counts, retry share, pinned price sheet, revenue basis, p95 tail, cost ceiling | 1950 |
-| `content/02-output-contract.xml` | essential | JSON Schema for the deliverable + valid/invalid/forbidden examples | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 800 |
-| `content/05-examples.xml` | essential | Worked example from real engagement | 700 |
-| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema: pinned price sheet, provider-usage token source, per feature success definition, four cost lines, p50/p95/mean over >=7 days, retry share with the 15% gate, revenue basis, margin, ceiling and spend alert; valid + invalid examples, forbidden patterns | ~3700 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix triplets | 950 |
+| `content/04-procedure.xml` | essential | 8 steps: define success per feature, pin the price sheet, log provider usage, decompose into four cost lines, attribute to outcomes and measure retry share, report the distribution, compute margin on a stated basis, set ceiling and alert then publish | ~2000 |
+| `content/05-examples.xml` | recommended | Complete two-feature report (support agent under ceiling, contract summariser over it with a retry loop and a long-context tail) with a note per non-obvious value, plus the bad report and the validator output the reviewer sees | ~2000 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 800 |
 
 ## Task Routing
 

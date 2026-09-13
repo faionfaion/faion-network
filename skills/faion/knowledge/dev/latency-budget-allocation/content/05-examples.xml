@@ -1,24 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Latency Budget Allocation Worked Example" version="1.1.0" est_tokens="900" depth="reference">
-  <summary>One full worked example of the spec artefact end-to-end. Use as a calibration anchor when drafting new instances.</summary>
+<text id="05-examples" title="Latency Budget Allocation Worked Examples" version="1.3.0" est_tokens="2850" depth="recommended">
+  <summary>One complete allocation of an 800 ms p95 checkout SLO across five hops, including a 12-shard fan-out with hedged requests, an underwater pricing hop with a ticket, a justified slack line, a 100 ms reserve and a k6 gate, with a note on every non-obvious value, and one bad allocation (summed percentiles, server-side metrics, retries that triple the hop, a mean gate on a laptop) showing what the validator and the reviewer reject.</summary>
 
-  <section title="Example trace">
-    <example>
-      <context>A canonical latency-budget-allocation instance drafted from a triggering brief and a constraint list. Inputs cited, decision recorded, validator green, owner signed off without rework.</context>
-      <inputs>
-        <input name="primary input">See `templates/_smoke-test.md` for the filled-in artefact.</input>
-      </inputs>
-      <output>The artefact produced by the procedure in `content/04-procedure.xml`, conforming to the schema in `content/02-output-contract.xml`.</output>
-      <evaluation>
-        <criterion>All required fields populated.</criterion>
-        <criterion>No forbidden pattern matches.</criterion>
-        <criterion>Owner is a named human or role-with-rotation.</criterion>
-        <criterion>Version + last_reviewed present and current.</criterion>
-      </evaluation>
+  <section title="Scenario">
+    <p>Acme's checkout SLO is p95 under 800 ms measured at the CDN edge over a rolling 28 days. The critical path is edge to gateway, checkout-service, a parallel inventory lookup across 12 shards, a pricing call and a payment authorisation with an external PSP. Pricing currently runs a p95 of 176 ms; the team wants a CI gate before the next promotion campaign.</p>
+  </section>
+
+  <section title="Good allocation">
+    <example type="good" title="Checkout p95 800 ms at the edge">
+      <code lang="json"><![CDATA[
+{
+  "slo": {"name": "checkout p95 at the edge", "metric": "checkout_request_duration_seconds", "percentile": "p95", "threshold_ms": 800, "measurement_point": "edge", "window_days": 28, "budget_measurement_point_matches": true},
+  "composition": {
+    "model": "critical_path_with_parallel_stages",
+    "sum_of_hop_budgets_ms": 700,
+    "percentiles_added_as_proof": false,
+    "verified_against": {"end_to_end_histogram": "checkout_request_duration_seconds{point=\"edge\"}", "measured_percentile_ms": 742, "window_days": 28, "request_count": 4180000}
+  },
+  "hops": [
+    {"id": "hop-edge-to-gateway", "service": "cdn + api-gateway", "owner_team": "platform", "metric": {"histogram": "gateway_upstream_duration_seconds", "labels": {"route": "/checkout"}}, "measured_side": "caller", "budget_ms": 80, "measured_p95_ms": 61, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 80, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 80, "worst_case_within_budget": true}, "deadline_propagated": true},
+    {"id": "hop-checkout-svc", "service": "checkout-service", "owner_team": "checkout", "metric": {"histogram": "http_client_duration_seconds", "labels": {"caller": "api-gateway", "callee": "checkout-service"}}, "measured_side": "caller", "budget_ms": 120, "measured_p95_ms": 98, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 100, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 100, "worst_case_within_budget": true}, "deadline_propagated": true},
+    {"id": "hop-inventory-fanout", "service": "inventory-shards", "owner_team": "inventory", "metric": {"histogram": "grpc_client_duration_seconds", "labels": {"caller": "checkout-service", "callee": "inventory-shard"}}, "measured_side": "caller", "budget_ms": 250, "measured_p95_ms": 212, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 110, "max_attempts": 2, "backoff_ms": 10, "worst_case_ms": 230, "worst_case_within_budget": true}, "deadline_propagated": true,
+     "fan_out": {"n": 12, "stage_percentile": "p95", "child_percentile": "p999", "mitigation": "hedged_requests"}},
+    {"id": "hop-pricing", "service": "pricing-service", "owner_team": "pricing", "metric": {"histogram": "http_client_duration_seconds", "labels": {"caller": "checkout-service", "callee": "pricing-service"}}, "measured_side": "caller", "budget_ms": 150, "measured_p95_ms": 176, "reconciliation": "underwater", "improvement_ticket": "https://jira.acme.example/browse/PRICE-812", "improvement_owner": "pricing", "bucket_boundary_within_10pct_of_budget": false, "bucket_change_task": "https://jira.acme.example/browse/OBS-301 add 0.15s bucket",
+     "timeout_and_retry": {"timeout_ms": 140, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 140, "worst_case_within_budget": true}, "deadline_propagated": true},
+    {"id": "hop-payment-auth", "service": "payment-gateway (external)", "owner_team": "payments", "metric": {"histogram": "http_client_duration_seconds", "labels": {"caller": "checkout-service", "callee": "psp"}}, "measured_side": "caller", "budget_ms": 100, "measured_p95_ms": 38, "reconciliation": "slack_over_2x", "slack_justification": "PSP contract allows 250 ms p95 on peak days; 100 ms is the floor we can defend without a second provider", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 90, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 90, "worst_case_within_budget": true}, "deadline_propagated": true}
+  ],
+  "reserve_ms": 100,
+  "ci_gate": {
+    "command": "k6 run --vus 40 --duration 3m perf/checkout.js --out json=perf/out.json && perf/check-thresholds.py perf/out.json budget.json",
+    "environment": "perf-staging (same instance sizes as production, seeded dataset perf-2026-06)",
+    "min_requests_per_run": 5000,
+    "statistic": "percentile",
+    "thresholds": [
+      {"hop_id": "end-to-end", "percentile": "p95", "threshold_ms": 800},
+      {"hop_id": "hop-checkout-svc", "percentile": "p95", "threshold_ms": 120},
+      {"hop_id": "hop-inventory-fanout", "percentile": "p95", "threshold_ms": 250},
+      {"hop_id": "hop-pricing", "percentile": "p95", "threshold_ms": 150}
+    ],
+    "on_failure": "block_merge",
+    "blocking_enabled_by_agent": false
+  },
+  "review": {"status": "ready_for_review", "reviewer": "checkout-lead@acme.example"}
+}
+]]></code>
+      <note>The SLO is measured at the edge and so is the budget, so `budget_measurement_point_matches` is true and the first hop is the edge-to-gateway leg with its own histogram; nothing between the user and the gateway belongs to nobody (r-total-budget-is-user-facing-slo).</note>
+      <note>Budgets sum to 700 ms and `reserve_ms` is 100, so the constraint 700 + 100 &lt;= 800 holds; the claim that the budget is met comes from the measured 742 ms p95 over 4.18 million edge requests, not from adding the five p95s (r-percentiles-do-not-add, r-budget-reconciled-with-measured-p95).</note>
+      <note>The inventory stage fans out to 12 shards; the stage targets p95 but each shard is budgeted at p999 and hedged, because the stage's tail is the slowest shard's tail. Its timeout is 110 ms with one hedge attempt: worst case 230 ms inside the 250 ms budget (r-fan-out-tightens-child-percentile, r-timeouts-and-retries-fit-the-hop).</note>
+      <note>Pricing is `underwater`: 176 ms measured against a 150 ms budget. It stays in the allocation because PRICE-812 is linked with an owner, and its histogram lacks a 150 ms bucket, so OBS-301 is filed before the gate can read it (r-budget-reconciled-with-measured-p95, r-histogram-buckets-at-budget-thresholds).</note>
+      <note>Payment auth is budgeted at 100 ms against a measured 38 ms, more than twice, so `slack_over_2x` carries a justification from the PSP contract instead of quietly hoarding 60 ms (r-budget-reconciled-with-measured-p95).</note>
+      <note>Every metric is a caller-side histogram (`http_client_*`, `grpc_client_*`, `gateway_upstream_*`) so connection setup and retries are inside the number; every hop propagates the deadline (r-every-hop-named-and-measured, r-timeouts-and-retries-fit-the-hop).</note>
+      <note>The gate is one k6 command plus a threshold checker, run in perf-staging with 5,000 requests minimum, on p95 per hop; it is written to block merges but `blocking_enabled_by_agent` is false: the checkout lead flips it after approving the thresholds (r-ci-gate-spec-is-executable, human checkpoint).</note>
     </example>
   </section>
 
-  <section title="Notes">
-    <p>The smoke-test template (`templates/_smoke-test.md`) holds the canonical filled-in version. Treat it as the answer key during calibration.</p>
+  <section title="Bad allocation">
+    <example type="bad" title="What the validator and the reviewer reject">
+      <code lang="json"><![CDATA[
+{
+  "slo": {"name": "checkout p95", "metric": "checkout_request_duration_seconds", "percentile": "p95", "threshold_ms": 800, "measurement_point": "client", "window_days": 28, "budget_measurement_point_matches": false},
+  "composition": {
+    "model": "sequential_sum_plus_headroom",
+    "sum_of_hop_budgets_ms": 800,
+    "percentiles_added_as_proof": true,
+    "verified_against": {"end_to_end_histogram": "none", "measured_percentile_ms": 0, "window_days": 1, "request_count": 50}
+  },
+  "hops": [
+    {"id": "hop-inventory-fanout", "service": "inventory-shards", "owner_team": "inventory", "metric": {"histogram": "grpc_server_duration_seconds", "labels": {}}, "measured_side": "server", "budget_ms": 250, "measured_p95_ms": 212, "reconciliation": "within_budget", "bucket_boundary_within_10pct_of_budget": false,
+     "timeout_and_retry": {"timeout_ms": 500, "max_attempts": 3, "backoff_ms": 100, "worst_case_ms": 1700, "worst_case_within_budget": false}, "deadline_propagated": false,
+     "fan_out": {"n": 12, "stage_percentile": "p95", "child_percentile": "p95", "mitigation": "tighter_child_budget"}},
+    {"id": "hop-pricing", "service": "pricing-service", "owner_team": "pricing", "metric": {"histogram": "http_client_duration_seconds", "labels": {"callee": "pricing-service"}}, "measured_side": "caller", "budget_ms": 150, "measured_p95_ms": 176, "reconciliation": "underwater", "bucket_boundary_within_10pct_of_budget": true,
+     "timeout_and_retry": {"timeout_ms": 140, "max_attempts": 1, "backoff_ms": 0, "worst_case_ms": 140, "worst_case_within_budget": true}, "deadline_propagated": true}
+  ],
+  "reserve_ms": 0,
+  "ci_gate": {
+    "command": "run the perf tests",
+    "environment": "someone's laptop",
+    "min_requests_per_run": 50,
+    "statistic": "mean",
+    "thresholds": [{"hop_id": "end-to-end", "percentile": "p95", "threshold_ms": 800}],
+    "on_failure": "warn",
+    "blocking_enabled_by_agent": true
+  },
+  "review": {"status": "approved"}
+}
+]]></code>
+      <note>Validator output: `$.slo.difference_hop_id: missing required field`, `$.composition.percentiles_added_as_proof: must equal False, got True`, `$.composition.verified_against.request_count: 50 violates minimum=1000`, `$.hops[0].measured_side: must equal 'caller', got 'server'`, `$.hops[0].timeout_and_retry.worst_case_within_budget: must equal True, got False`, `$.hops[0].deadline_propagated: must equal True, got False`, `$.hops[0].fan_out.child_percentile: 'p95' not in enum ['p99', 'p999', 'p9999']`, `$.hops[0].bucket_change_task: missing required field`, `$.hops[1].improvement_ticket: missing required field`, `$.hops[1].improvement_owner: missing required field`, `$.ci_gate.min_requests_per_run: 50 violates minimum=200`, `$.ci_gate.statistic: 'mean' not in enum ['percentile']`, `$.ci_gate.blocking_enabled_by_agent: must equal False, got True`, `$.ci_gate.warn_owner: missing required field`, `$.review.reviewer: missing required field`, `$.review.approved_on: missing required field`.</note>
+      <note>What the reviewer sees beyond the validator: only two hops for a five-hop path, so 800 ms is "allocated" to a fifth of the system (r-every-hop-named-and-measured); the sum of budgets equals the threshold with zero reserve, so the next feature steals margin unnoticed (r-budget-reconciled-with-measured-p95); `worst_case_ms` 1700 on a 250 ms hop is the retry storm the p95 will measure (r-timeouts-and-retries-fit-the-hop).</note>
+    </example>
   </section>
 </text>

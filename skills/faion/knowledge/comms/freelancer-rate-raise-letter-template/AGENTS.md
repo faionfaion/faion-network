@@ -16,24 +16,28 @@
 
 ## Applies If (ALL must hold)
 
-- the triggering activity 'Quarterly rate adjustment review (role: p3-technical-freelancer)' shows up at least once per cycle.
-- the operator has authority to act on the artefact.
-- a named consumer exists for the output.
-- an auditable source-of-truth (current rate, value delta) is available.
+- The client is on a retainer or recurring engagement with a signed contract whose rate-change notice clause can be read.
+- At least one measurable value delta since the current rate was set exists in the engagement log (deliverable, metric moved, scope added, capability the client depends on).
+- No rate change has been applied to this client in the last 12 months, or a material scope change since then is documented.
+- The freelancer knows the client's share of trailing-12-month revenue and can name the client's realistic alternatives.
 
 ## Skip If (ANY kills it)
 
-- one-off, never-to-repeat work — overhead does not pay back.
-- no named consumer — the artefact will be orphaned.
-- cannot access the source-of-truth — paraphrased substitutes are worse than skipping.
+- The only available justification is inflation, CPI or the freelancer's own costs; the letter would be a cost-line note procurement caps.
+- The client is above 30% of revenue, would likely churn, and no replacement-revenue pipeline exists yet; defer until it does.
+- A rate change already took effect for this client inside the last 12 months with no documented scope change.
+- The engagement is project-based with a fixed quote and no recurring rate to raise; reprice at the next quote instead.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
-| Named consumer (human or agent) | name + handle | engagement charter |
-| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
+| Retainer contract with the rate-change notice clause and billing cycle | contract PDF with clause numbers | contract store |
+| Engagement log since the current rate was set: deliverables, metrics before and after, scope added | dated log or ticket export | engagement file |
+| Trailing-12-month revenue by client | spreadsheet or accounting export | finance |
+| In-flight signed SOWs, accepted quotes and prepaid retainer periods | list with references and end dates | contract store / invoicing |
+| Client feedback or NPS, payment history, renewal date | notes + invoice ledger | engagement file, bank |
+| Banned-phrase list for the tone check | the list in `content/01-core-rules.xml` r-business-notice-tone-no-apology | this methodology |
 
 ## Assumes Loaded
 
@@ -48,11 +52,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: 30-day grace period, value delta not CPI, single new rate, signed work honoured, no concession in letter, churn-risk classified, T+7 follow-up, business-notice tone | 2100 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
-| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
-| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema: one rate with old, new and %, effective date >=30 days and >=1 cycle, at most one raise per 12 months, value deltas citing inputs_used, in-flight work protected, letter checks (250 words, banned phrases, no concession), churn class with evidence and replacement plan over 30%, T+7 follow-up paths, acknowledgement gate; valid + invalid examples, forbidden patterns | ~4200 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 950 |
+| `content/04-procedure.xml` | essential | 8 steps: pin inputs, classify churn and cover concentration, set one number and the effective date, pull value deltas, list in-flight work, write the letter and hold the concession, schedule T+7 and send, apply the rate only on written acknowledgement | ~1800 |
+| `content/05-examples.xml` | recommended | Complete artefact for a EUR 6,000 retainer raised 12% with 62 days' notice, the 196-word letter, a note per non-obvious value, and a bad artefact with the validator output | ~2500 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 1100 |
 
 ## Task Routing
 

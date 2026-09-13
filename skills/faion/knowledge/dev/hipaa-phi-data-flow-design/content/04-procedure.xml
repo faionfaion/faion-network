@@ -1,41 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Hipaa Phi Data Flow Design Procedure" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>End-to-end 5-step procedure to apply Hipaa Phi Data Flow Design. Each step pairs typed input + bounded action + named output + decision-gate. Steps are sequential unless explicitly marked parallel.</summary>
+<text id="04-procedure" title="Hipaa Phi Data Flow Design Procedure" version="1.3.0" est_tokens="1950" depth="essential">
+  <summary>Nine steps from the infrastructure inventory to the Security Officer's signature: draw every hop with its identifier classes, cut each hop to minimum necessary and de-identify analytics and LLM hops, execute or link a BAA per external hop, encrypt every link and store, design the audit event and its store, scrub logs and prove it with a synthetic-record test, assign unique identities and roles with logoff and break-glass, declare retention and deletion propagation, then route to the Security Officer. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
-  <section title="Steps">
-    <step n="1" name="gather-inputs">
-      <input>Trigger event + source-of-truth references</input>
-      <action>Collect every input declared in AGENTS.md `## Prerequisites`. Cite each by URL / ticket / file path.</action>
-      <output>Typed inputs bundle</output>
-      <decision-gate>Every input cited; otherwise block and request missing sources.</decision-gate>
+  <section title="Procedure">
+    <step n="1" name="inventory-every-hop-with-identifier-classes">
+      <input>Cloud account and infrastructure inventory; the service's routing table; SaaS integrations (error tracking, analytics, email, support desk, LLM or embeddings APIs); backup and export jobs.</input>
+      <action>Create one `hops[]` entry for every service, database, queue, cache, search index, log pipeline, error tracker, analytics tool, backup, export and third-party API that stores, processes or transmits PHI. Tag each with the §164.514(b)(2) identifier classes it carries and whether it is external (r-phi-every-hop-inventoried).</action>
+      <output>`system`, `hops[].id / name / kind / operations / external / identifier_classes`.</output>
+      <decision-gate>An item in the infrastructure inventory with no hop: add it before assessing any control; a hop that touches PHI and is not drawn is a design defect.</decision-gate>
     </step>
-    <step n="2" name="normalise-inputs">
-      <input>Typed inputs bundle</input>
-      <action>Normalise field types to match `content/02-output-contract.xml`. Reject untyped prose.</action>
-      <output>Normalised input map</output>
-      <decision-gate>All fields typed; otherwise block.</decision-gate>
+    <step n="2" name="cut-each-hop-to-minimum-necessary">
+      <input>The purpose of each hop; the fields it currently receives.</input>
+      <action>List `fields[]` per hop with a one-line justification each and drop anything the purpose does not need. Analytics, machine-learning, embeddings and LLM hops receive Safe Harbor or Expert Determination de-identified data (`deidentified = true` with the method) unless a BAA covers the recipient and the identified use is documented (r-phi-minimum-necessary-per-hop).</action>
+      <output>`hops[].purpose / fields / deidentified / deidentification_method / identified_use_documented_at`.</output>
+      <decision-gate>A hop whose fields cannot be justified line by line receives nothing until they can.</decision-gate>
     </step>
-    <step n="3" name="synthesise-decision">
-      <input>Normalised input map</input>
-      <action>Apply rules from `content/01-core-rules.xml` to derive the decision / artefact body. No rule may be silently overridden by input prose.</action>
-      <output>Decision body (draft artefact)</output>
-      <decision-gate>Decision body matches the `produces` shape; otherwise block.</decision-gate>
+    <step n="3" name="execute-or-link-a-baa-per-external-hop">
+      <input>Each `external = true` hop that receives identified PHI; vendor contracts; vendor plan documentation.</input>
+      <action>Link the executed BAA naming the vendor, the plan and the covered service. Where no BAA exists, either execute one for that plan and service, redesign the hop to receive de-identified data only, or remove it. "HIPAA-ready" without a signed BAA does not count (r-phi-baa-for-every-external-hop).</action>
+      <output>`hops[].baa` for every external identified hop.</output>
+      <decision-gate>External identified hop with no executed BAA: the design does not proceed past this step for that hop.</decision-gate>
     </step>
-    <step n="4" name="self-validate">
-      <input>Draft artefact</input>
-      <action>Run `scripts/validate-hipaa-phi-data-flow-design.py` against the draft. Resolve every violation before proceeding.</action>
-      <output>Validated artefact</output>
-      <decision-gate>Validator exits 0; otherwise iterate.</decision-gate>
+    <step n="4" name="encrypt-every-link-and-store">
+      <input>Network topology including links inside the VPC; the KMS.</input>
+      <action>For every pair of hops that exchange PHI add a `links[]` entry with TLS 1.2 or later per NIST SP 800-52 Rev. 2 and the point where TLS terminates, including load balancer to application and application to database. For every storing hop set `encryption_at_rest` per NIST SP 800-111 with a managed KMS key and rotation enabled, backups, queues, caches and indexes included (r-phi-encrypted-in-transit-and-at-rest).</action>
+      <output>`links[]`, `hops[].encryption_at_rest`.</output>
     </step>
-    <step n="5" name="hand-off">
-      <input>Validated artefact</input>
-      <action>Surface 'ready for owner review' flag and store the artefact at the location declared in AGENTS.md. Do not auto-commit downstream actions.</action>
-      <output>Stored artefact + review notification</output>
-      <decision-gate>Owner acknowledged; otherwise the artefact stays in `ready_for_review` state.</decision-gate>
+    <step n="5" name="design-the-audit-event-and-its-store">
+      <input>The application's data-access layer; the log platform.</input>
+      <action>Emit an audit event on every read, write, export and deletion of PHI carrying identity, timestamp, record id, action and originating system, and no field values. Configure an append-only store retained at least six years and an alert on bulk access (r-phi-audit-event-per-access).</action>
+      <output>`audit_log`.</output>
+    </step>
+    <step n="6" name="scrub-logs-and-prove-it">
+      <input>The logging layer; the error tracker's payload settings; every request path.</input>
+      <action>Install an allow-list scrubber at the logging layer, move identifiers out of URLs and query strings, and write a test that sends a synthetic PHI record through every request path and asserts none of its identifier values appear in log, error or trace output; run it in CI (r-phi-never-in-logs-errors-or-urls).</action>
+      <output>`log_scrubbing` with `synthetic_record_test`.</output>
+      <decision-gate>Synthetic-record test failing or not covering every path: no PHI flows through the affected path.</decision-gate>
+    </step>
+    <step n="7" name="assign-unique-identities-and-roles">
+      <input>The identity provider; the list of people and services touching each hop.</input>
+      <action>Per hop, list roles with permitted operations, remove every shared account and shared API key, set automatic logoff after a stated idle period, and document the break-glass procedure with its own audit alert (r-phi-unique-identity-and-role-access).</action>
+      <output>`hops[].access`.</output>
+    </step>
+    <step n="8" name="declare-retention-and-deletion-propagation">
+      <input>Regulatory and contractual retention requirements; every copy of the data (backups, replicas, caches, indexes, exports, derived datasets).</input>
+      <action>Set `retention.period_days` and `deletion_mechanism` per hop. Document how a single patient's deletion propagates from the system of record to every copy, and the media disposal procedure (NIST SP 800-88 or equivalent) for devices that held PHI (r-phi-retention-and-deletion-per-store).</action>
+      <output>`hops[].retention`, `deletion_propagation[]`, `media_disposal_procedure`.</output>
+    </step>
+    <step n="9" name="route-to-the-security-officer">
+      <input>The complete design; `templates/output.md.j2`.</input>
+      <action>Render the design, validate with `scripts/validate-hipaa-phi-data-flow-design.py --file`, set `review.status = ready_for_review` and name the Security or Privacy Officer. The agent does not approve; the officer signs before any PHI flows (human checkpoint in `03-failure-modes.xml`, 45 CFR §164.308(a)(2)).</action>
+      <output>`review` with `approved_by_agent = false`; validator exit 0; the rendered design.</output>
+      <decision-gate>Officer not named or validator failing: the design stays in `draft` and no PHI flows.</decision-gate>
     </step>
   </section>
 
-  <section title="Failure handling">
-    <p>If a decision-gate blocks, do NOT proceed to the next step. Surface the blockage to the owner with the specific input that did not satisfy the gate. Resume only after the input is corrected.</p>
+  <section title="Exit criteria">
+    <list>
+      <item>Every hop in the infrastructure inventory is drawn with identifier classes and justified fields; analytics, ML and LLM hops are de-identified or BAA-covered with a documented use.</item>
+      <item>Every external identified hop has an executed BAA naming plan and service; every link is TLS 1.2+; every store is KMS-encrypted with rotation.</item>
+      <item>Audit events carry identity, timestamp, record id, action and source into an append-only store kept six years; the synthetic-record test runs in CI and passes.</item>
+      <item>No shared accounts; roles per hop; automatic logoff; break-glass with alert; retention and deletion propagation per store.</item>
+      <item>`review.status = ready_for_review` with the Security Officer named; the agent has not approved.</item>
+    </list>
   </section>
 </text>

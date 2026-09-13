@@ -1,35 +1,44 @@
-<!--
-purpose: Spec skeleton matching the schema in 02-output-contract.xml
-consumes: see AGENTS.md Prerequisites
-produces: Hipaa Phi Data Flow Design spec
-depends-on: content/02-output-contract.xml schema
-token-budget-impact: ~400 tokens when filled
--->
+<!-- purpose: PHI data-flow design skeleton — same sections and field names as content/02-output-contract.xml -->
+<!-- consumes: infrastructure inventory, routing table, SaaS integrations, vendor BAAs, KMS and log platform config, identity provider roles (AGENTS.md Prerequisites) -->
+<!-- produces: HIPAA PHI data-flow design validating against scripts/validate-hipaa-phi-data-flow-design.py -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~900 tokens when filled -->
 
-# Hipaa Phi Data Flow Design — output.md
+# PHI Data-Flow Design — {{ system_name }}
 
-> Replace bracketed placeholders before use.
+## Hops (every service, database, queue, cache, index, log pipeline, error tracker, analytics, backup, export, third-party API that stores, processes or transmits PHI)
 
-**Artefact id:** `[stable-slug]`
-**Owner:** `[name <email> or role]`
-**Version:** `1.0.0`
-**Last reviewed:** `2026-05-23`
+| id | Name | Kind | Operations | External | §164.514(b)(2) identifier classes | Fields (name: justification) | Purpose | De-identified (method) | BAA (vendor, plan, covered service, link) | Encryption at rest (KMS, rotation) | Roles (operations) / shared accounts: no / auto-logoff min / break-glass (doc, alert) | Retention (days, deletion mechanism) |
+|----|------|------|------------|----------|-----------------------------------|------------------------------|---------|------------------------|-------------------------------------------|------------------------------------|------------------------------------------------------------------------------------------|--------------------------------------|
 
----
+## Links (every pair of hops exchanging PHI, inside the VPC included)
 
-## Inputs
+| From | To | TLS version (1.2+) | TLS terminates at | Identifier classes on the wire |
+|------|----|--------------------|-------------------|--------------------------------|
 
-| Name | Format | Source |
-|------|--------|--------|
-| {{ input_1 }} | {{ format }} | {{ source }} |
+## Audit log (§164.312(b))
 
-## Body
+- `store` (append-only): — `retention_years` (>= 6):
+- `event_fields`: identity, timestamp, record_id, action, originating_system — PHI field values: never
+- `bulk_access_alert`:
 
-[Fill the spec-shaped content here per content/02-output-contract.xml.]
+## Log scrubbing
 
-## Self-check
+- `allow_list_scrubber_at`: — PHI in URLs or query strings: no
+- `synthetic_record_test`: path, covers every request path, asserts no identifier in logs / errors / traces, runs in CI
 
-- [ ] Every required field populated.
-- [ ] No forbidden pattern matches.
-- [ ] Owner is a named human or role-with-rotation.
-- [ ] Version + last_reviewed advanced on every material edit.
+## Deletion propagation and disposal
+
+| Trigger | Propagates to (hop ids: backups, replicas, caches, indexes, exports) | Mechanism |
+|---------|-----------------------------------------------------------------------|-----------|
+
+- `media_disposal_procedure`:
+
+## Review
+
+- `status`: draft | ready_for_review | approved — Security / Privacy Officer: {{ reviewer_name }} — signed on:
+- Approved by agent: no
+
+## Validation
+
+Run `python scripts/validate-hipaa-phi-data-flow-design.py --file <design.json>`. Exit 0 = valid, exit 1 = violations on stderr.

@@ -1,24 +1,115 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Hipaa Phi Data Flow Design Worked Example" version="1.1.0" est_tokens="900" depth="reference">
-  <summary>One full worked example of the spec artefact end-to-end. Use as a calibration anchor when drafting new instances.</summary>
+<text id="05-examples" title="Hipaa Phi Data Flow Design Worked Examples" version="1.3.0" est_tokens="3850" depth="recommended">
+  <summary>One complete data-flow design for a clinician portal with five hops (API, PostgreSQL, snapshots, Sentry under a BAA, and a de-identified embeddings API), with a note on every non-obvious value, and one bad design (full clinical notes to an embeddings vendor with no BAA, plaintext inside the VPC, a shared ops login) showing what the validator and the reviewer reject.</summary>
 
-  <section title="Example trace">
-    <example>
-      <context>A canonical hipaa-phi-data-flow-design instance drafted from a triggering brief and a constraint list. Inputs cited, decision recorded, validator green, owner signed off without rework.</context>
-      <inputs>
-        <input name="primary input">See `templates/_smoke-test.md` for the filled-in artefact.</input>
-      </inputs>
-      <output>The artefact produced by the procedure in `content/04-procedure.xml`, conforming to the schema in `content/02-output-contract.xml`.</output>
-      <evaluation>
-        <criterion>All required fields populated.</criterion>
-        <criterion>No forbidden pattern matches.</criterion>
-        <criterion>Owner is a named human or role-with-rotation.</criterion>
-        <criterion>Version + last_reviewed present and current.</criterion>
-      </evaluation>
+  <section title="Scenario">
+    <p>careportal-api serves clinician encounter views and appointment scheduling. Patient charts live in PostgreSQL on RDS with nightly snapshots to S3. Errors go to Sentry. Product wants semantic search over clinical notes through a hosted embeddings API. The organisation's Security Officer must sign the design before the search feature ships.</p>
+  </section>
+
+  <section title="Good design">
+    <example type="good" title="careportal-api PHI data flow">
+      <code lang="json"><![CDATA[
+{
+  "system": "careportal-api",
+  "hops": [
+    {"id": "hop-api", "name": "careportal-api (FastAPI)", "kind": "service", "operations": ["processes", "transmits"], "external": false,
+     "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses"],
+     "fields": [{"name": "patient.name", "justification": "shown on the encounter screen the clinician is authorised to view"}, {"name": "patient.mrn", "justification": "record lookup key"}, {"name": "encounter.date", "justification": "encounter timeline"}, {"name": "patient.email", "justification": "appointment reminders"}],
+     "purpose": "serve clinician encounter views and appointment scheduling", "deidentified": false,
+     "access": {"roles": [{"role": "clinician", "operations": ["read", "write"]}, {"role": "scheduler", "operations": ["read"]}], "shared_accounts": false, "auto_logoff_minutes": 15, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 0, "deletion_mechanism": "stateless; no PHI persisted in the service"}},
+    {"id": "hop-postgres", "name": "patients PostgreSQL (RDS)", "kind": "database", "operations": ["stores"], "external": false,
+     "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"],
+     "fields": [{"name": "patients.*", "justification": "system of record for the patient chart"}],
+     "purpose": "system of record", "deidentified": false,
+     "encryption_at_rest": {"enabled": true, "standard": "NIST SP 800-111", "kms": "aws-kms:alias/careportal-phi", "key_rotation_enabled": true},
+     "access": {"roles": [{"role": "api-service-principal", "operations": ["read", "write", "delete"]}, {"role": "dba", "operations": ["admin"]}], "shared_accounts": false, "auto_logoff_minutes": 10, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 2190, "deletion_mechanism": "nightly job deletes rows past retention and on patient deletion request; cascades to encounters"}},
+    {"id": "hop-backup", "name": "RDS snapshots to S3", "kind": "backup", "operations": ["stores"], "external": false,
+     "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"],
+     "fields": [{"name": "full snapshot", "justification": "disaster recovery of the system of record"}],
+     "purpose": "disaster recovery", "deidentified": false,
+     "encryption_at_rest": {"enabled": true, "standard": "NIST SP 800-111", "kms": "aws-kms:alias/careportal-phi", "key_rotation_enabled": true},
+     "access": {"roles": [{"role": "sre", "operations": ["read", "admin"]}], "shared_accounts": false, "auto_logoff_minutes": 10, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 35, "deletion_mechanism": "S3 lifecycle rule expires snapshots at 35 days; deletion requests replay against restored snapshots per runbooks/deletion.md"}},
+    {"id": "hop-error-tracker", "name": "Sentry (Business plan, HIPAA add-on)", "kind": "error_tracker", "operations": ["stores", "processes"], "external": true,
+     "identifier_classes": ["medical_record_numbers"],
+     "fields": [{"name": "request.path with mrn", "justification": "needed to reproduce failures on a specific record; body and headers scrubbed"}],
+     "purpose": "error triage", "deidentified": false,
+     "baa": {"executed": true, "vendor": "Sentry", "plan": "Business", "covered_service": "Error Monitoring with PII scrubbing enabled", "link": "contracts/sentry-baa-2026-01.pdf", "executed_on": "2026-01-14"},
+     "encryption_at_rest": {"enabled": true, "kms": "vendor-managed per BAA section 4", "key_rotation_enabled": true},
+     "access": {"roles": [{"role": "on-call-engineer", "operations": ["read"]}], "shared_accounts": false, "auto_logoff_minutes": 30, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 30, "deletion_mechanism": "vendor retention set to 30 days; per-event deletion API called on deletion request"}},
+    {"id": "hop-embeddings", "name": "Hosted embeddings API for note search", "kind": "llm_or_embeddings_api", "operations": ["processes"], "external": true,
+     "identifier_classes": [],
+     "fields": [{"name": "note.text_deidentified", "justification": "semantic search over clinical notes; all 18 identifiers removed before the call"}],
+     "purpose": "semantic search over clinical notes", "deidentified": true, "deidentification_method": "safe_harbor_164_514_b_2",
+     "access": {"roles": [{"role": "search-service-principal", "operations": ["write"]}], "shared_accounts": false, "auto_logoff_minutes": 5, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 0, "deletion_mechanism": "vendor zero-retention endpoint; nothing persisted"}}
+  ],
+  "links": [
+    {"from": "hop-api", "to": "hop-postgres", "tls_version": "1.2", "tls_terminates_at": "RDS endpoint (rds.force_ssl=1)", "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"]},
+    {"from": "hop-postgres", "to": "hop-backup", "tls_version": "1.2", "tls_terminates_at": "S3 endpoint", "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"]},
+    {"from": "hop-api", "to": "hop-error-tracker", "tls_version": "1.3", "tls_terminates_at": "sentry.io ingest", "identifier_classes": ["medical_record_numbers"]},
+    {"from": "hop-api", "to": "hop-embeddings", "tls_version": "1.3", "tls_terminates_at": "vendor API gateway", "identifier_classes": []}
+  ],
+  "audit_log": {"store": "CloudWatch Logs group /careportal/phi-audit with retention lock", "append_only": true, "contains_phi_field_values": false, "retention_years": 7, "event_fields": ["identity", "timestamp", "record_id", "action", "originating_system"], "bulk_access_alert": "CloudWatch alarm: >200 distinct record_ids read by one identity in 10 minutes -> pagerduty:phi-bulk-access"},
+  "log_scrubbing": {"allow_list_scrubber_at": "careportal/logging/scrubber.py (allow-list of 14 safe keys)", "phi_in_urls_or_query_strings": false, "synthetic_record_test": {"path": "tests/compliance/test_no_phi_in_logs.py", "covers_every_request_path": true, "asserts_no_identifier_in_logs_errors_traces": true, "runs_in_ci": true}},
+  "deletion_propagation": [
+    {"trigger": "patient deletion request or retention expiry in hop-postgres", "propagates_to": ["hop-backup", "hop-error-tracker"], "mechanism": "deletion job writes a tombstone; backup restore replays tombstones (runbooks/deletion.md); Sentry per-event deletion API by mrn"}
+  ],
+  "media_disposal_procedure": "runbooks/media-disposal.md: NIST SP 800-88 purge for any drive or device that held PHI; cloud volumes are KMS-encrypted and keys are destroyed on decommission",
+  "review": {"status": "ready_for_review", "security_officer": "security-officer@careportal.example", "approved_by_agent": false}
+}
+]]></code>
+      <note>The snapshot bucket and Sentry are hops in their own right, each with identifier classes, encryption, access and retention: the two places a design most often forgets to draw (r-phi-every-hop-inventoried).</note>
+      <note>The embeddings hop carries an empty `identifier_classes` list because the note text is Safe Harbor de-identified before the call; that is why it needs no BAA even though it is external. Had product insisted on identified notes, the hop would need a BAA for that vendor's specific plan plus a documented identified use (r-phi-minimum-necessary-per-hop, r-phi-baa-for-every-external-hop).</note>
+      <note>Sentry receives one identifier class (the MRN in the request path) under a BAA that names the plan and the covered service, not just the vendor; the body and headers never reach it because the allow-list scrubber runs first (r-phi-baa-for-every-external-hop, r-phi-never-in-logs-errors-or-urls).</note>
+      <note>Every link records where TLS terminates: the API-to-RDS link terminates at the RDS endpoint with `rds.force_ssl=1`, not at a load balancer, so there is no plaintext hop inside the VPC (r-phi-encrypted-in-transit-and-at-rest).</note>
+      <note>The audit store is CloudWatch with a retention lock at 7 years (above the 6-year floor), carries record ids and never field values, and the bulk-access alarm fires at 200 distinct records in 10 minutes by one identity (r-phi-audit-event-per-access).</note>
+      <note>The deletion path names the two copies a chart can reach (snapshots and Sentry events) and the mechanism for each; the embeddings vendor is not listed because its zero-retention endpoint keeps nothing (r-phi-retention-and-deletion-per-store).</note>
+      <note>`review.status` is `ready_for_review` with the Security Officer named; signing and `signed_on` are theirs. The agent's flag is the last thing it does (human checkpoint, 45 CFR §164.308(a)(2)).</note>
     </example>
   </section>
 
-  <section title="Notes">
-    <p>The smoke-test template (`templates/_smoke-test.md`) holds the canonical filled-in version. Treat it as the answer key during calibration.</p>
+  <section title="Bad design">
+    <example type="bad" title="What the validator and the reviewer reject">
+      <code lang="json"><![CDATA[
+{
+  "system": "careportal-api",
+  "hops": [
+    {"id": "hop-api", "name": "careportal-api (FastAPI)", "kind": "service", "operations": ["processes", "transmits"], "external": false,
+     "identifier_classes": ["names", "medical_record_numbers"],
+     "fields": [{"name": "patient.*", "justification": "everything, simpler than selecting columns"}],
+     "purpose": "serve clinician encounter views", "deidentified": false,
+     "access": {"roles": [{"role": "ops", "operations": ["admin"]}], "shared_accounts": true, "auto_logoff_minutes": 0, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 0, "deletion_mechanism": "stateless"}},
+    {"id": "hop-postgres", "name": "patients PostgreSQL (RDS)", "kind": "database", "operations": ["stores"], "external": false,
+     "identifier_classes": ["names", "medical_record_numbers"],
+     "fields": [{"name": "patients.*", "justification": "system of record for the patient chart"}],
+     "purpose": "system of record", "deidentified": false,
+     "access": {"roles": [{"role": "api-service-principal", "operations": ["read", "write"]}], "shared_accounts": false, "auto_logoff_minutes": 10, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 2190, "deletion_mechanism": "nightly job deletes rows past retention"}},
+    {"id": "hop-embeddings", "name": "Hosted embeddings API for note search", "kind": "llm_or_embeddings_api", "operations": ["processes"], "external": true,
+     "identifier_classes": ["names", "medical_record_numbers", "dates_except_year"],
+     "fields": [{"name": "note.text", "justification": "full clinical note for semantic search"}],
+     "purpose": "semantic search over clinical notes", "deidentified": false,
+     "access": {"roles": [{"role": "search-service-principal", "operations": ["write"]}], "shared_accounts": false, "auto_logoff_minutes": 5, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 30, "deletion_mechanism": "vendor default"}}
+  ],
+  "links": [
+    {"from": "hop-api", "to": "hop-postgres", "tls_version": "1.0", "tls_terminates_at": "load balancer only; plaintext inside the VPC", "identifier_classes": ["names", "medical_record_numbers"]},
+    {"from": "hop-api", "to": "hop-embeddings", "tls_version": "1.3", "tls_terminates_at": "vendor API gateway", "identifier_classes": ["names", "medical_record_numbers", "dates_except_year"]}
+  ],
+  "audit_log": {"store": "application log", "append_only": false, "contains_phi_field_values": true, "retention_years": 1, "event_fields": ["timestamp", "action"], "bulk_access_alert": "none"},
+  "log_scrubbing": {"allow_list_scrubber_at": "none", "phi_in_urls_or_query_strings": true, "synthetic_record_test": {"path": "tests/compliance/test_no_phi_in_logs.py", "covers_every_request_path": false, "asserts_no_identifier_in_logs_errors_traces": true, "runs_in_ci": false}},
+  "deletion_propagation": [],
+  "media_disposal_procedure": "n/a",
+  "review": {"status": "approved", "approved_by_agent": true}
+}
+]]></code>
+      <note>Validator output (abridged to the subject findings): `$.hops[0].access.shared_accounts: must equal False, got True`, `$.hops[0].access.auto_logoff_minutes: 0 violates minimum=1`, `$.hops[1].encryption_at_rest: missing required field`, `$.hops[2].baa: missing required field`, `$.hops[2].identified_use_documented_at: missing required field`, `$.links[0].tls_version: '1.0' not in enum ['1.2', '1.3']`, `$.audit_log.append_only: must equal True, got False`, `$.audit_log.contains_phi_field_values: must equal False, got True`, `$.audit_log.retention_years: 1 violates minimum=6`, `$.audit_log.event_fields: no item matches 'contains' {'const': 'identity'}` (and record_id, originating_system), `$.log_scrubbing.phi_in_urls_or_query_strings: must equal False, got True`, `$.log_scrubbing.synthetic_record_test.covers_every_request_path: must equal True, got False`, `$.log_scrubbing.synthetic_record_test.runs_in_ci: must equal True, got False`, `$.deletion_propagation: 0 items, minItems=1`, `$.media_disposal_procedure: length 3 below minLength=5`, `$.review.approved_by_agent: must equal False, got True`, `$.review.security_officer: missing required field`, `$.review.signed_on: missing required field`.</note>
+      <note>What the reviewer sees beyond the validator: no hop for the snapshots or the error tracker although both exist in the account (r-phi-every-hop-inventoried); `patient.*` with the justification "simpler than selecting columns" is the opposite of minimum necessary (r-phi-minimum-necessary-per-hop); full clinical notes with names, MRNs and dates going to an embeddings vendor with no BAA is a disclosure the organisation would have to notify (r-phi-baa-for-every-external-hop).</note>
+    </example>
   </section>
 </text>

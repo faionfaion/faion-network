@@ -1,41 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Pr Pattern Mining For Feedback Procedure" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>End-to-end 5-step procedure to apply Pr Pattern Mining For Feedback. Each step pairs typed input + bounded action + named output + decision-gate. Steps are sequential unless explicitly marked parallel.</summary>
+<text id="04-procedure" title="PR Pattern Mining For Feedback Procedure" version="1.3.0" est_tokens="1700" depth="essential">
+  <summary>Eight steps from a stated corpus to a checked report: declare the scope, fetch the corpus with a reproducible query and apply the sample gate, strip formatter-coverable comments into one automation-gap item, cluster the rest by code behaviour and apply the recurrence threshold, phrase each pattern with before and after, rank by frequency times cost and cut to five, attach an enforcement channel per suggested rule, set baselines and re-measure dates (with deltas against the previous report), then hand the draft to the owner who checks URLs and scope before sharing. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
-  <section title="Steps">
-    <step n="1" name="gather-inputs">
-      <input>Trigger event + source-of-truth references</input>
-      <action>Collect every input declared in AGENTS.md `## Prerequisites`. Cite each by URL / ticket / file path.</action>
-      <output>Typed inputs bundle</output>
-      <decision-gate>Every input cited; otherwise block and request missing sources.</decision-gate>
+  <section title="Procedure">
+    <step n="1" name="declare-the-scope">
+      <input>Who asked for the report and who will read it.</input>
+      <action>Set `scope.kind` to `team` or `mentee`. A team report lists no per-author counts. A mentee report names the mentee as primary reader and states whether it feeds a performance evaluation (r-per-person-scope-declared-and-consented).</action>
+      <output>`scope`.</output>
+      <decision-gate>A request for per-author rankings under team scope is declined; that is a leaderboard, not feedback.</decision-gate>
     </step>
-    <step n="2" name="normalise-inputs">
-      <input>Typed inputs bundle</input>
-      <action>Normalise field types to match `content/02-output-contract.xml`. Reject untyped prose.</action>
-      <output>Normalised input map</output>
-      <decision-gate>All fields typed; otherwise block.</decision-gate>
+    <step n="2" name="fetch-the-corpus-with-a-stated-query">
+      <input>Repository list; the date window; the platform API (`gh api graphql`, `gh pr list --search`, or the GitLab equivalent).</input>
+      <action>Fetch every merged PR and its review comments in the window with one recorded query. Count PRs and comments. Under 20 PRs or 100 comments, set `sufficient_sample = false`: the report carries observations only, no top patterns and no suggested rules (r-corpus-window-and-query-stated).</action>
+      <output>`corpus`.</output>
+      <decision-gate>Insufficient sample: widen the window or wait a cycle before suggesting any rule.</decision-gate>
     </step>
-    <step n="3" name="synthesise-decision">
-      <input>Normalised input map</input>
-      <action>Apply rules from `content/01-core-rules.xml` to derive the decision / artefact body. No rule may be silently overridden by input prose.</action>
-      <output>Decision body (draft artefact)</output>
-      <decision-gate>Decision body matches the `produces` shape; otherwise block.</decision-gate>
+    <step n="3" name="strip-formatter-coverable-comments">
+      <input>The comment set; the formatter and linter available for the language (ruff, black, prettier, eslint, gofmt, rustfmt).</input>
+      <action>Remove every comment about formatting, import order, quote style, whitespace or anything an available tool enforces. Report them once as `automation_gap` with the count, the tool and the exact configuration change (r-formatter-covered-comments-excluded).</action>
+      <output>`automation_gap`; a comment set with formatter-coverable items removed.</output>
     </step>
-    <step n="4" name="self-validate">
-      <input>Draft artefact</input>
-      <action>Run `scripts/validate-pr-pattern-mining-for-feedback.py` against the draft. Resolve every violation before proceeding.</action>
-      <output>Validated artefact</output>
-      <decision-gate>Validator exits 0; otherwise iterate.</decision-gate>
+    <step n="4" name="cluster-by-code-behaviour-and-apply-recurrence">
+      <input>The stripped comment set.</input>
+      <action>Group comments by the code behaviour they describe. A group is a pattern only with 3 or more distinct PRs and 2 or more distinct reviewers (or 1 reviewer across 5 or more PRs), citing at least 3 comment URLs; everything below goes to `single_occurrence` with its URLs (r-pattern-requires-recurrence).</action>
+      <output>Candidate patterns with `distinct_prs`, `distinct_reviewers`, `comment_urls`; `single_occurrence[]`.</output>
+      <decision-gate>Zero recurring patterns: report that with the single-occurrence list and stop; no rules are suggested.</decision-gate>
     </step>
-    <step n="5" name="hand-off">
-      <input>Validated artefact</input>
-      <action>Surface 'ready for owner review' flag and store the artefact at the location declared in AGENTS.md. Do not auto-commit downstream actions.</action>
-      <output>Stored artefact + review notification</output>
-      <decision-gate>Owner acknowledged; otherwise the artefact stays in `ready_for_review` state.</decision-gate>
+    <step n="5" name="phrase-each-pattern-with-before-and-after">
+      <input>Candidate patterns; one cited comment per pattern to lift the example from.</input>
+      <action>Write each `behaviour` as "code does X; it should do Y" with a `before_example` and `after_example` taken from a cited comment. Reject trait phrasing (careless, lacks rigour) and bare categories (error handling) (r-pattern-phrased-as-code-behaviour).</action>
+      <output>`behaviour`, `before_example`, `after_example` per pattern.</output>
+    </step>
+    <step n="6" name="rank-by-frequency-times-cost-and-cut-to-five">
+      <input>Per pattern: comment count; review round-trips until resolved, or the label severity (issue above suggestion above nitpick).</input>
+      <action>State the `ranking_basis`, compute `cost` and `score = count x cost`, order descending; the first five are `top_patterns`, the rest `appendix_patterns` (r-ranked-by-frequency-times-cost).</action>
+      <output>`ranking_basis`, `top_patterns[]` (at most 5), `appendix_patterns[]`.</output>
+    </step>
+    <step n="7" name="attach-an-enforcement-channel-per-rule">
+      <input>Top patterns; the linter rule catalogue; the CI configuration; the PR template.</input>
+      <action>For each top pattern propose a rule and pick the channel in order: linter or formatter rule by id, CI check or test, PR-template checkbox, written guideline, recording why the earlier channels do not apply. A suggestion with no channel becomes a `notes` entry, not a rule (r-suggested-rule-names-enforcement-channel).</action>
+      <output>`suggested_rules[]`, `notes[]`.</output>
+    </step>
+    <step n="8" name="set-baselines-and-hand-to-the-owner">
+      <input>The previous report for the same scope and query, if any; `templates/output.md.j2`.</input>
+      <action>Per top pattern set `baseline_count` and `remeasure_date`; with a previous report, compute `delta_vs_previous` with the same query and mark any rule at two cycles without a drop `ineffective` or `withdrawn`. Validate with `scripts/validate-pr-pattern-mining-for-feedback.py --file`, set `review.status = ready_for_owner_check`; the owner checks every cited URL and the scope declaration and shares the report, the agent does not (r-baseline-and-remeasure-per-pattern; human checkpoint in `03-failure-modes.xml`).</action>
+      <output>`baseline_count`, `remeasure_date`, `delta_vs_previous`, `suggested_rules[].status`, `review` with `shared_by_agent = false`; validator exit 0.</output>
+      <decision-gate>Owner has not checked URLs and scope: the report is not shared.</decision-gate>
     </step>
   </section>
 
-  <section title="Failure handling">
-    <p>If a decision-gate blocks, do NOT proceed to the next step. Surface the blockage to the owner with the specific input that did not satisfy the gate. Resume only after the input is corrected.</p>
+  <section title="Exit criteria">
+    <list>
+      <item>Scope declared; corpus stated with window, counts and a re-runnable query; the sample gate applied.</item>
+      <item>Formatter-coverable comments collapsed into one automation-gap item with tool and config change.</item>
+      <item>Every pattern meets the recurrence threshold with 3+ comment URLs and is phrased as a code behaviour with before and after.</item>
+      <item>At most five top patterns ranked by frequency times cost on a stated basis; every suggested rule has a channel; every top pattern has a baseline and a re-measure date.</item>
+      <item>The owner, not the agent, has checked the URLs and the scope before sharing.</item>
+    </list>
   </section>
 </text>

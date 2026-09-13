@@ -1,32 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Inference Cost Unit Economics Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply the inference-cost-unit-economics methodology end-to-end.</summary>
+<text id="04-procedure" title="Inference Cost Unit Economics Procedure" version="1.3.0" est_tokens="2000" depth="essential">
+  <summary>Eight steps from the success definition per feature to a published report with ceilings and alerts: define the outcome, pin the price sheet, log provider usage per call, decompose cost into four lines, attribute calls to outcomes and measure retry share, report the distribution, compute margin on a stated revenue basis, set the ceiling and alert. Each step names the rule it satisfies and the field of `02-output-contract.xml` it fills.</summary>
+
   <section title="Procedure">
-    <step n="1" name="define-outcome-per-feature">
-      <input>Product spec</input>
-      <action>Pick one success metric per feature (resolved ticket, accepted suggestion, completed purchase).</action>
-      <output>Outcome definitions</output>
+    <step n="1" name="define-success-per-feature">
+      <input>Product spec per feature; the outcome events already emitted by the product (ticket resolved, suggestion accepted, purchase completed).</input>
+      <action>Write one `success_definition` per feature in observable terms with a time bound, and name the event or table the count comes from. Reject definitions that count calls, sessions or responses instead of outcomes. Record the `window` (start, end, days) the report will cover; it must span at least 7 days of production traffic (r-cost-per-successful-outcome, r-report-tail-not-only-mean).</action>
+      <output>`features[].feature_id`, `features[].success_definition`, `window`.</output>
+      <decision-gate>A feature with no observable success event cannot get a cost per outcome; drop it from the report and open an instrumentation task instead of inventing a proxy.</decision-gate>
     </step>
-    <step n="2" name="decompose-cost-per-call">
-      <input>Logging</input>
-      <action>Per call: tokens in × price + tokens out × price + retrieval ops + tool ops.</action>
-      <output>Cost decomposition table</output>
+    <step n="2" name="pin-the-price-sheet">
+      <input>Provider pricing pages on the report date; the contract or invoice showing negotiated, committed-use or batch discounts.</input>
+      <action>For every model id that appears in the call logs (including fallbacks), record provider, exact model id with dated snapshot, `sheet_date` and URL, input, output and cached-input prices per 1M tokens, and the discount applied with its kind. Diff against the previous report's sheet before interpreting any margin movement (r-price-sheet-pinned).</action>
+      <output>`price_sheet[]` with one entry per model id.</output>
+      <decision-gate>A model id in the logs that is not on the sheet stops the report; nothing downstream can be priced.</decision-gate>
     </step>
-    <step n="3" name="attribute-cost-to-outcome">
-      <input>Telemetry + outcome</input>
-      <action>Sum cost across calls per outcome (include retries, fallbacks).</action>
-      <output>Cost-per-outcome</output>
-      <decision-gate>If retries dominate cost, fix retry policy before optimising prompt.</decision-gate>
+    <step n="3" name="log-provider-usage-per-call">
+      <input>The LLM gateway or client wrapper; the provider response objects.</input>
+      <action>Confirm every call logs the provider-reported `usage` object (input, output, cached tokens), the model id, the feature id, the attempt number and the outcome id it serves. Reconcile the month's summed usage against the provider invoice; a gap above a few percent means calls are missing from the log. Set `token_source` to `provider_usage` only once the reconciliation holds (r-token-counts-from-provider-usage).</action>
+      <output>Per-call usage log keyed by feature, outcome and attempt; `token_source`.</output>
+      <decision-gate>If any feature's tokens are estimated from characters or extrapolated from a sample, stop: fix the logging and rerun the window. Estimated figures are not admissible in the report.</decision-gate>
     </step>
-    <step n="4" name="compute-gross-margin">
-      <input>Cost + revenue</input>
-      <action>(Revenue or value-proxy − cost) ÷ revenue.</action>
-      <output>Gross margin per feature</output>
+    <step n="4" name="decompose-cost-per-call">
+      <input>Usage log from step 3; price sheet from step 2; embedding and vector-store bills; tool and external API bills.</input>
+      <action>Price each call as at least four lines: input tokens x input price, output tokens x output price, retrieval (embedding calls plus vector queries), tools (external API cost). Add a cached-input line where the provider bills cached tokens separately. Never emit a single blended "LLM cost" (r-four-component-decomposition). Cost per call may be kept as a supporting figure.</action>
+      <output>`features[].cost_lines` (per-outcome averages of each line), `features[].cost_per_call`.</output>
     </step>
-    <step n="5" name="publish-report-and-trigger-review">
-      <input>All above</input>
-      <action>Write unit-economics-report.md; flag features with margin &lt; target.</action>
-      <output>Report + flagged features</output>
+    <step n="5" name="attribute-to-outcomes-and-measure-retries">
+      <input>Priced calls from step 4; success events from step 1.</input>
+      <action>Sum every call made in service of each outcome, including retries, fallbacks to a larger model, validation failures and abandoned sessions, and divide by `successful_outcomes`. Compute `retry_share_pct` as the share of total cost caused by retries, fallbacks and validation-failed calls. When it exceeds 15%, name `retry_cause` and set `first_action` to `retry_policy`; prompt and model changes for that feature are deferred (r-cost-per-successful-outcome, r-retry-share-reported).</action>
+      <output>`features[].successful_outcomes`, `features[].retry_share_pct`, `features[].retry_cause`, `features[].first_action`.</output>
+      <decision-gate>Retry share above 15% routes the feature to retry-policy work before any optimisation recommendation is written.</decision-gate>
     </step>
+    <step n="6" name="report-the-distribution">
+      <input>Per-outcome cost series from step 5 over the whole window.</input>
+      <action>Compute p50, p95 and mean of cost per outcome. Mark `tail_dominated` when p95 exceeds 5 x p50 and name the `tail_driver` (long context, agent loops, tool retries, large-model fallback) from the per-call log (r-report-tail-not-only-mean).</action>
+      <output>`features[].cost_per_outcome.{p50,p95,mean}`, `features[].tail_dominated`, `features[].tail_driver`.</output>
+    </step>
+    <step n="7" name="compute-margin-on-a-stated-basis">
+      <input>Finance's revenue attribution per feature, or the allocation rule, or the value-proxy derivation; mean cost per outcome from step 6.</input>
+      <action>Set `revenue_basis.kind` per feature: `attributed_revenue` when an invoice line exists, `allocation_rule` with its `allocation_key`, or `value_proxy` with its `derivation`. Compute `gross_margin_pct = (revenue_per_outcome - mean cost per outcome) / revenue_per_outcome` (r-gross-margin-with-stated-revenue-basis).</action>
+      <output>`features[].revenue_basis`, `features[].revenue_per_outcome`, `features[].gross_margin_pct`.</output>
+      <decision-gate>A feature whose revenue basis nobody will sign is reported with cost only and no margin line; a margin with an unstated basis is rejected by the reviewer.</decision-gate>
+    </step>
+    <step n="8" name="set-ceiling-and-alert-then-publish">
+      <input>Target gross margin per feature from product finance; the observability pipeline's alert configuration.</input>
+      <action>Derive `cost_ceiling_per_outcome = revenue_per_outcome x (1 - target_gross_margin_pct / 100)`. Wire a `daily_spend_alert` per feature (absolute per day or percentage over the trailing 7-day baseline) and record where it lives. List every feature whose mean cost per outcome exceeds its ceiling in `over_ceiling` with the gap and a named `action_owner` (r-cost-ceiling-and-runaway-alert). Fill `templates/unit-economics-report.md.j2`, validate the JSON with `scripts/validate-inference-cost-unit-economics.py --file`, publish, and schedule the next refresh.</action>
+      <output>`features[].target_gross_margin_pct`, `features[].cost_ceiling_per_outcome`, `features[].daily_spend_alert`, `over_ceiling[]`; the report artefact and the alert rules.</output>
+      <decision-gate>Validator exit 0 and every over-ceiling feature has an owner; otherwise the report is not published.</decision-gate>
+    </step>
+  </section>
+
+  <section title="Exit criteria">
+    <list>
+      <item>Every feature has a success definition, four priced cost lines, p50/p95/mean over at least 7 days, a retry share, a stated revenue basis, a ceiling and a wired alert.</item>
+      <item>`token_source` is `provider_usage` and the window's summed usage reconciles with the invoice.</item>
+      <item>Every model id in the logs has a dated price-sheet entry.</item>
+      <item>`scripts/validate-inference-cost-unit-economics.py --file` exits 0.</item>
+    </list>
   </section>
 </text>

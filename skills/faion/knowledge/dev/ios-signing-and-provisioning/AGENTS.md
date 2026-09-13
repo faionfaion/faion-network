@@ -15,24 +15,30 @@
 
 ## Applies If (ALL must hold)
 
-- The triggering case shows up in the user's workload at least once per cycle.
-- A named consumer (human reviewer or downstream agent) exists for the output.
-- An auditable source-of-truth is available for the inputs this methodology requires.
-- Operator has authority to act on the artefact (write access, sign-off rights).
+- The app ships through Apple signing: App Store, TestFlight, ad-hoc or enterprise builds.
+- The operator has read access to Certificates, Identifiers and Profiles in the Apple Developer portal and to Users and Access in App Store Connect, so every expiry and Key ID can be read rather than assumed.
+- A secret store exists or can be created (CI secrets, fastlane match, or the team password manager) to hold `.p12` and `.p8` material.
+- The backend's APNs sender configuration and the Xcode entitlements per build configuration are readable.
+- A named human can approve revocation, rotation, transfer and submission.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No Apple signing chain: web app, simulator-only builds, or Android-only.
+- The portal and App Store Connect are unreachable, so expiries and roles cannot be read; a document built from memory is the failure the inventory exists to prevent.
+- Signing is fully owned by a third-party release service under its own contract and the team holds no key material; document the vendor boundary instead.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Trigger event / brief | markdown / ticket | team owner |
-| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
-| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
+| Certificate list with type, serial or SHA and expiry | portal export or screenshot | Apple Developer portal, Certificates |
+| Provisioning profiles with bundle ID, type, UUID and expiry | portal export or `security cms -D -i profile.mobileprovision` | Apple Developer portal, Profiles |
+| App Store Connect API keys with Key ID, Issuer ID, role and consumer | Users and Access, Keys tab | App Store Connect |
+| APNs credential: auth key (Key ID, Team ID) or certificate with expiry | portal Keys tab or Certificates | Apple Developer portal |
+| App record Team ID and, for a client app, the client's Team ID and the agency's role | App Store Connect app page, Users and Access | App Store Connect |
+| Secret store name, location and reader list | CI settings, match repo, or password-manager vault | platform / release engineering |
+| `aps-environment` per build configuration and the APNs host the backend targets per environment | entitlements files, backend config | app repository, backend repository |
+| Apple's current documentation on certificate revocation impact | URL under developer.apple.com | Apple Developer Help |
 
 ## Assumes Loaded
 
@@ -47,10 +53,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: asset inventory, APNs token key over cert, keys in secret store, ASC API key least privilege, rotation calendar with lead time, aps-environment per build config, client account owns app, revocation impact | 1900 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema: app ownership with Team ID and transfer plan, secret store and readers, certificates / profiles / ASC keys / APNs credential with identifier, expiry and storage, least-privilege key roles, token-key push, aps-environment to host map per build config, rotation calendar with 30-day lead and owner, revocation runbook verified against Apple, review with no agent binding action; valid + invalid examples, forbidden patterns | ~4850 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 1200 |
+| `content/04-procedure.xml` | essential | 8 steps: confirm the owning account, inventory from the portal, consolidate keys into one secret store, least-privilege ASC keys per pipeline, token-key push, build-config to APNs map, rotation calendar and revocation runbook, hand off before any binding action | ~1850 |
+| `content/05-examples.xml` | recommended | Complete signing document for a client app on fastlane match with token-key push and a 35-day rotation lead, a note per non-obvious value, and a bad document with the validator output | ~2600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 700 |
 
 ## Task Routing
 

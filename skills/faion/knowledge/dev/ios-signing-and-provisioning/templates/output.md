@@ -1,35 +1,61 @@
-<!--
-purpose: Playbook-step skeleton matching the schema in 02-output-contract.xml
-consumes: see AGENTS.md Prerequisites
-produces: Ios Signing And Provisioning playbook-step
-depends-on: content/02-output-contract.xml schema
-token-budget-impact: ~400 tokens when filled
--->
+<!-- purpose: iOS signing document skeleton — same sections and field names as content/02-output-contract.xml -->
+<!-- consumes: Apple Developer portal (certificates, identifiers, profiles), App Store Connect Users and Access, backend APNs config, Xcode entitlements per configuration (AGENTS.md Prerequisites) -->
+<!-- produces: iOS signing and provisioning document validating against scripts/validate-ios-signing-and-provisioning.py -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~700 tokens when filled -->
 
-# Ios Signing And Provisioning — output.md
+# iOS Signing and Provisioning — <product_name>
 
-> Replace bracketed placeholders before use.
+## App and account
 
-**Artefact id:** `[stable-slug]`
-**Owner:** `[name <email> or role]`
-**Version:** `1.0.0`
-**Last reviewed:** `2026-05-23`
+- `bundle_id`: — built for a client? — `owning_account`: client | agency | own — `owning_team_id` (10 chars):
+- Agency role on the client account (App Manager / Developer / ...): — or `transfer_plan` if the app sits under the agency account
 
----
+## Secret store (the only place private keys live)
 
-## Inputs
+- `kind`: ci_secrets | fastlane_match | password_manager — `location`: — `readers` (people and pipelines):
+- Private keys outside the secret store (repo, chat, email, laptops): none
 
-| Name | Format | Source |
-|------|--------|--------|
-| <input_1> | <format> | <source> |
+## Certificates (one shared distribution certificate; per-developer needs a written reason)
 
-## Body
+| Type (development / distribution / apns) | Identifier (serial or SHA) | Expiry (from the portal) | Storage location | Shared by team |
+|-------------------------------------------|----------------------------|--------------------------|------------------|----------------|
 
-[Fill the playbook-step-shaped content here per content/02-output-contract.xml.]
+## Provisioning profiles
 
-## Self-check
+| Name | Bundle ID | Type (development / ad_hoc / app_store / enterprise) | UUID | Expiry | Storage location |
+|------|-----------|------------------------------------------------------|------|--------|------------------|
 
-- [ ] Every required field populated.
-- [ ] No forbidden pattern matches.
-- [ ] Owner is a named human or role-with-rotation.
-- [ ] Version + last_reviewed advanced on every material edit.
+## App Store Connect API keys (one per pipeline or vendor, least role)
+
+| Key ID | Issuer ID | Role (Developer / App Manager) | Used by | `.p8` storage location | Stored at issue |
+|--------|-----------|--------------------------------|---------|------------------------|-----------------|
+
+## Push
+
+- `auth`: token_key (Key ID, Team ID, `.p8` location) | certificate (constraint that forces it, expiry in the calendar)
+
+## Build configurations
+
+| Config (debug / testflight / app_store / ad_hoc / enterprise) | `aps-environment` (development / production) | APNs host (api.sandbox.push.apple.com / api.push.apple.com) |
+|-----------------------------------------------------------------|----------------------------------------------|--------------------------------------------------------------|
+
+## Rotation calendar (rotate_by >= 30 days before expiry, named owner)
+
+| Asset | Expiry | Rotate by | Lead days | Owner |
+|-------|--------|-----------|-----------|-------|
+
+## Revocation runbook
+
+- Who may revoke: <owner_full_name>,
+- Impact per certificate type (installed builds keep / stop launching; pipelines broken):
+- Regeneration order:
+- Verified against (developer.apple.com page):
+
+## Review
+
+- `status`: draft | ready_for_review | approved (reviewer, approved on) — binding action (revoke, rotate, transfer, submit) performed by agent: no
+
+## Validation
+
+Run `python scripts/validate-ios-signing-and-provisioning.py --file <signing.json>`. Exit 0 = valid, exit 1 = violations on stderr.

@@ -1,116 +1,339 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Graceful Offboard Script Spec Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) that pins the shape of a valid spec artefact. Subagents validate against this before returning.</summary>
+<text id="02-output-contract" title="Graceful Offboard Script Output Contract" version="1.3.0" est_tokens="4900" depth="essential">
+  <summary>Draft-07 JSON Schema for the offboard artefact: at least two quantified bad-fit signals from the QBR, the termination clause and last service date, the script's fit framing and banned-phrase check, the per-asset handover inventory, the confirmed alternative provider, live-then-written delivery, the T+30 feedback request and the internal record that changes intake. Validator: `scripts/validate-graceful-offboard-script.py`.</summary>
 
-  <section title="Schema (JSON Schema draft-07)">
+  <section title="JSON Schema (draft-07)">
     <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/graceful-offboard-script.json",
+  "title": "Agency-side client offboard artefact",
   "type": "object",
-  "required": [
-    "artefact_id",
-    "owner",
-    "version",
-    "last_reviewed",
-    "decision",
-    "rationale",
-    "inputs_used"
-  ],
+  "required": ["client", "qbr_source", "bad_fit_signals", "contract", "script", "handover", "alternatives", "delivery", "feedback_request", "internal_record"],
+  "additionalProperties": false,
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "minLength": 3
+    "client": {
+      "type": "object",
+      "required": ["name", "account_owner", "sponsor_contact"],
+      "properties": {
+        "name": {"type": "string", "minLength": 2},
+        "account_owner": {"type": "string", "minLength": 3},
+        "sponsor_contact": {"type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$"}
+      }
     },
-    "owner": {
-      "type": "string",
-      "minLength": 3
+    "qbr_source": {"type": "string", "minLength": 5},
+    "bad_fit_signals": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["kind", "value", "target", "period"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["gross_margin_below_target", "out_of_scope_requests_above_cap", "days_to_pay_above_terms", "hours_over_budget", "satisfaction_below_threshold"]},
+          "value": {"type": "number"},
+          "target": {"type": "number"},
+          "period": {"type": "string", "minLength": 4},
+          "consecutive_quarters": {"type": "integer", "minimum": 1}
+        },
+        "if": {"properties": {"kind": {"const": "gross_margin_below_target"}}},
+        "then": {"required": ["consecutive_quarters"], "properties": {"consecutive_quarters": {"minimum": 2}}}
+      }
     },
-    "version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    "contract": {
+      "type": "object",
+      "required": ["termination_clause_id", "notice_days", "decision_date", "last_service_date", "days_notice_given", "prepaid_period"],
+      "properties": {
+        "termination_clause_id": {"type": "string", "minLength": 2},
+        "notice_days": {"type": "integer", "minimum": 0},
+        "minimum_term_end": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "decision_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "last_service_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "days_notice_given": {"type": "integer", "minimum": 0},
+        "prepaid_period": {
+          "type": "object",
+          "required": ["exists", "disposition"],
+          "properties": {
+            "exists": {"type": "boolean"},
+            "disposition": {"type": "string", "enum": ["delivered_in_full", "refunded", "not_applicable"]},
+            "amount": {"type": "number", "minimum": 0}
+          },
+          "if": {"properties": {"exists": {"const": true}}},
+          "then": {"properties": {"disposition": {"enum": ["delivered_in_full", "refunded"]}}}
+        }
+      }
     },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
+    "script": {
+      "type": "object",
+      "required": ["framing", "fit_statement", "states_last_service_date", "banned_phrases_found", "client_criticism_found"],
+      "properties": {
+        "framing": {"const": "fit_and_alignment"},
+        "fit_statement": {"type": "string", "minLength": 30},
+        "states_last_service_date": {"const": true},
+        "banned_phrases_found": {"type": "array", "maxItems": 0, "items": {"type": "string"}},
+        "client_criticism_found": {"const": false}
+      }
     },
-    "decision": {
-      "type": "string",
-      "minLength": 5
+    "handover": {
+      "type": "object",
+      "required": ["assets", "transition_support"],
+      "properties": {
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "kind", "owned_by", "transfer_method", "transfer_date", "conditioned_on_payment"],
+            "properties": {
+              "name": {"type": "string", "minLength": 2},
+              "kind": {"type": "string", "enum": ["account_credentials", "domain_dns", "ad_account", "analytics_account", "source_repository", "design_files", "content", "documentation", "other"]},
+              "owned_by": {"type": "string", "enum": ["client", "agency"]},
+              "transfer_method": {"type": "string", "minLength": 3},
+              "transfer_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+              "conditioned_on_payment": {"type": "boolean"},
+              "conditioning_clause_id": {"type": "string", "minLength": 2}
+            },
+            "if": {"properties": {"conditioned_on_payment": {"const": true}}},
+            "then": {"required": ["conditioning_clause_id"]}
+          }
+        },
+        "transition_support": {
+          "type": "object",
+          "required": ["days", "cost"],
+          "properties": {
+            "days": {"type": "integer", "minimum": 1},
+            "cost": {"type": "string", "enum": ["included", "at_named_rate"]},
+            "rate": {"type": "string", "minLength": 3}
+          },
+          "if": {"properties": {"cost": {"const": "at_named_rate"}}},
+          "then": {"required": ["rate"]}
+        }
+      }
     },
-    "rationale": {
-      "type": "string",
-      "minLength": 20
-    },
-    "inputs_used": {
+    "alternatives": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "name",
-          "source"
-        ],
+        "required": ["provider", "matched_need", "confirmed_on", "confirmed_via", "warm_introduction_offered"],
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "source": {
-            "type": "string"
+          "provider": {"type": "string", "minLength": 2},
+          "matched_need": {"type": "string", "minLength": 10},
+          "confirmed_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+          "confirmed_via": {"type": "string", "enum": ["call", "email", "meeting", "message"]},
+          "warm_introduction_offered": {"const": true}
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "required": ["live_conversation", "written_follow_up", "email_only"],
+      "properties": {
+        "live_conversation": {
+          "type": "object",
+          "required": ["date", "channel", "delivered_by"],
+          "properties": {
+            "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            "channel": {"type": "string", "enum": ["call", "video_call", "in_person_meeting"]},
+            "delivered_by": {"type": "string", "minLength": 3}
+          }
+        },
+        "written_follow_up": {
+          "type": "object",
+          "required": ["date", "business_days_after_conversation", "contains_only_what_was_said", "includes_handover_plan"],
+          "properties": {
+            "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            "business_days_after_conversation": {"type": "integer", "minimum": 0, "maximum": 1},
+            "contains_only_what_was_said": {"const": true},
+            "includes_handover_plan": {"const": true}
+          }
+        },
+        "email_only": {"const": false}
+      }
+    },
+    "feedback_request": {
+      "type": "object",
+      "required": ["scheduled_date", "days_after_last_service", "promoter_action", "non_promoter_action"],
+      "properties": {
+        "scheduled_date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "days_after_last_service": {"const": 30},
+        "promoter_action": {"type": "string", "enum": ["ask_for_testimonial", "ask_for_referral", "ask_for_testimonial_and_referral"]},
+        "non_promoter_action": {"const": "thank_and_ask_one_question_no_argument"},
+        "response": {
+          "type": "object",
+          "required": ["nps_score", "action_taken"],
+          "properties": {
+            "nps_score": {"type": "integer", "minimum": 0, "maximum": 10},
+            "action_taken": {"type": "string", "minLength": 5}
           }
         }
       }
     },
-    "milestones": {
-      "type": "array",
-      "items": {
-        "type": "object"
-      }
+    "internal_record": {
+      "type": "object",
+      "required": ["root_cause_category", "intake_change", "flagged_for_review"],
+      "properties": {
+        "root_cause_category": {"type": "string", "enum": ["pricing_and_margin", "scope_and_expectations", "capability_fit", "communication_and_working_style", "payment_behaviour"]},
+        "intake_change": {"type": "string", "minLength": 3},
+        "flagged_for_review": {"type": "boolean"},
+        "reviewer": {"type": "string", "minLength": 3}
+      },
+      "if": {"properties": {"intake_change": {"enum": ["none", "None", "NONE", "n/a", "N/A", "-"]}}},
+      "then": {"properties": {"flagged_for_review": {"const": true}}, "required": ["reviewer"]}
     }
   }
 }
 ]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: `contract.days_notice_given` is at least `contract.notice_days` and `last_service_date` is not before `minimum_term_end` (r-exit-date-honours-termination-clause); every asset the agency holds for the client appears in `handover.assets`, not a sample, and `owned_by = client` assets have `conditioned_on_payment = false` unless a clause is quoted (r-handover-plan-with-asset-inventory); each `alternatives[].confirmed_on` precedes `delivery.live_conversation.date` (r-recommended-alternative-confirmed-first); `feedback_request.scheduled_date` equals `last_service_date + 30` (r-post-offboard-feedback-at-t-plus-30); the `banned_phrases_found` scan was run against the actual script text with the list in r-frame-as-fit-not-confession.</note>
   </section>
 
-  <example valid="true">
-    <code lang="json"><![CDATA[
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
 {
-  "artefact_id": "graceful-offboard-script-acme-2026-05-23",
-  "owner": "Ruslan Faion <ruslan@faion.net>",
-  "version": "1.0.0",
-  "last_reviewed": "2026-05-23",
-  "decision": "Approve scope-clause A-07 against discovery interview from 2026-04-15.",
-  "rationale": "Maria Lopes (VP Ops) confirmed in the 2026-04-15 interview at 00:12:30 that v1 ships single-currency only; the pricing assumes that constraint per A-07.",
-  "inputs_used": [
-    {
-      "name": "interview-2026-04-15",
-      "source": "interviews/2026-04-15-vp-ops.md"
-    },
-    {
-      "name": "pricing-worksheet",
-      "source": "pricing/v1.xlsx"
-    }
-  ]
+  "client": {"name": "Northwind Retail", "account_owner": "maria@agency.example", "sponsor_contact": "tom@northwind.example"},
+  "qbr_source": "qbr/2026-q2/northwind.xlsx",
+  "bad_fit_signals": [
+    {"kind": "gross_margin_below_target", "value": 11, "target": 30, "period": "2025-Q4 to 2026-Q2", "consecutive_quarters": 3},
+    {"kind": "out_of_scope_requests_above_cap", "value": 14, "target": 4, "period": "2026-Q2"}
+  ],
+  "contract": {
+    "termination_clause_id": "MSA 14.2",
+    "notice_days": 30,
+    "decision_date": "2026-06-05",
+    "last_service_date": "2026-07-10",
+    "days_notice_given": 35,
+    "prepaid_period": {"exists": true, "disposition": "delivered_in_full", "amount": 3200}
+  },
+  "script": {
+    "framing": "fit_and_alignment",
+    "fit_statement": "Your roadmap has moved toward in-store systems integration; we are built for e-commerce growth work, and you will get more from a partner whose core is integration.",
+    "states_last_service_date": true,
+    "banned_phrases_found": [],
+    "client_criticism_found": false
+  },
+  "handover": {
+    "assets": [
+      {"name": "Google Ads account 123-456-7890", "kind": "ad_account", "owned_by": "client", "transfer_method": "admin access transferred to tom@northwind.example, agency access removed", "transfer_date": "2026-07-03", "conditioned_on_payment": false},
+      {"name": "northwind.example DNS at Cloudflare", "kind": "domain_dns", "owned_by": "client", "transfer_method": "zone ownership moved to client's Cloudflare account", "transfer_date": "2026-07-06", "conditioned_on_payment": false},
+      {"name": "GA4 property 987654321", "kind": "analytics_account", "owned_by": "client", "transfer_method": "client made Administrator, agency demoted then removed", "transfer_date": "2026-07-03", "conditioned_on_payment": false},
+      {"name": "github.com/agency/northwind-storefront", "kind": "source_repository", "owned_by": "client", "transfer_method": "repository transferred to client GitHub org", "transfer_date": "2026-07-08", "conditioned_on_payment": false},
+      {"name": "Figma: Northwind design system", "kind": "design_files", "owned_by": "client", "transfer_method": "file ownership transferred to client Figma team", "transfer_date": "2026-07-08", "conditioned_on_payment": false},
+      {"name": "Runbooks and campaign documentation", "kind": "documentation", "owned_by": "client", "transfer_method": "exported to client Google Drive folder", "transfer_date": "2026-07-09", "conditioned_on_payment": false}
+    ],
+    "transition_support": {"days": 30, "cost": "included"}
+  },
+  "alternatives": [
+    {"provider": "Bridgeport Systems", "matched_need": "ERP and POS integration for mid-size retail, the direction Northwind's roadmap is taking", "confirmed_on": "2026-06-02", "confirmed_via": "call", "warm_introduction_offered": true}
+  ],
+  "delivery": {
+    "live_conversation": {"date": "2026-06-05", "channel": "video_call", "delivered_by": "maria@agency.example"},
+    "written_follow_up": {"date": "2026-06-05", "business_days_after_conversation": 0, "contains_only_what_was_said": true, "includes_handover_plan": true},
+    "email_only": false
+  },
+  "feedback_request": {
+    "scheduled_date": "2026-08-09",
+    "days_after_last_service": 30,
+    "promoter_action": "ask_for_testimonial_and_referral",
+    "non_promoter_action": "thank_and_ask_one_question_no_argument"
+  },
+  "internal_record": {
+    "root_cause_category": "scope_and_expectations",
+    "intake_change": "Qualification call now asks for a scope-change budget and a named change-approver; retainers without both are not signed",
+    "flagged_for_review": false
+  }
 }
 ]]></code>
-  </example>
+    </example>
+  </section>
 
-  <example valid="false">
-    <code lang="json"><![CDATA[
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
 {
-  "decision": "We will figure it out.",
-  "rationale": "obviously this is right",
-  "inputs_used": []
+  "client": {"name": "Northwind Retail", "account_owner": "maria@agency.example", "sponsor_contact": "tom@northwind.example"},
+  "qbr_source": "qbr/2026-q2/northwind.xlsx",
+  "bad_fit_signals": [
+    {"kind": "gross_margin_below_target", "value": 11, "target": 30, "period": "2026-Q2", "consecutive_quarters": 1}
+  ],
+  "contract": {
+    "termination_clause_id": "MSA 14.2",
+    "notice_days": 30,
+    "decision_date": "2026-06-05",
+    "last_service_date": "2026-06-19",
+    "days_notice_given": 14,
+    "prepaid_period": {"exists": true, "disposition": "not_applicable"}
+  },
+  "script": {
+    "framing": "apology",
+    "fit_statement": "We have not been able to give you the service you deserve and your team has been hard to work with.",
+    "states_last_service_date": false,
+    "banned_phrases_found": ["we have not been able to", "your team has been"],
+    "client_criticism_found": true
+  },
+  "handover": {
+    "assets": [
+      {"name": "Google Ads account 123-456-7890", "kind": "ad_account", "owned_by": "client", "transfer_method": "on request after final invoice is paid", "transfer_date": "2026-06-19", "conditioned_on_payment": true}
+    ],
+    "transition_support": {"days": 0, "cost": "at_named_rate"}
+  },
+  "alternatives": [],
+  "delivery": {
+    "live_conversation": {"date": "2026-06-05", "channel": "video_call", "delivered_by": "maria@agency.example"},
+    "written_follow_up": {"date": "2026-06-12", "business_days_after_conversation": 5, "contains_only_what_was_said": false, "includes_handover_plan": false},
+    "email_only": true
+  },
+  "feedback_request": {
+    "scheduled_date": "2026-06-19",
+    "days_after_last_service": 0,
+    "promoter_action": "ask_for_referral",
+    "non_promoter_action": "explain_why_they_are_wrong"
+  },
+  "internal_record": {
+    "root_cause_category": "capability_fit",
+    "intake_change": "none",
+    "flagged_for_review": false
+  }
 }
 ]]></code>
-    <note>Owner is plural pronoun, required fields missing or empty.</note>
-  </example>
+      <note>Subject violations: one bad-fit signal, and the margin signal covers a single quarter (r-bad-fit-evidenced-by-qbr-data); 14 days' notice on a 30-day clause with a prepaid period left unresolved (r-exit-date-honours-termination-clause); an apology framing with two banned phrases and a criticism of the client (r-frame-as-fit-not-confession); the ad account transfer conditioned on payment with no clause and no transition support (r-handover-plan-with-asset-inventory); no alternative provider (r-recommended-alternative-confirmed-first); email-only delivery and a written version five days later that adds new points (r-delivered-live-then-written); feedback on the last service date with an arguing response (r-post-offboard-feedback-at-t-plus-30); and an intake change of "none" not flagged for review (r-root-cause-changes-intake-criteria).</note>
+    </example>
+  </section>
 
-  <forbidden>
-    <pattern id="owner-plural">`owner` is plural pronoun (`team`, `we`, `us`) or empty string</pattern>
-    <pattern id="rationale-no-citation">`rationale` does not cite any entry from `inputs_used`</pattern>
-    <pattern id="inputs-empty">`inputs_used` is empty AND decision is not 'no-op'</pattern>
-  </forbidden>
+  <forbidden-patterns>
+    <antipattern id="confession-framing">
+      <description>`script.framing` anything but `fit_and_alignment`, any entry in `banned_phrases_found`, or `client_criticism_found` true.</description>
+      <reason>r-frame-as-fit-not-confession: the exit words are the words the client repeats to their network.</reason>
+    </antipattern>
+    <antipattern id="exit-shorter-than-the-clause">
+      <description>`days_notice_given` below `contract.notice_days`, a last service date before `minimum_term_end`, or a prepaid period with disposition `not_applicable`.</description>
+      <reason>r-exit-date-honours-termination-clause: ending early is a breach the client can invoice for.</reason>
+    </antipattern>
+    <antipattern id="assets-held-hostage">
+      <description>A client-owned asset with `conditioned_on_payment` true and no `conditioning_clause_id`, an asset the agency holds missing from the inventory, or `transition_support.days` of 0.</description>
+      <reason>r-handover-plan-with-asset-inventory: the handover is where the reputation is won or lost.</reason>
+    </antipattern>
+    <antipattern id="alternative-named-without-consent">
+      <description>`alternatives` empty, or a provider whose `confirmed_on` is after the live conversation date.</description>
+      <reason>r-recommended-alternative-confirmed-first: an unconfirmed name that declines the client makes the agency look careless twice.</reason>
+    </antipattern>
+    <antipattern id="breakup-by-email">
+      <description>`delivery.email_only` true, no `live_conversation`, `written_follow_up` more than one business day later, or `contains_only_what_was_said` false.</description>
+      <reason>r-delivered-live-then-written: an offboard by email is the detail the client remembers.</reason>
+    </antipattern>
+    <antipattern id="silence-after-last-service-date">
+      <description>`feedback_request` missing, `days_after_last_service` not 30, or a non-promoter action that argues.</description>
+      <reason>r-post-offboard-feedback-at-t-plus-30: the last contact is what the ex-client repeats.</reason>
+    </antipattern>
+    <antipattern id="single-signal-offboard">
+      <description>Fewer than two `bad_fit_signals`, a signal without value and target, or a margin signal over fewer than two consecutive quarters.</description>
+      <reason>r-bad-fit-evidenced-by-qbr-data: one signal is an intervention, not an exit.</reason>
+    </antipattern>
+    <antipattern id="lesson-paid-and-declined">
+      <description>`internal_record.intake_change` of "none" with `flagged_for_review` false, or no `root_cause_category`.</description>
+      <reason>r-root-cause-changes-intake-criteria: the same bad-fit client is signed again next quarter.</reason>
+    </antipattern>
+  </forbidden-patterns>
 
-  <reference path="scripts/validate-graceful-offboard-script.py">Stdlib-only validator implementing this schema.</reference>
+  <reference path="scripts/validate-graceful-offboard-script.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/graceful-offboard-script.md.j2">Offboard script and handover skeleton with the same sections and field names.</reference>
 </text>

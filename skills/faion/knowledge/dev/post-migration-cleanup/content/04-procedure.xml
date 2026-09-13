@@ -1,41 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Post Migration Cleanup Procedure" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>End-to-end 5-step procedure to apply Post Migration Cleanup. Each step pairs typed input + bounded action + named output + decision-gate. Steps are sequential unless explicitly marked parallel.</summary>
+<text id="04-procedure" title="Post Migration Cleanup Procedure" version="1.3.0" est_tokens="1850" depth="essential">
+  <summary>Nine steps in the only safe order after cutover: fix the deadline, reconcile and delete the legacy write, count the legacy reads to zero and delete the read path, delete every migration flag, list and date every shim, snapshot and scan before the separate schema drop, refresh docs and runbooks, retarget or delete alerts and decommission infrastructure, then hand the checklist to the human who reads the snapshot and scan before any DROP. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
-  <section title="Steps">
-    <step n="1" name="gather-inputs">
-      <input>Trigger event + source-of-truth references</input>
-      <action>Collect every input declared in AGENTS.md `## Prerequisites`. Cite each by URL / ticket / file path.</action>
-      <output>Typed inputs bundle</output>
-      <decision-gate>Every input cited; otherwise block and request missing sources.</decision-gate>
+  <section title="Procedure">
+    <step n="1" name="fix-the-cutover-date-and-the-deadline">
+      <input>The deploy record of the first day 100% of production traffic ran on the new path; the team's delivery cycle.</input>
+      <action>Record `cutover_date`, the parity window that follows it (at least 7 days including a full weekly cycle) and a `cleanup_deadline` no later than one delivery cycle (30 days at most) after the window closes (r-cleanup-deadline-from-cutover).</action>
+      <output>`migration`.</output>
+      <decision-gate>Cutover not yet complete for a full weekly cycle: stop; cleanup before cutover deletes the rollback path.</decision-gate>
     </step>
-    <step n="2" name="normalise-inputs">
-      <input>Typed inputs bundle</input>
-      <action>Normalise field types to match `content/02-output-contract.xml`. Reject untyped prose.</action>
-      <output>Normalised input map</output>
-      <decision-gate>All fields typed; otherwise block.</decision-gate>
+    <step n="2" name="reconcile-and-delete-the-legacy-write">
+      <input>The reconciliation job comparing legacy and new store (record counts, per-record checksum or field diff); legacy-store write metrics.</input>
+      <action>Run the reconciliation across the parity window. Only at zero mismatches for 7 or more consecutive days including one weekly cycle, delete the legacy write path from code in its own PR; a flag set to off does not count. Cite the report URL and the PR (r-dual-write-retired-after-parity).</action>
+      <output>`dual_write`.</output>
+      <decision-gate>Any mismatch: fix its source and restart the 7-day count; the write path stays until the count completes.</decision-gate>
     </step>
-    <step n="3" name="synthesise-decision">
-      <input>Normalised input map</input>
-      <action>Apply rules from `content/01-core-rules.xml` to derive the decision / artefact body. No rule may be silently overridden by input prose.</action>
-      <output>Decision body (draft artefact)</output>
-      <decision-gate>Decision body matches the `produces` shape; otherwise block.</decision-gate>
+    <step n="3" name="count-legacy-reads-to-zero-and-delete-the-read-path">
+      <input>A request counter on the legacy read path or endpoint (metric, log line or gateway route count); the batch and month-end calendar.</input>
+      <action>Read the counter for at least 7 days that include the system's batch or month-end window. At zero, delete the read code in its own PR and cite the dashboard or query (r-legacy-read-path-deleted-at-zero-traffic).</action>
+      <output>`legacy_read_path`.</output>
+      <decision-gate>No counter exists: add one and wait; a read path with no counter is never deleted. Non-zero: identify the caller from the counter's labels before anything else.</decision-gate>
     </step>
-    <step n="4" name="self-validate">
-      <input>Draft artefact</input>
-      <action>Run `scripts/validate-post-migration-cleanup.py` against the draft. Resolve every violation before proceeding.</action>
-      <output>Validated artefact</output>
-      <decision-gate>Validator exits 0; otherwise iterate.</decision-gate>
+    <step n="4" name="delete-every-migration-flag">
+      <input>The flag service or config; a grep for each flag key across the codebase.</input>
+      <action>List every flag introduced for the migration by key. Per key, one PR that deletes the key from the flag service and collapses every `if flag` branch to the new path; grep confirms zero remaining references (r-migration-flags-removed-from-code).</action>
+      <output>`flags[]` with `removal_pr_url` per key.</output>
     </step>
-    <step n="5" name="hand-off">
-      <input>Validated artefact</input>
-      <action>Surface 'ready for owner review' flag and store the artefact at the location declared in AGENTS.md. Do not auto-commit downstream actions.</action>
-      <output>Stored artefact + review notification</output>
-      <decision-gate>Owner acknowledged; otherwise the artefact stays in `ready_for_review` state.</decision-gate>
+    <step n="5" name="list-and-date-every-shim">
+      <input>Adapters, column aliases, endpoint proxies, event-schema translators and redirects created for the migration; their request counters.</input>
+      <action>List each shim with its known consumers. Zero consumers and no counter: delete it in this cleanup with a PR. Retained: name the consumer and set a removal date or a counter that must reach zero (r-compat-shims-listed-with-expiry).</action>
+      <output>`shims[]`.</output>
+    </step>
+    <step n="6" name="snapshot-and-scan-before-the-separate-schema-drop">
+      <input>The legacy tables, columns, indexes, topics or buckets; the backup tooling; every repository in the organisation; the slow-query or audit log.</input>
+      <action>Export or snapshot the legacy data with a URL and a retention date at or after the next review date. Run a reference scan across all repositories and the query log for every object name and record the command and its hit count. Only at zero hits, schedule the DROP as a change separate from the code deletion (r-legacy-schema-dropped-after-backup-and-reference-scan).</action>
+      <output>`schema_drop` with `snapshot`, `reference_scan`, `drop_change_url`.</output>
+      <decision-gate>Any scan hit or no snapshot: the DROP is not scheduled.</decision-gate>
+    </step>
+    <step n="7" name="refresh-docs-and-runbooks">
+      <input>docs, runbooks, ADRs, on-call playbooks and architecture diagrams.</input>
+      <action>Search for the legacy component name (record the command and the hit count before), update each hit to the new path or move it to the archive location marked superseded, and search again; hits outside the archive must be zero (r-docs-and-runbooks-refreshed).</action>
+      <output>`docs`.</output>
+    </step>
+    <step n="8" name="retarget-alerts-and-decommission-infrastructure">
+      <input>Alert rules, dashboards, SLOs and synthetic checks on the legacy path; the cloud inventory tagged with the legacy service; IAM roles, service accounts, secrets, DNS records.</input>
+      <action>Per observability item record `retargeted` (new target) or `deleted` (change URL). Per resource record the decommission date and monthly cost removed; anything left running carries a reason and an end date. Revoke legacy credentials and roles (r-alerts-dashboards-and-infra-decommissioned).</action>
+      <output>`observability[]`, `infrastructure[]`.</output>
+    </step>
+    <step n="9" name="record-deferrals-and-hand-to-the-reviewer">
+      <input>Every item not deleted by the deadline; `templates/output.md.j2`.</input>
+      <action>Give each undone item a ticket URL and a named person in `deferred_items`. Validate with `scripts/validate-post-migration-cleanup.py --file`, set `review.status = ready_for_review` and name the reviewer, who reads the snapshot URL and the scan result before any DROP or decommission runs; the agent executes neither (r-cleanup-deadline-from-cutover; human checkpoint in `03-failure-modes.xml`).</action>
+      <output>`deferred_items[]`, `review` with `drop_or_decommission_executed_by_agent = false`; validator exit 0.</output>
+      <decision-gate>An undone item with no ticket and owner is a checklist failure, not a deferral; the checklist is not marked ready.</decision-gate>
     </step>
   </section>
 
-  <section title="Failure handling">
-    <p>If a decision-gate blocks, do NOT proceed to the next step. Surface the blockage to the owner with the specific input that did not satisfy the gate. Resume only after the input is corrected.</p>
+  <section title="Exit criteria">
+    <list>
+      <item>Cutover date, parity window of 7+ days with a weekly cycle, and a deadline within one delivery cycle recorded.</item>
+      <item>Legacy write deleted from code after a zero-mismatch reconciliation; legacy read deleted after a zero counter across the batch window; every flag key deleted with branches collapsed.</item>
+      <item>Every shim deleted or dated with a named consumer; snapshot and zero-hit scan recorded before a separate DROP.</item>
+      <item>Docs search reads zero outside the archive; every alert retargeted or deleted; every resource decommissioned with cost, or running with a reason and end date.</item>
+      <item>Every undone item has a ticket and owner; the reviewer, not the agent, executes the drop.</item>
+    </list>
   </section>
 </text>

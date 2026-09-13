@@ -1,57 +1,342 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Hipaa Phi Data Flow Design Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Hipaa Phi Data Flow Design artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="Hipaa Phi Data Flow Design Output Contract" version="1.2.0" est_tokens="6500" depth="essential">
+  <summary>Draft-07 JSON Schema for the PHI data-flow design: every hop with its §164.514(b)(2) identifier classes and justified fields, a BAA (plan and covered service) on every external hop that receives identified PHI, TLS 1.2+ per link with its termination point, KMS-managed encryption at rest per store, the append-only PHI-free audit log retained six years, the allow-list log scrubber with its synthetic-record test, unique identities and roles per hop with automatic logoff and break-glass, retention and deletion propagation per store, and the Security Officer sign-off. Validator: `scripts/validate-hipaa-phi-data-flow-design.py`.</summary>
+
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/hipaa-phi-data-flow-design.json",
+  "title": "HIPAA PHI data-flow design",
+  "type": "object",
+  "required": ["system", "hops", "links", "audit_log", "log_scrubbing", "deletion_propagation", "media_disposal_procedure", "review"],
+  "additionalProperties": false,
+  "definitions": {
+    "identifier_class": {
+      "type": "string",
+      "enum": ["names", "geographic_subdivisions_smaller_than_state", "dates_except_year", "phone_numbers", "fax_numbers", "email_addresses", "social_security_numbers", "medical_record_numbers", "health_plan_beneficiary_numbers", "account_numbers", "certificate_license_numbers", "vehicle_identifiers", "device_identifiers", "web_urls", "ip_addresses", "biometric_identifiers", "full_face_photos", "other_unique_identifying_number"]
+    }
+  },
+  "properties": {
+    "system": {"type": "string", "minLength": 3},
+    "hops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "kind", "operations", "external", "identifier_classes", "fields", "purpose", "deidentified", "access", "retention"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^hop-[a-z0-9-]+$"},
+          "name": {"type": "string", "minLength": 2},
+          "kind": {"type": "string", "enum": ["service", "database", "queue", "cache", "search_index", "log_pipeline", "error_tracker", "analytics", "machine_learning", "llm_or_embeddings_api", "email_or_sms_gateway", "support_desk", "backup", "export", "object_storage", "third_party_api", "other"]},
+          "operations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "enum": ["stores", "processes", "transmits"]}},
+          "external": {"type": "boolean"},
+          "identifier_classes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/identifier_class"}},
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "justification"],
+              "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "justification": {"type": "string", "minLength": 10}
+              }
+            }
+          },
+          "purpose": {"type": "string", "minLength": 10},
+          "deidentified": {"type": "boolean"},
+          "deidentification_method": {"type": "string", "enum": ["safe_harbor_164_514_b_2", "expert_determination_164_514_b_1"]},
+          "identified_use_documented_at": {"type": "string", "minLength": 3},
+          "baa": {
+            "type": "object",
+            "required": ["executed", "vendor", "plan", "covered_service", "link"],
+            "properties": {
+              "executed": {"const": true},
+              "vendor": {"type": "string", "minLength": 2},
+              "plan": {"type": "string", "minLength": 2},
+              "covered_service": {"type": "string", "minLength": 2},
+              "link": {"type": "string", "minLength": 3},
+              "executed_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}
+            }
+          },
+          "encryption_at_rest": {
+            "type": "object",
+            "required": ["enabled", "kms", "key_rotation_enabled"],
+            "properties": {
+              "enabled": {"const": true},
+              "standard": {"type": "string"},
+              "kms": {"type": "string", "minLength": 3},
+              "key_rotation_enabled": {"const": true}
+            }
+          },
+          "access": {
+            "type": "object",
+            "required": ["roles", "shared_accounts", "auto_logoff_minutes", "break_glass"],
+            "properties": {
+              "roles": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["role", "operations"],
+                  "properties": {
+                    "role": {"type": "string", "minLength": 2},
+                    "operations": {"type": "array", "minItems": 1, "items": {"type": "string", "enum": ["read", "write", "export", "delete", "admin"]}}
+                  }
+                }
+              },
+              "shared_accounts": {"const": false},
+              "auto_logoff_minutes": {"type": "integer", "minimum": 1},
+              "break_glass": {
+                "type": "object",
+                "required": ["documented_at", "audit_alert"],
+                "properties": {
+                  "documented_at": {"type": "string", "minLength": 3},
+                  "audit_alert": {"type": "string", "minLength": 3}
+                }
+              }
+            }
+          },
+          "retention": {
+            "type": "object",
+            "required": ["period_days", "deletion_mechanism"],
+            "properties": {
+              "period_days": {"type": "integer", "minimum": 0},
+              "deletion_mechanism": {"type": "string", "minLength": 5}
+            }
+          }
+        },
+        "allOf": [
+          {"if": {"properties": {"operations": {"contains": {"const": "stores"}}}}, "then": {"required": ["encryption_at_rest"]}},
+          {"if": {"properties": {"deidentified": {"const": true}}}, "then": {"required": ["deidentification_method"]}},
+          {"if": {"properties": {"external": {"const": true}, "deidentified": {"const": false}}}, "then": {"required": ["baa"]}},
+          {"if": {"properties": {"kind": {"enum": ["analytics", "machine_learning", "llm_or_embeddings_api"]}, "deidentified": {"const": false}}}, "then": {"required": ["baa", "identified_use_documented_at"]}},
+          {"if": {"properties": {"deidentified": {"const": false}}}, "then": {"properties": {"identifier_classes": {"minItems": 1}, "fields": {"minItems": 1}}}}
+        ]
+      }
+    },
+    "links": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "tls_version", "tls_terminates_at", "identifier_classes"],
+        "properties": {
+          "from": {"type": "string", "pattern": "^hop-[a-z0-9-]+$"},
+          "to": {"type": "string", "pattern": "^hop-[a-z0-9-]+$"},
+          "tls_version": {"type": "string", "enum": ["1.2", "1.3"]},
+          "tls_terminates_at": {"type": "string", "minLength": 2},
+          "identifier_classes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/definitions/identifier_class"}}
+        }
+      }
+    },
+    "audit_log": {
+      "type": "object",
+      "required": ["store", "append_only", "contains_phi_field_values", "retention_years", "event_fields", "bulk_access_alert"],
+      "properties": {
+        "store": {"type": "string", "minLength": 3},
+        "append_only": {"const": true},
+        "contains_phi_field_values": {"const": false},
+        "retention_years": {"type": "integer", "minimum": 6},
+        "event_fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "allOf": [
+            {"contains": {"const": "identity"}},
+            {"contains": {"const": "timestamp"}},
+            {"contains": {"const": "record_id"}},
+            {"contains": {"const": "action"}},
+            {"contains": {"const": "originating_system"}}
+          ],
+          "items": {"type": "string"}
+        },
+        "bulk_access_alert": {"type": "string", "minLength": 3}
+      }
+    },
+    "log_scrubbing": {
+      "type": "object",
+      "required": ["allow_list_scrubber_at", "phi_in_urls_or_query_strings", "synthetic_record_test"],
+      "properties": {
+        "allow_list_scrubber_at": {"type": "string", "minLength": 3},
+        "phi_in_urls_or_query_strings": {"const": false},
+        "synthetic_record_test": {
+          "type": "object",
+          "required": ["path", "covers_every_request_path", "asserts_no_identifier_in_logs_errors_traces", "runs_in_ci"],
+          "properties": {
+            "path": {"type": "string", "minLength": 3},
+            "covers_every_request_path": {"const": true},
+            "asserts_no_identifier_in_logs_errors_traces": {"const": true},
+            "runs_in_ci": {"const": true}
+          }
+        }
+      }
+    },
+    "deletion_propagation": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["trigger", "propagates_to", "mechanism"],
+        "properties": {
+          "trigger": {"type": "string", "minLength": 5},
+          "propagates_to": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^hop-[a-z0-9-]+$"}},
+          "mechanism": {"type": "string", "minLength": 5}
+        }
+      }
+    },
+    "media_disposal_procedure": {"type": "string", "minLength": 5},
+    "review": {
+      "type": "object",
+      "required": ["status", "approved_by_agent"],
+      "properties": {
+        "status": {"type": "string", "enum": ["draft", "ready_for_review", "approved"]},
+        "security_officer": {"type": "string", "minLength": 3},
+        "signed_on": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "approved_by_agent": {"const": false}
+      },
+      "if": {"properties": {"status": {"const": "approved"}}},
+      "then": {"required": ["security_officer", "signed_on"]}
+    }
+  }
+}
+]]></code>
+    <note>What the schema cannot express and the reviewer checks by hand: every store, queue, cache, index, log pipeline, error tracker, backup, export and third-party API in the infrastructure inventory has a hop (r-phi-every-hop-inventoried); every `links[].from` / `to` names a hop, and a link exists for every pair of hops that exchange PHI including inside the VPC (r-phi-encrypted-in-transit-and-at-rest); a `deidentified` hop's `identifier_classes` is empty under Safe Harbor (r-phi-minimum-necessary-per-hop); `deletion_propagation[].propagates_to` covers every backup, replica, cache, index and export hop (r-phi-retention-and-deletion-per-store); the `synthetic_record_test` actually writes a record through every request path listed in the routing table (r-phi-never-in-logs-errors-or-urls).</note>
   </section>
-  <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
+
+  <section title="Valid example">
+    <example valid="true">
+      <code lang="json"><![CDATA[
+{
+  "system": "careportal-api",
+  "hops": [
+    {"id": "hop-api", "name": "careportal-api (FastAPI)", "kind": "service", "operations": ["processes", "transmits"], "external": false,
+     "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses"],
+     "fields": [{"name": "patient.name", "justification": "shown on the encounter screen the clinician is authorised to view"}, {"name": "patient.mrn", "justification": "record lookup key"}, {"name": "encounter.date", "justification": "encounter timeline"}, {"name": "patient.email", "justification": "appointment reminders"}],
+     "purpose": "serve clinician encounter views and appointment scheduling", "deidentified": false,
+     "access": {"roles": [{"role": "clinician", "operations": ["read", "write"]}, {"role": "scheduler", "operations": ["read"]}], "shared_accounts": false, "auto_logoff_minutes": 15, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 0, "deletion_mechanism": "stateless; no PHI persisted in the service"}},
+    {"id": "hop-postgres", "name": "patients PostgreSQL (RDS)", "kind": "database", "operations": ["stores"], "external": false,
+     "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"],
+     "fields": [{"name": "patients.*", "justification": "system of record for the patient chart"}],
+     "purpose": "system of record", "deidentified": false,
+     "encryption_at_rest": {"enabled": true, "standard": "NIST SP 800-111", "kms": "aws-kms:alias/careportal-phi", "key_rotation_enabled": true},
+     "access": {"roles": [{"role": "api-service-principal", "operations": ["read", "write", "delete"]}, {"role": "dba", "operations": ["admin"]}], "shared_accounts": false, "auto_logoff_minutes": 10, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 2190, "deletion_mechanism": "nightly job deletes rows past retention and on patient deletion request; cascades to encounters"}},
+    {"id": "hop-backup", "name": "RDS snapshots to S3", "kind": "backup", "operations": ["stores"], "external": false,
+     "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"],
+     "fields": [{"name": "full snapshot", "justification": "disaster recovery of the system of record"}],
+     "purpose": "disaster recovery", "deidentified": false,
+     "encryption_at_rest": {"enabled": true, "standard": "NIST SP 800-111", "kms": "aws-kms:alias/careportal-phi", "key_rotation_enabled": true},
+     "access": {"roles": [{"role": "sre", "operations": ["read", "admin"]}], "shared_accounts": false, "auto_logoff_minutes": 10, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 35, "deletion_mechanism": "S3 lifecycle rule expires snapshots at 35 days; deletion requests replay against restored snapshots per runbooks/deletion.md"}},
+    {"id": "hop-error-tracker", "name": "Sentry (Business plan, HIPAA add-on)", "kind": "error_tracker", "operations": ["stores", "processes"], "external": true,
+     "identifier_classes": ["medical_record_numbers"],
+     "fields": [{"name": "request.path with mrn", "justification": "needed to reproduce failures on a specific record; body and headers scrubbed"}],
+     "purpose": "error triage", "deidentified": false,
+     "baa": {"executed": true, "vendor": "Sentry", "plan": "Business", "covered_service": "Error Monitoring with PII scrubbing enabled", "link": "contracts/sentry-baa-2026-01.pdf", "executed_on": "2026-01-14"},
+     "encryption_at_rest": {"enabled": true, "kms": "vendor-managed per BAA section 4", "key_rotation_enabled": true},
+     "access": {"roles": [{"role": "on-call-engineer", "operations": ["read"]}], "shared_accounts": false, "auto_logoff_minutes": 30, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 30, "deletion_mechanism": "vendor retention set to 30 days; per-event deletion API called on deletion request"}},
+    {"id": "hop-embeddings", "name": "Hosted embeddings API for note search", "kind": "llm_or_embeddings_api", "operations": ["processes"], "external": true,
+     "identifier_classes": [],
+     "fields": [{"name": "note.text_deidentified", "justification": "semantic search over clinical notes; all 18 identifiers removed before the call"}],
+     "purpose": "semantic search over clinical notes", "deidentified": true, "deidentification_method": "safe_harbor_164_514_b_2",
+     "access": {"roles": [{"role": "search-service-principal", "operations": ["write"]}], "shared_accounts": false, "auto_logoff_minutes": 5, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 0, "deletion_mechanism": "vendor zero-retention endpoint; nothing persisted"}}
+  ],
+  "links": [
+    {"from": "hop-api", "to": "hop-postgres", "tls_version": "1.2", "tls_terminates_at": "RDS endpoint (rds.force_ssl=1)", "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"]},
+    {"from": "hop-postgres", "to": "hop-backup", "tls_version": "1.2", "tls_terminates_at": "S3 endpoint", "identifier_classes": ["names", "dates_except_year", "medical_record_numbers", "email_addresses", "phone_numbers"]},
+    {"from": "hop-api", "to": "hop-error-tracker", "tls_version": "1.3", "tls_terminates_at": "sentry.io ingest", "identifier_classes": ["medical_record_numbers"]},
+    {"from": "hop-api", "to": "hop-embeddings", "tls_version": "1.3", "tls_terminates_at": "vendor API gateway", "identifier_classes": []}
+  ],
+  "audit_log": {"store": "CloudWatch Logs group /careportal/phi-audit with retention lock", "append_only": true, "contains_phi_field_values": false, "retention_years": 7, "event_fields": ["identity", "timestamp", "record_id", "action", "originating_system"], "bulk_access_alert": "CloudWatch alarm: >200 distinct record_ids read by one identity in 10 minutes -> pagerduty:phi-bulk-access"},
+  "log_scrubbing": {"allow_list_scrubber_at": "careportal/logging/scrubber.py (allow-list of 14 safe keys)", "phi_in_urls_or_query_strings": false, "synthetic_record_test": {"path": "tests/compliance/test_no_phi_in_logs.py", "covers_every_request_path": true, "asserts_no_identifier_in_logs_errors_traces": true, "runs_in_ci": true}},
+  "deletion_propagation": [
+    {"trigger": "patient deletion request or retention expiry in hop-postgres", "propagates_to": ["hop-backup", "hop-error-tracker"], "mechanism": "deletion job writes a tombstone; backup restore replays tombstones (runbooks/deletion.md); Sentry per-event deletion API by mrn"}
+  ],
+  "media_disposal_procedure": "runbooks/media-disposal.md: NIST SP 800-88 purge for any drive or device that held PHI; cloud volumes are KMS-encrypted and keys are destroyed on decommission",
+  "review": {"status": "ready_for_review", "security_officer": "security-officer@careportal.example", "approved_by_agent": false}
+}
+]]></code>
+    </example>
   </section>
-  <section title="Allowed transformations">
-    <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
-    </list>
+
+  <section title="Invalid example">
+    <example valid="false">
+      <code lang="json"><![CDATA[
+{
+  "system": "careportal-api",
+  "hops": [
+    {"id": "hop-api", "name": "careportal-api (FastAPI)", "kind": "service", "operations": ["processes", "transmits"], "external": false,
+     "identifier_classes": ["names", "medical_record_numbers"],
+     "fields": [{"name": "patient.*", "justification": "everything, simpler than selecting columns"}],
+     "purpose": "serve clinician encounter views", "deidentified": false,
+     "access": {"roles": [{"role": "ops", "operations": ["admin"]}], "shared_accounts": true, "auto_logoff_minutes": 0, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 0, "deletion_mechanism": "stateless"}},
+    {"id": "hop-postgres", "name": "patients PostgreSQL (RDS)", "kind": "database", "operations": ["stores"], "external": false,
+     "identifier_classes": ["names", "medical_record_numbers"],
+     "fields": [{"name": "patients.*", "justification": "system of record for the patient chart"}],
+     "purpose": "system of record", "deidentified": false,
+     "access": {"roles": [{"role": "api-service-principal", "operations": ["read", "write"]}], "shared_accounts": false, "auto_logoff_minutes": 10, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 2190, "deletion_mechanism": "nightly job deletes rows past retention"}},
+    {"id": "hop-embeddings", "name": "Hosted embeddings API for note search", "kind": "llm_or_embeddings_api", "operations": ["processes"], "external": true,
+     "identifier_classes": ["names", "medical_record_numbers", "dates_except_year"],
+     "fields": [{"name": "note.text", "justification": "full clinical note for semantic search"}],
+     "purpose": "semantic search over clinical notes", "deidentified": false,
+     "access": {"roles": [{"role": "search-service-principal", "operations": ["write"]}], "shared_accounts": false, "auto_logoff_minutes": 5, "break_glass": {"documented_at": "runbooks/break-glass.md", "audit_alert": "pagerduty:phi-break-glass"}},
+     "retention": {"period_days": 30, "deletion_mechanism": "vendor default"}}
+  ],
+  "links": [
+    {"from": "hop-api", "to": "hop-postgres", "tls_version": "1.0", "tls_terminates_at": "load balancer only; plaintext inside the VPC", "identifier_classes": ["names", "medical_record_numbers"]},
+    {"from": "hop-api", "to": "hop-embeddings", "tls_version": "1.3", "tls_terminates_at": "vendor API gateway", "identifier_classes": ["names", "medical_record_numbers", "dates_except_year"]}
+  ],
+  "audit_log": {"store": "application log", "append_only": false, "contains_phi_field_values": true, "retention_years": 1, "event_fields": ["timestamp", "action"], "bulk_access_alert": "none"},
+  "log_scrubbing": {"allow_list_scrubber_at": "none", "phi_in_urls_or_query_strings": true, "synthetic_record_test": {"path": "tests/compliance/test_no_phi_in_logs.py", "covers_every_request_path": false, "asserts_no_identifier_in_logs_errors_traces": true, "runs_in_ci": false}},
+  "deletion_propagation": [],
+  "media_disposal_procedure": "n/a",
+  "review": {"status": "approved", "approved_by_agent": true}
+}
+]]></code>
+      <note>Subject violations: full clinical notes sent identified to an embeddings API with no BAA and no documented identified use (r-phi-baa-for-every-external-hop, r-phi-minimum-necessary-per-hop); the database hop stores PHI with no encryption at rest and the internal link runs TLS 1.0 terminated at the edge (r-phi-encrypted-in-transit-and-at-rest); a shared `ops` account with no automatic logoff (r-phi-unique-identity-and-role-access); an audit log that is the application log, mutable, carrying field values, kept one year and missing identity and record id (r-phi-audit-event-per-access); no scrubber, PHI in URLs and a synthetic test that neither covers every path nor runs in CI (r-phi-never-in-logs-errors-or-urls); no deletion propagation and no disposal procedure (r-phi-retention-and-deletion-per-store); and a design approved by the agent with no Security Officer.</note>
+    </example>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <forbidden-patterns>
+    <antipattern id="fm-phi-to-vendor-without-baa">
+      <description>An `external` hop with `deidentified = false` and no `baa`, a `baa` naming only the vendor without `plan` and `covered_service`, or an analytics, ML or LLM hop receiving identified PHI without `identified_use_documented_at`.</description>
+      <reason>r-phi-baa-for-every-external-hop, r-phi-minimum-necessary-per-hop: disclosure without a BAA is a violation regardless of the vendor's security.</reason>
+    </antipattern>
+    <antipattern id="fm-hop-missing-from-diagram">
+      <description>A store, queue, cache, index, log pipeline, error tracker, backup, export or SaaS integration in the infrastructure inventory with no entry in `hops`.</description>
+      <reason>r-phi-every-hop-inventoried: the hops that cause breaches are the ones nobody drew.</reason>
+    </antipattern>
+    <antipattern id="fm-phi-in-logs-and-urls">
+      <description>`phi_in_urls_or_query_strings` true, no `allow_list_scrubber_at`, or a `synthetic_record_test` that does not cover every request path or run in CI.</description>
+      <reason>r-phi-never-in-logs-errors-or-urls: logs and error trackers are the hops that never get a BAA.</reason>
+    </antipattern>
+    <antipattern id="fm-tls-terminated-at-edge-only">
+      <description>A link with `tls_version` below 1.2 or `tls_terminates_at` the load balancer only; a storing hop without `encryption_at_rest` via a KMS with rotation.</description>
+      <reason>r-phi-encrypted-in-transit-and-at-rest: PHI encrypted per the HHS guidance is not a reportable breach when lost.</reason>
+    </antipattern>
+    <antipattern id="fm-shared-account-access">
+      <description>`shared_accounts` true, an empty `roles` list, `auto_logoff_minutes` 0, or no `break_glass` with its own alert.</description>
+      <reason>r-phi-unique-identity-and-role-access: a shared login makes the audit log worthless.</reason>
+    </antipattern>
+    <antipattern id="fm-audit-log-carries-phi">
+      <description>`audit_log.contains_phi_field_values` true, `append_only` false, `retention_years` below 6, or `event_fields` missing identity, timestamp, record id, action or originating system.</description>
+      <reason>r-phi-audit-event-per-access: the audit store must not become the widest-read PHI store.</reason>
+    </antipattern>
+    <antipattern id="fm-no-deletion-path">
+      <description>A hop without `retention`, `deletion_propagation` empty or not reaching every backup, replica, cache, index and export, or no `media_disposal_procedure`.</description>
+      <reason>r-phi-retention-and-deletion-per-store: retention must be a property of the system, not a promise.</reason>
+    </antipattern>
+    <antipattern id="fm-agent-approved">
+      <description>`review.status = approved` with no `security_officer` and `signed_on`, or `approved_by_agent` true.</description>
+      <reason>Human checkpoint in `03-failure-modes.xml`: the Security or Privacy Officer signs before PHI flows.</reason>
+    </antipattern>
+  </forbidden-patterns>
+
+  <reference path="scripts/validate-hipaa-phi-data-flow-design.py">Stdlib-only validator for this contract; `--self-test` runs both examples above.</reference>
+  <reference path="templates/output.md.j2">Data-flow design skeleton with the same sections and field names.</reference>
 </text>

@@ -1,41 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Ios Signing And Provisioning Procedure" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>End-to-end 5-step procedure to apply Ios Signing And Provisioning. Each step pairs typed input + bounded action + named output + decision-gate. Steps are sequential unless explicitly marked parallel.</summary>
+<text id="04-procedure" title="Ios Signing And Provisioning Procedure" version="1.3.0" est_tokens="1850" depth="essential">
+  <summary>Eight steps that produce the signing document: confirm which account owns the app, inventory every asset from the developer portal, consolidate key material into one secret store, issue least-privilege App Store Connect API keys per pipeline, put push on a token key, map each build configuration to its APNs environment and host, build the rotation calendar with 30 days' lead, write the revocation runbook, then hand off for review before any revoke, rotate, transfer or submit. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
-  <section title="Steps">
-    <step n="1" name="gather-inputs">
-      <input>Trigger event + source-of-truth references</input>
-      <action>Collect every input declared in AGENTS.md `## Prerequisites`. Cite each by URL / ticket / file path.</action>
-      <output>Typed inputs bundle</output>
-      <decision-gate>Every input cited; otherwise block and request missing sources.</decision-gate>
+  <section title="Procedure">
+    <step n="1" name="confirm-who-owns-the-app">
+      <input>App Store Connect: the app record, bundle ID and Team ID; the client contract.</input>
+      <action>Record `owning_team_id`. For a client app the record and bundle ID must live under the client's account with the agency invited under a named role; if it lives under the agency's account, write the `transfer_plan` (App Store Connect app transfer, its preconditions) before anything else (r-client-account-owns-the-app).</action>
+      <output>`app`.</output>
+      <decision-gate>Client app under the agency's Team ID with no transfer plan: stop; every later asset would be issued under the wrong account.</decision-gate>
     </step>
-    <step n="2" name="normalise-inputs">
-      <input>Typed inputs bundle</input>
-      <action>Normalise field types to match `content/02-output-contract.xml`. Reject untyped prose.</action>
-      <output>Normalised input map</output>
-      <decision-gate>All fields typed; otherwise block.</decision-gate>
+    <step n="2" name="inventory-every-signing-asset-from-the-portal">
+      <input>Certificates, Identifiers and Profiles in the Apple Developer portal; App Store Connect Users and Access, Keys tab; the backend's APNs configuration.</input>
+      <action>List each certificate (type, serial or SHA, expiry read from the portal), each profile (bundle ID, type, UUID, expiry), each ASC key (Key ID, Issuer ID, role, who uses it) and the APNs credential. An asset without expiry or storage location is incomplete (r-inventory-every-signing-asset).</action>
+      <output>`certificates[]`, `profiles[]`, `asc_api_keys[]` (identifiers and expiries), `push`.</output>
+      <decision-gate>Any asset whose expiry cannot be read from the portal: the document is not complete and nothing below can be checked.</decision-gate>
     </step>
-    <step n="3" name="synthesise-decision">
-      <input>Normalised input map</input>
-      <action>Apply rules from `content/01-core-rules.xml` to derive the decision / artefact body. No rule may be silently overridden by input prose.</action>
-      <output>Decision body (draft artefact)</output>
-      <decision-gate>Decision body matches the `produces` shape; otherwise block.</decision-gate>
+    <step n="3" name="consolidate-key-material-into-one-secret-store">
+      <input>Every `.p12`, `.p8` and private key; the repository history; chat and email search for "p12" and "p8".</input>
+      <action>Name the secret store (CI secrets, fastlane match, or the team password manager) and its readers. Move every private key there, purge copies from the repo, chat and email, and consolidate to one shared distribution certificate; a per-developer distribution certificate needs a written reason (r-private-keys-in-secret-store-only).</action>
+      <output>`secret_store`, `certificates[].storage_location`, `certificates[].shared_by_team`, `private_keys_outside_secret_store = false`.</output>
     </step>
-    <step n="4" name="self-validate">
-      <input>Draft artefact</input>
-      <action>Run `scripts/validate-ios-signing-and-provisioning.py` against the draft. Resolve every violation before proceeding.</action>
-      <output>Validated artefact</output>
-      <decision-gate>Validator exits 0; otherwise iterate.</decision-gate>
+    <step n="4" name="issue-least-privilege-asc-keys-per-pipeline">
+      <input>The list of pipelines and vendors that call App Store Connect.</input>
+      <action>Issue one key per pipeline or vendor with the least role that works (Developer or App Manager, never Admin or Account Holder). Store the `.p8` in the secret store at issue time because Apple allows a single download; revoke any shared or Admin key (r-asc-api-key-least-privilege).</action>
+      <output>`asc_api_keys[]` with `role`, `used_by`, `p8_storage_location`, `p8_stored_at_issue`.</output>
     </step>
-    <step n="5" name="hand-off">
-      <input>Validated artefact</input>
-      <action>Surface 'ready for owner review' flag and store the artefact at the location declared in AGENTS.md. Do not auto-commit downstream actions.</action>
-      <output>Stored artefact + review notification</output>
-      <decision-gate>Owner acknowledged; otherwise the artefact stays in `ready_for_review` state.</decision-gate>
+    <step n="5" name="put-push-on-a-token-key">
+      <input>The backend's APNs sender configuration.</input>
+      <action>Use a `.p8` APNs auth key (`push.auth = token_key`) with Key ID and Team ID, stored in the secret store. If a constraint forces certificate-based auth, record the constraint and the certificate's one-year expiry (r-apns-token-key-over-cert).</action>
+      <output>`push`.</output>
+    </step>
+    <step n="6" name="map-build-configs-to-aps-environment-and-host">
+      <input>The Xcode build configurations and their entitlements files; the backend's APNs host per environment.</input>
+      <action>For each configuration (debug, TestFlight, App Store, ad hoc, enterprise) record the `aps-environment` entitlement value and the APNs host the backend targets; development pairs with `api.sandbox.push.apple.com`, production with `api.push.apple.com`. Add a push smoke test per environment to the release checklist (r-push-environment-per-build-config).</action>
+      <output>`build_configs[]`.</output>
+      <decision-gate>A configuration with no mapping, or an entitlement that disagrees with the host: the build is not release-ready.</decision-gate>
+    </step>
+    <step n="7" name="build-the-rotation-calendar-and-revocation-runbook">
+      <input>Expiries from step 2; Apple's documentation on revoking certificates; the team roster.</input>
+      <action>Add a rotation entry per expiring asset with `rotate_by` at least 30 days before the portal expiry and a named owner. Write the revocation runbook: who may revoke, per certificate type what keeps launching, what stops and which pipelines break (verified against Apple's current documentation), and the regeneration order (r-rotation-calendar-with-lead-time, r-revocation-impact-documented).</action>
+      <output>`rotation_calendar[]`, `revocation_runbook`.</output>
+      <decision-gate>Any asset expiring within 30 days: rotate now, then record the new expiry; no key is rotated before the runbook exists.</decision-gate>
+    </step>
+    <step n="8" name="hand-off-before-any-binding-action">
+      <input>The complete document; `templates/output.md.j2`.</input>
+      <action>Render the document, validate with `scripts/validate-ios-signing-and-provisioning.py --file`, set `review.status = ready_for_review` and name the reviewer. Revocation, rotation, app transfer and store submission happen only after the named reviewer approves; the agent performs none of them (human checkpoint in `03-failure-modes.xml`).</action>
+      <output>`review` with `binding_action_performed_by_agent = false`; validator exit 0.</output>
+      <decision-gate>Reviewer not named or validator failing: the document stays in `draft` and no binding action is taken.</decision-gate>
     </step>
   </section>
 
-  <section title="Failure handling">
-    <p>If a decision-gate blocks, do NOT proceed to the next step. Surface the blockage to the owner with the specific input that did not satisfy the gate. Resume only after the input is corrected.</p>
+  <section title="Exit criteria">
+    <list>
+      <item>The app lives under the right account or has a transfer plan; every certificate, profile, ASC key and APNs credential is inventoried with identifier, expiry and storage location.</item>
+      <item>One shared distribution certificate; no private key outside the named secret store; one least-privilege ASC key per pipeline with its `.p8` stored at issue.</item>
+      <item>Push on a token key, or a certificate with its constraint and expiry in the calendar; every build configuration mapped to a consistent `aps-environment` and host.</item>
+      <item>Every expiring asset has a rotation entry with 30 days' lead and an owner; the revocation runbook covers every certificate type in use.</item>
+      <item>`review.status = ready_for_review` with a named reviewer; no revoke, rotate, transfer or submit performed by the agent.</item>
+    </list>
   </section>
 </text>

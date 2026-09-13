@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Freelancer Payment Chase Script Library Worked Examples" version="1.1.0" est_tokens="2450" depth="recommended">
+  <summary>One complete ladder for a GBP 4,800 net-15 invoice to a UK client that pays after the polite rung, with the three rung texts and a note on every non-obvious value, and one bad ladder showing what the validator and the reviewer reject.</summary>
+
+  <section title="Scenario">
+    <p>Invoice 2026-041 for GBP 4,800 under an MSA with net-15 terms (clause 7.2) fell due on 2026-06-15. The client is a UK company, so statutory interest under the Late Payment of Commercial Debts (Interest) Act 1998 applies even though the MSA has no late-fee clause of its own. The sponsor is Dana; accounts payable is a shared mailbox.</p>
+  </section>
+
+  <section title="Good ladder">
+    <example type="good" title="Invoice 2026-041, paid after the polite rung">
+      <code lang="json"><![CDATA[
+{
+  "invoice": {"invoice_id": "2026-041", "amount": 4800, "currency": "GBP", "invoice_date": "2026-05-31", "due_date": "2026-06-15", "payment_terms_clause_id": "MSA 7.2 (net 15)", "invoice_link": "https://invoices.faion.example/2026-041.pdf"},
+  "parties": {
+    "freelancer": {"legal_name": "Ruslan Faion", "address": "12 Example Road, Lisbon 1000-001, Portugal"},
+    "client": {"legal_name": "Acme Analytics Ltd", "address": "1 Acme Way, London EC1A 1AA, United Kingdom", "sponsor_contact": "dana@acme.example", "finance_contact": "ap@acme.example"}
+  },
+  "contract": {
+    "written_notice_channel": "email_and_registered_post",
+    "late_payment_basis": {"kind": "statute", "reference": "Late Payment of Commercial Debts (Interest) Act 1998", "rate": "8% over Bank of England base rate plus GBP 70 fixed compensation", "fixed_fee": 70},
+    "legal_handoff_contact": "collections@smallclaimsdesk.example"
+  },
+  "rungs": [
+    {"rung": "polite", "offset_days": 3, "scheduled_date": "2026-06-18", "recipients": ["dana@acme.example"], "days_overdue_on_send": 3, "invoice_attached": true, "mentions_fee_or_consequence": false, "mentions_legal_action": false, "word_count": 84, "asks_confirmed_payment_date": true},
+    {"rung": "firm", "offset_days": 10, "scheduled_date": "2026-06-25", "recipients": ["dana@acme.example", "ap@acme.example"], "days_overdue_on_send": 10, "invoice_attached": true, "mentions_fee_or_consequence": true, "mentions_legal_action": false, "pay_by_date": "2026-07-01", "pay_by_within_days": 6, "consequence_reference": "Statutory interest under the Late Payment of Commercial Debts (Interest) Act 1998 at 8% over base rate from 2026-06-16"},
+    {"rung": "legal", "offset_days": 30, "scheduled_date": "2026-07-15", "recipients": ["dana@acme.example", "ap@acme.example"], "days_overdue_on_send": 30, "invoice_attached": true, "mentions_fee_or_consequence": true, "mentions_legal_action": true, "ledger_total_with_interest": 4921.4, "final_deadline_days": 14, "next_step": "county_court_claim", "without_prejudice": true, "channels": ["email", "registered_post"]}
+  ],
+  "status": {"payment_status": "paid_in_full", "dispute_raised": false, "outstanding_balance": 0, "halted": true, "halt_reason": "paid_in_full"},
+  "send_log": [
+    {"invoice_id": "2026-041", "rung": "polite", "send_date": "2026-06-18", "channel": "email", "recipients": ["dana@acme.example"], "response": {"date": "2026-06-19", "gist": "Sorry, stuck in approvals; will be paid this week"}}
+  ],
+  "days_to_pay": 20,
+  "renewal_terms_change": "deposit"
+}
+]]></code>
+      <note>All three rungs are drafted and dated up front (due + 3, + 10, + 30) even though only the first was sent: the ladder is planned from the due date, not improvised from the send date (r-three-rungs-clocked-from-due-date).</note>
+      <note>`late_payment_basis` is a statute, not a clause, because the MSA is silent: the Act grants 8% over base rate plus a GBP 70 fixed sum on a debt of this size, and that exact wording is the only consequence the firm rung and the ledger may quote (r-fees-and-leverage-only-from-contract-or-statute).</note>
+      <note>The polite rung has one recipient (the person who received the invoice), 84 words, one question, no consequence; the firm rung adds `ap@acme.example` and a pay-by date 6 days after its send date (r-polite-rung-assumes-oversight, r-firm-rung-deadline-and-named-consequence).</note>
+      <note>`ledger_total_with_interest` 4921.40 is 4800 plus 30 days of statutory interest at the rate in force plus the GBP 70 fixed sum; the final deadline is 14 days and the next step is a county-court claim, sent by email and registered post as the MSA's notice clause requires (r-legal-rung-is-formal-letter-before-action).</note>
+      <note>Payment landed on 2026-07-05 (20 days after due), so `halted` is true with `halt_reason = paid_in_full` and the firm rung was never sent; the single log entry carries the client's response. `renewal_terms_change = deposit` because this is the client's third invoice averaging over 20 days on net 15 (r-stop-on-payment-dispute-or-exhaustion, r-log-every-send-and-response).</note>
+    </example>
+    <example type="good" title="The three rung texts the artefact describes">
+      <code lang="text"><![CDATA[
+[polite, T+3, to dana@acme.example, invoice attached]
+Subject: Invoice 2026-041 (GBP 4,800) — due 15 June
+
+Hi Dana, a quick check on invoice 2026-041 for GBP 4,800, dated 31 May and due 15 June under clause 7.2 of our MSA (net 15); it is 3 days past due today. The PDF is attached in case it did not reach accounts payable. Could you confirm the date it is scheduled for payment? Thanks — Ruslan
+
+[firm, T+10, to dana@acme.example + ap@acme.example, invoice attached]
+Subject: Invoice 2026-041 (GBP 4,800) — 10 days overdue, payment by 1 July
+
+Dana, Accounts Payable — invoice 2026-041 for GBP 4,800 (issued 31 May, due 15 June, MSA clause 7.2) is now 10 days overdue. Please arrange payment by 1 July. From 16 June the invoice accrues statutory interest under the Late Payment of Commercial Debts (Interest) Act 1998 at 8% over the Bank of England base rate; I would rather not add that to the ledger. PDF attached. — Ruslan
+
+[legal, T+30, email + registered post, to both]
+Formal notice before action — from Ruslan Faion, 12 Example Road, Lisbon, to Acme Analytics Ltd, 1 Acme Way, London EC1A 1AA. Invoice 2026-041, GBP 4,800.00, due 15 June 2026; statutory interest and compensation under the Late Payment of Commercial Debts (Interest) Act 1998 to date GBP 121.40; total outstanding GBP 4,921.40. Unless payment in full is received within 14 days of the date of this notice I will issue a claim in the County Court without further notice. This letter is sent without prejudice to our working relationship, which I would like to continue.
+]]></code>
+      <note>The polite text is 84 words with exactly one question; the firm text names one consequence with its statutory basis and no legal threat; the notice carries both addresses, the ledger, the 14-day deadline and the named next step.</note>
+    </example>
+  </section>
+
+  <section title="Bad ladder">
+    <example type="bad" title="What the validator and the reviewer reject">
+      <code lang="json"><![CDATA[
+{
+  "invoice": {"invoice_id": "2026-041", "amount": 4800, "currency": "GBP", "invoice_date": "2026-05-31", "due_date": "2026-06-15", "payment_terms_clause_id": "MSA 7.2 (net 15)", "invoice_link": "https://invoices.faion.example/2026-041.pdf"},
+  "parties": {
+    "freelancer": {"legal_name": "Ruslan Faion", "address": "12 Example Road, Lisbon 1000-001, Portugal"},
+    "client": {"legal_name": "Acme Analytics Ltd", "address": "1 Acme Way, London EC1A 1AA, United Kingdom", "sponsor_contact": "dana@acme.example", "finance_contact": "ap@acme.example"}
+  },
+  "contract": {"written_notice_channel": "email", "late_payment_basis": {"kind": "none"}, "legal_handoff_contact": "collections@smallclaimsdesk.example"},
+  "rungs": [
+    {"rung": "polite", "offset_days": 1, "scheduled_date": "2026-06-16", "recipients": ["dana@acme.example"], "days_overdue_on_send": 3, "invoice_attached": true, "mentions_fee_or_consequence": true, "mentions_legal_action": true, "word_count": 240, "asks_confirmed_payment_date": false},
+    {"rung": "firm", "offset_days": 10, "scheduled_date": "2026-06-25", "recipients": ["dana@acme.example"], "days_overdue_on_send": 10, "invoice_attached": true, "mentions_fee_or_consequence": true, "mentions_legal_action": false, "pay_by_date": "2026-07-20", "pay_by_within_days": 25, "consequence_reference": "5% weekly late fee"}
+  ],
+  "status": {"payment_status": "paid_in_full", "dispute_raised": false, "outstanding_balance": 4800, "halted": false},
+  "send_log": [],
+  "days_to_pay": null,
+  "renewal_terms_change": "none"
+}
+]]></code>
+      <note>Validator output: `$.rungs: 2 items, minItems=3`, `$.rungs[0].offset_days: 1 not in enum [3, 10, 30]`, `$.rungs[0].offset_days: must equal 3, got 1`, `$.rungs[0].word_count: 240 violates maximum=120`, `$.rungs[0].asks_confirmed_payment_date: must equal True, got False`, `$.rungs[0].mentions_fee_or_consequence: must equal False, got True`, `$.rungs[0].mentions_legal_action: must equal False, got True`, `$.rungs[1].pay_by_within_days: 25 violates maximum=7`, `$.rungs[1].recipients: 1 items, minItems=2`, `$.status.halted: must equal True, got False`, `$.status.outstanding_balance: must equal 0, got 4800`.</note>
+      <note>What the reviewer sees beyond the validator: the "5% weekly late fee" has no clause and `late_payment_basis.kind` is `none`, so the firm rung's consequence is invented (r-fees-and-leverage-only-from-contract-or-statute); the polite rung is scheduled for 2026-06-16, one day after the due date, so it would land before most approval queues have moved (r-three-rungs-clocked-from-due-date).</note>
+    </example>
+  </section>
+</text>

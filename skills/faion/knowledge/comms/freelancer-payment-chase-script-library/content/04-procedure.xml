@@ -1,40 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Freelancer Payment Chase Script Library Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply the Freelancer Payment Chase Script Library methodology end-to-end.</summary>
+<text id="04-procedure" title="Freelancer Payment Chase Script Library Procedure" version="1.3.0" est_tokens="1800" depth="essential">
+  <summary>Eight steps that run the ladder for one overdue invoice: pin the six invoice facts, source the fee basis, compute the three rung dates from the due date, check payment and dispute state before every send, then the polite rung, the firm rung, the formal notice, and the log that sets terms at renewal. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
   <section title="Procedure">
-
-    <step n="1" name="check-preconditions">
-      <input>The "Applies If" + "Skip If" checklist from AGENTS.md.</input>
-      <action>Verify every Applies-If item holds AND no Skip-If item triggers. Stop if any check fails.</action>
-      <output>Boolean: methodology applies / does not apply.</output>
-      <decision-gate>If preconditions fail, emit a skip-record and STOP.</decision-gate>
+    <step n="1" name="pin-invoice-facts-and-parties">
+      <input>The invoice in the invoicing system; the signed contract; the client's sponsor and accounts-payable contacts.</input>
+      <action>Copy verbatim from the source of record: invoice number, amount with currency, invoice date, due date, payment-terms clause id, and the invoice PDF link. Record both parties' full legal names and addresses (the legal rung needs them) and the sponsor and finance contacts (r-every-rung-cites-invoice-facts).</action>
+      <output>`invoice`, `parties`.</output>
+      <decision-gate>Any of the six invoice facts missing or the contract unreachable: send nothing; a chase without the facts is worse than silence.</decision-gate>
     </step>
-
-    <step n="2" name="gather-inputs">
-      <input>Source-of-truth references named in Prerequisites.</input>
-      <action>Read each input, attach its path/URL to the working artefact. Refuse to proceed if any input is unreachable.</action>
-      <output>`inputs_used` list with name + source pairs.</output>
+    <step n="2" name="source-the-fee-basis-and-notice-channel">
+      <input>The contract's late-payment, suspension and IP clauses; the governing law (UK: Late Payment of Commercial Debts (Interest) Act 1998; EU: Directive 2011/7/EU).</input>
+      <action>Set `late_payment_basis.kind` to `contract_clause` or `statute` with the exact clause id or act name and the rate, or to `none` when neither grants anything. Record the written-notice channel the contract names and the legal or collections contact the ladder hands off to (r-fees-and-leverage-only-from-contract-or-statute).</action>
+      <output>`contract.late_payment_basis`, `contract.written_notice_channel`, `contract.legal_handoff_contact`.</output>
+      <decision-gate>With `kind = none`, no rung may mention interest, fees, suspension or withheld IP; the firm rung's consequence is then the formal notice itself.</decision-gate>
     </step>
-
-    <step n="3" name="apply-rules">
-      <input>Inputs gathered + the rules from content/01-core-rules.xml.</input>
-      <action>Walk each rule; record per-rule pass/fail; for each fail capture the violating snippet.</action>
-      <output>Per-rule conformance record.</output>
-      <decision-gate>If any HARD rule fails, repair the artefact or escalate; do not return a partially-conformant output.</decision-gate>
+    <step n="3" name="schedule-three-rungs-from-the-due-date">
+      <input>`invoice.due_date`.</input>
+      <action>Compute `scheduled_date` for polite = due + 3, firm = due + 10, legal = due + 30. Fill `templates/freelancer-payment-chase-script-library.md.j2` with the three dates and block any rung from sending before its date (r-three-rungs-clocked-from-due-date).</action>
+      <output>`rungs[]` with `rung`, `offset_days`, `scheduled_date`.</output>
     </step>
-
-    <step n="4" name="produce-artefact">
-      <input>Rule-conformant inputs.</input>
-      <action>Fill the template under `templates/` according to the schema in content/02-output-contract.xml.</action>
-      <output>checklist artefact draft.</output>
+    <step n="4" name="check-stop-conditions-before-every-send">
+      <input>The bank or payment-processor ledger; the inbox thread with the client.</input>
+      <action>Immediately before each rung: read the ledger and the thread. Paid in full: set `payment_status`, `halted`, `halt_reason`, log `days_to_pay`, stop. Written dispute: `halted` with `halt_reason = dispute_raised`, route to dispute handling, stop. Partial payment: recompute `outstanding_balance` and restate it on every later rung (r-stop-on-payment-dispute-or-exhaustion).</action>
+      <output>`status` updated; the ladder continues only when unpaid or partial and undisputed.</output>
+      <decision-gate>`halted = true` ends the procedure at whatever step it is on.</decision-gate>
     </step>
-
-    <step n="5" name="validate-and-handover">
-      <input>Draft artefact + validator script.</input>
-      <action>Run `scripts/validate-freelancer-payment-chase-script-library.py --file &lt;path&gt;`. Fix any reported violations. Send the validated artefact to the named owner.</action>
-      <output>Owner-signed artefact registered with the consumer.</output>
+    <step n="5" name="send-the-polite-rung">
+      <input>Rung one from step 3 on or after its date; the invoice PDF.</input>
+      <action>Write under 120 words to the same recipient who received the invoice: the six invoice facts, the invoice attached, one question asking for a confirmed payment date. No blame, no fees, no suspension, no legal steps. Send, then log invoice id, rung, date, channel, recipients and the response when it arrives (r-polite-rung-assumes-oversight, r-log-every-send-and-response).</action>
+      <output>`rungs[polite]` with `word_count`, `asks_confirmed_payment_date`, `invoice_attached`; one `send_log` entry.</output>
     </step>
+    <step n="6" name="send-the-firm-rung">
+      <input>Rung two on or after its date; step 4 re-run; `contract.late_payment_basis`.</input>
+      <action>Add the finance contact to the recipients, keep the sponsor copied. State a pay-by date no more than 7 days after the send date and the single consequence the contract or statute grants, quoted by clause or act and rate. Do not mention lawyers or collections. Send and log (r-firm-rung-deadline-and-named-consequence).</action>
+      <output>`rungs[firm]` with `pay_by_date`, `pay_by_within_days`, `consequence_reference`, two or more recipients; one `send_log` entry.</output>
+      <decision-gate>A draft that names a consequence with no clause or statute behind it is blocked until the claim is removed or sourced.</decision-gate>
+    </step>
+    <step n="7" name="send-the-formal-notice">
+      <input>Rung three on or after its date; step 4 re-run; polite and firm entries present in `send_log`.</input>
+      <action>Draft the letter before action: both parties' legal names and addresses, the invoice ledger with the outstanding total including contractual or statutory interest, a final deadline of 7 to 14 days, the specific next step (collections agency, small claims, county-court claim, statutory demand), and the without-prejudice statement. Send by email and by the contract's written-notice channel; log both (r-legal-rung-is-formal-letter-before-action).</action>
+      <output>`rungs[legal]` with `ledger_total_with_interest`, `final_deadline_days`, `next_step`, `without_prejudice`, `channels`; `send_log` entries per channel.</output>
+      <decision-gate>No polite and firm entries in the log: the notice does not go; the ladder restarts at the rung the clock calls for.</decision-gate>
+    </step>
+    <step n="8" name="hand-off-or-close-and-set-renewal-terms">
+      <input>The final deadline from step 7; the complete `send_log`.</input>
+      <action>When the final deadline passes unpaid, set `halt_reason = ladder_exhausted` and hand the full log to `contract.legal_handoff_contact`. On payment at any rung, compute `days_to_pay` from the due date. At contract renewal, set `renewal_terms_change` (shorter net terms, deposit, milestone billing, or none) from this client's days-to-pay history and cite the log as evidence (r-stop-on-payment-dispute-or-exhaustion, r-log-every-send-and-response).</action>
+      <output>`status.halt_reason`, `days_to_pay`, `renewal_terms_change`; validated artefact via `scripts/validate-freelancer-payment-chase-script-library.py --file`.</output>
+    </step>
+  </section>
 
+  <section title="Exit criteria">
+    <list>
+      <item>Six invoice facts and both parties pinned to the source of record; three rungs dated from the due date.</item>
+      <item>Every send has a log entry with its response; no entry postdates `status.halted`.</item>
+      <item>Every fee, rate or consequence mentioned traces to `contract.late_payment_basis`.</item>
+      <item>`scripts/validate-freelancer-payment-chase-script-library.py --file` exits 0.</item>
+    </list>
   </section>
 </text>

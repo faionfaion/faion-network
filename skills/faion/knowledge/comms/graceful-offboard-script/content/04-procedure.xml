@@ -1,40 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Graceful Offboard Script Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply the Graceful Offboard Script methodology end-to-end.</summary>
+<text id="04-procedure" title="Graceful Offboard Script Procedure" version="1.3.0" est_tokens="1850" depth="essential">
+  <summary>Nine steps from the QBR to the T+30 feedback request: evidence the bad fit, read the termination clause and set the last service date, build the asset inventory, confirm an alternative provider, write the fit-framed script and check it, deliver live, send the written follow-up within a business day, run the handover on schedule, and file the internal record that changes intake. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
   <section title="Procedure">
-
-    <step n="1" name="check-preconditions">
-      <input>The "Applies If" + "Skip If" checklist from AGENTS.md.</input>
-      <action>Verify every Applies-If item holds AND no Skip-If item triggers. Stop if any check fails.</action>
-      <output>Boolean: methodology applies / does not apply.</output>
-      <decision-gate>If preconditions fail, emit a skip-record and STOP.</decision-gate>
+    <step n="1" name="evidence-the-bad-fit-from-the-qbr">
+      <input>The QBR source of record: account margin by quarter, scope-change requests, days-to-pay, hours against budget, satisfaction score.</input>
+      <action>Pull at least two signals, each with its value, the target it misses and the period. A margin signal must span two or more consecutive quarters. Record the QBR file path as `qbr_source` (r-bad-fit-evidenced-by-qbr-data).</action>
+      <output>`client`, `qbr_source`, `bad_fit_signals[]`.</output>
+      <decision-gate>Fewer than two signals: this is an intervention (repricing, scope reset), not an exit; stop and revisit at the next QBR.</decision-gate>
     </step>
-
-    <step n="2" name="gather-inputs">
-      <input>Source-of-truth references named in Prerequisites.</input>
-      <action>Read each input, attach its path/URL to the working artefact. Refuse to proceed if any input is unreachable.</action>
-      <output>`inputs_used` list with name + source pairs.</output>
+    <step n="2" name="read-the-termination-clause-and-set-the-date">
+      <input>The signed contract: termination clause, notice period, minimum term, cure period; the invoicing record for prepaid or committed periods.</input>
+      <action>Quote the clause id and notice days. Set `last_service_date` no earlier than the clause allows from `decision_date`, record `days_notice_given`, and decide whether any prepaid period is delivered in full or refunded (r-exit-date-honours-termination-clause).</action>
+      <output>`contract` complete.</output>
+      <decision-gate>Date inside the notice period or a prepaid period unresolved: move the date or settle the refund before drafting anything.</decision-gate>
     </step>
-
-    <step n="3" name="apply-rules">
-      <input>Inputs gathered + the rules from content/01-core-rules.xml.</input>
-      <action>Walk each rule; record per-rule pass/fail; for each fail capture the violating snippet.</action>
-      <output>Per-rule conformance record.</output>
-      <decision-gate>If any HARD rule fails, repair the artefact or escalate; do not return a partially-conformant output.</decision-gate>
+    <step n="3" name="build-the-asset-inventory">
+      <input>Every system the agency touches for the client: ad and analytics accounts, domains and DNS, credentials, repositories, design files, content, documentation.</input>
+      <action>List each asset with kind, owner, transfer method and transfer date on or before the last service date. Client-owned assets transfer unconditionally; conditioning on payment requires a quoted clause. Set the transition-support window (days) and whether it is included or at a named rate (r-handover-plan-with-asset-inventory).</action>
+      <output>`handover.assets[]`, `handover.transition_support`.</output>
     </step>
-
-    <step n="4" name="produce-artefact">
-      <input>Rule-conformant inputs.</input>
-      <action>Fill the template under `templates/` according to the schema in content/02-output-contract.xml.</action>
-      <output>spec artefact draft.</output>
+    <step n="4" name="confirm-an-alternative-provider">
+      <input>The client's stated roadmap and needs; the agency's partner network.</input>
+      <action>Pick at least one provider matched to the need the client is moving toward. Contact them, confirm they will take a warm introduction, and record the date and channel of that confirmation before the provider is named anywhere (r-recommended-alternative-confirmed-first).</action>
+      <output>`alternatives[]` with `confirmed_on` and `confirmed_via`.</output>
+      <decision-gate>No provider confirmed: the script is not delivered until one is; a generic "many agencies could help" is not an alternative.</decision-gate>
     </step>
-
-    <step n="5" name="validate-and-handover">
-      <input>Draft artefact + validator script.</input>
-      <action>Run `scripts/validate-graceful-offboard-script.py --file &lt;path&gt;`. Fix any reported violations. Send the validated artefact to the named owner.</action>
-      <output>Owner-signed artefact registered with the consumer.</output>
+    <step n="5" name="write-the-script-and-check-the-framing">
+      <input>Steps 2-4; `templates/graceful-offboard-script.md.j2`; the banned-phrase list in r-frame-as-fit-not-confession.</input>
+      <action>Write the fit statement ("your needs have moved toward X; we are built for Y"), state the last service date, the handover and support window, and the warm introduction. Scan for banned phrases and for any sentence about the client that is not neutral or positive; rewrite until both checks are clean (r-frame-as-fit-not-confession, r-exit-date-honours-termination-clause).</action>
+      <output>`script` with `framing = fit_and_alignment`, `banned_phrases_found = []`, `client_criticism_found = false`, `states_last_service_date = true`.</output>
     </step>
+    <step n="6" name="schedule-the-t-plus-30-request-and-deliver-live">
+      <input>The script; the account owner's calendar; the client sponsor.</input>
+      <action>Before delivery, set `feedback_request.scheduled_date = last_service_date + 30` with the promoter and non-promoter actions decided. Then the named account owner delivers the offboard in a call or meeting, not by email (r-post-offboard-feedback-at-t-plus-30, r-delivered-live-then-written).</action>
+      <output>`feedback_request`, `delivery.live_conversation`.</output>
+      <decision-gate>Account owner unavailable for a live conversation: reschedule; the written script does not go first.</decision-gate>
+    </step>
+    <step n="7" name="send-the-written-follow-up">
+      <input>Notes from the conversation; the handover plan from step 3.</input>
+      <action>Within one business day send the written script with the handover plan attached, containing nothing that was not said in the conversation (r-delivered-live-then-written).</action>
+      <output>`delivery.written_follow_up` with `business_days_after_conversation` 0 or 1, `contains_only_what_was_said = true`, `includes_handover_plan = true`.</output>
+    </step>
+    <step n="8" name="run-the-handover-on-schedule">
+      <input>`handover.assets[]` with transfer dates.</input>
+      <action>Transfer each asset on its date, confirm receipt with the client, and record completion. Provide the transition support for the stated window. Do not wait for requests (r-handover-plan-with-asset-inventory).</action>
+      <output>Every asset transferred by `last_service_date`; support window running.</output>
+    </step>
+    <step n="9" name="file-the-internal-record-and-run-the-feedback-request">
+      <input>Bad-fit signals from step 1; the agency's intake or qualification checklist; the T+30 date.</input>
+      <action>Assign one primary root-cause category and write the concrete intake change it triggers; if nothing changes, set `flagged_for_review` and name the reviewer. On the T+30 date send the NPS or feedback request; a 9 or 10 gets a testimonial or referral ask, anything lower gets thanks and one question, never an argument. Validate the artefact with `scripts/validate-graceful-offboard-script.py --file` (r-root-cause-changes-intake-criteria, r-post-offboard-feedback-at-t-plus-30).</action>
+      <output>`internal_record`, `feedback_request.response`; validator exit 0.</output>
+    </step>
+  </section>
 
+  <section title="Exit criteria">
+    <list>
+      <item>Two or more quantified bad-fit signals from the QBR; last service date at or beyond the termination clause; prepaid period delivered or refunded.</item>
+      <item>Script in fit framing with no banned phrase and no client criticism; delivered live, written within one business day.</item>
+      <item>Every asset in the inventory transferred by the last service date; alternative provider confirmed before being named.</item>
+      <item>T+30 feedback request scheduled; internal record names a root cause and an intake change or is flagged for review.</item>
+    </list>
   </section>
 </text>

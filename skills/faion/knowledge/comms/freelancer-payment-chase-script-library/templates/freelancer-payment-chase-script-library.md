@@ -1,25 +1,56 @@
-<!-- purpose: working checklist skeleton for the Freelancer Payment Chase Script Library methodology -->
-<!-- consumes: inputs declared in AGENTS.md Prerequisites; schema in content/02-output-contract.xml -->
-<!-- produces: a checklist artefact validating against scripts/validate-freelancer-payment-chase-script-library.py -->
+<!-- purpose: chase-ladder skeleton for one overdue invoice — same sections and field names as content/02-output-contract.xml -->
+<!-- consumes: invoice from the invoicing system, signed contract, sponsor + finance contacts (AGENTS.md Prerequisites) -->
+<!-- produces: a ladder artefact validating against scripts/validate-freelancer-payment-chase-script-library.py -->
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
-<!-- token-budget-impact: ~400-1200 tokens once filled -->
+<!-- token-budget-impact: ~500 tokens once filled -->
 
-# Freelancer Payment Chase Script Library — Artefact Skeleton
+# Payment Chase Ladder — Invoice <invoice_id> (<client_name>)
 
-## Metadata
+## Invoice (verbatim from the source of record)
 
-- `artefact_id`: <artefact_slug>-<client_slug>-<artefact_id>
-- `owner`: Full Name <owner_email>
-- `version`: 1.0.0
-- `last_reviewed`: 2026-05-23
+- `invoice_id`: <invoice_id>
+- `amount` / `currency`: <invoice_amount>
+- `invoice_date`:
+- `due_date`: <due_date>
+- `payment_terms_clause_id`:
+- `invoice_link`:
 
-## Body
+## Parties
 
-Fill against the schema in `content/02-output-contract.xml`. Every section below maps to a required JSON field.
+- Freelancer legal name + address: <owner_full_name>,
+- Client legal name + address:
+- `sponsor_contact` (received the invoice):
+- `finance_contact` (added from the firm rung):
 
-- `decision` / `summary` / `items` / `steps` — see schema for which applies to `produces: checklist`.
-- `rationale` (when present) — cite at least one entry from `inputs_used` by name.
-- `inputs_used` — list every input with `name` + `source` path/URL.
+## Contract
+
+- `written_notice_channel`: email | registered_post | email_and_registered_post | courier
+- `late_payment_basis.kind`: contract_clause | statute | none — `reference` (clause id or act) and `rate` when not none
+- `legal_handoff_contact`:
+
+## Rungs (clocked from `due_date`)
+
+| Rung | Offset | Scheduled date | Recipients | Constraints |
+|------|--------|----------------|------------|-------------|
+| polite | T+3 | | sponsor only | under 120 words, invoice attached, one question for a confirmed payment date, no fee, no legal mention |
+| firm | T+10 | | sponsor + finance | pay-by date within 7 days, one consequence quoted from `late_payment_basis`, no legal threat |
+| legal | T+30 | | sponsor + finance, email + written-notice channel | both addresses, ledger total with interest, final deadline 7-14 days, named next step, without prejudice |
+
+## Status (checked before every send)
+
+- `payment_status`: unpaid | partial | paid_in_full — `outstanding_balance`:
+- `dispute_raised`: false
+- `halted`: false — `halt_reason`: paid_in_full | dispute_raised | ladder_exhausted
+
+## Send log
+
+| invoice_id | rung | send_date | channel | recipients | response (date, gist) or none |
+|------------|------|-----------|---------|------------|-------------------------------|
+
+## Renewal
+
+- `days_to_pay`:
+- `renewal_terms_change`: shorter_net_terms | deposit | milestone_billing | none | pending_renewal
 
 ## Validation
 

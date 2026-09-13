@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Hipaa Phi Data Flow Design — _smoke-test.md</title>
+<title>Hipaa Phi Data Flow Design — Smoke Test Fixture</title>
 <style>:root{color-scheme:light dark}
 body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
 font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -25,14 +25,360 @@ code{background:#242424} pre{background:#1d1d1d}
 th{background:#1d1d1d} th,td{border-color:#333}
 blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
 <body>
-<h1>Hipaa Phi Data Flow Design — _smoke-test.md</h1>
-<blockquote><p>Replace bracketed placeholders before use.</p></blockquote>
-<p><strong>Artefact id:</strong> <code>[stable-slug]</code> <strong>Owner:</strong> <code>[name &lt;email&gt; or role]</code> <strong>Version:</strong> <code>1.0.0</code> <strong>Last reviewed:</strong> <code>2026-05-23</code></p>
-<hr/>
-<h2>Inputs</h2>
-<table><thead><tr><th>Name</th><th>Format</th><th>Source</th></tr></thead><tbody><tr><td>{{ input_1 }}</td><td>{{ format }}</td><td>{{ source }}</td></tr></tbody></table>
-<h2>Body</h2>
-<p>[Fill the spec-shaped content here per content/02-output-contract.xml.]</p>
-<h2>Self-check</h2>
-<ul><li>[ ] Every required field populated.</li><li>[ ] No forbidden pattern matches.</li><li>[ ] Owner is a named human or role-with-rotation.</li><li>[ ] Version + last_reviewed advanced on every material edit.</li></ul>
+<h1>Hipaa Phi Data Flow Design — Smoke Test Fixture</h1>
+<p>The valid example from <code>content/02-output-contract.xml</code>; <code>scripts/validate-hipaa-phi-data-flow-design.py --self-test</code> runs it.</p>
+<pre><code class="language-json">{
+  &quot;system&quot;: &quot;careportal-api&quot;,
+  &quot;hops&quot;: [
+    {
+      &quot;id&quot;: &quot;hop-api&quot;,
+      &quot;name&quot;: &quot;careportal-api (FastAPI)&quot;,
+      &quot;kind&quot;: &quot;service&quot;,
+      &quot;operations&quot;: [
+        &quot;processes&quot;,
+        &quot;transmits&quot;
+      ],
+      &quot;external&quot;: false,
+      &quot;identifier_classes&quot;: [
+        &quot;names&quot;,
+        &quot;dates_except_year&quot;,
+        &quot;medical_record_numbers&quot;,
+        &quot;email_addresses&quot;
+      ],
+      &quot;fields&quot;: [
+        {
+          &quot;name&quot;: &quot;patient.name&quot;,
+          &quot;justification&quot;: &quot;shown on the encounter screen the clinician is authorised to view&quot;
+        },
+        {
+          &quot;name&quot;: &quot;patient.mrn&quot;,
+          &quot;justification&quot;: &quot;record lookup key&quot;
+        },
+        {
+          &quot;name&quot;: &quot;encounter.date&quot;,
+          &quot;justification&quot;: &quot;encounter timeline&quot;
+        },
+        {
+          &quot;name&quot;: &quot;patient.email&quot;,
+          &quot;justification&quot;: &quot;appointment reminders&quot;
+        }
+      ],
+      &quot;purpose&quot;: &quot;serve clinician encounter views and appointment scheduling&quot;,
+      &quot;deidentified&quot;: false,
+      &quot;access&quot;: {
+        &quot;roles&quot;: [
+          {
+            &quot;role&quot;: &quot;clinician&quot;,
+            &quot;operations&quot;: [
+              &quot;read&quot;,
+              &quot;write&quot;
+            ]
+          },
+          {
+            &quot;role&quot;: &quot;scheduler&quot;,
+            &quot;operations&quot;: [
+              &quot;read&quot;
+            ]
+          }
+        ],
+        &quot;shared_accounts&quot;: false,
+        &quot;auto_logoff_minutes&quot;: 15,
+        &quot;break_glass&quot;: {
+          &quot;documented_at&quot;: &quot;runbooks/break-glass.md&quot;,
+          &quot;audit_alert&quot;: &quot;pagerduty:phi-break-glass&quot;
+        }
+      },
+      &quot;retention&quot;: {
+        &quot;period_days&quot;: 0,
+        &quot;deletion_mechanism&quot;: &quot;stateless; no PHI persisted in the service&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;hop-postgres&quot;,
+      &quot;name&quot;: &quot;patients PostgreSQL (RDS)&quot;,
+      &quot;kind&quot;: &quot;database&quot;,
+      &quot;operations&quot;: [
+        &quot;stores&quot;
+      ],
+      &quot;external&quot;: false,
+      &quot;identifier_classes&quot;: [
+        &quot;names&quot;,
+        &quot;dates_except_year&quot;,
+        &quot;medical_record_numbers&quot;,
+        &quot;email_addresses&quot;,
+        &quot;phone_numbers&quot;
+      ],
+      &quot;fields&quot;: [
+        {
+          &quot;name&quot;: &quot;patients.*&quot;,
+          &quot;justification&quot;: &quot;system of record for the patient chart&quot;
+        }
+      ],
+      &quot;purpose&quot;: &quot;system of record&quot;,
+      &quot;deidentified&quot;: false,
+      &quot;encryption_at_rest&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;standard&quot;: &quot;NIST SP 800-111&quot;,
+        &quot;kms&quot;: &quot;aws-kms:alias/careportal-phi&quot;,
+        &quot;key_rotation_enabled&quot;: true
+      },
+      &quot;access&quot;: {
+        &quot;roles&quot;: [
+          {
+            &quot;role&quot;: &quot;api-service-principal&quot;,
+            &quot;operations&quot;: [
+              &quot;read&quot;,
+              &quot;write&quot;,
+              &quot;delete&quot;
+            ]
+          },
+          {
+            &quot;role&quot;: &quot;dba&quot;,
+            &quot;operations&quot;: [
+              &quot;admin&quot;
+            ]
+          }
+        ],
+        &quot;shared_accounts&quot;: false,
+        &quot;auto_logoff_minutes&quot;: 10,
+        &quot;break_glass&quot;: {
+          &quot;documented_at&quot;: &quot;runbooks/break-glass.md&quot;,
+          &quot;audit_alert&quot;: &quot;pagerduty:phi-break-glass&quot;
+        }
+      },
+      &quot;retention&quot;: {
+        &quot;period_days&quot;: 2190,
+        &quot;deletion_mechanism&quot;: &quot;nightly job deletes rows past retention and on patient deletion request; cascades to encounters&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;hop-backup&quot;,
+      &quot;name&quot;: &quot;RDS snapshots to S3&quot;,
+      &quot;kind&quot;: &quot;backup&quot;,
+      &quot;operations&quot;: [
+        &quot;stores&quot;
+      ],
+      &quot;external&quot;: false,
+      &quot;identifier_classes&quot;: [
+        &quot;names&quot;,
+        &quot;dates_except_year&quot;,
+        &quot;medical_record_numbers&quot;,
+        &quot;email_addresses&quot;,
+        &quot;phone_numbers&quot;
+      ],
+      &quot;fields&quot;: [
+        {
+          &quot;name&quot;: &quot;full snapshot&quot;,
+          &quot;justification&quot;: &quot;disaster recovery of the system of record&quot;
+        }
+      ],
+      &quot;purpose&quot;: &quot;disaster recovery&quot;,
+      &quot;deidentified&quot;: false,
+      &quot;encryption_at_rest&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;standard&quot;: &quot;NIST SP 800-111&quot;,
+        &quot;kms&quot;: &quot;aws-kms:alias/careportal-phi&quot;,
+        &quot;key_rotation_enabled&quot;: true
+      },
+      &quot;access&quot;: {
+        &quot;roles&quot;: [
+          {
+            &quot;role&quot;: &quot;sre&quot;,
+            &quot;operations&quot;: [
+              &quot;read&quot;,
+              &quot;admin&quot;
+            ]
+          }
+        ],
+        &quot;shared_accounts&quot;: false,
+        &quot;auto_logoff_minutes&quot;: 10,
+        &quot;break_glass&quot;: {
+          &quot;documented_at&quot;: &quot;runbooks/break-glass.md&quot;,
+          &quot;audit_alert&quot;: &quot;pagerduty:phi-break-glass&quot;
+        }
+      },
+      &quot;retention&quot;: {
+        &quot;period_days&quot;: 35,
+        &quot;deletion_mechanism&quot;: &quot;S3 lifecycle rule expires snapshots at 35 days; deletion requests replay against restored snapshots per runbooks/deletion.md&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;hop-error-tracker&quot;,
+      &quot;name&quot;: &quot;Sentry (Business plan, HIPAA add-on)&quot;,
+      &quot;kind&quot;: &quot;error_tracker&quot;,
+      &quot;operations&quot;: [
+        &quot;stores&quot;,
+        &quot;processes&quot;
+      ],
+      &quot;external&quot;: true,
+      &quot;identifier_classes&quot;: [
+        &quot;medical_record_numbers&quot;
+      ],
+      &quot;fields&quot;: [
+        {
+          &quot;name&quot;: &quot;request.path with mrn&quot;,
+          &quot;justification&quot;: &quot;needed to reproduce failures on a specific record; body and headers scrubbed&quot;
+        }
+      ],
+      &quot;purpose&quot;: &quot;error triage&quot;,
+      &quot;deidentified&quot;: false,
+      &quot;baa&quot;: {
+        &quot;executed&quot;: true,
+        &quot;vendor&quot;: &quot;Sentry&quot;,
+        &quot;plan&quot;: &quot;Business&quot;,
+        &quot;covered_service&quot;: &quot;Error Monitoring with PII scrubbing enabled&quot;,
+        &quot;link&quot;: &quot;contracts/sentry-baa-2026-01.pdf&quot;,
+        &quot;executed_on&quot;: &quot;2026-01-14&quot;
+      },
+      &quot;encryption_at_rest&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;kms&quot;: &quot;vendor-managed per BAA section 4&quot;,
+        &quot;key_rotation_enabled&quot;: true
+      },
+      &quot;access&quot;: {
+        &quot;roles&quot;: [
+          {
+            &quot;role&quot;: &quot;on-call-engineer&quot;,
+            &quot;operations&quot;: [
+              &quot;read&quot;
+            ]
+          }
+        ],
+        &quot;shared_accounts&quot;: false,
+        &quot;auto_logoff_minutes&quot;: 30,
+        &quot;break_glass&quot;: {
+          &quot;documented_at&quot;: &quot;runbooks/break-glass.md&quot;,
+          &quot;audit_alert&quot;: &quot;pagerduty:phi-break-glass&quot;
+        }
+      },
+      &quot;retention&quot;: {
+        &quot;period_days&quot;: 30,
+        &quot;deletion_mechanism&quot;: &quot;vendor retention set to 30 days; per-event deletion API called on deletion request&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;hop-embeddings&quot;,
+      &quot;name&quot;: &quot;Hosted embeddings API for note search&quot;,
+      &quot;kind&quot;: &quot;llm_or_embeddings_api&quot;,
+      &quot;operations&quot;: [
+        &quot;processes&quot;
+      ],
+      &quot;external&quot;: true,
+      &quot;identifier_classes&quot;: [],
+      &quot;fields&quot;: [
+        {
+          &quot;name&quot;: &quot;note.text_deidentified&quot;,
+          &quot;justification&quot;: &quot;semantic search over clinical notes; all 18 identifiers removed before the call&quot;
+        }
+      ],
+      &quot;purpose&quot;: &quot;semantic search over clinical notes&quot;,
+      &quot;deidentified&quot;: true,
+      &quot;deidentification_method&quot;: &quot;safe_harbor_164_514_b_2&quot;,
+      &quot;access&quot;: {
+        &quot;roles&quot;: [
+          {
+            &quot;role&quot;: &quot;search-service-principal&quot;,
+            &quot;operations&quot;: [
+              &quot;write&quot;
+            ]
+          }
+        ],
+        &quot;shared_accounts&quot;: false,
+        &quot;auto_logoff_minutes&quot;: 5,
+        &quot;break_glass&quot;: {
+          &quot;documented_at&quot;: &quot;runbooks/break-glass.md&quot;,
+          &quot;audit_alert&quot;: &quot;pagerduty:phi-break-glass&quot;
+        }
+      },
+      &quot;retention&quot;: {
+        &quot;period_days&quot;: 0,
+        &quot;deletion_mechanism&quot;: &quot;vendor zero-retention endpoint; nothing persisted&quot;
+      }
+    }
+  ],
+  &quot;links&quot;: [
+    {
+      &quot;from&quot;: &quot;hop-api&quot;,
+      &quot;to&quot;: &quot;hop-postgres&quot;,
+      &quot;tls_version&quot;: &quot;1.2&quot;,
+      &quot;tls_terminates_at&quot;: &quot;RDS endpoint (rds.force_ssl=1)&quot;,
+      &quot;identifier_classes&quot;: [
+        &quot;names&quot;,
+        &quot;dates_except_year&quot;,
+        &quot;medical_record_numbers&quot;,
+        &quot;email_addresses&quot;,
+        &quot;phone_numbers&quot;
+      ]
+    },
+    {
+      &quot;from&quot;: &quot;hop-postgres&quot;,
+      &quot;to&quot;: &quot;hop-backup&quot;,
+      &quot;tls_version&quot;: &quot;1.2&quot;,
+      &quot;tls_terminates_at&quot;: &quot;S3 endpoint&quot;,
+      &quot;identifier_classes&quot;: [
+        &quot;names&quot;,
+        &quot;dates_except_year&quot;,
+        &quot;medical_record_numbers&quot;,
+        &quot;email_addresses&quot;,
+        &quot;phone_numbers&quot;
+      ]
+    },
+    {
+      &quot;from&quot;: &quot;hop-api&quot;,
+      &quot;to&quot;: &quot;hop-error-tracker&quot;,
+      &quot;tls_version&quot;: &quot;1.3&quot;,
+      &quot;tls_terminates_at&quot;: &quot;sentry.io ingest&quot;,
+      &quot;identifier_classes&quot;: [
+        &quot;medical_record_numbers&quot;
+      ]
+    },
+    {
+      &quot;from&quot;: &quot;hop-api&quot;,
+      &quot;to&quot;: &quot;hop-embeddings&quot;,
+      &quot;tls_version&quot;: &quot;1.3&quot;,
+      &quot;tls_terminates_at&quot;: &quot;vendor API gateway&quot;,
+      &quot;identifier_classes&quot;: []
+    }
+  ],
+  &quot;audit_log&quot;: {
+    &quot;store&quot;: &quot;CloudWatch Logs group /careportal/phi-audit with retention lock&quot;,
+    &quot;append_only&quot;: true,
+    &quot;contains_phi_field_values&quot;: false,
+    &quot;retention_years&quot;: 7,
+    &quot;event_fields&quot;: [
+      &quot;identity&quot;,
+      &quot;timestamp&quot;,
+      &quot;record_id&quot;,
+      &quot;action&quot;,
+      &quot;originating_system&quot;
+    ],
+    &quot;bulk_access_alert&quot;: &quot;CloudWatch alarm: &gt;200 distinct record_ids read by one identity in 10 minutes -&gt; pagerduty:phi-bulk-access&quot;
+  },
+  &quot;log_scrubbing&quot;: {
+    &quot;allow_list_scrubber_at&quot;: &quot;careportal/logging/scrubber.py (allow-list of 14 safe keys)&quot;,
+    &quot;phi_in_urls_or_query_strings&quot;: false,
+    &quot;synthetic_record_test&quot;: {
+      &quot;path&quot;: &quot;tests/compliance/test_no_phi_in_logs.py&quot;,
+      &quot;covers_every_request_path&quot;: true,
+      &quot;asserts_no_identifier_in_logs_errors_traces&quot;: true,
+      &quot;runs_in_ci&quot;: true
+    }
+  },
+  &quot;deletion_propagation&quot;: [
+    {
+      &quot;trigger&quot;: &quot;patient deletion request or retention expiry in hop-postgres&quot;,
+      &quot;propagates_to&quot;: [
+        &quot;hop-backup&quot;,
+        &quot;hop-error-tracker&quot;
+      ],
+      &quot;mechanism&quot;: &quot;deletion job writes a tombstone; backup restore replays tombstones (runbooks/deletion.md); Sentry per-event deletion API by mrn&quot;
+    }
+  ],
+  &quot;media_disposal_procedure&quot;: &quot;runbooks/media-disposal.md: NIST SP 800-88 purge for any drive or device that held PHI; cloud volumes are KMS-encrypted and keys are destroyed on decommission&quot;,
+  &quot;review&quot;: {
+    &quot;status&quot;: &quot;ready_for_review&quot;,
+    &quot;security_officer&quot;: &quot;security-officer@careportal.example&quot;,
+    &quot;approved_by_agent&quot;: false
+  }
+}</code></pre>
 </body></html>

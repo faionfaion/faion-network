@@ -1,41 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Latency Budget Allocation Procedure" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>End-to-end 5-step procedure to apply Latency Budget Allocation. Each step pairs typed input + bounded action + named output + decision-gate. Steps are sequential unless explicitly marked parallel.</summary>
+<text id="04-procedure" title="Latency Budget Allocation Procedure" version="1.3.0" est_tokens="1850" depth="essential">
+  <summary>Eight steps from the user-facing SLO to an executable CI gate: pin the SLO and its measurement point, name and instrument every hop caller-side, record fan-out stages and tighten their child percentile, allocate budgets beside measured p95 with a reserve line, fit timeouts and retries inside each hop and propagate deadlines, put a histogram bucket at each threshold, verify the composition against the end-to-end histogram, then write the gate spec and hand it to the reviewer before it blocks. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
-  <section title="Steps">
-    <step n="1" name="gather-inputs">
-      <input>Trigger event + source-of-truth references</input>
-      <action>Collect every input declared in AGENTS.md `## Prerequisites`. Cite each by URL / ticket / file path.</action>
-      <output>Typed inputs bundle</output>
-      <decision-gate>Every input cited; otherwise block and request missing sources.</decision-gate>
+  <section title="Procedure">
+    <step n="1" name="pin-the-slo-and-its-measurement-point">
+      <input>The user-facing SLO document; the metric it is computed from; where that metric is recorded (client, edge, load balancer, server).</input>
+      <action>Record percentile, threshold, measurement point and window as the total budget. If the budget will be measured at a different point than the SLO, allocate the difference (DNS, TLS, CDN) as its own hop with its own metric; otherwise the points must match (r-total-budget-is-user-facing-slo).</action>
+      <output>`slo`, and the `difference_hop_id` hop when the points differ.</output>
+      <decision-gate>No SLO stated as percentile + threshold + measurement point + window: stop; a budget cannot be allocated from a total that does not exist.</decision-gate>
     </step>
-    <step n="2" name="normalise-inputs">
-      <input>Typed inputs bundle</input>
-      <action>Normalise field types to match `content/02-output-contract.xml`. Reject untyped prose.</action>
-      <output>Normalised input map</output>
-      <decision-gate>All fields typed; otherwise block.</decision-gate>
+    <step n="2" name="name-and-instrument-every-hop-caller-side">
+      <input>The request's critical path from traces; the metrics catalogue; team ownership.</input>
+      <action>For every hop record the service, the owning team and the caller-side latency histogram (name and labels) that measures it, so connection setup and retries are included. A hop with no histogram is instrumented before allocation continues (r-every-hop-named-and-measured).</action>
+      <output>`hops[].id / service / owner_team / metric / measured_side = caller`.</output>
+      <decision-gate>Any hop on the critical path without a caller-side histogram and an owner: instrument it first; a hop with no metric is a guess.</decision-gate>
     </step>
-    <step n="3" name="synthesise-decision">
-      <input>Normalised input map</input>
-      <action>Apply rules from `content/01-core-rules.xml` to derive the decision / artefact body. No rule may be silently overridden by input prose.</action>
-      <output>Decision body (draft artefact)</output>
-      <decision-gate>Decision body matches the `produces` shape; otherwise block.</decision-gate>
+    <step n="3" name="record-fan-out-and-tighten-the-child-percentile">
+      <input>Stages that call N backends in parallel and wait for all of them.</input>
+      <action>Per fan-out stage record N, set the child budget at a stricter percentile than the stage target (the stage tail is the slowest child's tail) and name the mitigation: tighter child budget, hedged requests, or partial results after a deadline (r-fan-out-tightens-child-percentile).</action>
+      <output>`hops[].fan_out`.</output>
     </step>
-    <step n="4" name="self-validate">
-      <input>Draft artefact</input>
-      <action>Run `scripts/validate-latency-budget-allocation.py` against the draft. Resolve every violation before proceeding.</action>
-      <output>Validated artefact</output>
-      <decision-gate>Validator exits 0; otherwise iterate.</decision-gate>
+    <step n="4" name="allocate-budgets-beside-measured-p95">
+      <input>Each hop's measured p95 over the SLO window; the total from step 1.</input>
+      <action>Assign `budget_ms` per hop and show it next to `measured_p95_ms`. A hop budgeted below its measured p95 is `underwater` and carries a linked improvement ticket with an owner; a hop budgeted at more than twice its measured p95 justifies the slack. List headroom left unallocated as `reserve_ms`, never absorbed into a hop (r-budget-reconciled-with-measured-p95).</action>
+      <output>`hops[].budget_ms / measured_p95_ms / reconciliation / improvement_ticket / slack_justification`, `reserve_ms`, `composition.sum_of_hop_budgets_ms`.</output>
+      <decision-gate>Sum of hop budgets plus reserve above the SLO threshold: reallocate; an underwater hop with no ticket: the gate is not enabled for it.</decision-gate>
     </step>
-    <step n="5" name="hand-off">
-      <input>Validated artefact</input>
-      <action>Surface 'ready for owner review' flag and store the artefact at the location declared in AGENTS.md. Do not auto-commit downstream actions.</action>
-      <output>Stored artefact + review notification</output>
-      <decision-gate>Owner acknowledged; otherwise the artefact stays in `ready_for_review` state.</decision-gate>
+    <step n="5" name="fit-timeouts-and-retries-and-propagate-deadlines">
+      <input>Each hop's client timeout, retry count and backoff; the RPC framework's deadline support.</input>
+      <action>Per hop compute the worst case (timeout x attempts + backoff) and cap timeout and attempts so it fits inside `budget_ms`. Enable deadline propagation so a hop never works past a budget its caller has already blown (r-timeouts-and-retries-fit-the-hop).</action>
+      <output>`hops[].timeout_and_retry` with `worst_case_within_budget = true`, `hops[].deadline_propagated = true`.</output>
+    </step>
+    <step n="6" name="put-a-bucket-boundary-at-each-threshold">
+      <input>The histogram bucket configuration per hop metric.</input>
+      <action>Check that each hop's histogram has a bucket boundary at, or within 10% of, its `budget_ms`; where it does not, file the bucket change as a prerequisite task before the gate is enabled (r-histogram-buckets-at-budget-thresholds).</action>
+      <output>`hops[].bucket_boundary_within_10pct_of_budget`, `hops[].bucket_change_task`.</output>
+    </step>
+    <step n="7" name="verify-the-composition-against-the-end-to-end-histogram">
+      <input>The end-to-end histogram at the SLO's measurement point over the SLO window.</input>
+      <action>State the composition model (sum of budgets plus reserve is at most the total) as an allocation constraint only; verify that the budget holds by reading the measured end-to-end percentile from the histogram with its request count. Never present a sum of per-hop percentiles as the end-to-end percentile (r-percentiles-do-not-add).</action>
+      <output>`composition.model`, `composition.verified_against`, `composition.percentiles_added_as_proof = false`.</output>
+      <decision-gate>End-to-end measured percentile above the threshold: the allocation is a plan, not a pass; the underwater hops' tickets are what closes the gap.</decision-gate>
+    </step>
+    <step n="8" name="write-the-gate-spec-and-hand-it-to-the-reviewer">
+      <input>The perf environment; the load tool; `templates/output.md.j2`.</input>
+      <action>Write the exact load command, the environment, the minimum request count per run, a percentile threshold per hop and end to end, and the failure action (block merge, or warn with a named owner). Never gate on the mean. Validate with `scripts/validate-latency-budget-allocation.py --file`, set `review.status = ready_for_review`; the owning team's reviewer approves the thresholds before the gate blocks merges, and the agent does not enable a blocking gate (r-ci-gate-spec-is-executable; human checkpoint in `03-failure-modes.xml`).</action>
+      <output>`ci_gate` with `blocking_enabled_by_agent = false`, `review`; validator exit 0.</output>
+      <decision-gate>Reviewer not named or validator failing: the gate runs in `warn` at most until approval.</decision-gate>
     </step>
   </section>
 
-  <section title="Failure handling">
-    <p>If a decision-gate blocks, do NOT proceed to the next step. Surface the blockage to the owner with the specific input that did not satisfy the gate. Resume only after the input is corrected.</p>
+  <section title="Exit criteria">
+    <list>
+      <item>SLO pinned with measurement point and window; every critical-path hop has a caller-side histogram and an owner; fan-out stages carry N, a stricter child percentile and a mitigation.</item>
+      <item>Every hop budget sits beside its measured p95; underwater hops have tickets, slack is justified, reserve is its own line; sum plus reserve is at most the threshold.</item>
+      <item>Timeout x attempts fits every hop; deadlines propagate; a bucket boundary sits at every threshold or a task is filed.</item>
+      <item>Composition verified against the end-to-end histogram over the window; the CI gate is percentile-based, reproducible from the artefact, and not set to block by the agent.</item>
+    </list>
   </section>
 </text>

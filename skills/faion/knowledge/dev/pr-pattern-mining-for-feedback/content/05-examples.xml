@@ -1,24 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="Pr Pattern Mining For Feedback Worked Example" version="1.1.0" est_tokens="900" depth="reference">
-  <summary>One full worked example of the report artefact end-to-end. Use as a calibration anchor when drafting new instances.</summary>
+<text id="05-examples" title="PR Pattern Mining For Feedback Worked Examples" version="1.3.0" est_tokens="2800" depth="recommended">
+  <summary>One complete team-scoped report mined from 64 merged PRs and 412 review comments across two billing repositories (three top patterns with a lint rule, a PR-template checkbox and a query-count CI check; 38 import-order comments collapsed into one ruff change), with a note on every non-obvious value, and one bad report (nine PRs, trait phrasing, import order as a top pattern, a guideline still active after three cycles, an author leaderboard) showing what the validator and the owner reject.</summary>
 
-  <section title="Example trace">
-    <example>
-      <context>A canonical pr-pattern-mining-for-feedback instance drafted from a triggering brief and a constraint list. Inputs cited, decision recorded, validator green, owner signed off without rework.</context>
-      <inputs>
-        <input name="primary input">See `templates/_smoke-test.md` for the filled-in artefact.</input>
-      </inputs>
-      <output>The artefact produced by the procedure in `content/04-procedure.xml`, conforming to the schema in `content/02-output-contract.xml`.</output>
-      <evaluation>
-        <criterion>All required fields populated.</criterion>
-        <criterion>No forbidden pattern matches.</criterion>
-        <criterion>Owner is a named human or role-with-rotation.</criterion>
-        <criterion>Version + last_reviewed present and current.</criterion>
-      </evaluation>
+  <section title="Scenario">
+    <p>The billing team wants a quarterly feedback report from Q2 2026 reviews on `acme/billing-api` and `acme/billing-worker`. Four reviewers were active. The most frequent comments are about import order, which `ruff` could enforce; the comments that cost review rounds are missing HTTP timeouts, status-code-only tests and N+1 queries. No previous report exists for this scope.</p>
+  </section>
+
+  <section title="Good report">
+    <example type="good" title="Billing team, Q2 2026">
+      <code lang="json"><![CDATA[
+{
+  "scope": {"kind": "team", "per_author_counts_listed": false},
+  "corpus": {"repositories": ["acme/billing-api", "acme/billing-worker"], "window_start": "2026-04-01", "window_end": "2026-06-30", "merged_prs": 64, "review_comments": 412, "query": "gh api graphql -f query='{ repository(owner:\"acme\", name:\"billing-api\") { pullRequests(states:MERGED, first:100, orderBy:{field:UPDATED_AT, direction:DESC}) { nodes { number mergedAt reviewThreads(first:100) { nodes { comments(first:50) { nodes { author { login } body url } } } } } } } }' (both repos, filtered to mergedAt in window)", "sufficient_sample": true},
+  "ranking_basis": "review_round_trips",
+  "top_patterns": [
+    {"id": "p1", "behaviour": "HTTP client call without a timeout: `requests.get(url)` blocks the worker indefinitely when the upstream hangs", "before_example": "resp = requests.get(url)", "after_example": "resp = requests.get(url, timeout=(3, 10))", "distinct_prs": 11, "distinct_reviewers": 4, "comment_urls": ["https://github.com/acme/billing-api/pull/402#discussion_r1890011", "https://github.com/acme/billing-api/pull/417#discussion_r1890877", "https://github.com/acme/billing-worker/pull/88#discussion_r1891204"], "count": 14, "cost": 2.1, "score": 29.4, "baseline_count": 14, "remeasure_date": "2026-09-30", "formatter_coverable": false},
+    {"id": "p2", "behaviour": "Test asserts only the HTTP status code; the response body and the side effect (row written, event published) are not asserted", "before_example": "assert resp.status_code == 200", "after_example": "assert resp.status_code == 200\nassert resp.json()[\"invoice_id\"] == invoice.id\nassert Invoice.objects.filter(id=invoice.id, status=\"sent\").exists()", "distinct_prs": 7, "distinct_reviewers": 3, "comment_urls": ["https://github.com/acme/billing-api/pull/399#discussion_r1889120", "https://github.com/acme/billing-api/pull/408#discussion_r1890340", "https://github.com/acme/billing-api/pull/421#discussion_r1891560"], "count": 9, "cost": 1.8, "score": 16.2, "baseline_count": 9, "remeasure_date": "2026-09-30", "formatter_coverable": false},
+    {"id": "p3", "behaviour": "N+1 query in list endpoints: related rows loaded per item inside the serializer loop", "before_example": "for inv in Invoice.objects.all(): inv.customer.name", "after_example": "for inv in Invoice.objects.select_related(\"customer\"): inv.customer.name", "distinct_prs": 5, "distinct_reviewers": 2, "comment_urls": ["https://github.com/acme/billing-api/pull/404#discussion_r1890205", "https://github.com/acme/billing-api/pull/411#discussion_r1890733", "https://github.com/acme/billing-api/pull/425#discussion_r1891902"], "count": 6, "cost": 2.5, "score": 15.0, "baseline_count": 6, "remeasure_date": "2026-09-30", "formatter_coverable": false}
+  ],
+  "appendix_patterns": [],
+  "single_occurrence": [
+    {"behaviour": "Retry loop without jitter on the payment-provider client", "comment_urls": ["https://github.com/acme/billing-worker/pull/91#discussion_r1891330"]}
+  ],
+  "automation_gap": {"comments_excluded": 38, "tool": "ruff", "config_change": "enable I001 (isort) and Q000 (quotes) in pyproject.toml [tool.ruff.lint] select; run ruff format in pre-commit"},
+  "suggested_rules": [
+    {"pattern_id": "p1", "rule": "Every requests call passes an explicit timeout", "channel": "linter_or_formatter_rule", "channel_id": "flake8-bandit S113 (request-without-timeout) via ruff S113", "status": "new", "cycles_without_drop": 0},
+    {"pattern_id": "p2", "rule": "Endpoint tests assert body and side effect, not only status", "channel": "pr_template_checkbox", "why_not_earlier_channels": "No linter can judge assertion sufficiency; a CI check on assertion count would be gamed; the checkbox puts the question in front of the author at the moment it matters", "status": "new", "cycles_without_drop": 0},
+    {"pattern_id": "p3", "rule": "List endpoints use select_related or prefetch_related for every relation the serializer touches", "channel": "ci_check_or_test", "channel_id": "django-test-plus assertNumQueries on every list endpoint test", "why_not_earlier_channels": "No static rule can see the serializer's relation access; a query-count assertion in CI catches the regression on the exact endpoint", "status": "new", "cycles_without_drop": 0}
+  ],
+  "notes": [
+    {"observation": "Reviewers ask for ADR links on schema changes in 4 PRs; no channel yet, revisit when the ADR template lands", "pattern_id": "p4"}
+  ],
+  "review": {"status": "ready_for_owner_check", "owner": "eng-manager@acme.example", "shared_by_agent": false}
+}
+]]></code>
+      <note>The corpus line carries the GraphQL query verbatim so Q3's report can re-run it; 64 PRs and 412 comments clear the 20 / 100 gate, so rules may be suggested (r-corpus-window-and-query-stated).</note>
+      <note>The 38 import-order and quote comments were the most frequent thing reviewers wrote, and they appear exactly once, as an `automation_gap` naming the two ruff rule codes; they are in no pattern count (r-formatter-covered-comments-excluded).</note>
+      <note>`p3` has only 2 distinct reviewers and 5 PRs, which is the minimum; the retry-jitter comment appeared once and stays in `single_occurrence` with its URL rather than becoming a rule (r-pattern-requires-recurrence).</note>
+      <note>`cost` is mean review round-trips until the comment was resolved, so `p3` (6 comments, 2.5 rounds each) outranks nothing but sits close to `p2` (9 comments, 1.8 rounds); on raw count the order would differ, and the report says which basis it used (r-ranked-by-frequency-times-cost).</note>
+      <note>Each behaviour is code, with a before and after lifted from a cited comment; "careless about timeouts" would have been rejected (r-pattern-phrased-as-code-behaviour).</note>
+      <note>Channels descend the preference order with reasons: `p1` gets a lint id, `p3` a CI query-count assertion because no static rule can see serializer access, `p2` a template checkbox because neither a linter nor CI can judge assertion sufficiency. The ADR-link observation has no channel yet, so it is a note (r-suggested-rule-names-enforcement-channel).</note>
+      <note>Baselines equal this quarter's counts with a 2026-09-30 re-measure; there is no `delta_vs_previous` because no previous report exists. Team scope, no per-author counts; the engineering manager checks the URLs before it circulates (r-baseline-and-remeasure-per-pattern, r-per-person-scope-declared-and-consented, human checkpoint).</note>
     </example>
   </section>
 
-  <section title="Notes">
-    <p>The smoke-test template (`templates/_smoke-test.md`) holds the canonical filled-in version. Treat it as the answer key during calibration.</p>
+  <section title="Bad report">
+    <example type="bad" title="What the validator and the owner reject">
+      <code lang="json"><![CDATA[
+{
+  "scope": {"kind": "team", "per_author_counts_listed": true},
+  "corpus": {"repositories": ["acme/billing-api"], "window_start": "2026-06-20", "window_end": "2026-06-30", "merged_prs": 9, "review_comments": 41, "query": "looked through recent PRs", "sufficient_sample": true},
+  "ranking_basis": "review_round_trips",
+  "top_patterns": [
+    {"id": "p1", "behaviour": "Authors are careless about error handling", "before_example": "n/a", "after_example": "n/a", "distinct_prs": 2, "distinct_reviewers": 1, "comment_urls": ["https://github.com/acme/billing-api/pull/430#discussion_r1892001"], "count": 2, "cost": 1, "score": 2, "baseline_count": 2, "remeasure_date": "2026-09-30", "formatter_coverable": false},
+    {"id": "p2", "behaviour": "Imports are not sorted and quotes are inconsistent across the diff", "before_example": "import os\nimport sys\nimport json", "after_example": "import json\nimport os\nimport sys", "distinct_prs": 12, "distinct_reviewers": 3, "comment_urls": ["https://github.com/acme/billing-api/pull/402#discussion_r1890011", "https://github.com/acme/billing-api/pull/417#discussion_r1890877", "https://github.com/acme/billing-api/pull/421#discussion_r1891560"], "count": 38, "cost": 0.3, "score": 11.4, "baseline_count": 38, "remeasure_date": "2026-09-30", "formatter_coverable": true}
+  ],
+  "appendix_patterns": [],
+  "single_occurrence": [],
+  "automation_gap": {"comments_excluded": 0},
+  "suggested_rules": [
+    {"pattern_id": "p1", "rule": "Be more careful about error handling", "channel": "written_guideline", "status": "active", "cycles_without_drop": 3}
+  ],
+  "notes": [],
+  "review": {"status": "checked_and_shared", "shared_by_agent": true}
+}
+]]></code>
+      <note>Validator output: `$.scope.per_author_counts_listed: must equal False, got True`, `$.corpus.merged_prs: 9 violates minimum=20`, `$.corpus.review_comments: 41 violates minimum=100`, `$.top_patterns[0].behaviour: 'Authors are careless about error handling' does not match pattern ...`, `$.top_patterns[0].before_example: length 3 below minLength=5`, `$.top_patterns[0].after_example: length 3 below minLength=5`, `$.top_patterns[0].distinct_prs: 2 violates minimum=3`, `$.top_patterns[0].comment_urls: 1 items, minItems=3`, `$.top_patterns[0].count: 2 violates minimum=3`, `$.top_patterns[0]: matches none of anyOf`, `$.top_patterns[1].formatter_coverable: must equal False, got True`, `$.suggested_rules[0].why_not_earlier_channels: missing required field`, `$.suggested_rules[0].status: 'active' not in enum ['ineffective', 'withdrawn']`, `$.review.shared_by_agent: must equal False, got True`, `$.review.owner: missing required field`, `$.review.owner_checked_urls_and_scope_on: missing required field`.</note>
+      <note>What the owner sees beyond the validator: "looked through recent PRs" is not a query anyone can re-run, so next quarter cannot show a delta (r-corpus-window-and-query-stated); `n/a` examples mean the pattern cannot be grepped for or taught (r-pattern-phrased-as-code-behaviour); 38 formatter comments counted as a pattern with `automation_gap` at zero means one ruff line would have deleted the top of the list (r-formatter-covered-comments-excluded).</note>
+    </example>
   </section>
 </text>

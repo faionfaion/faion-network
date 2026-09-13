@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Latency Budget Allocation — _smoke-test.md</title>
+<title>Latency Budget Allocation — Smoke Test Fixture</title>
 <style>:root{color-scheme:light dark}
 body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
 font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -25,14 +25,199 @@ code{background:#242424} pre{background:#1d1d1d}
 th{background:#1d1d1d} th,td{border-color:#333}
 blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
 <body>
-<h1>Latency Budget Allocation — _smoke-test.md</h1>
-<blockquote><p>Replace bracketed placeholders before use.</p></blockquote>
-<p><strong>Artefact id:</strong> <code>[stable-slug]</code> <strong>Owner:</strong> <code>[name &lt;email&gt; or role]</code> <strong>Version:</strong> <code>1.0.0</code> <strong>Last reviewed:</strong> <code>2026-05-23</code></p>
-<hr/>
-<h2>Inputs</h2>
-<table><thead><tr><th>Name</th><th>Format</th><th>Source</th></tr></thead><tbody><tr><td>{{ input_1 }}</td><td>{{ format }}</td><td>{{ source }}</td></tr></tbody></table>
-<h2>Body</h2>
-<p>[Fill the spec-shaped content here per content/02-output-contract.xml.]</p>
-<h2>Self-check</h2>
-<ul><li>[ ] Every required field populated.</li><li>[ ] No forbidden pattern matches.</li><li>[ ] Owner is a named human or role-with-rotation.</li><li>[ ] Version + last_reviewed advanced on every material edit.</li></ul>
+<h1>Latency Budget Allocation — Smoke Test Fixture</h1>
+<p>The valid example from <code>content/02-output-contract.xml</code>; <code>scripts/validate-latency-budget-allocation.py --self-test</code> runs it.</p>
+<pre><code class="language-json">{
+  &quot;slo&quot;: {
+    &quot;name&quot;: &quot;checkout p95 at the edge&quot;,
+    &quot;metric&quot;: &quot;checkout_request_duration_seconds&quot;,
+    &quot;percentile&quot;: &quot;p95&quot;,
+    &quot;threshold_ms&quot;: 800,
+    &quot;measurement_point&quot;: &quot;edge&quot;,
+    &quot;window_days&quot;: 28,
+    &quot;budget_measurement_point_matches&quot;: true
+  },
+  &quot;composition&quot;: {
+    &quot;model&quot;: &quot;critical_path_with_parallel_stages&quot;,
+    &quot;sum_of_hop_budgets_ms&quot;: 700,
+    &quot;percentiles_added_as_proof&quot;: false,
+    &quot;verified_against&quot;: {
+      &quot;end_to_end_histogram&quot;: &quot;checkout_request_duration_seconds{point=\&quot;edge\&quot;}&quot;,
+      &quot;measured_percentile_ms&quot;: 742,
+      &quot;window_days&quot;: 28,
+      &quot;request_count&quot;: 4180000
+    }
+  },
+  &quot;hops&quot;: [
+    {
+      &quot;id&quot;: &quot;hop-edge-to-gateway&quot;,
+      &quot;service&quot;: &quot;cdn + api-gateway&quot;,
+      &quot;owner_team&quot;: &quot;platform&quot;,
+      &quot;metric&quot;: {
+        &quot;histogram&quot;: &quot;gateway_upstream_duration_seconds&quot;,
+        &quot;labels&quot;: {
+          &quot;route&quot;: &quot;/checkout&quot;
+        }
+      },
+      &quot;measured_side&quot;: &quot;caller&quot;,
+      &quot;budget_ms&quot;: 80,
+      &quot;measured_p95_ms&quot;: 61,
+      &quot;reconciliation&quot;: &quot;within_budget&quot;,
+      &quot;bucket_boundary_within_10pct_of_budget&quot;: true,
+      &quot;timeout_and_retry&quot;: {
+        &quot;timeout_ms&quot;: 80,
+        &quot;max_attempts&quot;: 1,
+        &quot;backoff_ms&quot;: 0,
+        &quot;worst_case_ms&quot;: 80,
+        &quot;worst_case_within_budget&quot;: true
+      },
+      &quot;deadline_propagated&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;hop-checkout-svc&quot;,
+      &quot;service&quot;: &quot;checkout-service&quot;,
+      &quot;owner_team&quot;: &quot;checkout&quot;,
+      &quot;metric&quot;: {
+        &quot;histogram&quot;: &quot;http_client_duration_seconds&quot;,
+        &quot;labels&quot;: {
+          &quot;caller&quot;: &quot;api-gateway&quot;,
+          &quot;callee&quot;: &quot;checkout-service&quot;
+        }
+      },
+      &quot;measured_side&quot;: &quot;caller&quot;,
+      &quot;budget_ms&quot;: 120,
+      &quot;measured_p95_ms&quot;: 98,
+      &quot;reconciliation&quot;: &quot;within_budget&quot;,
+      &quot;bucket_boundary_within_10pct_of_budget&quot;: true,
+      &quot;timeout_and_retry&quot;: {
+        &quot;timeout_ms&quot;: 100,
+        &quot;max_attempts&quot;: 1,
+        &quot;backoff_ms&quot;: 0,
+        &quot;worst_case_ms&quot;: 100,
+        &quot;worst_case_within_budget&quot;: true
+      },
+      &quot;deadline_propagated&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;hop-inventory-fanout&quot;,
+      &quot;service&quot;: &quot;inventory-shards&quot;,
+      &quot;owner_team&quot;: &quot;inventory&quot;,
+      &quot;metric&quot;: {
+        &quot;histogram&quot;: &quot;grpc_client_duration_seconds&quot;,
+        &quot;labels&quot;: {
+          &quot;caller&quot;: &quot;checkout-service&quot;,
+          &quot;callee&quot;: &quot;inventory-shard&quot;
+        }
+      },
+      &quot;measured_side&quot;: &quot;caller&quot;,
+      &quot;budget_ms&quot;: 250,
+      &quot;measured_p95_ms&quot;: 212,
+      &quot;reconciliation&quot;: &quot;within_budget&quot;,
+      &quot;bucket_boundary_within_10pct_of_budget&quot;: true,
+      &quot;timeout_and_retry&quot;: {
+        &quot;timeout_ms&quot;: 110,
+        &quot;max_attempts&quot;: 2,
+        &quot;backoff_ms&quot;: 10,
+        &quot;worst_case_ms&quot;: 230,
+        &quot;worst_case_within_budget&quot;: true
+      },
+      &quot;deadline_propagated&quot;: true,
+      &quot;fan_out&quot;: {
+        &quot;n&quot;: 12,
+        &quot;stage_percentile&quot;: &quot;p95&quot;,
+        &quot;child_percentile&quot;: &quot;p999&quot;,
+        &quot;mitigation&quot;: &quot;hedged_requests&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;hop-pricing&quot;,
+      &quot;service&quot;: &quot;pricing-service&quot;,
+      &quot;owner_team&quot;: &quot;pricing&quot;,
+      &quot;metric&quot;: {
+        &quot;histogram&quot;: &quot;http_client_duration_seconds&quot;,
+        &quot;labels&quot;: {
+          &quot;caller&quot;: &quot;checkout-service&quot;,
+          &quot;callee&quot;: &quot;pricing-service&quot;
+        }
+      },
+      &quot;measured_side&quot;: &quot;caller&quot;,
+      &quot;budget_ms&quot;: 150,
+      &quot;measured_p95_ms&quot;: 176,
+      &quot;reconciliation&quot;: &quot;underwater&quot;,
+      &quot;improvement_ticket&quot;: &quot;https://jira.acme.example/browse/PRICE-812&quot;,
+      &quot;improvement_owner&quot;: &quot;pricing&quot;,
+      &quot;bucket_boundary_within_10pct_of_budget&quot;: false,
+      &quot;bucket_change_task&quot;: &quot;https://jira.acme.example/browse/OBS-301 add 0.15s bucket&quot;,
+      &quot;timeout_and_retry&quot;: {
+        &quot;timeout_ms&quot;: 140,
+        &quot;max_attempts&quot;: 1,
+        &quot;backoff_ms&quot;: 0,
+        &quot;worst_case_ms&quot;: 140,
+        &quot;worst_case_within_budget&quot;: true
+      },
+      &quot;deadline_propagated&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;hop-payment-auth&quot;,
+      &quot;service&quot;: &quot;payment-gateway (external)&quot;,
+      &quot;owner_team&quot;: &quot;payments&quot;,
+      &quot;metric&quot;: {
+        &quot;histogram&quot;: &quot;http_client_duration_seconds&quot;,
+        &quot;labels&quot;: {
+          &quot;caller&quot;: &quot;checkout-service&quot;,
+          &quot;callee&quot;: &quot;psp&quot;
+        }
+      },
+      &quot;measured_side&quot;: &quot;caller&quot;,
+      &quot;budget_ms&quot;: 100,
+      &quot;measured_p95_ms&quot;: 38,
+      &quot;reconciliation&quot;: &quot;slack_over_2x&quot;,
+      &quot;slack_justification&quot;: &quot;PSP contract allows 250 ms p95 on peak days; 100 ms is the floor we can defend without a second provider&quot;,
+      &quot;bucket_boundary_within_10pct_of_budget&quot;: true,
+      &quot;timeout_and_retry&quot;: {
+        &quot;timeout_ms&quot;: 90,
+        &quot;max_attempts&quot;: 1,
+        &quot;backoff_ms&quot;: 0,
+        &quot;worst_case_ms&quot;: 90,
+        &quot;worst_case_within_budget&quot;: true
+      },
+      &quot;deadline_propagated&quot;: true
+    }
+  ],
+  &quot;reserve_ms&quot;: 100,
+  &quot;ci_gate&quot;: {
+    &quot;command&quot;: &quot;k6 run --vus 40 --duration 3m perf/checkout.js --out json=perf/out.json &amp;&amp; perf/check-thresholds.py perf/out.json budget.json&quot;,
+    &quot;environment&quot;: &quot;perf-staging (same instance sizes as production, seeded dataset perf-2026-06)&quot;,
+    &quot;min_requests_per_run&quot;: 5000,
+    &quot;statistic&quot;: &quot;percentile&quot;,
+    &quot;thresholds&quot;: [
+      {
+        &quot;hop_id&quot;: &quot;end-to-end&quot;,
+        &quot;percentile&quot;: &quot;p95&quot;,
+        &quot;threshold_ms&quot;: 800
+      },
+      {
+        &quot;hop_id&quot;: &quot;hop-checkout-svc&quot;,
+        &quot;percentile&quot;: &quot;p95&quot;,
+        &quot;threshold_ms&quot;: 120
+      },
+      {
+        &quot;hop_id&quot;: &quot;hop-inventory-fanout&quot;,
+        &quot;percentile&quot;: &quot;p95&quot;,
+        &quot;threshold_ms&quot;: 250
+      },
+      {
+        &quot;hop_id&quot;: &quot;hop-pricing&quot;,
+        &quot;percentile&quot;: &quot;p95&quot;,
+        &quot;threshold_ms&quot;: 150
+      }
+    ],
+    &quot;on_failure&quot;: &quot;block_merge&quot;,
+    &quot;blocking_enabled_by_agent&quot;: false
+  },
+  &quot;review&quot;: {
+    &quot;status&quot;: &quot;ready_for_review&quot;,
+    &quot;reviewer&quot;: &quot;checkout-lead@acme.example&quot;
+  }
+}</code></pre>
 </body></html>

@@ -15,24 +15,31 @@
 
 ## Applies If (ALL must hold)
 
-- The triggering case shows up in the user's workload at least once per cycle.
-- A named consumer (human reviewer or downstream agent) exists for the output.
-- An auditable source-of-truth is available for the inputs this methodology requires.
-- Operator has authority to act on the artefact (write access, sign-off rights).
+- A user-facing latency SLO exists as percentile + threshold + measurement point + window, or can be written before allocation starts.
+- The request's critical path can be traced hop by hop and each hop has, or can get, a caller-side latency histogram with an owning team.
+- Client timeout and retry settings per hop are readable in config.
+- A perf environment and a load tool exist that can produce at least 200 requests per gate run.
+- The owning team has a named reviewer who can approve thresholds before a gate blocks merges.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- No end-to-end SLO is stated; a budget cannot be allocated from a total that does not exist.
+- The path is a single hop with no downstream calls; set the SLO on that hop's histogram directly.
+- Hops cannot be instrumented caller-side (opaque vendor SDK with no client timing); allocate only after a wrapper exposes the timing.
+- The latency concern is throughput or saturation rather than request latency; capacity planning applies, not a per-hop budget.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Trigger event / brief | markdown / ticket | team owner |
-| Input source-of-truth (system, dashboard, transcript) | varies | platform / product |
-| Prior cycle's artefact (if any) | this methodology's `produces` shape | artefact store |
+| User-facing latency SLO: metric, percentile, threshold, measurement point, window | SLO document | product / SRE |
+| Critical-path trace of the request naming every hop | distributed trace or sequence diagram | tracing backend |
+| Caller-side latency histogram per hop with bucket boundaries | metric names, labels, bucket config | metrics catalogue |
+| Measured p95 per hop and end to end over the SLO window, with request counts | dashboard export | metrics backend |
+| Client timeout, retry count and backoff per hop; deadline-propagation setting | service config | repositories |
+| Fan-out stages: N parallel calls and how the stage waits | code or trace | owning teams |
+| Perf environment description and load tool (k6, Locust, Gatling, wrk) | environment doc + script | platform |
+| Named reviewer on the owning team | roster | team lead |
 
 ## Assumes Loaded
 
@@ -47,11 +54,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 8 rules: total is the user-facing SLO, percentiles do not add, fan-out tightens child percentile, every hop measured, timeouts and retries fit the hop, histogram buckets at thresholds, executable CI gate, budget reconciled with measured p95 | 1800 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 800 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 1000 |
-| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
+| `content/02-output-contract.xml` | essential | Draft-07 schema: SLO with percentile, threshold, measurement point and window; composition verified against the end-to-end histogram (>= 1000 requests), never by adding percentiles; hops with caller-side histogram, owner, budget beside measured p95 with underwater tickets and slack justification, bucket at threshold, timeout x attempts within budget, deadline propagation, fan-out N with stricter child percentile; reserve line; percentile-only CI gate with command, environment, >= 200 requests, failure action; no agent-enabled blocking; valid + invalid examples, forbidden patterns | ~4900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 1200 |
+| `content/04-procedure.xml` | essential | 8 steps: pin the SLO and measurement point, instrument every hop caller-side, record fan-out and tighten the child percentile, allocate beside measured p95 with a reserve, fit timeouts and retries and propagate deadlines, bucket at each threshold, verify against the end-to-end histogram, write the gate and hand to the reviewer | ~1850 |
+| `content/05-examples.xml` | recommended | Complete allocation of an 800 ms p95 checkout SLO across five hops (12-shard fan-out, underwater pricing hop, justified slack, 100 ms reserve, k6 gate), a note per non-obvious value, and a bad allocation with the validator output | ~2850 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 700 |
 
 ## Task Routing
 

@@ -1,41 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Framework Major Upgrade Inventory Procedure" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>End-to-end 5-step procedure to apply Framework Major Upgrade Inventory. Each step pairs typed input + bounded action + named output + decision-gate. Steps are sequential unless explicitly marked parallel.</summary>
+<text id="04-procedure" title="Framework Major Upgrade Inventory Procedure" version="1.3.0" est_tokens="1850" depth="essential">
+  <summary>Eight steps that produce the inventory for one major step before any code moves: fix the step, run the suite with deprecation warnings as errors, build the breaking-change map from vendor release notes, count call sites with a reproducible search, classify codemod versus manual with a dry run, table dependent packages and runtime prerequisites with blockers, score risk on two axes and write characterisation tests, then hand the inventory to the human reviewer. Each step names the rule it satisfies and the fields of `02-output-contract.xml` it fills.</summary>
 
-  <section title="Steps">
-    <step n="1" name="gather-inputs">
-      <input>Trigger event + source-of-truth references</input>
-      <action>Collect every input declared in AGENTS.md `## Prerequisites`. Cite each by URL / ticket / file path.</action>
-      <output>Typed inputs bundle</output>
-      <decision-gate>Every input cited; otherwise block and request missing sources.</decision-gate>
+  <section title="Procedure">
+    <step n="1" name="fix-the-single-major-step">
+      <input>Deployed framework version in every environment; the target version; the vendor's upgrade guide.</input>
+      <action>Record `current_version` and `target_version`. If more than one major separates them, split into one inventory per step in the vendor's documented order and set `step_index` / `steps_total`; this inventory covers exactly one step (r-fmui-one-major-step-per-inventory).</action>
+      <output>`repository`, `framework` with `major_gap = 1`.</output>
+      <decision-gate>`major_gap` of 0: no inventory needed, run the suite with warnings enabled and bump. `major_gap` above 1: stop and split before anything else.</decision-gate>
     </step>
-    <step n="2" name="normalise-inputs">
-      <input>Typed inputs bundle</input>
-      <action>Normalise field types to match `content/02-output-contract.xml`. Reject untyped prose.</action>
-      <output>Normalised input map</output>
-      <decision-gate>All fields typed; otherwise block.</decision-gate>
+    <step n="2" name="run-the-suite-with-deprecations-as-errors">
+      <input>The full test suite on the CURRENT version; the framework's warning switch (`python -W error::DeprecationWarning`, Node `--throw-deprecation`, Rails `config.active_support.deprecation = :raise`, or equivalent).</input>
+      <action>Run once with warnings elevated to errors in CI, link the log, and count distinct warnings. Each distinct warning becomes a `breaking_changes` entry with `from_deprecation_run = true` and its call-site count taken from the log (r-fmui-deprecation-warnings-as-errors).</action>
+      <output>`deprecation_run`; seed entries in `breaking_changes`.</output>
+      <decision-gate>Suite does not run on the current version with warnings as errors: fix that first; the inventory has no cheaper source of truth.</decision-gate>
     </step>
-    <step n="3" name="synthesise-decision">
-      <input>Normalised input map</input>
-      <action>Apply rules from `content/01-core-rules.xml` to derive the decision / artefact body. No rule may be silently overridden by input prose.</action>
-      <output>Decision body (draft artefact)</output>
-      <decision-gate>Decision body matches the `produces` shape; otherwise block.</decision-gate>
+    <step n="3" name="build-the-map-from-vendor-release-notes">
+      <input>The vendor's release notes for every minor between current and target; the upgrade guide.</input>
+      <action>Read each release note and list it in `release_notes_covered`. For every incompatible change, add or merge a `breaking_changes` entry with the vendor URL and version. Suspected breaks with no vendor citation go under `unverified` with the search that was tried (r-fmui-breaking-change-cited-to-vendor).</action>
+      <output>`release_notes_covered[]`, `breaking_changes[]` with `vendor_citation`, `unverified[]`.</output>
     </step>
-    <step n="4" name="self-validate">
-      <input>Draft artefact</input>
-      <action>Run `scripts/validate-framework-major-upgrade-inventory.py` against the draft. Resolve every violation before proceeding.</action>
-      <output>Validated artefact</output>
-      <decision-gate>Validator exits 0; otherwise iterate.</decision-gate>
+    <step n="4" name="count-call-sites-with-a-reproducible-search">
+      <input>Each `breaking_changes` entry; the repository.</input>
+      <action>For every entry run a named search (grep or ripgrep pattern, AST query, codemod dry run, or the deprecation log) and record the pattern, the link and the count. Zero hits become `status = not_affected` with the pattern that proved it; never drop the entry (r-fmui-call-site-count-per-change).</action>
+      <output>`breaking_changes[].call_sites`, `breaking_changes[].status`.</output>
     </step>
-    <step n="5" name="hand-off">
-      <input>Validated artefact</input>
-      <action>Surface 'ready for owner review' flag and store the artefact at the location declared in AGENTS.md. Do not auto-commit downstream actions.</action>
-      <output>Stored artefact + review notification</output>
-      <decision-gate>Owner acknowledged; otherwise the artefact stays in `ready_for_review` state.</decision-gate>
+    <step n="5" name="classify-codemod-or-manual-with-a-dry-run">
+      <input>Affected entries; the vendor's or ecosystem's codemod tooling (`django-upgrade`, `react-codemod`, `ng update`, `rector`, OpenRewrite, `pyupgrade`).</input>
+      <action>Where a transform exists, run it dry, record tool, exact command and diff size, and check the tool's own documentation: a transform marked partial or experimental is classified `manual` with the codemod as a starting point (r-fmui-codemod-coverage-classified).</action>
+      <output>`breaking_changes[].classification`, `breaking_changes[].codemod`.</output>
+    </step>
+    <step n="6" name="table-dependent-packages-and-runtime-prerequisites">
+      <input>The dependency manifest; each framework-dependent package's release notes; the target's release notes for language, database, Node or JVM and base-image minimums; the deployed values per environment.</input>
+      <action>List every package that depends on the framework with current version, earliest compatible version from its own release notes and whether it is released; no compatible release means `blocker` with a fork, replace, remove or wait plan. List every runtime prerequisite against every environment; any environment below the minimum is a `blocker` with its own upgrade plan scheduled before the framework step (r-fmui-dependent-package-compatibility, r-fmui-runtime-prerequisites-listed).</action>
+      <output>`dependent_packages[]`, `runtime_prerequisites[]`.</output>
+      <decision-gate>Any blocker without a plan: the inventory is not ready for review.</decision-gate>
+    </step>
+    <step n="7" name="score-risk-and-write-characterisation-tests">
+      <input>Affected entries with counts; knowledge of which code paths serve production requests and jobs; the existing test suite.</input>
+      <action>Score each entry: `blast_radius` from the call-site count weighted by `runs_in`, and `detectability` as compile-time, runtime covered by a test, or runtime with no test. For every `runtime_no_test` entry write a characterisation test and link it; blockers head the matrix (r-fmui-risk-scored-on-two-axes).</action>
+      <output>`breaking_changes[].risk` with `characterisation_test` where required.</output>
+      <decision-gate>A `runtime_no_test` entry without a linked test blocks the review.</decision-gate>
+    </step>
+    <step n="8" name="hand-to-the-human-reviewer">
+      <input>The complete inventory; `templates/output.md.j2`.</input>
+      <action>Render the report, validate with `scripts/validate-framework-major-upgrade-inventory.py --file`, set `review.status = ready_for_review` and name the reviewer. The agent does not open or merge the upgrade branch; the reviewer approves the inventory including every blocker's plan before code changes begin (human checkpoint in `03-failure-modes.xml`).</action>
+      <output>`review` with `upgrade_branch_opened_by_agent = false`; validator exit 0; the rendered report.</output>
+      <decision-gate>Reviewer not named or validator failing: the inventory stays in `draft`.</decision-gate>
     </step>
   </section>
 
-  <section title="Failure handling">
-    <p>If a decision-gate blocks, do NOT proceed to the next step. Surface the blockage to the owner with the specific input that did not satisfy the gate. Resume only after the input is corrected.</p>
+  <section title="Exit criteria">
+    <list>
+      <item>One major step; every minor's release notes covered; every entry vendor-cited or under `unverified`.</item>
+      <item>Deprecation run linked with every distinct warning as an entry; every entry with a reproducible call-site count.</item>
+      <item>Codemod entries have tool, command and dry-run size; blockers in packages and prerequisites have plans.</item>
+      <item>Every entry scored on both axes; every `runtime_no_test` entry has a linked characterisation test.</item>
+      <item>`review.status = ready_for_review` with a named reviewer; the branch is not opened by the agent.</item>
+    </list>
   </section>
 </text>
